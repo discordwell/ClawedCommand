@@ -4,13 +4,14 @@ use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::{Selected, UnitType};
 use cc_sim::resources::CommandQueue;
 
-use super::InputMode;
+use super::{DoubleClickState, InputMode};
 
 pub fn handle_keyboard(
     keyboard: Res<ButtonInput<KeyCode>>,
     selected_units: Query<Entity, (With<UnitType>, With<Selected>)>,
     mut cmd_queue: ResMut<CommandQueue>,
     mut input_mode: ResMut<InputMode>,
+    mut dbl_click: ResMut<DoubleClickState>,
 ) {
     // H — Halt/stop selected units (S is used for camera pan)
     if keyboard.just_pressed(KeyCode::KeyH) {
@@ -35,6 +36,7 @@ pub fn handle_keyboard(
 
     // Escape — Cancel special modes or deselect all
     if keyboard.just_pressed(KeyCode::Escape) {
+        dbl_click.last_click_kind = None;
         if *input_mode != InputMode::Normal {
             *input_mode = InputMode::Normal;
         } else {

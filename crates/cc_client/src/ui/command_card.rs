@@ -6,6 +6,7 @@ use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::{
     Building, BuildingKind, Owner, Producer, ProductionQueue, Selected, UnitKind, UnitType,
 };
+use cc_core::unit_stats::base_stats;
 use cc_sim::resources::{CommandQueue, PlayerResources};
 
 use crate::input::InputMode;
@@ -119,7 +120,19 @@ pub fn command_card_system(
                         ui.separator();
                         let trainable = trainable_units(building.kind);
                         for kind in trainable {
-                            if ui.button(format!("Train {:?}", kind)).clicked() {
+                            let ustats = base_stats(*kind);
+                            let can_afford = pres
+                                .map(|p| {
+                                    p.food >= ustats.food_cost
+                                        && p.gpu_cores >= ustats.gpu_cost
+                                        && p.supply + ustats.supply_cost <= p.supply_cap
+                                })
+                                .unwrap_or(false);
+
+                            let btn_text =
+                                format!("Train {:?} ({}F/{}S)", kind, ustats.food_cost, ustats.supply_cost);
+                            let btn = egui::Button::new(&btn_text);
+                            if ui.add_enabled(can_afford, btn).clicked() {
                                 cmd_queue.push(GameCommand::TrainUnit {
                                     building: EntityId(entity.to_bits()),
                                     unit_kind: *kind,

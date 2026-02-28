@@ -2,7 +2,6 @@ pub mod agent_chat;
 pub mod command_card;
 pub mod construct_mode;
 pub mod game_over;
-pub mod hud;
 pub mod notifications;
 pub mod resource_bar;
 pub mod unit_info;

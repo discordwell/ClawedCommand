@@ -192,16 +192,20 @@ pub fn handle_mouse_input(
                     if dbl_click.last_click_kind == Some(kind)
                         && (now - dbl_click.last_click_time) < DOUBLE_CLICK_WINDOW
                     {
-                        // Double-click: select all visible own units of this type
+                        // Double-click: select all on-screen own units of this type
                         cmd_queue.push(GameCommand::Deselect);
+                        let win_w = window.width();
+                        let win_h = window.height();
                         let mut all_of_type = Vec::new();
                         for (e, pos, owner, _, ut) in units.iter() {
                             if owner.player_id != LOCAL_PLAYER || ut.kind != kind {
                                 continue;
                             }
-                            // Only units visible on screen
-                            if unit_to_viewport(pos, camera, camera_transform).is_some() {
-                                all_of_type.push(EntityId(e.to_bits()));
+                            // Only units actually visible in the viewport
+                            if let Some(vp) = unit_to_viewport(pos, camera, camera_transform) {
+                                if vp.x >= 0.0 && vp.x <= win_w && vp.y >= 0.0 && vp.y <= win_h {
+                                    all_of_type.push(EntityId(e.to_bits()));
+                                }
                             }
                         }
                         if !all_of_type.is_empty() {

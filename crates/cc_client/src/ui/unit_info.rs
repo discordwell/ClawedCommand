@@ -112,7 +112,7 @@ pub fn unit_info_system(
                             let stats = base_stats(*kind);
                             let total_secs = stats.train_time as f32 / 10.0;
                             let remaining_secs = *ticks_remaining as f32 / 10.0;
-                            let elapsed_secs = total_secs - remaining_secs;
+                            let elapsed_secs = (total_secs - remaining_secs).max(0.0);
                             ui.separator();
                             ui.colored_label(
                                 egui::Color32::from_rgb(100, 200, 255),
