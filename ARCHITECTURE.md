@@ -235,10 +235,14 @@ MCP tool definitions map to Mistral's function calling format with minimal conve
 9. Selection indicators, health bars
 10. UI overlay (HUD, minimap, chat, agent panel)
 
-**Asset pipeline:**
-- Sprites: likely Aseprite → spritesheet export → Bevy texture atlas
-- Tilemaps: Tiled editor → custom importer or `bevy_ecs_tilemap`
-- Animations: frame-based sprite animation system
+**Asset pipeline** (see [ASSET_PIPELINE.md](ASSET_PIPELINE.md)):
+- Generation: Claude-in-Chrome → ChatGPT image gen with style reference + prompt templates
+- Post-processing: `rembg` bg removal → resize/slice → grid verification → palette normalization
+- Sprite sheets: sliced into frames, reassembled to exact grid, atlas manifest generated
+- Atlas: `assets/atlas/atlas_manifest.yaml` → `TextureAtlasLayout::from_grid` in Bevy
+- Catalog: `tools/asset_pipeline/config/asset_catalog.yaml` tracks every asset through `planned → generated → processed → game_ready`
+- Tilemaps: `bevy_ecs_tilemap` (git branch `0.18`)
+- Animations: frame-based sprite animation system using TextureAtlasLayout
 
 ### 6. Networking
 

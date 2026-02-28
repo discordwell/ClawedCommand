@@ -14,27 +14,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-try:
-    from rembg import remove as rembg_remove
-    HAS_REMBG = True
-except ImportError:
-    HAS_REMBG = False
-
-
-def remove_background(img: Image.Image) -> Image.Image:
-    """Remove background using rembg if needed."""
-    if img.mode == "RGBA":
-        alpha = np.array(img.split()[-1])
-        if alpha.min() < 250:
-            print("  Alpha channel detected, skipping bg removal")
-            return img
-
-    if not HAS_REMBG:
-        print("  Warning: rembg not installed, skipping bg removal", file=sys.stderr)
-        return img.convert("RGBA")
-
-    print("  Removing background with rembg...")
-    return rembg_remove(img).convert("RGBA")
+from image_utils import crop_to_content, remove_background, resize_to_fit
 
 
 def detect_grid(img: Image.Image, columns: int, rows: int):
@@ -80,29 +60,8 @@ def validate_frames(frames, tolerance=0.05):
     return True, report
 
 
-def reassemble_grid(frames, tile_w, tile_h, columns, rows):
-    """Reassemble frames into a clean grid of exact tile dimensions."""
-    sheet_w = columns * tile_w
-    sheet_h = rows * tile_h
-    sheet = Image.new("RGBA", (sheet_w, sheet_h), (0, 0, 0, 0))
-
-    for i, frame in enumerate(frames):
-        r = i // columns
-        c = i % columns
-
-        # Resize frame to tile size if needed
-        if frame.size != (tile_w, tile_h):
-            # Fit frame content into tile
-            frame = fit_to_tile(frame, tile_w, tile_h)
-
-        sheet.paste(frame, (c * tile_w, r * tile_h), frame)
-
-    return sheet
-
-
 def fit_to_tile(frame: Image.Image, tile_w: int, tile_h: int) -> Image.Image:
     """Fit a frame into exact tile dimensions, centering content."""
-    # Crop to content first
     alpha = np.array(frame.split()[-1])
     rows_mask = np.any(alpha > 0, axis=1)
     cols_mask = np.any(alpha > 0, axis=0)
@@ -114,19 +73,38 @@ def fit_to_tile(frame: Image.Image, tile_w: int, tile_h: int) -> Image.Image:
     cmin, cmax = np.where(cols_mask)[0][[0, -1]]
     content = frame.crop((cmin, rmin, cmax + 1, rmax + 1))
 
-    # Scale to fit tile
     scale = min(tile_w / content.width, tile_h / content.height)
     if scale < 1.0:
         new_w = max(1, int(content.width * scale))
         new_h = max(1, int(content.height * scale))
         content = content.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
-    # Center on tile canvas
     canvas = Image.new("RGBA", (tile_w, tile_h), (0, 0, 0, 0))
     offset_x = (tile_w - content.width) // 2
     offset_y = (tile_h - content.height) // 2
     canvas.paste(content, (offset_x, offset_y), content)
     return canvas
+
+
+def reassemble_grid(frames, tile_w, tile_h, columns, rows):
+    """Reassemble frames into a clean grid of exact tile dimensions.
+    Returns (sheet, resized_frames) so individual frames can be saved at target size."""
+    sheet_w = columns * tile_w
+    sheet_h = rows * tile_h
+    sheet = Image.new("RGBA", (sheet_w, sheet_h), (0, 0, 0, 0))
+    resized_frames = []
+
+    for i, frame in enumerate(frames):
+        r = i // columns
+        c = i % columns
+
+        if frame.size != (tile_w, tile_h):
+            frame = fit_to_tile(frame, tile_w, tile_h)
+
+        resized_frames.append(frame)
+        sheet.paste(frame, (c * tile_w, r * tile_h), frame)
+
+    return sheet, resized_frames
 
 
 def save_individual_frames(frames, output_path: Path, name_prefix: str):
@@ -148,8 +126,8 @@ def main():
     parser.add_argument("--tile-width", type=int, required=True, help="Target frame width")
     parser.add_argument("--tile-height", type=int, required=True, help="Target frame height")
     parser.add_argument("--no-bg-remove", action="store_true", help="Skip background removal")
-    parser.add_argument("--save-frames", action="store_true", default=True,
-                        help="Save individual frames (default: True)")
+    parser.add_argument("--no-save-frames", action="store_true",
+                        help="Skip saving individual frames")
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -162,36 +140,30 @@ def main():
     img = Image.open(input_path).convert("RGBA")
     print(f"  Input: {img.size[0]}x{img.size[1]}")
 
-    # Step 1: Background removal
     if not args.no_bg_remove:
         img = remove_background(img)
 
-    # Step 2: Detect grid and extract frames
     print(f"  Slicing into {args.columns}x{args.rows} grid...")
     frames, detected_fw, detected_fh = detect_grid(img, args.columns, args.rows)
     print(f"  Detected frame size: {detected_fw}x{detected_fh}")
 
-    # Step 3: Validate frames
     valid, report = validate_frames(frames)
     print(f"  {report}")
     if not valid:
         print("  Warning: frame validation issues detected", file=sys.stderr)
 
-    # Step 4: Reassemble clean grid
     print(f"  Reassembling at {args.tile_width}x{args.tile_height} per frame...")
-    sheet = reassemble_grid(frames, args.tile_width, args.tile_height, args.columns, args.rows)
+    sheet, resized_frames = reassemble_grid(frames, args.tile_width, args.tile_height, args.columns, args.rows)
 
-    # Save
     output_path.parent.mkdir(parents=True, exist_ok=True)
     sheet.save(output_path, "PNG")
     total_w = args.columns * args.tile_width
     total_h = args.rows * args.tile_height
     print(f"  Output: {output_path} ({total_w}x{total_h})")
 
-    # Save individual frames
-    if args.save_frames:
+    if not args.no_save_frames:
         name_prefix = output_path.stem
-        save_individual_frames(frames, output_path, name_prefix)
+        save_individual_frames(resized_frames, output_path, name_prefix)
 
 
 if __name__ == "__main__":

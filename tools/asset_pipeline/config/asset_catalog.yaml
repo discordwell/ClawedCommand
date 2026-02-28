@@ -1,172 +1,150 @@
-# ClawedCommand Asset Catalog
-# Status flow: planned → generated → processed → game_ready
-
-# ============================================================
-# TERRAIN
-# ============================================================
 terrain:
   grass:
     template: terrain
     status: planned
     params:
       tile_type: grass
-      description: "Lush green grass, standard passable terrain"
+      description: Lush green grass, standard passable terrain
       width: 128
       height: 128
-      extra_notes: "Base tile — most common terrain. Subtle grass texture variation."
+      extra_notes: "Base tile \u2014 most common terrain. Subtle grass texture variation."
     output:
       type: single
       game_path: assets/sprites/terrain/grass.png
-
   dirt:
     template: terrain
     status: planned
     params:
       tile_type: dirt path
-      description: "Worn dirt path or cleared ground"
+      description: Worn dirt path or cleared ground
       width: 128
       height: 128
-      extra_notes: "Should contrast clearly with grass tiles."
+      extra_notes: Should contrast clearly with grass tiles.
     output:
       type: single
       game_path: assets/sprites/terrain/dirt.png
-
   stone:
     template: terrain
     status: planned
     params:
       tile_type: stone/rock
-      description: "Rocky terrain, impassable cliff surface"
+      description: Rocky terrain, impassable cliff surface
       width: 128
       height: 128
-      extra_notes: "Impassable tile. Visually heavier/darker than passable tiles."
+      extra_notes: Impassable tile. Visually heavier/darker than passable tiles.
     output:
       type: single
       game_path: assets/sprites/terrain/stone.png
-
   water:
     template: terrain
     status: planned
     params:
       tile_type: water
-      description: "Shallow water, impassable"
+      description: Shallow water, impassable
       width: 128
       height: 128
-      extra_notes: "Slightly reflective surface. Impassable."
+      extra_notes: Slightly reflective surface. Impassable.
     output:
       type: single
       game_path: assets/sprites/terrain/water.png
-
   sand:
     template: terrain
     status: planned
     params:
       tile_type: sand
-      description: "Sandy terrain at water edges"
+      description: Sandy terrain at water edges
       width: 128
       height: 128
-      extra_notes: "Transition tile between grass/dirt and water."
+      extra_notes: Transition tile between grass/dirt and water.
     output:
       type: single
       game_path: assets/sprites/terrain/sand.png
-
-# ============================================================
-# BUILDINGS
-# ============================================================
 buildings:
   command_center:
     template: building
     status: planned
     params:
       name: Command Center
-      description: "Main base structure. Large, imposing headquarters with antenna arrays and command screens visible through windows."
+      description: Main base structure. Large, imposing headquarters with antenna arrays and command screens visible through
+        windows.
       faction: generic sci-fi military
       width: 256
       height: 256
       footprint: 3x3
-      extra_notes: "Most important building — should be the visual anchor of any base."
+      extra_notes: "Most important building \u2014 should be the visual anchor of any base."
     output:
       type: single
       game_path: assets/sprites/buildings/command_center.png
-
   barracks:
     template: building
     status: planned
     params:
       name: Barracks
-      description: "Infantry training facility. Compact military building with reinforced walls and a deployment bay."
+      description: Infantry training facility. Compact military building with reinforced walls and a deployment bay.
       faction: generic sci-fi military
       width: 192
       height: 192
       footprint: 2x2
-      extra_notes: "Should look functional and military. Troops deploy from a visible door/bay."
+      extra_notes: Should look functional and military. Troops deploy from a visible door/bay.
     output:
       type: single
       game_path: assets/sprites/buildings/barracks.png
-
   refinery:
     template: building
     status: planned
     params:
       name: Refinery
-      description: "Resource processing structure. Industrial building with ore hoppers, conveyor hints, and a smokestack."
+      description: Resource processing structure. Industrial building with ore hoppers, conveyor hints, and a smokestack.
       faction: generic sci-fi military
       width: 192
       height: 192
       footprint: 2x2
-      extra_notes: "Workers deliver resources here. Should look industrial."
+      extra_notes: Workers deliver resources here. Should look industrial.
     output:
       type: single
       game_path: assets/sprites/buildings/refinery.png
-
   vehicle_factory:
     template: building
     status: planned
     params:
       name: Vehicle Factory
-      description: "Heavy vehicle production facility. Large hangar-style building with wide bay doors."
+      description: Heavy vehicle production facility. Large hangar-style building with wide bay doors.
       faction: generic sci-fi military
       width: 256
       height: 256
       footprint: 3x3
-      extra_notes: "Vehicles roll out from the front. Larger than barracks."
+      extra_notes: Vehicles roll out from the front. Larger than barracks.
     output:
       type: single
       game_path: assets/sprites/buildings/vehicle_factory.png
-
   power_plant:
     template: building
     status: planned
     params:
       name: Power Plant
-      description: "Energy generation structure. Glowing reactor core visible, cooling fins or turbines."
+      description: Energy generation structure. Glowing reactor core visible, cooling fins or turbines.
       faction: generic sci-fi military
       width: 192
       height: 192
       footprint: 2x2
-      extra_notes: "Energy glow accent. Provides power to the base."
+      extra_notes: Energy glow accent. Provides power to the base.
     output:
       type: single
       game_path: assets/sprites/buildings/power_plant.png
-
   supply_depot:
     template: building
     status: planned
     params:
       name: Supply Depot
-      description: "Storage warehouse. Stacked crates, modular containers, open-sided shelter."
+      description: Storage warehouse. Stacked crates, modular containers, open-sided shelter.
       faction: generic sci-fi military
       width: 128
       height: 128
       footprint: 2x2
-      extra_notes: "Increases supply cap. Should look like it stores things."
+      extra_notes: Increases supply cap. Should look like it stores things.
     output:
       type: single
       game_path: assets/sprites/buildings/supply_depot.png
-
-# ============================================================
-# UNITS
-# ============================================================
 units:
   worker_idle:
     template: unit_static
@@ -174,207 +152,195 @@ units:
     params:
       name: Worker
       pose: idle standing
-      description: "Basic resource gathering unit. Lightly armored humanoid with a tool or harvesting arm."
+      description: Basic resource gathering unit. Lightly armored humanoid with a tool or harvesting arm.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: "Should look civilian/industrial, not combat-oriented."
+      extra_notes: Should look civilian/industrial, not combat-oriented.
     output:
       type: single
       game_path: assets/sprites/units/worker_idle.png
-
   worker_walk:
     template: unit_sheet
     status: planned
     params:
       name: Worker
       animation: walk cycle
-      description: "Worker walking with tool in hand"
+      description: Worker walking with tool in hand
       frame_count: 4
       frame_width: 128
       frame_height: 128
       sheet_width: 512
       direction: south-east
-      extra_notes: "Subtle walk cycle. Tool sways slightly."
+      extra_notes: Subtle walk cycle. Tool sways slightly.
     output:
       type: sheet
       columns: 4
       rows: 1
-      tile_size: [128, 128]
+      tile_size:
+      - 128
+      - 128
       game_path: assets/sprites/units/worker_walk.png
-
   infantry_idle:
     template: unit_static
     status: planned
     params:
       name: Infantry
       pose: idle combat stance
-      description: "Standard infantry soldier. Medium armor, rifle held ready."
+      description: Standard infantry soldier. Medium armor, rifle held ready.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: "Core combat unit. Clear military silhouette."
+      extra_notes: Core combat unit. Clear military silhouette.
     output:
       type: single
       game_path: assets/sprites/units/infantry_idle.png
-
   infantry_walk:
     template: unit_sheet
     status: planned
     params:
       name: Infantry
       animation: walk cycle
-      description: "Infantry marching with weapon"
+      description: Infantry marching with weapon
       frame_count: 4
       frame_width: 128
       frame_height: 128
       sheet_width: 512
       direction: south-east
-      extra_notes: "Military march. Weapon stays shouldered."
+      extra_notes: Military march. Weapon stays shouldered.
     output:
       type: sheet
       columns: 4
       rows: 1
-      tile_size: [128, 128]
+      tile_size:
+      - 128
+      - 128
       game_path: assets/sprites/units/infantry_walk.png
-
   infantry_attack:
     template: unit_sheet
     status: planned
     params:
       name: Infantry
       animation: attack / firing
-      description: "Infantry firing weapon"
+      description: Infantry firing weapon
       frame_count: 4
       frame_width: 128
       frame_height: 128
       sheet_width: 512
       direction: south-east
-      extra_notes: "Weapon raise → fire → recoil → recover."
+      extra_notes: "Weapon raise \u2192 fire \u2192 recoil \u2192 recover."
     output:
       type: sheet
       columns: 4
       rows: 1
-      tile_size: [128, 128]
+      tile_size:
+      - 128
+      - 128
       game_path: assets/sprites/units/infantry_attack.png
-
   heavy_infantry_idle:
     template: unit_static
     status: planned
     params:
       name: Heavy Infantry
       pose: idle combat stance
-      description: "Heavily armored soldier with a large weapon (rocket launcher or heavy rifle). Bulkier than standard infantry."
+      description: Heavily armored soldier with a large weapon (rocket launcher or heavy rifle). Bulkier than standard infantry.
       width: 148
       height: 148
       direction: south-east
-      extra_notes: "Visually larger and more armored than basic infantry."
+      extra_notes: Visually larger and more armored than basic infantry.
     output:
       type: single
       game_path: assets/sprites/units/heavy_infantry_idle.png
-
   light_vehicle_idle:
     template: unit_static
     status: planned
     params:
       name: Light Vehicle
       pose: stationary
-      description: "Fast scout/attack buggy. Open-top, mounted gun, rugged wheels or light treads."
+      description: Fast scout/attack buggy. Open-top, mounted gun, rugged wheels or light treads.
       width: 192
       height: 128
       direction: south-east
-      extra_notes: "Fast and agile feel. Smaller than heavy vehicle."
+      extra_notes: Fast and agile feel. Smaller than heavy vehicle.
     output:
       type: single
       game_path: assets/sprites/units/light_vehicle_idle.png
-
   heavy_vehicle_idle:
     template: unit_static
     status: planned
     params:
       name: Heavy Vehicle
       pose: stationary
-      description: "Main battle tank. Heavy armor plating, large cannon turret, wide treads."
+      description: Main battle tank. Heavy armor plating, large cannon turret, wide treads.
       width: 192
       height: 192
       direction: south-east
-      extra_notes: "Imposing and powerful. Largest ground unit."
+      extra_notes: Imposing and powerful. Largest ground unit.
     output:
       type: single
       game_path: assets/sprites/units/heavy_vehicle_idle.png
-
-# ============================================================
-# RESOURCES
-# ============================================================
 resources:
   ore_deposit:
     template: resource
     status: planned
     params:
       name: Ore Deposit
-      description: "Metallic ore vein protruding from the ground. Glowing amber/orange crystalline chunks in rock."
+      description: Metallic ore vein protruding from the ground. Glowing amber/orange crystalline chunks in rock.
       width: 128
       height: 128
-      extra_notes: "Primary resource. Should look harvestable. Multiple sizes would be ideal."
+      extra_notes: Primary resource. Should look harvestable. Multiple sizes would be ideal.
     output:
       type: single
       game_path: assets/sprites/resources/ore_deposit.png
-
   energy_node:
     template: resource
     status: planned
     params:
       name: Energy Node
-      description: "Pulsing energy crystal cluster. Purple/violet crystals with a soft glow."
+      description: Pulsing energy crystal cluster. Purple/violet crystals with a soft glow.
       width: 128
       height: 128
-      extra_notes: "Secondary resource. Visually distinct from ore (purple vs orange)."
+      extra_notes: Secondary resource. Visually distinct from ore (purple vs orange).
     output:
       type: single
       game_path: assets/sprites/resources/energy_node.png
-
-# ============================================================
-# PROJECTILES
-# ============================================================
 projectiles:
   bullet_trail:
     template: projectile
     status: planned
     params:
       name: Bullet Trail
-      description: "Small fast bullet/tracer round for infantry weapons"
+      description: Small fast bullet/tracer round for infantry weapons
       width: 32
       height: 16
       frame_count: 1
-      extra_notes: "Bright streak, reads against any background."
+      extra_notes: Bright streak, reads against any background.
     output:
       type: single
       game_path: assets/sprites/projectiles/bullet_trail.png
-
   rocket:
     template: projectile
     status: planned
     params:
       name: Rocket
-      description: "Rocket projectile with exhaust trail for heavy infantry"
+      description: Rocket projectile with exhaust trail for heavy infantry
       width: 48
       height: 24
       frame_count: 1
-      extra_notes: "Visible smoke/exhaust trail behind the warhead."
+      extra_notes: Visible smoke/exhaust trail behind the warhead.
     output:
       type: single
       game_path: assets/sprites/projectiles/rocket.png
-
   tank_shell:
     template: projectile
     status: planned
     params:
       name: Tank Shell
-      description: "Large caliber tank round, fast-moving"
+      description: Large caliber tank round, fast-moving
       width: 40
       height: 20
       frame_count: 1
-      extra_notes: "Heavier and brighter than bullet trail."
+      extra_notes: Heavier and brighter than bullet trail.
     output:
       type: single
       game_path: assets/sprites/projectiles/tank_shell.png

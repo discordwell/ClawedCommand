@@ -31,7 +31,8 @@ SCRIPTS_DIR = PIPELINE_ROOT / "scripts"
 
 def load_catalog():
     with open(CATALOG_PATH) as f:
-        return yaml.safe_load(f)
+        data = yaml.safe_load(f)
+        return data if data else {}
 
 
 def save_catalog(catalog):
@@ -340,6 +341,10 @@ def cmd_add(args):
             entry["params"]["footprint"] = "2x2"
         elif template == "terrain":
             entry["params"]["tile_type"] = name
+        elif template == "projectile":
+            entry["params"]["frame_count"] = 1
+        elif template == "ui":
+            entry["params"]["context"] = "HUD overlay"
 
     catalog[category][name] = entry
     save_catalog(catalog)
