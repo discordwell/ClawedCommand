@@ -1,4 +1,5 @@
 pub mod agent_bridge;
+pub mod behaviors;
 pub mod construct_mode;
 pub mod events;
 pub mod llm_client;

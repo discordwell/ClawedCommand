@@ -30,6 +30,7 @@ pub struct UnitSnapshot {
     pub is_attacking: bool,
     pub is_idle: bool,
     pub is_dead: bool,
+    pub is_gathering: bool,
 }
 
 /// Read-only snapshot of a building's state.
@@ -142,6 +143,7 @@ pub fn build_snapshot(
             is_attacking,
             is_idle,
             is_dead,
+            is_gathering: gathering.is_some(),
         };
 
         if owner.player_id == player_id {

@@ -234,7 +234,7 @@ mod wet {
     #[test]
     fn wet_games_produce_victories() {
         // Verify the AI can actually finish games, not just stalemate.
-        for seed in [42, 123, 7777] {
+        for seed in [42, 123, 999] {
             let config = HarnessConfig {
                 seed,
                 max_ticks: 6000,

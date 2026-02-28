@@ -253,7 +253,7 @@ pub fn ai_decision_system(
     player_resources: Res<PlayerResources>,
     units: Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
     buildings: Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
-    deposits: Query<(Entity, &Position), With<ResourceDeposit>>,
+    deposits: Query<(Entity, &Position, &ResourceDeposit)>,
 ) {
     run_ai_fsm(
         clock.tick,
@@ -275,7 +275,7 @@ pub fn multi_ai_decision_system(
     player_resources: Res<PlayerResources>,
     units: Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
     buildings: Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
-    deposits: Query<(Entity, &Position), With<ResourceDeposit>>,
+    deposits: Query<(Entity, &Position, &ResourceDeposit)>,
 ) {
     for ai_state in multi_ai.players.iter_mut() {
         run_ai_fsm(
@@ -298,7 +298,7 @@ fn run_ai_fsm(
     player_resources: &PlayerResources,
     units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
     buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
-    deposits: &Query<(Entity, &Position), With<ResourceDeposit>>,
+    deposits: &Query<(Entity, &Position, &ResourceDeposit)>,
 ) {
     let interval = ai_state.difficulty.eval_interval();
     if tick % interval != 0 || tick == 0 {
@@ -314,6 +314,7 @@ fn run_ai_fsm(
     let mut worker_count = 0u32;
     let mut army_count = 0u32;
     let mut idle_workers: Vec<Entity> = Vec::new();
+    let mut all_workers: Vec<Entity> = Vec::new();
     let mut army_entities: Vec<Entity> = Vec::new();
 
     for (entity, _, owner, unit_type, gathering, move_target) in units.iter() {
@@ -323,6 +324,7 @@ fn run_ai_fsm(
         match unit_type.kind {
             UnitKind::Pawdler => {
                 worker_count += 1;
+                all_workers.push(entity);
                 if gathering.is_none() && move_target.is_none() {
                     idle_workers.push(entity);
                 }
@@ -387,6 +389,14 @@ fn run_ai_fsm(
         }
     }
 
+    // Count enemy army (non-worker) units for threat assessment
+    let mut enemy_army_count = 0u32;
+    for (_, _, owner, unit_type, _, _) in units.iter() {
+        if owner.player_id != ai_player && unit_type.kind != UnitKind::Pawdler {
+            enemy_army_count += 1;
+        }
+    }
+
     // Find enemy base — prefer enemy TheBox building, fall back to any enemy unit
     if ai_state.enemy_spawn.is_none() {
         // First: look for enemy TheBox
@@ -406,6 +416,11 @@ fn run_ai_fsm(
             }
         }
     }
+
+    // Pick a builder: prefer idle workers, fall back to any worker (even gathering)
+    let pick_builder = |idle: &[Entity], all: &[Entity]| -> Option<Entity> {
+        idle.first().copied().or_else(|| all.first().copied())
+    };
 
     // Assign idle workers to nearest deposit
     for worker in &idle_workers {
@@ -441,9 +456,9 @@ fn run_ai_fsm(
         }
 
         AiPhase::BuildUp => {
-            // Build FishMarket if missing (use an idle Pawdler as builder)
+            // Build FishMarket if missing (prefer idle worker, pull from gathering if needed)
             if !has_fish_market && pres.food >= 100 && has_box {
-                if let Some(builder) = idle_workers.first() {
+                if let Some(builder) = pick_builder(&idle_workers, &all_workers) {
                     let build_pos = find_build_position(box_pos, building_count);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
@@ -455,7 +470,7 @@ fn run_ai_fsm(
 
             // Build CatTree if missing
             if !has_cat_tree && pres.food >= 150 && has_box {
-                if let Some(builder) = idle_workers.first() {
+                if let Some(builder) = pick_builder(&idle_workers, &all_workers) {
                     let build_pos = find_build_position(box_pos, building_count + 1);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
@@ -465,7 +480,7 @@ fn run_ai_fsm(
                 }
             }
 
-            maybe_build_supply(pres, &idle_workers, box_pos, building_count, cmd_queue);
+            maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue);
 
             // Train army from CatTree
             if let Some(ct_e) = cat_tree_entity {
@@ -488,7 +503,7 @@ fn run_ai_fsm(
         AiPhase::MidGame => {
             // Build ServerRack if missing and can afford
             if !has_server_rack && pres.food >= 100 && pres.gpu_cores >= 75 && has_box {
-                if let Some(builder) = idle_workers.first() {
+                if let Some(builder) = pick_builder(&idle_workers, &all_workers) {
                     let build_pos = find_build_position(box_pos, building_count);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
@@ -500,7 +515,7 @@ fn run_ai_fsm(
 
             // Build ScratchingPost if missing and can afford
             if !has_scratching_post && pres.food >= 100 && pres.gpu_cores >= 50 && has_box {
-                if let Some(builder) = idle_workers.first() {
+                if let Some(builder) = pick_builder(&idle_workers, &all_workers) {
                     let build_pos = find_build_position(box_pos, building_count + 1);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
@@ -512,7 +527,7 @@ fn run_ai_fsm(
 
             // Build LaserPointer near base for defense
             if !has_laser_pointer && pres.food >= 75 && pres.gpu_cores >= 25 && has_box {
-                if let Some(builder) = idle_workers.first() {
+                if let Some(builder) = pick_builder(&idle_workers, &all_workers) {
                     let build_pos = find_build_position(box_pos, building_count + 2);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
@@ -581,7 +596,7 @@ fn run_ai_fsm(
                 }
             }
 
-            maybe_build_supply(pres, &idle_workers, box_pos, building_count, cmd_queue);
+            maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue);
 
             // Continue training workers (cap at 6 to reserve supply for army)
             if worker_count < 6 {
@@ -595,7 +610,9 @@ fn run_ai_fsm(
                 }
             }
 
-            if army_count >= attack_threshold {
+            // Attack when army is ready, OR when enemy has no army (cleanup mode).
+            let enemy_defenseless = enemy_army_count == 0 && army_count >= 2;
+            if army_count >= attack_threshold || enemy_defenseless {
                 AiPhase::Attack
             } else {
                 AiPhase::MidGame
@@ -643,16 +660,17 @@ fn run_ai_fsm(
                 }
             }
 
-            maybe_build_supply(pres, &idle_workers, box_pos, building_count, cmd_queue);
+            maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue);
 
             // Check if base is under attack (enemy units near our buildings)
             let base_threatened = is_base_threatened(ai_player, units, buildings);
             if base_threatened {
                 AiPhase::Defend
-            } else if army_count < 4 {
-                // Lost most of army — rebuild
+            } else if army_count < 4 && enemy_army_count > 0 {
+                // Lost most of army and enemy still has forces — rebuild
                 AiPhase::MidGame
             } else {
+                // Stay attacking (even with small army if enemy is defenseless)
                 AiPhase::Attack
             }
         }
@@ -684,7 +702,7 @@ fn run_ai_fsm(
                 }
             }
 
-            maybe_build_supply(pres, &idle_workers, box_pos, building_count, cmd_queue);
+            maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue);
 
             let base_threatened = is_base_threatened(ai_player, units, buildings);
             if !base_threatened {
@@ -703,17 +721,20 @@ fn run_ai_fsm(
     ai_state.phase = new_phase;
 }
 
-/// Find nearest resource deposit to a worker.
+/// Find nearest resource deposit to a worker (skips depleted deposits).
 fn find_nearest_deposit(
     worker: Entity,
     units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
-    deposits: &Query<(Entity, &Position), With<ResourceDeposit>>,
+    deposits: &Query<(Entity, &Position, &ResourceDeposit)>,
 ) -> Option<(Entity, GridPos)> {
     let worker_pos = units.get(worker).ok()?.1.world;
     let mut best = None;
     let mut best_dist = cc_core::math::Fixed::MAX;
 
-    for (deposit_entity, deposit_pos) in deposits.iter() {
+    for (deposit_entity, deposit_pos, deposit) in deposits.iter() {
+        if deposit.remaining == 0 {
+            continue; // Skip depleted deposits
+        }
         let dist = worker_pos.distance_squared(deposit_pos.world);
         if dist < best_dist {
             best_dist = dist;
@@ -728,12 +749,17 @@ fn find_nearest_deposit(
 fn maybe_build_supply(
     pres: &crate::resources::PlayerResourceState,
     idle_workers: &[Entity],
+    all_workers: &[Entity],
     box_pos: Option<GridPos>,
     building_count: u32,
     cmd_queue: &mut CommandQueue,
 ) {
     if pres.supply + 2 >= pres.supply_cap && pres.food >= 75 {
-        if let Some(builder) = idle_workers.first() {
+        let builder = idle_workers
+            .first()
+            .copied()
+            .or_else(|| all_workers.first().copied());
+        if let Some(builder) = builder {
             let build_pos = find_build_position(box_pos, building_count);
             cmd_queue.push(GameCommand::Build {
                 builder: EntityId(builder.to_bits()),

@@ -45,6 +45,14 @@ fn main() {
             },
         ),
         (
+            "seed_7777",
+            HarnessConfig {
+                seed: 7777,
+                output_dir: Some(base_dir.join(format!("run_{timestamp}_seed7777"))),
+                ..Default::default()
+            },
+        ),
+        (
             "with_voice",
             HarnessConfig {
                 seed: 42,

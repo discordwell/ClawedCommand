@@ -1,12 +1,12 @@
 use std::cell::RefCell;
 
-use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::{BuildingKind, ResourceType, UnitKind};
+use cc_core::commands::{AbilityTarget, EntityId, GameCommand};
+use cc_core::components::{BuildingKind, ResourceType, UnitKind, UpgradeType};
 use cc_core::coords::GridPos;
 use cc_core::math::Fixed;
 use mlua::prelude::*;
 
-use crate::script_context::ScriptContext;
+use crate::script_context::{ScriptContext, UnitState};
 use crate::snapshot::{BuildingSnapshot, ResourceSnapshot, UnitSnapshot};
 
 /// Maximum Lua instructions before termination (prevents infinite loops).
@@ -158,6 +158,181 @@ pub fn execute_script_with_context(
             ctx_table
                 .set("targets_for", f)
                 ?;
+        }
+
+        // -------------------------------------------------------------------
+        // Extended unit query bindings
+        // -------------------------------------------------------------------
+
+        // ctx:distance_between(a_id, b_id)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, (_self, a_id, b_id): (LuaValue, u64, u64)| {
+                    let mut ctx = cell.borrow_mut();
+                    match ctx.distance_between(EntityId(a_id), EntityId(b_id)) {
+                        Some(d) => Ok(LuaValue::Number(fixed_to_f64(d))),
+                        None => Ok(LuaValue::Nil),
+                    }
+                })?;
+            ctx_table.set("distance_between", f)?;
+        }
+
+        // ctx:distance_to_nearest_enemy(unit_id)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, (_self, unit_id): (LuaValue, u64)| {
+                    let mut ctx = cell.borrow_mut();
+                    match ctx.distance_to_nearest_enemy(EntityId(unit_id)) {
+                        Some(d) => Ok(LuaValue::Number(fixed_to_f64(d))),
+                        None => Ok(LuaValue::Nil),
+                    }
+                })?;
+            ctx_table.set("distance_to_nearest_enemy", f)?;
+        }
+
+        // ctx:idle_units(kind?)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, (_self, filter): (LuaValue, Option<String>)| {
+                    let mut ctx = cell.borrow_mut();
+                    let kind = filter.and_then(|s| s.parse::<UnitKind>().ok());
+                    let units = ctx.idle_units(kind);
+                    let tbl = lua.create_table()?;
+                    for (i, unit) in units.iter().enumerate() {
+                        tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
+                    }
+                    Ok(tbl)
+                })?;
+            ctx_table.set("idle_units", f)?;
+        }
+
+        // ctx:wounded_units(threshold)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, (_self, threshold): (LuaValue, f64)| {
+                    let mut ctx = cell.borrow_mut();
+                    let units = ctx.wounded_units(threshold);
+                    let tbl = lua.create_table()?;
+                    for (i, unit) in units.iter().enumerate() {
+                        tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
+                    }
+                    Ok(tbl)
+                })?;
+            ctx_table.set("wounded_units", f)?;
+        }
+
+        // ctx:units_by_state(state_str)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, (_self, state_str): (LuaValue, String)| {
+                    let state = match state_str.as_str() {
+                        "Moving" => UnitState::Moving,
+                        "Attacking" => UnitState::Attacking,
+                        "Idle" => UnitState::Idle,
+                        "Gathering" => UnitState::Gathering,
+                        _ => {
+                            return Err(mlua::Error::RuntimeError(
+                                format!("Unknown unit state: {state_str}"),
+                            ))
+                        }
+                    };
+                    let mut ctx = cell.borrow_mut();
+                    let units = ctx.units_by_state(state);
+                    let tbl = lua.create_table()?;
+                    for (i, unit) in units.iter().enumerate() {
+                        tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
+                    }
+                    Ok(tbl)
+                })?;
+            ctx_table.set("units_by_state", f)?;
+        }
+
+        // ctx:count_units(kind?)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, (_self, filter): (LuaValue, Option<String>)| {
+                    let mut ctx = cell.borrow_mut();
+                    let kind = filter.and_then(|s| s.parse::<UnitKind>().ok());
+                    Ok(ctx.count_units(kind))
+                })?;
+            ctx_table.set("count_units", f)?;
+        }
+
+        // ctx:army_supply()
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, _self: LuaValue| {
+                    let mut ctx = cell.borrow_mut();
+                    Ok(ctx.army_supply())
+                })?;
+            ctx_table.set("army_supply", f)?;
+        }
+
+        // ctx:enemy_buildings()
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, _self: LuaValue| {
+                    let mut ctx = cell.borrow_mut();
+                    let buildings = ctx.enemy_buildings();
+                    let tbl = lua.create_table()?;
+                    for (i, b) in buildings.iter().enumerate() {
+                        tbl.set(i + 1, building_to_lua_table(lua, b)?)?;
+                    }
+                    Ok(tbl)
+                })?;
+            ctx_table.set("enemy_buildings", f)?;
+        }
+
+        // ctx:weakest_enemy_in_range(x, y, range)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, (_self, x, y, range): (LuaValue, i32, i32, f64)| {
+                    let mut ctx = cell.borrow_mut();
+                    let fixed_range = Fixed::from_num(range);
+                    match ctx.weakest_enemy_in_range(GridPos::new(x, y), fixed_range) {
+                        Some(unit) => Ok(LuaValue::Table(unit_to_lua_table(lua, unit)?)),
+                        None => Ok(LuaValue::Nil),
+                    }
+                })?;
+            ctx_table.set("weakest_enemy_in_range", f)?;
+        }
+
+        // ctx:strongest_enemy_in_range(x, y, range)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, (_self, x, y, range): (LuaValue, i32, i32, f64)| {
+                    let mut ctx = cell.borrow_mut();
+                    let fixed_range = Fixed::from_num(range);
+                    match ctx.strongest_enemy_in_range(GridPos::new(x, y), fixed_range) {
+                        Some(unit) => Ok(LuaValue::Table(unit_to_lua_table(lua, unit)?)),
+                        None => Ok(LuaValue::Nil),
+                    }
+                })?;
+            ctx_table.set("strongest_enemy_in_range", f)?;
+        }
+
+        // ctx:hp_pct(unit_id)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, (_self, unit_id): (LuaValue, u64)| {
+                    let mut ctx = cell.borrow_mut();
+                    match ctx.hp_pct(EntityId(unit_id)) {
+                        Some(pct) => Ok(LuaValue::Number(pct)),
+                        None => Ok(LuaValue::Nil),
+                    }
+                })?;
+            ctx_table.set("hp_pct", f)?;
         }
 
         // -------------------------------------------------------------------
@@ -549,6 +724,271 @@ pub fn execute_script_with_context(
             ctx_table.set("train", f)?;
         }
 
+        // -------------------------------------------------------------------
+        // Behavior bindings (ctx.behaviors sub-table)
+        // -------------------------------------------------------------------
+
+        {
+            let behaviors_table = lua.create_table()?;
+
+            // ctx.behaviors:focus_fire(attacker_ids, target_id)
+            {
+                let cell = &ctx_cell;
+                let f = scope.create_function(
+                    |_, (_self, attacker_ids, target_id): (LuaValue, Vec<u64>, u64)| {
+                        let mut ctx = cell.borrow_mut();
+                        let ids: Vec<EntityId> =
+                            attacker_ids.into_iter().map(EntityId).collect();
+                        let result = crate::behaviors::focus_fire(
+                            &mut ctx,
+                            &ids,
+                            EntityId(target_id),
+                        );
+                        Ok(result.commands_issued as u32)
+                    },
+                )?;
+                behaviors_table.set("focus_fire", f)?;
+            }
+
+            // ctx.behaviors:kite_squad(unit_ids)
+            {
+                let cell = &ctx_cell;
+                let f = scope.create_function(
+                    |_, (_self, unit_ids): (LuaValue, Vec<u64>)| {
+                        let mut ctx = cell.borrow_mut();
+                        let ids: Vec<EntityId> =
+                            unit_ids.into_iter().map(EntityId).collect();
+                        let result = crate::behaviors::kite_squad(&mut ctx, &ids);
+                        Ok(result.commands_issued as u32)
+                    },
+                )?;
+                behaviors_table.set("kite_squad", f)?;
+            }
+
+            // ctx.behaviors:retreat_wounded(threshold)
+            {
+                let cell = &ctx_cell;
+                let f = scope.create_function(
+                    |_, (_self, threshold): (LuaValue, f64)| {
+                        let mut ctx = cell.borrow_mut();
+                        let result =
+                            crate::behaviors::retreat_wounded(&mut ctx, threshold);
+                        Ok(result.commands_issued as u32)
+                    },
+                )?;
+                behaviors_table.set("retreat_wounded", f)?;
+            }
+
+            // ctx.behaviors:defend_area(unit_ids, cx, cy, radius)
+            {
+                let cell = &ctx_cell;
+                let f = scope.create_function(
+                    |_, (_self, unit_ids, cx, cy, radius): (LuaValue, Vec<u64>, i32, i32, f64)| {
+                        let mut ctx = cell.borrow_mut();
+                        let ids: Vec<EntityId> =
+                            unit_ids.into_iter().map(EntityId).collect();
+                        let result = crate::behaviors::defend_area(
+                            &mut ctx,
+                            &ids,
+                            GridPos::new(cx, cy),
+                            Fixed::from_num(radius),
+                        );
+                        Ok(result.commands_issued as u32)
+                    },
+                )?;
+                behaviors_table.set("defend_area", f)?;
+            }
+
+            // ctx.behaviors:harass_economy(raider_ids)
+            {
+                let cell = &ctx_cell;
+                let f = scope.create_function(
+                    |_, (_self, raider_ids): (LuaValue, Vec<u64>)| {
+                        let mut ctx = cell.borrow_mut();
+                        let ids: Vec<EntityId> =
+                            raider_ids.into_iter().map(EntityId).collect();
+                        let result =
+                            crate::behaviors::harass_economy(&mut ctx, &ids);
+                        Ok(result.commands_issued as u32)
+                    },
+                )?;
+                behaviors_table.set("harass_economy", f)?;
+            }
+
+            // ctx.behaviors:focus_weakest(unit_ids, range)
+            {
+                let cell = &ctx_cell;
+                let f = scope.create_function(
+                    |_, (_self, unit_ids, range): (LuaValue, Vec<u64>, f64)| {
+                        let mut ctx = cell.borrow_mut();
+                        let ids: Vec<EntityId> =
+                            unit_ids.into_iter().map(EntityId).collect();
+                        let result = crate::behaviors::focus_weakest(
+                            &mut ctx,
+                            &ids,
+                            Fixed::from_num(range),
+                        );
+                        Ok(result.commands_issued as u32)
+                    },
+                )?;
+                behaviors_table.set("focus_weakest", f)?;
+            }
+
+            // ctx.behaviors:auto_produce(building_id, unit_type_str)
+            {
+                let cell = &ctx_cell;
+                let f = scope.create_function(
+                    |_, (_self, building_id, unit_type): (LuaValue, u64, String)| {
+                        let kind = unit_type.parse::<UnitKind>().map_err(|_| {
+                            mlua::Error::RuntimeError(format!(
+                                "Unknown unit type: {unit_type}"
+                            ))
+                        })?;
+                        let mut ctx = cell.borrow_mut();
+                        let result = crate::behaviors::auto_produce(
+                            &mut ctx,
+                            EntityId(building_id),
+                            kind,
+                        );
+                        Ok(result.commands_issued as u32)
+                    },
+                )?;
+                behaviors_table.set("auto_produce", f)?;
+            }
+
+            ctx_table.set("behaviors", behaviors_table)?;
+        }
+
+        // -------------------------------------------------------------------
+        // Extended command bindings
+        // -------------------------------------------------------------------
+
+        // ctx:ability(unit_id, slot, target_type, x?, y?, entity_id?)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(
+                    move |_,
+                          (_self, unit_id, slot, target_type, x, y, entity_id): (
+                        LuaValue,
+                        u64,
+                        u8,
+                        String,
+                        Option<i32>,
+                        Option<i32>,
+                        Option<u64>,
+                    )| {
+                        let target = match target_type.as_str() {
+                            "self" => AbilityTarget::SelfCast,
+                            "position" => {
+                                let px = x.ok_or_else(|| {
+                                    mlua::Error::RuntimeError(
+                                        "position target requires x".into(),
+                                    )
+                                })?;
+                                let py = y.ok_or_else(|| {
+                                    mlua::Error::RuntimeError(
+                                        "position target requires y".into(),
+                                    )
+                                })?;
+                                AbilityTarget::Position(GridPos::new(px, py))
+                            }
+                            "entity" => {
+                                let eid = entity_id.ok_or_else(|| {
+                                    mlua::Error::RuntimeError(
+                                        "entity target requires entity_id".into(),
+                                    )
+                                })?;
+                                AbilityTarget::Entity(EntityId(eid))
+                            }
+                            _ => {
+                                return Err(mlua::Error::RuntimeError(
+                                    format!("Unknown target type: {target_type}"),
+                                ))
+                            }
+                        };
+                        let mut ctx = cell.borrow_mut();
+                        ctx.cmd_ability(EntityId(unit_id), slot, target);
+                        Ok(())
+                    },
+                )?;
+            ctx_table.set("ability", f)?;
+        }
+
+        // ctx:research(building_id, upgrade_type)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(
+                    move |_, (_self, building_id, upgrade_str): (LuaValue, u64, String)| {
+                        let upgrade = upgrade_str.parse::<UpgradeType>().map_err(|_| {
+                            mlua::Error::RuntimeError(format!(
+                                "Unknown upgrade type: {upgrade_str}"
+                            ))
+                        })?;
+                        let mut ctx = cell.borrow_mut();
+                        ctx.cmd_research(EntityId(building_id), upgrade);
+                        Ok(())
+                    },
+                )?;
+            ctx_table.set("research", f)?;
+        }
+
+        // ctx:cancel_queue(building_id)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(move |_, (_self, building_id): (LuaValue, u64)| {
+                    let mut ctx = cell.borrow_mut();
+                    ctx.cmd_cancel_queue(EntityId(building_id));
+                    Ok(())
+                })?;
+            ctx_table.set("cancel_queue", f)?;
+        }
+
+        // ctx:cancel_research(building_id)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(move |_, (_self, building_id): (LuaValue, u64)| {
+                    let mut ctx = cell.borrow_mut();
+                    ctx.cmd_cancel_research(EntityId(building_id));
+                    Ok(())
+                })?;
+            ctx_table.set("cancel_research", f)?;
+        }
+
+        // ctx:set_control_group(group, unit_ids)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(
+                    move |_, (_self, group, unit_ids): (LuaValue, u8, Vec<u64>)| {
+                        let mut ctx = cell.borrow_mut();
+                        ctx.cmd_set_control_group(
+                            group,
+                            unit_ids.into_iter().map(EntityId).collect(),
+                        );
+                        Ok(())
+                    },
+                )?;
+            ctx_table.set("set_control_group", f)?;
+        }
+
+        // ctx:rally(building_id, x, y)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(
+                    move |_, (_self, building_id, x, y): (LuaValue, u64, i32, i32)| {
+                        let mut ctx = cell.borrow_mut();
+                        ctx.cmd_rally(EntityId(building_id), GridPos::new(x, y));
+                        Ok(())
+                    },
+                )?;
+            ctx_table.set("rally", f)?;
+        }
+
         // Set ctx as global
         lua.globals()
             .set("ctx", ctx_table)
@@ -634,6 +1074,7 @@ fn unit_to_lua_table(lua: &Lua, unit: &UnitSnapshot) -> LuaResult<LuaTable> {
     tbl.set("moving", unit.is_moving)?;
     tbl.set("attacking", unit.is_attacking)?;
     tbl.set("idle", unit.is_idle)?;
+    tbl.set("gathering", unit.is_gathering)?;
     tbl.set("owner", unit.owner)?;
     Ok(tbl)
 }

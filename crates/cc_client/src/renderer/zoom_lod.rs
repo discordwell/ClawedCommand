@@ -109,7 +109,7 @@ pub fn toggle_lod_visuals(
         Has<HealthBarBg>,
         Has<HealthBarFg>,
         Has<SelectionRing>,
-    )>,
+    ), Without<Prop>>,
     mut prop_query: Query<&mut Visibility, (With<Prop>, Without<UnitMesh>)>,
 ) {
     let is_strategic = *tier == ZoomTier::Strategic;

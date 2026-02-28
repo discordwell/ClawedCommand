@@ -1,5 +1,5 @@
-use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::{BuildingKind, ResourceType, UnitKind};
+use cc_core::commands::{AbilityTarget, EntityId, GameCommand};
+use cc_core::components::{BuildingKind, ResourceType, UnitKind, UpgradeType};
 use cc_core::coords::GridPos;
 use cc_core::map::GameMap;
 use cc_core::math::{Fixed, fixed_from_i32};
@@ -9,6 +9,15 @@ use cc_sim::resources::PlayerResourceState;
 
 use crate::snapshot::{BuildingSnapshot, GameStateSnapshot, ResourceSnapshot, UnitSnapshot};
 use crate::spatial::SpatialIndex;
+
+/// High-level unit state classification.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnitState {
+    Moving,
+    Attacking,
+    Idle,
+    Gathering,
+}
 
 /// Budget costs for different query types.
 const COST_SIMPLE: u32 = 1;
@@ -239,6 +248,205 @@ impl<'a> ScriptContext<'a> {
         }
 
         best.map(|(idx, _)| &self.state.my_units[idx])
+    }
+
+    // -----------------------------------------------------------------------
+    // Extended unit queries
+    // -----------------------------------------------------------------------
+
+    /// Squared distance between two units (by EntityId).
+    pub fn distance_between(&mut self, a_id: EntityId, b_id: EntityId) -> Option<Fixed> {
+        if !self.budget.spend(COST_SIMPLE) {
+            return None;
+        }
+        let a = self.state.unit_by_id(a_id)?;
+        let b = self.state.unit_by_id(b_id)?;
+        Some(a.world_pos.distance_squared(b.world_pos))
+    }
+
+    /// Squared distance from a unit to its closest visible enemy.
+    pub fn distance_to_nearest_enemy(&mut self, unit_id: EntityId) -> Option<Fixed> {
+        if !self.budget.spend(COST_SPATIAL) {
+            return None;
+        }
+        let unit = self.state.unit_by_id(unit_id)?;
+        let mut best: Option<Fixed> = None;
+        for enemy in &self.state.enemy_units {
+            if enemy.is_dead {
+                continue;
+            }
+            let dist_sq = unit.world_pos.distance_squared(enemy.world_pos);
+            match best {
+                Some(b) if dist_sq >= b => {}
+                _ => best = Some(dist_sq),
+            }
+        }
+        best
+    }
+
+    /// Own idle units, optionally filtered by kind.
+    pub fn idle_units(&mut self, kind: Option<UnitKind>) -> Vec<&UnitSnapshot> {
+        if !self.budget.spend(COST_SIMPLE) {
+            return vec![];
+        }
+        self.state
+            .my_units
+            .iter()
+            .filter(|u| {
+                u.is_idle
+                    && !u.is_dead
+                    && kind.map_or(true, |k| u.kind == k)
+            })
+            .collect()
+    }
+
+    /// Own units below a given HP percentage threshold (0.0–1.0).
+    pub fn wounded_units(&mut self, hp_pct_threshold: f64) -> Vec<&UnitSnapshot> {
+        if !self.budget.spend(COST_SIMPLE) {
+            return vec![];
+        }
+        self.state
+            .my_units
+            .iter()
+            .filter(|u| {
+                if u.is_dead || u.health_max == Fixed::ZERO {
+                    return false;
+                }
+                let pct: f64 = (u.health_current / u.health_max).to_num();
+                pct < hp_pct_threshold
+            })
+            .collect()
+    }
+
+    /// Filter own units by high-level state.
+    pub fn units_by_state(&mut self, state: UnitState) -> Vec<&UnitSnapshot> {
+        if !self.budget.spend(COST_SIMPLE) {
+            return vec![];
+        }
+        self.state
+            .my_units
+            .iter()
+            .filter(|u| {
+                if u.is_dead {
+                    return false;
+                }
+                match state {
+                    UnitState::Moving => u.is_moving,
+                    UnitState::Attacking => u.is_attacking,
+                    UnitState::Idle => u.is_idle,
+                    UnitState::Gathering => u.is_gathering,
+                }
+            })
+            .collect()
+    }
+
+    /// Count alive own units, optionally filtered by kind.
+    pub fn count_units(&mut self, kind: Option<UnitKind>) -> usize {
+        if !self.budget.spend(COST_SIMPLE) {
+            return 0;
+        }
+        self.state
+            .my_units
+            .iter()
+            .filter(|u| !u.is_dead && kind.map_or(true, |k| u.kind == k))
+            .count()
+    }
+
+    /// Sum of supply cost for all alive own units.
+    pub fn army_supply(&mut self) -> u32 {
+        if !self.budget.spend(COST_SIMPLE) {
+            return 0;
+        }
+        self.state
+            .my_units
+            .iter()
+            .filter(|u| !u.is_dead)
+            .map(|u| cc_core::unit_stats::base_stats(u.kind).supply_cost)
+            .sum()
+    }
+
+    /// Visible enemy buildings.
+    pub fn enemy_buildings(&mut self) -> Vec<&BuildingSnapshot> {
+        if !self.budget.spend(COST_SIMPLE) {
+            return vec![];
+        }
+        self.state.enemy_buildings.iter().collect()
+    }
+
+    /// Lowest HP enemy within range of a position.
+    pub fn weakest_enemy_in_range(
+        &mut self,
+        pos: GridPos,
+        range: Fixed,
+    ) -> Option<&UnitSnapshot> {
+        if !self.budget.spend(COST_SPATIAL) {
+            return None;
+        }
+        let range_sq = range * range;
+        let world_center = cc_core::coords::WorldPos::from_grid(pos);
+        let range_i32: i32 = range.ceil().to_num();
+        let indices = self.enemy_spatial.units_in_radius(pos, range_i32);
+
+        let mut best: Option<(usize, Fixed)> = None;
+        for idx in indices {
+            let unit = &self.state.enemy_units[idx];
+            if unit.is_dead {
+                continue;
+            }
+            let dist_sq = world_center.distance_squared(unit.world_pos);
+            if dist_sq > range_sq {
+                continue;
+            }
+            match best {
+                Some((_, best_hp)) if unit.health_current >= best_hp => {}
+                _ => best = Some((idx, unit.health_current)),
+            }
+        }
+        best.map(|(idx, _)| &self.state.enemy_units[idx])
+    }
+
+    /// Highest HP enemy within range of a position.
+    pub fn strongest_enemy_in_range(
+        &mut self,
+        pos: GridPos,
+        range: Fixed,
+    ) -> Option<&UnitSnapshot> {
+        if !self.budget.spend(COST_SPATIAL) {
+            return None;
+        }
+        let range_sq = range * range;
+        let world_center = cc_core::coords::WorldPos::from_grid(pos);
+        let range_i32: i32 = range.ceil().to_num();
+        let indices = self.enemy_spatial.units_in_radius(pos, range_i32);
+
+        let mut best: Option<(usize, Fixed)> = None;
+        for idx in indices {
+            let unit = &self.state.enemy_units[idx];
+            if unit.is_dead {
+                continue;
+            }
+            let dist_sq = world_center.distance_squared(unit.world_pos);
+            if dist_sq > range_sq {
+                continue;
+            }
+            match best {
+                Some((_, best_hp)) if unit.health_current <= best_hp => {}
+                _ => best = Some((idx, unit.health_current)),
+            }
+        }
+        best.map(|(idx, _)| &self.state.enemy_units[idx])
+    }
+
+    /// HP as a fraction 0.0–1.0 for a given unit.
+    pub fn hp_pct(&mut self, unit_id: EntityId) -> Option<f64> {
+        if !self.budget.spend(COST_SIMPLE) {
+            return None;
+        }
+        let unit = self.state.unit_by_id(unit_id)?;
+        if unit.health_max == Fixed::ZERO {
+            return Some(0.0);
+        }
+        Some((unit.health_current / unit.health_max).to_num())
     }
 
     // -----------------------------------------------------------------------
@@ -551,6 +759,42 @@ impl<'a> ScriptContext<'a> {
         });
     }
 
+    pub fn cmd_ability(&mut self, unit_id: EntityId, slot: u8, target: AbilityTarget) {
+        self.commands.push(GameCommand::ActivateAbility {
+            unit_id,
+            slot,
+            target,
+        });
+    }
+
+    pub fn cmd_research(&mut self, building: EntityId, upgrade: UpgradeType) {
+        self.commands.push(GameCommand::Research { building, upgrade });
+    }
+
+    pub fn cmd_cancel_queue(&mut self, building: EntityId) {
+        self.commands
+            .push(GameCommand::CancelQueue { building });
+    }
+
+    pub fn cmd_cancel_research(&mut self, building: EntityId) {
+        self.commands
+            .push(GameCommand::CancelResearch { building });
+    }
+
+    pub fn cmd_set_control_group(&mut self, group: u8, ids: Vec<EntityId>) {
+        self.commands.push(GameCommand::SetControlGroup {
+            group,
+            unit_ids: ids,
+        });
+    }
+
+    pub fn cmd_rally(&mut self, building: EntityId, target: GridPos) {
+        self.commands.push(GameCommand::SetRallyPoint {
+            building,
+            target,
+        });
+    }
+
     /// Drain accumulated commands.
     pub fn take_commands(&mut self) -> Vec<GameCommand> {
         std::mem::take(&mut self.commands)
@@ -780,5 +1024,198 @@ mod tests {
         let nearest = ctx.nearest_deposit(GridPos::new(0, 0), Some(ResourceType::Food));
         assert!(nearest.is_some());
         assert_eq!(nearest.unwrap().id, EntityId(102)); // (3,3) is closest food
+    }
+
+    // -----------------------------------------------------------------------
+    // Tests for Phase 1 extended API
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn idle_units_returns_only_idle() {
+        let mut moving_unit = make_unit(2, UnitKind::Hisser, 10, 10, 0);
+        moving_unit.is_moving = true;
+        moving_unit.is_idle = false;
+
+        let snap = make_snapshot(
+            vec![
+                make_unit(1, UnitKind::Hisser, 5, 5, 0), // idle
+                moving_unit,
+                make_unit(3, UnitKind::Chonk, 15, 15, 0), // idle
+            ],
+            vec![],
+        );
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let idle = ctx.idle_units(None);
+        assert_eq!(idle.len(), 2);
+
+        let idle_hissers = ctx.idle_units(Some(UnitKind::Hisser));
+        assert_eq!(idle_hissers.len(), 1);
+        assert_eq!(idle_hissers[0].id, EntityId(1));
+    }
+
+    #[test]
+    fn wounded_units_below_threshold() {
+        let mut wounded = make_unit(1, UnitKind::Hisser, 5, 5, 0);
+        wounded.health_current = fixed_from_i32(30); // 30/100 = 0.3
+
+        let snap = make_snapshot(
+            vec![
+                wounded,
+                make_unit(2, UnitKind::Hisser, 10, 10, 0), // full HP
+            ],
+            vec![],
+        );
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let wounded = ctx.wounded_units(0.5);
+        assert_eq!(wounded.len(), 1);
+        assert_eq!(wounded[0].id, EntityId(1));
+    }
+
+    #[test]
+    fn hp_pct_returns_fraction() {
+        let mut half_hp = make_unit(1, UnitKind::Hisser, 5, 5, 0);
+        half_hp.health_current = fixed_from_i32(50);
+
+        let snap = make_snapshot(vec![half_hp], vec![]);
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let pct = ctx.hp_pct(EntityId(1));
+        assert!(pct.is_some());
+        let p = pct.unwrap();
+        assert!((p - 0.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn enemy_buildings_returns_visible() {
+        use crate::snapshot::BuildingSnapshot;
+        let snap = GameStateSnapshot {
+            tick: 0,
+            map_width: 64,
+            map_height: 64,
+            player_id: 0,
+            my_units: vec![],
+            enemy_units: vec![],
+            my_buildings: vec![],
+            enemy_buildings: vec![BuildingSnapshot {
+                id: EntityId(50),
+                kind: BuildingKind::TheBox,
+                pos: GridPos::new(30, 30),
+                owner: 1,
+                health_current: fixed_from_i32(500),
+                health_max: fixed_from_i32(500),
+                under_construction: false,
+                construction_progress: 1.0,
+                production_queue: vec![],
+            }],
+            resource_deposits: vec![],
+            my_resources: PlayerResourceState::default(),
+        };
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let buildings = ctx.enemy_buildings();
+        assert_eq!(buildings.len(), 1);
+        assert_eq!(buildings[0].id, EntityId(50));
+    }
+
+    #[test]
+    fn weakest_enemy_in_range_finds_lowest_hp() {
+        let mut weak = make_unit(10, UnitKind::Hisser, 6, 5, 1);
+        weak.health_current = fixed_from_i32(20);
+        let strong = make_unit(11, UnitKind::Chonk, 7, 5, 1);
+
+        let snap = make_snapshot(vec![], vec![weak, strong]);
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let weakest = ctx.weakest_enemy_in_range(GridPos::new(5, 5), fixed_from_i32(5));
+        assert!(weakest.is_some());
+        assert_eq!(weakest.unwrap().id, EntityId(10));
+    }
+
+    #[test]
+    fn distance_between_two_units() {
+        let snap = make_snapshot(
+            vec![make_unit(1, UnitKind::Hisser, 0, 0, 0)],
+            vec![make_unit(10, UnitKind::Chonk, 3, 4, 1)],
+        );
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let dist = ctx.distance_between(EntityId(1), EntityId(10));
+        assert!(dist.is_some());
+        // 3^2 + 4^2 = 25 (in world coords)
+        let d: f64 = dist.unwrap().to_num();
+        assert!(d > 0.0);
+    }
+
+    #[test]
+    fn cmd_ability_produces_correct_command() {
+        let snap = make_snapshot(vec![], vec![]);
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        ctx.cmd_ability(EntityId(1), 0, AbilityTarget::SelfCast);
+        ctx.cmd_ability(
+            EntityId(2),
+            1,
+            AbilityTarget::Position(GridPos::new(10, 10)),
+        );
+
+        let cmds = ctx.take_commands();
+        assert_eq!(cmds.len(), 2);
+        match &cmds[0] {
+            GameCommand::ActivateAbility {
+                unit_id, slot, target,
+            } => {
+                assert_eq!(*unit_id, EntityId(1));
+                assert_eq!(*slot, 0);
+                assert!(matches!(target, AbilityTarget::SelfCast));
+            }
+            _ => panic!("Expected ActivateAbility"),
+        }
+    }
+
+    #[test]
+    fn cmd_research_produces_correct_command() {
+        let snap = make_snapshot(vec![], vec![]);
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        ctx.cmd_research(EntityId(50), UpgradeType::SharperClaws);
+
+        let cmds = ctx.take_commands();
+        assert_eq!(cmds.len(), 1);
+        match &cmds[0] {
+            GameCommand::Research { building, upgrade } => {
+                assert_eq!(*building, EntityId(50));
+                assert_eq!(*upgrade, UpgradeType::SharperClaws);
+            }
+            _ => panic!("Expected Research"),
+        }
+    }
+
+    #[test]
+    fn count_units_by_kind() {
+        let snap = make_snapshot(
+            vec![
+                make_unit(1, UnitKind::Hisser, 5, 5, 0),
+                make_unit(2, UnitKind::Chonk, 10, 10, 0),
+                make_unit(3, UnitKind::Hisser, 15, 15, 0),
+            ],
+            vec![],
+        );
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        assert_eq!(ctx.count_units(None), 3);
+        assert_eq!(ctx.count_units(Some(UnitKind::Hisser)), 2);
+        assert_eq!(ctx.count_units(Some(UnitKind::Chonk)), 1);
+        assert_eq!(ctx.count_units(Some(UnitKind::Pawdler)), 0);
     }
 }

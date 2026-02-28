@@ -493,6 +493,32 @@ pub enum UpgradeType {
     MechPrototype,
 }
 
+impl std::fmt::Display for UpgradeType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::SharperClaws => write!(f, "SharperClaws"),
+            Self::ThickerFur => write!(f, "ThickerFur"),
+            Self::NimblePaws => write!(f, "NimblePaws"),
+            Self::SiegeTraining => write!(f, "SiegeTraining"),
+            Self::MechPrototype => write!(f, "MechPrototype"),
+        }
+    }
+}
+
+impl std::str::FromStr for UpgradeType {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        match s {
+            "SharperClaws" => Ok(Self::SharperClaws),
+            "ThickerFur" => Ok(Self::ThickerFur),
+            "NimblePaws" => Ok(Self::NimblePaws),
+            "SiegeTraining" => Ok(Self::SiegeTraining),
+            "MechPrototype" => Ok(Self::MechPrototype),
+            _ => Err(()),
+        }
+    }
+}
+
 /// Research queue for a ScratchingPost (parallels ProductionQueue).
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]

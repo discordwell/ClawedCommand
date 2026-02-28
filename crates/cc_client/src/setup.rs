@@ -65,8 +65,7 @@ pub fn setup_game(
     tier: Res<ZoomTier>,
 ) {
     let params = MapGenParams {
-        width: 64,
-        height: 64,
+        map_size: cc_core::map_gen::MapSize::Large,
         num_players: 2,
         seed: 42,
         ..Default::default()

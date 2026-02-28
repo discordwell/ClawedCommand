@@ -136,7 +136,7 @@ pub fn hide_dead_health_bars(
 pub fn update_health_bars(
     units: Query<
         (&Health, &Transform, Option<&UnitType>, Option<&Building>, &Owner, &Children),
-        (Or<(With<UnitMesh>, With<BuildingMesh>)>, Without<Dead>),
+        (Or<(With<UnitMesh>, With<BuildingMesh>)>, Without<Dead>, Without<HealthBarFg>, Without<HealthBarBg>),
     >,
     mut bg_bars: Query<(&mut Sprite, &mut Visibility), (With<HealthBarBg>, Without<HealthBarFg>)>,
     mut fg_bars: Query<
