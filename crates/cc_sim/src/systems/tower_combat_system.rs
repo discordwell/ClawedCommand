@@ -7,9 +7,7 @@ use cc_core::components::{
     ProjectileTarget, StatModifiers, UnderConstruction, UnitType, Velocity,
 };
 use cc_core::math::{Fixed, FIXED_ONE};
-
-/// Projectile speed for tower projectiles.
-const TOWER_PROJECTILE_SPEED: Fixed = Fixed::from_bits(1 << 15); // 0.5
+use cc_core::tuning::TOWER_PROJECTILE_SPEED;
 
 /// Tower combat system: buildings with AttackStats auto-attack nearest enemy in range.
 /// No chasing — towers are stationary. Applies cover/elevation multipliers.

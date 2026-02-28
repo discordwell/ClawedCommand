@@ -357,6 +357,12 @@ pub struct Gathering {
     pub carried_type: ResourceType,
     pub carried_amount: u32,
     pub state: GatherState,
+    /// Last known position for staleness detection (world-space x,y).
+    pub last_pos: (Fixed, Fixed),
+    /// Number of consecutive ticks with no positional progress while moving.
+    /// When this exceeds `GATHERER_STALE_TICKS`, the Gathering component is
+    /// removed so the worker can be reassigned.
+    pub stale_ticks: u32,
 }
 
 /// Marker: this building can produce units (has been fully constructed).

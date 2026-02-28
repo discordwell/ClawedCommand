@@ -1461,6 +1461,8 @@ fn test_resource_deposit_depletes() {
         carried_type: ResourceType::Food,
         carried_amount: 0,
         state: GatherState::Harvesting { ticks_remaining: 1 },
+        last_pos: (Fixed::from_num(7), Fixed::from_num(7)),
+        stale_ticks: 0,
     });
 
     run_ticks(&mut world, &mut schedule, 5);
@@ -1482,6 +1484,8 @@ fn test_dead_gatherer_stops_gathering() {
         carried_type: ResourceType::Food,
         carried_amount: 0,
         state: GatherState::Harvesting { ticks_remaining: 10 },
+        last_pos: (Fixed::from_num(7), Fixed::from_num(7)),
+        stale_ticks: 0,
     });
 
     // Mark the gatherer as Dead
@@ -1976,4 +1980,162 @@ fn test_new_units_get_upgrades() {
         .any(|(ut, hp)| ut.kind == UnitKind::Nuisance && hp.max >= expected_hp);
 
     assert!(has_boosted_unit, "Newly trained Nuisance should have +25 HP from ThickerFur");
+}
+
+// ---------------------------------------------------------------------------
+// Bug fix: Stale gatherer detection
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_stale_gatherer_gets_released() {
+    // A worker with Gathering + MoveTarget that never changes position should
+    // lose its Gathering component after GATHERER_STALE_TICKS ticks.
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let _box = spawn_the_box(&mut world, GridPos::new(5, 5), 0);
+    let deposit = spawn_deposit(&mut world, GridPos::new(20, 20));
+
+    // Spawn worker with zero movement speed so movement_system cannot advance
+    // its position, simulating a stuck gatherer.
+    let worker = world.spawn((
+        Position { world: WorldPos::from_grid(GridPos::new(10, 10)) },
+        Velocity::zero(),
+        GridCell { pos: GridPos::new(10, 10) },
+        Owner { player_id: 0 },
+        UnitType { kind: UnitKind::Pawdler },
+        Health { current: Fixed::from_num(50), max: Fixed::from_num(50) },
+        MovementSpeed { speed: Fixed::ZERO }, // zero speed = can't move
+        AttackStats {
+            damage: Fixed::from_num(5),
+            range: Fixed::from_num(1),
+            attack_speed: 10,
+            cooldown_remaining: 0,
+        },
+        AttackTypeMarker { attack_type: AttackType::Melee },
+    )).id();
+
+    // Manually set up gathering + MoveTarget (simulates command having been issued)
+    let worker_pos = world.get::<Position>(worker).unwrap().world;
+    world.entity_mut(worker).insert(Gathering {
+        deposit_entity: EntityId(deposit.to_bits()),
+        carried_type: ResourceType::Food,
+        carried_amount: 0,
+        state: GatherState::MovingToDeposit,
+        last_pos: (worker_pos.x, worker_pos.y),
+        stale_ticks: 0,
+    });
+    // MoveTarget pointing at the deposit (unreachable due to zero speed)
+    world.entity_mut(worker).insert(MoveTarget {
+        target: WorldPos::from_grid(GridPos::new(20, 20)),
+    });
+
+    // Run for less than GATHERER_STALE_TICKS — should still have Gathering
+    run_ticks(&mut world, &mut schedule, 25);
+    assert!(
+        world.get::<Gathering>(worker).is_some(),
+        "Worker should still be gathering before stale threshold"
+    );
+
+    // Run past the stale threshold (30 ticks total from start + some buffer)
+    run_ticks(&mut world, &mut schedule, 10);
+
+    assert!(
+        world.get::<Gathering>(worker).is_none(),
+        "Stale gatherer should have Gathering removed after {} ticks with no progress",
+        cc_core::tuning::GATHERER_STALE_TICKS
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Bug fix: ReturningToBase proximity check
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_returning_worker_deposits_near_dropoff() {
+    // A worker that completes the ReturningToBase movement and ends up near a
+    // drop-off building should deposit resources normally.
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let _box = spawn_the_box(&mut world, GridPos::new(10, 10), 0);
+    let deposit = spawn_deposit(&mut world, GridPos::new(12, 10));
+
+    let worker = spawn_combat_unit(&mut world, GridPos::new(11, 10), 0, UnitKind::Pawdler);
+
+    // Issue gather command — full cycle should work
+    world.resource_mut::<CommandQueue>().push(GameCommand::GatherResource {
+        unit_ids: vec![EntityId(worker.to_bits())],
+        deposit: EntityId(deposit.to_bits()),
+    });
+
+    let initial_food = world.resource::<PlayerResources>().players[0].food;
+
+    // Run 200 ticks — enough for multiple gather trips
+    run_ticks(&mut world, &mut schedule, 200);
+
+    let final_food = world.resource::<PlayerResources>().players[0].food;
+    assert!(
+        final_food > initial_food,
+        "Worker near drop-off should deposit resources: initial={initial_food}, final={final_food}"
+    );
+}
+
+#[test]
+fn test_returning_worker_no_deposit_when_far_from_dropoff() {
+    // A worker in ReturningToBase state that loses its MoveTarget while far from
+    // any drop-off should NOT deposit resources.
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let _box = spawn_the_box(&mut world, GridPos::new(5, 5), 0);
+    let deposit = spawn_deposit(&mut world, GridPos::new(20, 20));
+
+    // Spawn worker far from the drop-off
+    let worker = spawn_combat_unit(&mut world, GridPos::new(15, 15), 0, UnitKind::Pawdler);
+
+    // Manually set up ReturningToBase with carried resources, but NO MoveTarget
+    // (simulates MoveTarget being stripped by a Stop command or path failure).
+    let worker_pos = world.get::<Position>(worker).unwrap().world;
+    world.entity_mut(worker).insert(Gathering {
+        deposit_entity: EntityId(deposit.to_bits()),
+        carried_type: ResourceType::Food,
+        carried_amount: 10,
+        state: GatherState::ReturningToBase,
+        last_pos: (worker_pos.x, worker_pos.y),
+        stale_ticks: 0,
+    });
+    // Intentionally no MoveTarget — this is the bug scenario
+
+    let initial_food = world.resource::<PlayerResources>().players[0].food;
+
+    // Run a tick — the gathering system should check proximity and NOT deposit
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let final_food = world.resource::<PlayerResources>().players[0].food;
+    assert_eq!(
+        initial_food, final_food,
+        "Worker far from drop-off should NOT deposit resources: initial={initial_food}, final={final_food}"
+    );
+
+    // Gathering component should have been removed (worker released for reassignment)
+    assert!(
+        world.get::<Gathering>(worker).is_none(),
+        "Gathering should be removed when worker is far from drop-off with no MoveTarget"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Bug fix: Tuning constants consolidated
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_tuning_constants_accessible() {
+    // Verify that the centralized tuning module constants are sane and accessible.
+    use cc_core::tuning;
+
+    assert!(tuning::HARVEST_TICKS > 0, "HARVEST_TICKS should be positive");
+    assert!(tuning::CARRY_AMOUNT > 0, "CARRY_AMOUNT should be positive");
+    assert!(tuning::GATHERER_STALE_TICKS > 0, "GATHERER_STALE_TICKS should be positive");
+    assert!(tuning::DROPOFF_PROXIMITY_SQ > 0, "DROPOFF_PROXIMITY_SQ should be positive");
+    assert!(tuning::PROJECTILE_SPEED > Fixed::ZERO, "PROJECTILE_SPEED should be positive");
+    assert!(tuning::TOWER_PROJECTILE_SPEED > Fixed::ZERO, "TOWER_PROJECTILE_SPEED should be positive");
+    assert!(tuning::ATTACK_MOVE_SIGHT_RANGE > 0, "ATTACK_MOVE_SIGHT_RANGE should be positive");
+    assert!(tuning::CC_IMMUNITY_TICKS > 0, "CC_IMMUNITY_TICKS should be positive");
+    assert!(tuning::ATTACK_REISSUE_INTERVAL > 0, "ATTACK_REISSUE_INTERVAL should be positive");
+    assert!(tuning::BASE_THREAT_RADIUS > 0, "BASE_THREAT_RADIUS should be positive");
 }

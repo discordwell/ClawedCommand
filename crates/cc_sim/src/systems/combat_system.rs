@@ -13,9 +13,7 @@ use cc_core::components::{
 use cc_core::coords::WorldPos;
 use cc_core::math::{Fixed, FIXED_ONE};
 use cc_core::terrain::FactionId;
-
-/// Projectile speed in 16.16 fixed-point. 0.5 = 1 << 15 = 32768 bits.
-const PROJECTILE_SPEED: Fixed = Fixed::from_bits(1 << 15);
+use cc_core::tuning::PROJECTILE_SPEED;
 
 /// Core combat system: tick cooldowns, fire when ready, chase when out of range.
 pub fn combat_system(

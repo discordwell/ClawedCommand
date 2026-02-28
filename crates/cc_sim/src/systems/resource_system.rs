@@ -8,14 +8,10 @@ use cc_core::components::{
 use cc_core::coords::WorldPos;
 use cc_core::math::Fixed;
 use cc_core::terrain::FactionId;
+use cc_core::tuning::{CARRY_AMOUNT, DROPOFF_PROXIMITY_SQ, GATHERER_STALE_TICKS, HARVEST_TICKS};
 
 use crate::pathfinding;
 use crate::resources::{MapResource, PlayerResources};
-
-/// How many ticks a Pawdler takes to harvest a load of resources.
-const HARVEST_TICKS: u32 = 15;
-/// How many resource units per trip.
-const CARRY_AMOUNT: u32 = 10;
 
 /// Pawdler gather loop: MovingToDeposit → Harvesting → ReturningToBase → deposit → repeat.
 pub fn gathering_system(
@@ -35,7 +31,34 @@ pub fn gathering_system(
     drop_offs: Query<(Entity, &Position, &Owner, &Building)>,
     mut player_resources: ResMut<PlayerResources>,
 ) {
+    let dropoff_proximity_sq = Fixed::from_num(DROPOFF_PROXIMITY_SQ);
+
     for (entity, pos, owner, mut gathering, move_target) in gatherers.iter_mut() {
+        // --- Staleness detection (Bug 1 fix) ---
+        // For movement states (MovingToDeposit, ReturningToBase) with an active
+        // MoveTarget, check whether the worker has made positional progress.
+        // If stuck for GATHERER_STALE_TICKS, remove Gathering so it can be reassigned.
+        match gathering.state {
+            GatherState::MovingToDeposit | GatherState::ReturningToBase
+                if move_target.is_some() =>
+            {
+                let cur = (pos.world.x, pos.world.y);
+                if cur == gathering.last_pos {
+                    gathering.stale_ticks += 1;
+                    if gathering.stale_ticks >= GATHERER_STALE_TICKS {
+                        commands.entity(entity).remove::<Gathering>();
+                        commands.entity(entity).remove::<MoveTarget>();
+                        commands.entity(entity).remove::<Path>();
+                        continue;
+                    }
+                } else {
+                    gathering.stale_ticks = 0;
+                    gathering.last_pos = cur;
+                }
+            }
+            _ => {}
+        }
+
         match gathering.state {
             GatherState::MovingToDeposit => {
                 // Check if we've arrived at the deposit (no more MoveTarget = arrived)
@@ -114,6 +137,9 @@ pub fn gathering_system(
                         }
 
                         gathering.state = GatherState::ReturningToBase;
+                        // Reset staleness tracking for the new movement phase
+                        gathering.last_pos = (pos.world.x, pos.world.y);
+                        gathering.stale_ticks = 0;
                     } else {
                         // No drop-off found — stop gathering
                         commands.entity(entity).remove::<Gathering>();
@@ -124,48 +150,66 @@ pub fn gathering_system(
             GatherState::ReturningToBase => {
                 // Check if we've arrived at the drop-off
                 if move_target.is_none() {
-                    // Deposit resources
-                    let player_id = owner.player_id as usize;
-                    if let Some(pres) = player_resources.players.get_mut(player_id) {
-                        match gathering.carried_type {
-                            cc_core::components::ResourceType::Food => {
-                                pres.food += gathering.carried_amount;
-                            }
-                            cc_core::components::ResourceType::GpuCores => {
-                                pres.gpu_cores += gathering.carried_amount;
-                            }
-                            cc_core::components::ResourceType::Nft => {
-                                pres.nfts += gathering.carried_amount;
+                    // --- Proximity check (Bug 2 fix) ---
+                    // Only deposit resources if actually near a friendly drop-off.
+                    let near_dropoff = is_near_dropoff(
+                        pos.world,
+                        owner.player_id,
+                        dropoff_proximity_sq,
+                        &drop_offs,
+                    );
+
+                    if near_dropoff {
+                        // Deposit resources
+                        let player_id = owner.player_id as usize;
+                        if let Some(pres) = player_resources.players.get_mut(player_id) {
+                            match gathering.carried_type {
+                                cc_core::components::ResourceType::Food => {
+                                    pres.food += gathering.carried_amount;
+                                }
+                                cc_core::components::ResourceType::GpuCores => {
+                                    pres.gpu_cores += gathering.carried_amount;
+                                }
+                                cc_core::components::ResourceType::Nft => {
+                                    pres.nfts += gathering.carried_amount;
+                                }
                             }
                         }
-                    }
-                    gathering.carried_amount = 0;
+                        gathering.carried_amount = 0;
 
-                    // Return to deposit for another trip
-                    let deposit_entity = Entity::from_bits(gathering.deposit_entity.0);
-                    if let Ok((_, deposit_pos, _)) = deposits.get(deposit_entity) {
-                        let faction = FactionId::from_u8(owner.player_id)
-                            .unwrap_or(FactionId::CatGPT);
-                        let start = pos.world.to_grid();
-                        let target = deposit_pos.world.to_grid();
+                        // Return to deposit for another trip
+                        let deposit_entity = Entity::from_bits(gathering.deposit_entity.0);
+                        if let Ok((_, deposit_pos, _)) = deposits.get(deposit_entity) {
+                            let faction = FactionId::from_u8(owner.player_id)
+                                .unwrap_or(FactionId::CatGPT);
+                            let start = pos.world.to_grid();
+                            let target = deposit_pos.world.to_grid();
 
-                        if let Some(waypoints) =
-                            pathfinding::find_path(&map_res.map, start, target, faction)
-                        {
-                            let first_waypoint = waypoints[0];
-                            commands.entity(entity).insert(Path {
-                                waypoints: VecDeque::from(waypoints),
-                            });
-                            commands.entity(entity).insert(MoveTarget {
-                                target: WorldPos::from_grid(first_waypoint),
-                            });
-                            gathering.state = GatherState::MovingToDeposit;
+                            if let Some(waypoints) =
+                                pathfinding::find_path(&map_res.map, start, target, faction)
+                            {
+                                let first_waypoint = waypoints[0];
+                                commands.entity(entity).insert(Path {
+                                    waypoints: VecDeque::from(waypoints),
+                                });
+                                commands.entity(entity).insert(MoveTarget {
+                                    target: WorldPos::from_grid(first_waypoint),
+                                });
+                                gathering.state = GatherState::MovingToDeposit;
+                                // Reset staleness tracking for the new movement phase
+                                gathering.last_pos = (pos.world.x, pos.world.y);
+                                gathering.stale_ticks = 0;
+                            } else {
+                                // Re-pathfinding failed — release so AI can reassign
+                                commands.entity(entity).remove::<Gathering>();
+                            }
                         } else {
-                            // Re-pathfinding failed — release so AI can reassign
+                            // Deposit gone
                             commands.entity(entity).remove::<Gathering>();
                         }
                     } else {
-                        // Deposit gone
+                        // MoveTarget removed but not near a drop-off — release so AI
+                        // can reassign (resources stay on the worker for next trip).
                         commands.entity(entity).remove::<Gathering>();
                     }
                 }
@@ -200,4 +244,29 @@ fn find_nearest_dropoff(
     }
 
     best_pos
+}
+
+/// Check if the worker is within `max_dist_sq` of any friendly drop-off building.
+fn is_near_dropoff(
+    from: WorldPos,
+    player_id: u8,
+    max_dist_sq: Fixed,
+    drop_offs: &Query<(Entity, &Position, &Owner, &Building)>,
+) -> bool {
+    for (_, bpos, bowner, building) in drop_offs.iter() {
+        if bowner.player_id != player_id {
+            continue;
+        }
+        match building.kind {
+            BuildingKind::TheBox | BuildingKind::FishMarket => {}
+            _ => continue,
+        }
+
+        let dist = from.distance_squared(bpos.world);
+        if dist <= max_dist_sq {
+            return true;
+        }
+    }
+
+    false
 }

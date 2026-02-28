@@ -2,9 +2,7 @@ use bevy::prelude::*;
 
 use cc_core::components::Dead;
 use cc_core::status_effects::{StatusEffectId, StatusEffects};
-
-/// CC immunity duration granted after CC expires (ticks).
-const CC_IMMUNITY_TICKS: u32 = 10;
+use cc_core::tuning::CC_IMMUNITY_TICKS;
 
 /// Tick down status effect durations, remove expired, handle CC immunity.
 pub fn status_effect_system(

@@ -6,14 +6,9 @@ use cc_core::components::{
     UnitKind, UnitType, UpgradeType,
 };
 use cc_core::coords::GridPos;
+use cc_core::tuning::{ATTACK_REISSUE_INTERVAL, BASE_THREAT_RADIUS};
 
 use crate::resources::{CommandQueue, PlayerResources, SimClock};
-
-/// Ticks between re-issuing attack orders during Attack phase (5s at 10hz).
-const ATTACK_REISSUE_INTERVAL: u64 = 50;
-
-/// Chebyshev distance (tiles) for detecting enemy threats near base.
-const BASE_THREAT_RADIUS: i32 = 8;
 
 /// AI difficulty level — controls decision frequency.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -300,7 +295,13 @@ fn run_ai_fsm(
     buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
     deposits: &Query<(Entity, &Position, &ResourceDeposit)>,
 ) {
-    let interval = ai_state.difficulty.eval_interval();
+    let base_interval = ai_state.difficulty.eval_interval();
+    let interval = if let Some(profile) = &ai_state.profile {
+        // Apply eval_speed_mult: higher = slower decisions
+        ((base_interval as f32) * profile.eval_speed_mult).max(1.0) as u64
+    } else {
+        base_interval
+    };
     if tick % interval != 0 || tick == 0 {
         return;
     }
@@ -313,12 +314,16 @@ fn run_ai_fsm(
     // Count AI's units and buildings
     let mut worker_count = 0u32;
     let mut army_count = 0u32;
+    let mut enemy_army_count = 0u32;
     let mut idle_workers: Vec<Entity> = Vec::new();
     let mut all_workers: Vec<Entity> = Vec::new();
     let mut army_entities: Vec<Entity> = Vec::new();
 
     for (entity, _, owner, unit_type, gathering, move_target) in units.iter() {
         if owner.player_id != ai_player {
+            if unit_type.kind != UnitKind::Pawdler {
+                enemy_army_count += 1;
+            }
             continue;
         }
         match unit_type.kind {
@@ -389,14 +394,6 @@ fn run_ai_fsm(
         }
     }
 
-    // Count enemy army (non-worker) units for threat assessment
-    let mut enemy_army_count = 0u32;
-    for (_, _, owner, unit_type, _, _) in units.iter() {
-        if owner.player_id != ai_player && unit_type.kind != UnitKind::Pawdler {
-            enemy_army_count += 1;
-        }
-    }
-
     // Find enemy base — prefer enemy TheBox building, fall back to any enemy unit
     if ai_state.enemy_spawn.is_none() {
         // First: look for enemy TheBox
@@ -417,28 +414,26 @@ fn run_ai_fsm(
         }
     }
 
-    // Pick a builder: prefer idle workers, fall back to any worker (even gathering)
-    let pick_builder = |idle: &[Entity], all: &[Entity]| -> Option<Entity> {
-        idle.first().copied().or_else(|| all.first().copied())
+    // Track which worker was used as a builder this tick (excluded from gather)
+    let mut builder_used: Option<Entity> = None;
+
+    let attack_threshold = if let Some(profile) = &ai_state.profile {
+        profile.attack_threshold
+    } else {
+        ai_state.personality.attack_threshold()
     };
 
-    // Assign idle workers to nearest deposit
-    for worker in &idle_workers {
-        if let Some((deposit_entity, _)) = find_nearest_deposit(*worker, units, deposits) {
-            cmd_queue.push(GameCommand::GatherResource {
-                unit_ids: vec![EntityId(worker.to_bits())],
-                deposit: EntityId(deposit_entity.to_bits()),
-            });
-        }
-    }
-
-    let attack_threshold = ai_state.personality.attack_threshold();
+    let target_workers = if let Some(profile) = &ai_state.profile {
+        profile.target_workers
+    } else {
+        4 // default
+    };
 
     // FSM transitions
     let new_phase = match ai_state.phase {
         AiPhase::EarlyGame => {
-            // Train workers until 4+
-            if worker_count < 4 {
+            // Train workers until target count
+            if worker_count < target_workers {
                 if let Some(box_e) = box_entity {
                     if pres.food >= 50 && pres.supply < pres.supply_cap {
                         cmd_queue.push(GameCommand::TrainUnit {
@@ -448,7 +443,7 @@ fn run_ai_fsm(
                     }
                 }
             }
-            if worker_count >= 4 {
+            if worker_count >= target_workers {
                 AiPhase::BuildUp
             } else {
                 AiPhase::EarlyGame
@@ -456,8 +451,8 @@ fn run_ai_fsm(
         }
 
         AiPhase::BuildUp => {
-            // Build FishMarket if missing (prefer idle worker, pull from gathering if needed)
-            if !has_fish_market && pres.food >= 100 && has_box {
+            // Build one structure per tick to avoid same-worker conflicts
+            if builder_used.is_none() && !has_fish_market && pres.food >= 100 && has_box {
                 if let Some(builder) = pick_builder(&idle_workers, &all_workers) {
                     let build_pos = find_build_position(box_pos, building_count);
                     cmd_queue.push(GameCommand::Build {
@@ -465,11 +460,11 @@ fn run_ai_fsm(
                         building_kind: BuildingKind::FishMarket,
                         position: build_pos,
                     });
+                    builder_used = Some(builder);
                 }
             }
 
-            // Build CatTree if missing
-            if !has_cat_tree && pres.food >= 150 && has_box {
+            if builder_used.is_none() && !has_cat_tree && pres.food >= 150 && has_box {
                 if let Some(builder) = pick_builder(&idle_workers, &all_workers) {
                     let build_pos = find_build_position(box_pos, building_count + 1);
                     cmd_queue.push(GameCommand::Build {
@@ -477,10 +472,13 @@ fn run_ai_fsm(
                         building_kind: BuildingKind::CatTree,
                         position: build_pos,
                     });
+                    builder_used = Some(builder);
                 }
             }
 
-            maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue);
+            if builder_used.is_none() {
+                maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue);
+            }
 
             // Train army from CatTree
             if let Some(ct_e) = cat_tree_entity {
@@ -501,8 +499,8 @@ fn run_ai_fsm(
         }
 
         AiPhase::MidGame => {
-            // Build ServerRack if missing and can afford
-            if !has_server_rack && pres.food >= 100 && pres.gpu_cores >= 75 && has_box {
+            // Build one structure per tick to avoid same-worker conflicts
+            if builder_used.is_none() && !has_server_rack && pres.food >= 100 && pres.gpu_cores >= 75 && has_box {
                 if let Some(builder) = pick_builder(&idle_workers, &all_workers) {
                     let build_pos = find_build_position(box_pos, building_count);
                     cmd_queue.push(GameCommand::Build {
@@ -510,11 +508,11 @@ fn run_ai_fsm(
                         building_kind: BuildingKind::ServerRack,
                         position: build_pos,
                     });
+                    builder_used = Some(builder);
                 }
             }
 
-            // Build ScratchingPost if missing and can afford
-            if !has_scratching_post && pres.food >= 100 && pres.gpu_cores >= 50 && has_box {
+            if builder_used.is_none() && !has_scratching_post && pres.food >= 100 && pres.gpu_cores >= 50 && has_box {
                 if let Some(builder) = pick_builder(&idle_workers, &all_workers) {
                     let build_pos = find_build_position(box_pos, building_count + 1);
                     cmd_queue.push(GameCommand::Build {
@@ -522,11 +520,11 @@ fn run_ai_fsm(
                         building_kind: BuildingKind::ScratchingPost,
                         position: build_pos,
                     });
+                    builder_used = Some(builder);
                 }
             }
 
-            // Build LaserPointer near base for defense
-            if !has_laser_pointer && pres.food >= 75 && pres.gpu_cores >= 25 && has_box {
+            if builder_used.is_none() && !has_laser_pointer && pres.food >= 75 && pres.gpu_cores >= 25 && has_box {
                 if let Some(builder) = pick_builder(&idle_workers, &all_workers) {
                     let build_pos = find_build_position(box_pos, building_count + 2);
                     cmd_queue.push(GameCommand::Build {
@@ -534,6 +532,7 @@ fn run_ai_fsm(
                         building_kind: BuildingKind::LaserPointer,
                         position: build_pos,
                     });
+                    builder_used = Some(builder);
                 }
             }
 
@@ -578,14 +577,10 @@ fn run_ai_fsm(
                 }
             }
 
-            // Keep training basic units from CatTree
+            // Keep training basic units from CatTree — use profile preferences if available
             if let Some(ct_e) = cat_tree_entity {
                 if pres.supply < pres.supply_cap {
-                    let kind = if army_count % 3 == 0 {
-                        UnitKind::Hisser
-                    } else {
-                        UnitKind::Nuisance
-                    };
+                    let kind = pick_unit_kind(&ai_state.profile, army_count, tick);
                     let stats = cc_core::unit_stats::base_stats(kind);
                     if pres.food >= stats.food_cost {
                         cmd_queue.push(GameCommand::TrainUnit {
@@ -596,7 +591,9 @@ fn run_ai_fsm(
                 }
             }
 
-            maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue);
+            if builder_used.is_none() {
+                maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue);
+            }
 
             // Continue training workers (cap at 6 to reserve supply for army)
             if worker_count < 6 {
@@ -713,12 +710,65 @@ fn run_ai_fsm(
         }
     };
 
+    // Send idle workers to gather (after FSM so builder_used is set)
+    for &worker in &idle_workers {
+        if Some(worker) == builder_used {
+            continue;
+        }
+        if let Some((deposit_entity, _)) = find_nearest_deposit(worker, units, deposits) {
+            cmd_queue.push(GameCommand::GatherResource {
+                unit_ids: vec![EntityId(worker.to_bits())],
+                deposit: EntityId(deposit_entity.to_bits()),
+            });
+        }
+    }
+
     // Reset attack flag when leaving Attack phase
     if new_phase != AiPhase::Attack {
         ai_state.attack_ordered = false;
         ai_state.last_attack_tick = 0;
     }
     ai_state.phase = new_phase;
+}
+
+/// Pick a unit kind to train, using personality profile weighted preferences if available.
+/// Falls back to alternating Nuisance/Hisser when no profile is set.
+fn pick_unit_kind(profile: &Option<AiPersonalityProfile>, army_count: u32, tick: u64) -> UnitKind {
+    if let Some(p) = profile {
+        if p.unit_preferences.is_empty() {
+            return UnitKind::Nuisance;
+        }
+        // Deterministic weighted selection using tick + army_count as pseudo-random seed
+        let total_weight: u32 = p.unit_preferences.iter().map(|(_, w)| w).sum();
+        if total_weight == 0 {
+            return UnitKind::Nuisance;
+        }
+        let hash = tick.wrapping_mul(6364136223846793005).wrapping_add(army_count as u64);
+        let pick = (hash >> 33) as u32 % total_weight;
+        let mut cumulative = 0u32;
+        for &(kind, weight) in &p.unit_preferences {
+            cumulative += weight;
+            if pick < cumulative {
+                return kind;
+            }
+        }
+        p.unit_preferences.last().map_or(UnitKind::Nuisance, |&(k, _)| k)
+    } else {
+        // Default: alternate Nuisance and Hisser
+        if army_count % 3 == 0 {
+            UnitKind::Hisser
+        } else {
+            UnitKind::Nuisance
+        }
+    }
+}
+
+/// Pick a builder: prefer an idle worker, fall back to any worker.
+fn pick_builder(idle_workers: &[Entity], all_workers: &[Entity]) -> Option<Entity> {
+    idle_workers
+        .first()
+        .copied()
+        .or_else(|| all_workers.first().copied())
 }
 
 /// Find nearest resource deposit to a worker (skips depleted deposits).
@@ -755,11 +805,7 @@ fn maybe_build_supply(
     cmd_queue: &mut CommandQueue,
 ) {
     if pres.supply + 2 >= pres.supply_cap && pres.food >= 75 {
-        let builder = idle_workers
-            .first()
-            .copied()
-            .or_else(|| all_workers.first().copied());
-        if let Some(builder) = builder {
+        if let Some(builder) = pick_builder(idle_workers, all_workers) {
             let build_pos = find_build_position(box_pos, building_count);
             cmd_queue.push(GameCommand::Build {
                 builder: EntityId(builder.to_bits()),

@@ -228,6 +228,8 @@ pub fn process_commands(
                         carried_type: cc_core::components::ResourceType::Food,
                         carried_amount: 0,
                         state: GatherState::MovingToDeposit,
+                        last_pos: (pos.world.x, pos.world.y),
+                        stale_ticks: 0,
                     });
 
                     // Pathfind to deposit

@@ -6,9 +6,7 @@ use cc_core::components::{
     MoveTarget, Owner, Path, Position, UnitType,
 };
 use cc_core::math::Fixed;
-
-/// Sight range for AttackMove units — scan this far for enemies to divert toward.
-const ATTACK_MOVE_SIGHT_RANGE: i32 = 8;
+use cc_core::tuning::ATTACK_MOVE_SIGHT_RANGE;
 
 /// Auto-acquire enemy targets and clean up stale ones.
 pub fn target_acquisition_system(
