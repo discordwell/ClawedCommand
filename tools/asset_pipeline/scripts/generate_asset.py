@@ -7,6 +7,9 @@ Usage:
     python generate_asset.py status                 Show catalog status overview
     python generate_asset.py process <asset_name>   Post-process a raw asset into game-ready form
     python generate_asset.py add <category> <name>  Add a new asset entry to the catalog
+    python generate_asset.py model-sheet <faction>  Generate faction unit model sheet
+    python generate_asset.py map-preview            Generate isometric map preview
+    python generate_asset.py qc <asset_name|--all>  Run quality checks
 """
 
 import argparse
@@ -270,6 +273,9 @@ def cmd_process(args):
     print(f"  Status: game_ready")
     print("Done.")
 
+    # Auto-trigger QC and review sheets
+    _auto_trigger_qc(args.name, category)
+
 
 def cmd_add(args):
     """Add a new asset entry to the catalog."""
@@ -352,6 +358,98 @@ def cmd_add(args):
     print(f"Edit {CATALOG_PATH} to fill in description and params.")
 
 
+def _auto_trigger_qc(asset_name, category):
+    """Auto-trigger QC checks and review sheets after processing."""
+    # Run QC on the processed asset
+    print(f"\n── Auto QC ──")
+    cmd = [sys.executable, str(SCRIPTS_DIR / "qc_check.py"), asset_name]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.stdout.strip():
+        print(result.stdout.strip())
+    if result.returncode != 0 and result.stderr.strip():
+        print(result.stderr.strip())
+
+    # Auto-regenerate model sheet if a unit was processed
+    if category == "units":
+        _auto_regen_model_sheet(asset_name)
+
+    # Auto-regenerate map preview if terrain was processed
+    if category == "terrain":
+        print(f"\n── Auto Map Preview ──")
+        cmd = [sys.executable, str(SCRIPTS_DIR / "map_preview.py")]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.stdout.strip():
+            print(result.stdout.strip())
+
+
+def _auto_regen_model_sheet(asset_name):
+    """Determine which faction a unit belongs to and regenerate its model sheet."""
+    # Import faction data from model_sheet module
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    try:
+        from model_sheet import FACTIONS
+    except ImportError:
+        return
+
+    # Find which faction this unit belongs to
+    unit_base = asset_name.rsplit("_", 1)[0]  # e.g. "nuisance_idle" → "nuisance"
+    # Also try the full name without last segment for multi-word units
+    for faction_id, faction_data in FACTIONS.items():
+        if unit_base in faction_data["units"]:
+            print(f"\n── Auto Model Sheet ({faction_id}) ──")
+            cmd = [sys.executable, str(SCRIPTS_DIR / "model_sheet.py"), faction_id]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.stdout.strip():
+                print(result.stdout.strip())
+            return
+
+    # Try matching with progressively shorter prefixes
+    parts = asset_name.split("_")
+    for i in range(len(parts) - 1, 0, -1):
+        candidate = "_".join(parts[:i])
+        for faction_id, faction_data in FACTIONS.items():
+            if candidate in faction_data["units"]:
+                print(f"\n── Auto Model Sheet ({faction_id}) ──")
+                cmd = [sys.executable, str(SCRIPTS_DIR / "model_sheet.py"), faction_id]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.stdout.strip():
+                    print(result.stdout.strip())
+                return
+
+
+def cmd_model_sheet(args):
+    """Generate a faction model sheet."""
+    cmd = [sys.executable, str(SCRIPTS_DIR / "model_sheet.py"), args.faction]
+    if args.include_planned:
+        cmd.append("--include-planned")
+    result = subprocess.run(cmd)
+    sys.exit(result.returncode)
+
+
+def cmd_map_preview(args):
+    """Generate a map preview."""
+    cmd = [sys.executable, str(SCRIPTS_DIR / "map_preview.py")]
+    if args.size:
+        cmd.extend(["--size", str(args.size)])
+    result = subprocess.run(cmd)
+    sys.exit(result.returncode)
+
+
+def cmd_qc(args):
+    """Run quality checks."""
+    cmd = [sys.executable, str(SCRIPTS_DIR / "qc_check.py")]
+    if args.qc_all:
+        cmd.append("--all")
+    elif args.name:
+        cmd.append(args.name)
+    if hasattr(args, "include_planned") and args.include_planned:
+        cmd.append("--include-planned")
+    if hasattr(args, "category") and args.category:
+        cmd.extend(["--category", args.category])
+    result = subprocess.run(cmd)
+    sys.exit(result.returncode)
+
+
 # ── Main ────────────────────────────────────────────────────
 
 
@@ -375,6 +473,22 @@ def main():
     p_add.add_argument("category", help="Category (terrain, buildings, units, resources, projectiles, ui)")
     p_add.add_argument("name", help="Asset name (e.g. battle_cat_idle)")
 
+    # model-sheet
+    p_ms = subparsers.add_parser("model-sheet", help="Generate faction unit model sheet")
+    p_ms.add_argument("faction", help="Faction ID (catgpt, the_clawed, seekers, the_murder, croak, llama, all)")
+    p_ms.add_argument("--include-planned", action="store_true", help="Show placeholders for planned assets")
+
+    # map-preview
+    p_mp = subparsers.add_parser("map-preview", help="Generate isometric map preview")
+    p_mp.add_argument("--size", type=int, default=12, help="Map grid size (default: 12)")
+
+    # qc
+    p_qc = subparsers.add_parser("qc", help="Run quality checks on assets")
+    p_qc.add_argument("name", nargs="?", help="Asset name to check")
+    p_qc.add_argument("--all", dest="qc_all", action="store_true", help="Check all game_ready assets")
+    p_qc.add_argument("--category", type=str, help="Check all assets in a category")
+    p_qc.add_argument("--include-planned", action="store_true", help="Also check planned assets")
+
     args = parser.parse_args()
 
     if args.command == "prompt":
@@ -385,6 +499,12 @@ def main():
         cmd_process(args)
     elif args.command == "add":
         cmd_add(args)
+    elif args.command == "model-sheet":
+        cmd_model_sheet(args)
+    elif args.command == "map-preview":
+        cmd_map_preview(args)
+    elif args.command == "qc":
+        cmd_qc(args)
     else:
         parser.print_help()
 

@@ -58,7 +58,8 @@ pub fn find_path(
             let terrain_cost = map
                 .movement_cost_for(neighbor, faction)
                 .unwrap_or(cc_core::math::FIXED_ONE);
-            let terrain_multiplier: u32 = (terrain_cost.to_num::<f32>() * 10.0) as u32;
+            let terrain_multiplier: u32 =
+                (terrain_cost * cc_core::math::Fixed::from_num(10u32)).to_num::<u32>();
             let weighted_cost = (base_cost * terrain_multiplier) / 10;
 
             // Elevation modifier: +20% per level uphill, -10% per level downhill

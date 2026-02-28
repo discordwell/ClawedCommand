@@ -4,6 +4,7 @@ use cc_core::components::*;
 use cc_core::coords::{GridPos, WorldPos, depth_z, world_to_screen};
 use cc_core::map_gen::{self, MapGenParams};
 use cc_core::math::Fixed;
+use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
 use cc_sim::resources::MapResource;
 
 /// Set up the initial game state: procedurally generated map, camera, starter units.
@@ -47,7 +48,7 @@ pub fn setup_game(mut commands: Commands, mut map_res: ResMut<MapResource>) {
 
             let world = WorldPos::from_grid(grid);
             let screen = world_to_screen(world);
-            let elevation_offset = map_res.map.elevation_at(grid) as f32 * 8.0;
+            let elevation_offset = map_res.map.elevation_at(grid) as f32 * ELEVATION_PIXEL_OFFSET;
 
             // Color by player
             let color = if sp.player == 0 {

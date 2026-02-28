@@ -91,9 +91,12 @@ impl GameMap {
         })
     }
 
-    /// Movement cost at a position (None if impassable).
+    /// Movement cost at a position (None if impassable or dynamically blocked).
     pub fn movement_cost(&self, pos: GridPos) -> Option<Fixed> {
         self.get(pos).and_then(|t| {
+            if t.is_dynamically_blocked() {
+                return None;
+            }
             let terrain = t.effective_terrain();
             if terrain.base_passable() || terrain == TerrainType::Water {
                 Some(terrain.movement_cost())
@@ -161,7 +164,8 @@ impl GameMap {
         }
 
         // Different elevations: one tile must be a Ramp
-        from_tile.terrain == TerrainType::Ramp || to_tile.terrain == TerrainType::Ramp
+        from_tile.effective_terrain() == TerrainType::Ramp
+            || to_tile.effective_terrain() == TerrainType::Ramp
     }
 
     /// Elevation advantage of attacker over target (positive = higher ground).
@@ -352,6 +356,15 @@ mod tests {
         assert!(!map.can_move_between(low, high));
         // Ramp tile: allowed
         assert!(map.can_move_between(low, ramp));
+    }
+
+    #[test]
+    fn movement_cost_blocked_by_dynamic_flag() {
+        let mut map = GameMap::new(10, 10);
+        let pos = GridPos::new(5, 5);
+        assert!(map.movement_cost(pos).is_some());
+        map.get_mut(pos).unwrap().dynamic_flags |= FLAG_TEMP_BLOCKED;
+        assert!(map.movement_cost(pos).is_none());
     }
 
     #[test]

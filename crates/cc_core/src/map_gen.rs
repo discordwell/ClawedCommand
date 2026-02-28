@@ -55,23 +55,23 @@ pub fn generate_map(params: &MapGenParams) -> MapDefinition {
     let water_noise = Perlin::new(rng.r#gen());
     generate_terrain(&mut map, &terrain_noise, &water_noise, params, &spawn_positions);
 
-    // Step 4: Carve roads between spawn points
+    // Step 4: Apply symmetry enforcement BEFORE roads/ramps/fords so they aren't destroyed
+    enforce_symmetry(&mut map, params.symmetry);
+
+    // Step 5: Carve roads between spawn points (on symmetric terrain)
     carve_roads(&mut map, &spawn_positions);
 
-    // Step 5: Place ramps at elevation transitions along roads
+    // Step 6: Place ramps at elevation transitions along roads
     place_ramps(&mut map);
 
-    // Step 6: Ensure fords across water barriers
+    // Step 7: Ensure fords across water barriers
     place_fords(&mut map, &spawn_positions);
 
-    // Step 7: Place resources
+    // Step 8: Place resources
     let resources = place_resources(&mut map, &spawn_positions, &mut rng);
 
-    // Step 8: Place neutral camps (stubs for now)
+    // Step 9: Place neutral camps (stubs for now)
     let neutral_camps = place_neutral_camps(&spawn_positions, w, h);
-
-    // Step 9: Apply symmetry enforcement
-    enforce_symmetry(&mut map, params.symmetry);
 
     // Step 10: Validate connectivity
     // (done externally by caller via validate_connectivity)

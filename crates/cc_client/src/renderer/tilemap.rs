@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use cc_core::coords::{GridPos, WorldPos, world_to_screen, TILE_HALF_HEIGHT, TILE_HALF_WIDTH};
-use cc_core::terrain::TerrainType;
+use cc_core::terrain::{TerrainType, ELEVATION_PIXEL_OFFSET};
 use cc_sim::resources::MapResource;
 
 /// Marker for tile sprite entities.
@@ -22,7 +22,7 @@ pub fn spawn_tilemap(mut commands: Commands, map_res: Res<MapResource>) {
             let color = terrain_color(tile.terrain, x, y);
 
             // Elevation visual offset: higher tiles shift up on screen
-            let elevation_offset = tile.elevation as f32 * 8.0;
+            let elevation_offset = tile.elevation as f32 * ELEVATION_PIXEL_OFFSET;
 
             commands.spawn((
                 TileSprite,
