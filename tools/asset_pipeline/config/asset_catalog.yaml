@@ -67,7 +67,7 @@ buildings:
       name: The Box
       description: Command center. A large cardboard box — sacred to all cats. Reinforced with
         duct tape and covered in territorial scratch marks. Antenna array pokes out the top.
-      faction: The Clawed Dominion (cats)
+      faction: catGPT (cats)
       width: 256
       height: 256
       footprint: 3x3
@@ -82,7 +82,7 @@ buildings:
       name: Cat Tree
       description: Barracks / infantry training facility. Multi-level cat tree tower with platforms,
         scratching posts, and dangling toys repurposed as training equipment.
-      faction: The Clawed Dominion (cats)
+      faction: catGPT (cats)
       width: 192
       height: 192
       footprint: 2x2
@@ -97,7 +97,7 @@ buildings:
       name: Fish Market
       description: Resource depot. Open-air market stall with fish barrels, hanging dried fish,
         and a counter where Pawdlers deposit gathered food.
-      faction: The Clawed Dominion (cats)
+      faction: catGPT (cats)
       width: 192
       height: 192
       footprint: 2x2
@@ -112,7 +112,7 @@ buildings:
       name: Server Rack
       description: Tech building. Old-world server rack covered in cat hair, blinking LEDs,
         tangled cables. Cats have clearly been sleeping on it.
-      faction: The Clawed Dominion (cats)
+      faction: catGPT (cats)
       width: 192
       height: 192
       footprint: 2x2
@@ -127,7 +127,7 @@ buildings:
       name: Scratching Post
       description: Research building. A tall, heavily scratched sisal post with blueprints and
         tech diagrams pinned to it. Cats scratch it to think.
-      faction: The Clawed Dominion (cats)
+      faction: catGPT (cats)
       width: 192
       height: 192
       footprint: 2x2
@@ -142,7 +142,7 @@ buildings:
       name: Litter Box
       description: Supply depot. A large covered litter box repurposed as storage. Crates
         and supplies stacked around and inside it.
-      faction: The Clawed Dominion (cats)
+      faction: catGPT (cats)
       width: 128
       height: 128
       footprint: 2x2
@@ -157,7 +157,7 @@ buildings:
       name: Cat Flap
       description: Defensive gate. A reinforced cat flap built into a wall segment. Units
         garrison inside the wall.
-      faction: The Clawed Dominion (cats)
+      faction: catGPT (cats)
       width: 192
       height: 192
       footprint: 2x2
@@ -172,7 +172,7 @@ buildings:
       name: Laser Pointer
       description: Defense tower. A mounted laser pointer on a swivel base, repurposed as
         a weapon. Red laser beam visible.
-      faction: The Clawed Dominion (cats)
+      faction: catGPT (cats)
       width: 128
       height: 192
       footprint: 1x1
