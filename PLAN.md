@@ -279,30 +279,31 @@ Files in `crates/cc_client/src/`:
 - [ ] **Damage calculation** — `attack_system` runs per tick, applies damage based on `AttackStats { damage, range, cooldown }`
 - [ ] **Death & cleanup** — units at 0 HP despawn, play death animation (placeholder), drop debris entity
 - [ ] **Projectile system** — ranged units spawn projectile entities with `Velocity` + `Target`, projectile_system handles flight + hit detection
-- [ ] **Unit types** — expand `UnitKind` with `HeavyInfantry`, `Cavalry`, `LightVehicle`, `HeavyVehicle` with different stat profiles
+- [ ] **Unit types** — full cat faction roster from GAME_DESIGN.md: Pawdler, Nuisance, Chonk, FlyingFox, Hisser, Yowler, Mouser, Catnapper, FerretSapper, MechCommander
 - [ ] **Combat tests** — unit attacks target, target takes damage, target dies, attacker re-acquires
 
 ### 2.2 Resource System
 
-- [ ] **Resource deposits** — entities with `ResourceDeposit { resource_type, amount }` placed on map
-- [ ] **Resource tracking** — `PlayerResources { credits: Fixed, energy: Fixed, supply: u32, supply_cap: u32 }` resource per player
-- [ ] **Gathering** — `GameCommand::GatherResource`, worker moves to deposit → gathers over time → returns to nearest drop-off → deposits → repeats
+- [ ] **Resource deposits** — fish ponds, berry bushes (Food), old-world tech ruins (GPU Cores), Monkey Mines (NFTs) as entities with `ResourceDeposit { resource_type, amount }`
+- [ ] **Resource tracking** — `PlayerResources { food: Fixed, gpu_cores: Fixed, nfts: u32, supply: u32, supply_cap: u32 }` resource per player
+- [ ] **Gathering** — `GameCommand::GatherResource`, Pawdler moves to deposit → gathers over time → returns to nearest Fish Market → deposits → repeats
 - [ ] **Spending** — building/training costs deducted from PlayerResources, commands rejected if insufficient
-- [ ] **HUD** — display resource counts (credits, energy, supply/cap) at top of screen
+- [ ] **Monkey Mines** — neutral objective structures guarded by feral Monkeys, capture for passive NFT generation
+- [ ] **HUD** — display resource counts (Food, GPU Cores, NFTs, supply/cap) at top of screen
 
 ### 2.3 Building System
 
 - [ ] **Building placement** — `GameCommand::Build { building_type, position }`, ghost preview while placing, validity check (passable, no overlap, near existing buildings)
-- [ ] **Construction** — worker moves to site, building spawns as "under construction" with health ticking up over time
-- [ ] **Production queues** — `ProductionQueue` component on barracks/factories, `GameCommand::QueueUnit`, trains units over time, spawns at rally point
+- [ ] **Construction** — Pawdler moves to site, building spawns as "under construction" with health ticking up over time
+- [ ] **Production queues** — `ProductionQueue` component on Cat Tree/Server Rack, `GameCommand::QueueUnit`, trains units over time, spawns at rally point
 - [ ] **Rally points** — `GameCommand::SetRallyPoint`, newly produced units auto-move to rally
-- [ ] **Building types** — implement the tech tree skeleton from ARCHITECTURE.md: Command Center, Barracks, Refinery, Vehicle Factory, Power Plant, Supply Depot
+- [ ] **Building types** — implement the tech tree skeleton from ARCHITECTURE.md: The Box, Cat Tree, Fish Market, Server Rack, Scratching Post, Litter Box, Cat Flap, Laser Pointer
 
 ### 2.4 Tech Tree
 
-- [ ] **Prerequisites** — buildings require other buildings to be constructed first (e.g., Armory requires Barracks)
+- [ ] **Prerequisites** — buildings require other buildings to be constructed first (e.g., Scratching Post requires Cat Tree, Server Rack requires The Box)
 - [ ] **UI** — tech tree display panel showing what's available, what's locked, what's in progress
-- [ ] **Unit unlocks** — advanced unit types gated behind tech buildings
+- [ ] **Unit unlocks** — advanced unit types gated behind tech buildings (e.g., Mech Commander requires Scratching Post)
 
 ### 2.5 Fog of War
 

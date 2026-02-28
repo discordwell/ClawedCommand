@@ -42,11 +42,19 @@ pub struct Owner {
     pub player_id: u8,
 }
 
-/// The kind of unit.
+/// The kind of unit (cat faction roster — see GAME_DESIGN.md).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum UnitKind {
-    Worker,
-    Infantry,
+    Pawdler,       // Worker (Cat) — gathers food, builds, scrounges GPU cores
+    Nuisance,      // Light Harasser (Cat) — fast, cheap, debuffs enemies
+    Chonk,         // Heavy Tank (Fat Cat) — immovable, absorbs damage, blocks pathing
+    FlyingFox,     // Air Scout/Striker (Fruit Bat) — flies over terrain, night vision
+    Hisser,        // Ranged (Cat) — medium-range spitter
+    Yowler,        // Support (Cat) — buffs allies, debuffs enemies in range
+    Mouser,        // Stealth Scout (Cat) — fast, stealthy, reveals fog
+    Catnapper,     // Siege (Cat) — sleeps on buildings until they collapse
+    FerretSapper,  // Demolitions (Ferret) — plants explosives, fast building destruction
+    MechCommander, // Hero/Heavy (Cat in Mech) — late-game, commands nearby units
 }
 
 /// Identifies what type of unit this entity is.

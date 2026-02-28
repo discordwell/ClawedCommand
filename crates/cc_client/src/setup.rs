@@ -64,7 +64,7 @@ pub fn setup_game(mut commands: Commands, mut map_res: ResMut<MapResource>) {
             GridCell { pos: *grid },
             Owner { player_id: 0 },
             UnitType {
-                kind: UnitKind::Infantry,
+                kind: UnitKind::Nuisance,
             },
             Health {
                 current: Fixed::from_num(100),
