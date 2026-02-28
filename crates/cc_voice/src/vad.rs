@@ -97,15 +97,11 @@ impl VadProcessor {
     }
 
     /// Create a stub processor for testing (no ONNX model needed).
-    #[cfg(test)]
+    #[cfg(all(test, not(feature = "voice")))]
     fn test_stub() -> Self {
         Self {
-            #[cfg(feature = "voice")]
-            session: panic!("test_stub should only be used in no-voice-feature tests"),
             h_state: vec![0.0f32; 2 * 1 * 64],
             c_state: vec![0.0f32; 2 * 1 * 64],
-            #[cfg(feature = "voice")]
-            sample_rate: 16000,
         }
     }
 }

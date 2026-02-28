@@ -101,7 +101,9 @@ def compute_mel_spectrogram(audio, sr=16000, n_fft=512, hop_length=320,
     if mel.shape[1] > num_frames:
         mel = mel[:, :num_frames]
     elif mel.shape[1] < num_frames:
-        mel = np.pad(mel, ((0, 0), (0, num_frames - mel.shape[1])))
+        # Pad with log(eps) to represent silence (matches Rust pipeline)
+        mel = np.pad(mel, ((0, 0), (0, num_frames - mel.shape[1])),
+                     constant_values=np.log(1e-9))
 
     return mel
 

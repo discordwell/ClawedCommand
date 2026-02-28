@@ -118,6 +118,53 @@ pub fn startup_voice_pipeline(mut commands: Commands) {
     commands.insert_resource(VoiceState { enabled: false });
 }
 
+/// Pad/crop accumulated audio to target length, compute mel, classify, and send result.
+///
+/// Handles short utterances by zero-padding to `target_samples`.
+#[cfg(feature = "voice")]
+fn classify_and_send(
+    accumulator: &[f32],
+    target_samples: usize,
+    mel_config: &MelConfig,
+    classifier: &mut crate::classifier::KeywordClassifier,
+    confidence_threshold: f32,
+    tx: &Sender<ClassifyResult>,
+) {
+    // Pad or center-crop to exactly target_samples
+    let audio: Vec<f32> = if accumulator.len() > target_samples {
+        let start = (accumulator.len() - target_samples) / 2;
+        accumulator[start..start + target_samples].to_vec()
+    } else if accumulator.len() < target_samples {
+        // Zero-pad short utterances (centered)
+        let mut padded = vec![0.0f32; target_samples];
+        let offset = (target_samples - accumulator.len()) / 2;
+        padded[offset..offset + accumulator.len()].copy_from_slice(accumulator);
+        padded
+    } else {
+        accumulator.to_vec()
+    };
+
+    let mel = mel_config.compute(&audio);
+    match classifier.classify(&mel) {
+        Ok(result) => {
+            if result.confidence >= confidence_threshold
+                && result.label != "unknown"
+                && result.label != "silence"
+            {
+                log::debug!(
+                    "Classified: '{}' ({:.2}%)",
+                    result.label,
+                    result.confidence * 100.0
+                );
+                let _ = tx.send(result);
+            }
+        }
+        Err(e) => {
+            log::error!("Classifier error: {e}");
+        }
+    }
+}
+
 /// The inference thread's main loop.
 #[cfg(feature = "voice")]
 fn inference_loop(
@@ -133,6 +180,10 @@ fn inference_loop(
     let mut accumulator: Vec<f32> = Vec::with_capacity(target_samples);
     let mut speech_active = false;
     let mut chunk_buf = [0.0f32; crate::vad::VAD_CHUNK_SAMPLES];
+    // Track partial reads across iterations to avoid dropping samples
+    let mut chunk_offset: usize = 0;
+    // Minimum samples for classification (half a second) — shorter utterances are padded
+    let min_speech_samples: usize = target_samples / 2;
 
     loop {
         // If not listening (PTT not held), sleep briefly and drain buffer
@@ -143,29 +194,32 @@ fn inference_loop(
                 speech_active = false;
                 vad.reset();
             }
+            chunk_offset = 0;
             // Drain any buffered audio to keep ring buffer fresh
             while consumer.try_pop().is_some() {}
             std::thread::sleep(std::time::Duration::from_millis(20));
             continue;
         }
 
-        // Try to read a VAD-sized chunk (512 samples)
-        let mut read = 0;
-        while read < crate::vad::VAD_CHUNK_SAMPLES {
+        // Try to read a VAD-sized chunk (512 samples), continuing from partial reads
+        while chunk_offset < crate::vad::VAD_CHUNK_SAMPLES {
             match consumer.try_pop() {
                 Some(sample) => {
-                    chunk_buf[read] = sample;
-                    read += 1;
+                    chunk_buf[chunk_offset] = sample;
+                    chunk_offset += 1;
                 }
                 None => break,
             }
         }
 
-        if read < crate::vad::VAD_CHUNK_SAMPLES {
-            // Not enough samples yet — wait a bit
+        if chunk_offset < crate::vad::VAD_CHUNK_SAMPLES {
+            // Not enough samples yet — wait a bit (partial read preserved for next iteration)
             std::thread::sleep(std::time::Duration::from_millis(5));
             continue;
         }
+
+        // Full chunk ready — reset offset for next chunk
+        chunk_offset = 0;
 
         // Run VAD
         let speech_prob = match vad.process(&chunk_buf) {
@@ -184,42 +238,29 @@ fn inference_loop(
             }
             accumulator.extend_from_slice(&chunk_buf);
         } else if speech_active {
-            // Speech ended — still add trailing audio for completeness
+            // Speech ended — add trailing audio then classify immediately
             accumulator.extend_from_slice(&chunk_buf);
+
+            // Classify if we have enough audio (at least half a second)
+            if accumulator.len() >= min_speech_samples {
+                classify_and_send(
+                    &accumulator, target_samples, &mel_config,
+                    &mut classifier, confidence_threshold, &tx,
+                );
+            }
+
+            accumulator.clear();
+            speech_active = false;
+            vad.reset();
+            continue;
         }
 
-        // When we have enough audio, classify
+        // When we have enough audio during ongoing speech, classify
         if speech_active && accumulator.len() >= target_samples {
-            // Take exactly 1 second of audio (center-crop if longer)
-            let audio = if accumulator.len() > target_samples {
-                let start = (accumulator.len() - target_samples) / 2;
-                &accumulator[start..start + target_samples]
-            } else {
-                &accumulator[..]
-            };
-
-            let mel = mel_config.compute(audio);
-            match classifier.classify(&mel) {
-                Ok(result) => {
-                    if result.confidence >= confidence_threshold
-                        && result.label != "unknown"
-                        && result.label != "silence"
-                    {
-                        log::debug!(
-                            "Classified: '{}' ({:.2}%)",
-                            result.label,
-                            result.confidence * 100.0
-                        );
-                        if tx.send(result).is_err() {
-                            // Receiver dropped — main thread shutting down
-                            return;
-                        }
-                    }
-                }
-                Err(e) => {
-                    log::error!("Classifier error: {e}");
-                }
-            }
+            classify_and_send(
+                &accumulator, target_samples, &mel_config,
+                &mut classifier, confidence_threshold, &tx,
+            );
 
             // Reset for next utterance
             accumulator.clear();

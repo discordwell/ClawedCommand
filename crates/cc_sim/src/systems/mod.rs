@@ -15,7 +15,7 @@ impl Plugin for SimSystemsPlugin {
         app.init_resource::<CommandQueue>()
             .init_resource::<SimClock>()
             .insert_resource(MapResource {
-                map: GameMap::new(32, 32),
+                map: GameMap::new(64, 64),
             })
             .add_systems(
                 FixedUpdate,
