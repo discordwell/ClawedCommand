@@ -26,9 +26,46 @@ const TACTICAL_THRESHOLD: f32 = 1.8;
 #[derive(Component)]
 pub struct StrategicIcon;
 
+/// Strategic icon radius in world units.
+pub const ICON_RADIUS: f32 = 4.0;
+/// Z-offset for strategic icon above the unit sprite.
+const ICON_Z_OFFSET: f32 = 0.1;
+
 /// Run condition: returns true when the current zoom tier is Tactical.
 pub fn is_tactical(tier: Res<ZoomTier>) -> bool {
     *tier == ZoomTier::Tactical
+}
+
+/// Spawn a `StrategicIcon` child entity for a unit and attach it as a child.
+/// The icon uses an inverse scale to cancel out the parent unit's transform scale,
+/// so all icons appear at a uniform size regardless of unit type.
+pub fn spawn_strategic_icon(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<ColorMaterial>,
+    parent_entity: Entity,
+    parent_scale: f32,
+    team_color: Color,
+    tier: &ZoomTier,
+) {
+    let icon_mesh = meshes.add(Circle::new(ICON_RADIUS));
+    let icon_mat = materials.add(ColorMaterial::from_color(team_color));
+    let inverse_scale = 1.0 / parent_scale;
+    let icon_vis = if *tier == ZoomTier::Strategic {
+        Visibility::Inherited
+    } else {
+        Visibility::Hidden
+    };
+    let icon = commands
+        .spawn((
+            StrategicIcon,
+            Mesh2d(icon_mesh),
+            MeshMaterial2d(icon_mat),
+            Transform::from_xyz(0.0, 0.0, ICON_Z_OFFSET).with_scale(Vec3::splat(inverse_scale)),
+            icon_vis,
+        ))
+        .id();
+    commands.entity(parent_entity).add_children(&[icon]);
 }
 
 /// Reads camera orthographic scale and updates `ZoomTier` with hysteresis.
@@ -61,64 +98,50 @@ pub fn detect_zoom_tier(
 /// children remain renderable. The parent sprite alpha is handled separately by
 /// `render_selection_indicators` which checks ZoomTier when setting colors.
 ///
-/// **Strategic**: Show strategic icons, hide health bars, hide props, hide selection rings.
-/// **Tactical**: Reverse all of the above.
+/// Uses `Has<T>` accessors instead of separate queries to avoid combinatorial
+/// `Without<>` filters and simplify adding new child component types.
 pub fn toggle_lod_visuals(
     tier: Res<ZoomTier>,
     unit_query: Query<&Children, With<UnitMesh>>,
-    mut icon_query: Query<
+    mut child_query: Query<(
         &mut Visibility,
-        (With<StrategicIcon>, Without<HealthBarBg>, Without<HealthBarFg>, Without<SelectionRing>),
-    >,
-    mut hb_bg: Query<
-        &mut Visibility,
-        (With<HealthBarBg>, Without<StrategicIcon>, Without<HealthBarFg>, Without<SelectionRing>),
-    >,
-    mut hb_fg: Query<
-        &mut Visibility,
-        (With<HealthBarFg>, Without<StrategicIcon>, Without<HealthBarBg>, Without<SelectionRing>),
-    >,
-    mut ring_query: Query<
-        &mut Visibility,
-        (With<SelectionRing>, Without<StrategicIcon>, Without<HealthBarBg>, Without<HealthBarFg>),
-    >,
-    mut prop_query: Query<
-        &mut Visibility,
-        (With<Prop>, Without<StrategicIcon>, Without<HealthBarBg>, Without<HealthBarFg>, Without<SelectionRing>),
-    >,
+        Has<StrategicIcon>,
+        Has<HealthBarBg>,
+        Has<HealthBarFg>,
+        Has<SelectionRing>,
+    )>,
+    mut prop_query: Query<&mut Visibility, (With<Prop>, Without<UnitMesh>)>,
 ) {
-    let (icon_vis, hb_vis, ring_vis, prop_vis) = match *tier {
-        ZoomTier::Tactical => (
-            Visibility::Hidden,
-            Visibility::Inherited,
-            Visibility::Inherited,
-            Visibility::Inherited,
-        ),
-        ZoomTier::Strategic => (
-            Visibility::Inherited,
-            Visibility::Hidden,
-            Visibility::Hidden,
-            Visibility::Hidden,
-        ),
-    };
+    let is_strategic = *tier == ZoomTier::Strategic;
 
     for children in unit_query.iter() {
         for child in children.iter() {
-            if let Ok(mut vis) = icon_query.get_mut(child) {
-                *vis = icon_vis;
-            }
-            if let Ok(mut vis) = hb_bg.get_mut(child) {
-                *vis = hb_vis;
-            }
-            if let Ok(mut vis) = hb_fg.get_mut(child) {
-                *vis = hb_vis;
-            }
-            if let Ok(mut vis) = ring_query.get_mut(child) {
-                *vis = ring_vis;
+            if let Ok((mut vis, is_icon, is_hb_bg, is_hb_fg, is_ring)) =
+                child_query.get_mut(child)
+            {
+                if is_icon {
+                    *vis = if is_strategic {
+                        Visibility::Inherited
+                    } else {
+                        Visibility::Hidden
+                    };
+                } else if is_hb_bg || is_hb_fg || is_ring {
+                    *vis = if is_strategic {
+                        Visibility::Hidden
+                    } else {
+                        Visibility::Inherited
+                    };
+                }
             }
         }
     }
 
+    // Toggle standalone prop entities
+    let prop_vis = if is_strategic {
+        Visibility::Hidden
+    } else {
+        Visibility::Inherited
+    };
     for mut vis in prop_query.iter_mut() {
         *vis = prop_vis;
     }
@@ -142,7 +165,6 @@ mod tests {
 
     #[test]
     fn hysteresis_gap_prevents_flicker() {
-        // The gap between thresholds must be meaningful (not trivially small)
         let gap = STRATEGIC_THRESHOLD - TACTICAL_THRESHOLD;
         assert!(gap >= 0.1, "Hysteresis gap {gap} is too small, risk of flicker");
     }
@@ -161,6 +183,11 @@ mod tests {
         let cloned = tier.clone();
         assert_eq!(tier, copied);
         assert_eq!(tier, cloned);
+    }
+
+    #[test]
+    fn icon_radius_is_positive() {
+        assert!(ICON_RADIUS > 0.0);
     }
 
     /// Simulate the hysteresis logic without Bevy ECS.
@@ -217,21 +244,18 @@ mod tests {
 
     #[test]
     fn hysteresis_prevents_flicker_in_gap() {
-        // Scale in the gap (between 1.8 and 2.0) should NOT cause transitions
         let gap_scale = (TACTICAL_THRESHOLD + STRATEGIC_THRESHOLD) / 2.0;
 
-        // From Tactical, gap scale should NOT trigger Strategic
         assert_eq!(
             simulate_tier_transition(ZoomTier::Tactical, gap_scale),
             ZoomTier::Tactical,
-            "Scale {gap_scale} in hysteresis gap should not trigger Tactical→Strategic"
+            "Scale {gap_scale} in hysteresis gap should not trigger Tactical->Strategic"
         );
 
-        // From Strategic, gap scale should NOT trigger Tactical
         assert_eq!(
             simulate_tier_transition(ZoomTier::Strategic, gap_scale),
             ZoomTier::Strategic,
-            "Scale {gap_scale} in hysteresis gap should not trigger Strategic→Tactical"
+            "Scale {gap_scale} in hysteresis gap should not trigger Strategic->Tactical"
         );
     }
 
@@ -239,7 +263,6 @@ mod tests {
     fn full_zoom_cycle() {
         let mut tier = ZoomTier::Tactical;
 
-        // Zoom out gradually
         tier = simulate_tier_transition(tier, 1.0);
         assert_eq!(tier, ZoomTier::Tactical);
 
@@ -252,8 +275,7 @@ mod tests {
         tier = simulate_tier_transition(tier, 2.0); // Hit threshold
         assert_eq!(tier, ZoomTier::Strategic);
 
-        // Zoom back in gradually
-        tier = simulate_tier_transition(tier, 1.9); // In gap — stays Strategic
+        tier = simulate_tier_transition(tier, 1.9); // In gap -- stays Strategic
         assert_eq!(tier, ZoomTier::Strategic);
 
         tier = simulate_tier_transition(tier, 1.8); // Hit lower threshold

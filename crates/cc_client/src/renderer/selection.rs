@@ -49,7 +49,8 @@ pub fn render_selection_indicators(
         .collect();
 
     if !newly_selected.is_empty() {
-        let ring_mesh = meshes.add(Annulus::new(10.0, 12.0));
+        // Doubled from 10/12 to compensate for halved unit_scale (2× sprite resolution)
+        let ring_mesh = meshes.add(Annulus::new(20.0, 24.0));
         let ring_mat = team_mats.selected.clone();
         for entity in newly_selected {
             let ring = commands

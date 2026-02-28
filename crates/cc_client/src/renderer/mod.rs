@@ -80,7 +80,9 @@ impl Plugin for RenderPlugin {
                         .run_if(zoom_lod::is_tactical),
                     health_bars::hide_dead_health_bars,
                     death::isolate_dead_material,
-                    death::death_fade_system.after(death::isolate_dead_material),
+                    death::death_fade_system
+                        .after(death::isolate_dead_material)
+                        .run_if(zoom_lod::is_tactical),
                     terrain_borders::draw_terrain_borders
                         .run_if(zoom_lod::is_tactical),
                     water::animate_water

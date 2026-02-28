@@ -18,22 +18,23 @@ pub struct HealthBarBg;
 #[derive(Component)]
 pub struct HealthBarFg;
 
-const BAR_HEIGHT: f32 = 3.0;
-const BAR_Y_OFFSET: f32 = 20.0;
+const BAR_HEIGHT: f32 = 6.0;
+const BAR_Y_OFFSET: f32 = 40.0;
 
 /// Scale bar width per unit kind (larger units get wider bars).
+/// Dimensions are doubled to compensate for halved unit_scale (2× sprite resolution).
 fn bar_width_for_kind(kind: UnitKind) -> f32 {
     match kind {
-        UnitKind::Pawdler | UnitKind::Mouser => 16.0,
-        UnitKind::Nuisance | UnitKind::FerretSapper => 20.0,
-        UnitKind::Hisser | UnitKind::Yowler | UnitKind::FlyingFox => 22.0,
-        UnitKind::Catnapper => 26.0,
-        UnitKind::Chonk => 30.0,
-        UnitKind::MechCommander => 34.0,
+        UnitKind::Pawdler | UnitKind::Mouser => 32.0,
+        UnitKind::Nuisance | UnitKind::FerretSapper => 40.0,
+        UnitKind::Hisser | UnitKind::Yowler | UnitKind::FlyingFox => 44.0,
+        UnitKind::Catnapper => 52.0,
+        UnitKind::Chonk => 60.0,
+        UnitKind::MechCommander => 68.0,
     }
 }
 
-/// Bar width for buildings.
+/// Bar width for buildings (not scaled by unit_scale, so no doubling needed).
 fn bar_width_for_building(kind: BuildingKind) -> f32 {
     match kind {
         BuildingKind::TheBox => 30.0,

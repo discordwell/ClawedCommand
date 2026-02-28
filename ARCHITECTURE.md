@@ -233,7 +233,9 @@ MCP tool definitions map to Mistral's function calling format with minimal conve
 - Tile-based map with diamond-shaped tiles
 - Sprite-based units and buildings with directional animations
 - Depth sorting based on y-position for correct overlap
-- Smooth camera with zoom, pan, edge scrolling, minimap
+- Smooth camera with zoom (0.5x-3.5x), pan, edge scrolling, minimap
+- Two-tier zoom LOD with hysteresis: Tactical (< 2.0x) shows full sprites/health bars/props; Strategic (>= 2.0x) shows simplified colored-dot icons
+- 2x sprite resolution for crisp close-up zoom (drawn at 1x, nearest-neighbor upscaled)
 
 **Visual layers (bottom to top):**
 1. Terrain tiles

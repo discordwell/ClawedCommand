@@ -11,7 +11,7 @@ use cc_sim::resources::{MapResource, PlayerResources, SpawnPositions};
 
 use crate::renderer::resource_nodes::ResourceNodeSprites;
 use crate::renderer::unit_gen::{UnitSprites, kind_index};
-use crate::renderer::zoom_lod::StrategicIcon;
+use crate::renderer::zoom_lod::{self, ZoomTier};
 
 /// Marker to distinguish unit entities from tile entities in queries.
 #[derive(Component)]
@@ -62,6 +62,7 @@ pub fn setup_game(
     mut spawn_positions: ResMut<SpawnPositions>,
     unit_sprites: Option<Res<UnitSprites>>,
     resource_sprites: Option<Res<ResourceNodeSprites>>,
+    tier: Res<ZoomTier>,
 ) {
     let params = MapGenParams {
         width: 64,
@@ -234,17 +235,10 @@ pub fn setup_game(
                         .with_scale(Vec3::splat(scale)),
                 )).id();
 
-                // Strategic zoom icon: small colored circle, hidden by default
-                let icon_mesh = meshes.add(Circle::new(4.0));
-                let icon_mat = materials.add(ColorMaterial::from_color(team_color(sp.player)));
-                let icon = commands.spawn((
-                    StrategicIcon,
-                    Mesh2d(icon_mesh),
-                    MeshMaterial2d(icon_mat),
-                    Transform::from_xyz(0.0, 0.0, 0.1),
-                    Visibility::Hidden,
-                )).id();
-                commands.entity(unit_entity).add_children(&[icon]);
+                zoom_lod::spawn_strategic_icon(
+                    &mut commands, &mut meshes, &mut materials,
+                    unit_entity, scale, tint, &tier,
+                );
             } else {
                 // Fallback: colored circle mesh
                 let body_mesh = meshes.add(Circle::new(12.0));
@@ -275,17 +269,10 @@ pub fn setup_game(
                         .with_scale(Vec3::splat(scale)),
                 )).id();
 
-                // Strategic zoom icon
-                let icon_mesh = meshes.add(Circle::new(4.0));
-                let icon_mat = materials.add(ColorMaterial::from_color(team_color(sp.player)));
-                let icon = commands.spawn((
-                    StrategicIcon,
-                    Mesh2d(icon_mesh),
-                    MeshMaterial2d(icon_mat),
-                    Transform::from_xyz(0.0, 0.0, 0.1),
-                    Visibility::Hidden,
-                )).id();
-                commands.entity(unit_entity).add_children(&[icon]);
+                zoom_lod::spawn_strategic_icon(
+                    &mut commands, &mut meshes, &mut materials,
+                    unit_entity, scale, tint, &tier,
+                );
             }
 
             if (sp.player as usize) < total_spawned_per_player.len() {
