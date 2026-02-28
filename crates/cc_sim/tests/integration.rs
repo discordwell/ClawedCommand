@@ -586,6 +586,34 @@ fn generated_map_is_valid_for_simulation() {
     );
 }
 
+#[test]
+fn generated_templates_work_in_simulation() {
+    use cc_core::map_gen::{self, MapGenParams, MapTemplate, MapSize};
+
+    let templates = [MapTemplate::Valley, MapTemplate::Crossroads, MapTemplate::Fortress, MapTemplate::Islands];
+
+    for template in &templates {
+        let params = MapGenParams {
+            template: *template,
+            map_size: MapSize::Small,
+            seed: 42,
+            ..Default::default()
+        };
+        let def = map_gen::generate_map(&params);
+        assert!(def.validate().is_ok(), "Validation failed for {:?}", template);
+
+        let map = def.to_game_map();
+        let (mut world, mut schedule) = make_sim(map);
+
+        // Spawn a unit at first spawn point
+        let sp0 = def.spawn_points[0].pos;
+        let _entity = spawn_unit(&mut world, GridPos::new(sp0.0, sp0.1));
+
+        // Run 10 ticks without panics
+        run_ticks(&mut world, &mut schedule, 10);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Combat helpers
 // ---------------------------------------------------------------------------

@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::coords::GridPos;
 use crate::map::{GameMap, TileData};
+use crate::map_gen::{MapSize, MapTemplate};
 use crate::terrain::TerrainType;
 
 /// Symmetry type for map generation and validation.
@@ -67,6 +68,10 @@ pub struct MapDefinition {
     pub resources: Vec<ResourcePlacement>,
     pub neutral_camps: Vec<NeutralCamp>,
     pub symmetry: MapSymmetry,
+    #[serde(default)]
+    pub template: Option<MapTemplate>,
+    #[serde(default)]
+    pub map_size: Option<MapSize>,
 }
 
 impl MapDefinition {
@@ -104,6 +109,8 @@ impl MapDefinition {
             resources: Vec::new(),
             neutral_camps: Vec::new(),
             symmetry: MapSymmetry::Rotational180,
+            template: None,
+            map_size: None,
         }
     }
 
@@ -201,6 +208,8 @@ mod tests {
             }],
             neutral_camps: vec![],
             symmetry: MapSymmetry::Rotational180,
+            template: None,
+            map_size: None,
         };
 
         let ron_str = def.to_ron().unwrap();
@@ -228,6 +237,8 @@ mod tests {
             resources: vec![],
             neutral_camps: vec![],
             symmetry: MapSymmetry::Rotational180,
+            template: None,
+            map_size: None,
         };
         assert!(def.validate().is_ok());
     }
@@ -246,6 +257,8 @@ mod tests {
             resources: vec![],
             neutral_camps: vec![],
             symmetry: MapSymmetry::Rotational180,
+            template: None,
+            map_size: None,
         };
         assert!(def.validate().is_err());
     }
@@ -264,6 +277,8 @@ mod tests {
             resources: vec![],
             neutral_camps: vec![],
             symmetry: MapSymmetry::Rotational180,
+            template: None,
+            map_size: None,
         };
         assert!(def.validate().is_err());
     }
@@ -279,6 +294,8 @@ mod tests {
             resources: vec![],
             neutral_camps: vec![],
             symmetry: MapSymmetry::Rotational180,
+            template: None,
+            map_size: None,
         };
         assert!(def.validate().is_err());
     }
