@@ -52,7 +52,8 @@ impl Plugin for RenderPlugin {
                 Startup,
                 (
                     fog::init_fog.after(tilemap::spawn_tilemap),
-                    fog::spawn_fog_overlays.after(tilemap::spawn_tilemap),
+                    fog::spawn_fog_overlays
+                        .after(fog::init_fog),
                 ),
             )
             .add_systems(

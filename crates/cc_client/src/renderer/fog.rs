@@ -1,12 +1,21 @@
 use bevy::prelude::*;
 
 use cc_core::components::{GridCell, Owner, UnitType};
-use cc_core::coords::{GridPos, WorldPos, world_to_screen};
+use cc_core::coords::{GridPos, WorldPos, world_to_screen, TILE_HALF_HEIGHT, TILE_HALF_WIDTH};
 use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
 use cc_sim::resources::MapResource;
 
 /// Local player ID for fog-of-war calculations.
 const LOCAL_PLAYER: u8 = 0;
+
+/// Per-tile rendering state for dirty tracking.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TileFogState {
+    Unexplored,
+    Explored,
+    Visible,
+    Disabled,
+}
 
 /// Per-tile fog of war state.
 #[derive(Resource)]
@@ -22,6 +31,16 @@ pub struct FogOfWar {
     /// Map dimensions for indexing.
     pub width: u32,
     pub height: u32,
+    /// Shared material for unexplored tiles (alpha 0.85).
+    mat_unexplored: Handle<ColorMaterial>,
+    /// Shared material for explored-but-not-visible tiles (alpha 0.45).
+    mat_explored: Handle<ColorMaterial>,
+    /// Fog overlay entity per tile for O(1) lookup.
+    entities: Vec<Entity>,
+    /// Previous frame's computed state per tile (dirty tracking).
+    prev_state: Vec<TileFogState>,
+    /// Whether fog was enabled last frame.
+    prev_enabled: bool,
 }
 
 impl Default for FogOfWar {
@@ -33,6 +52,11 @@ impl Default for FogOfWar {
             vision_range: 5,
             width: 0,
             height: 0,
+            mat_unexplored: Handle::default(),
+            mat_explored: Handle::default(),
+            entities: Vec::new(),
+            prev_state: Vec::new(),
+            prev_enabled: true,
         }
     }
 }
@@ -49,13 +73,14 @@ impl FogOfWar {
 
 /// Marker component for fog overlay entities.
 #[derive(Component)]
-pub struct FogOverlay {
-    pub grid_x: i32,
-    pub grid_y: i32,
-}
+pub struct FogOverlay;
 
-/// Initialize the FogOfWar resource based on map dimensions.
-pub fn init_fog(mut fog: ResMut<FogOfWar>, map_res: Res<MapResource>) {
+/// Initialize the FogOfWar resource and create shared materials.
+pub fn init_fog(
+    mut fog: ResMut<FogOfWar>,
+    map_res: Res<MapResource>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
     let w = map_res.map.width as u32;
     let h = map_res.map.height as u32;
     let size = (w * h) as usize;
@@ -63,26 +88,34 @@ pub fn init_fog(mut fog: ResMut<FogOfWar>, map_res: Res<MapResource>) {
     fog.height = h;
     fog.explored = vec![false; size];
     fog.visible = vec![false; size];
+    fog.prev_state = vec![TileFogState::Unexplored; size];
+    fog.prev_enabled = true;
+    // Only 2 shared materials instead of 4,096 unique ones
+    fog.mat_unexplored =
+        materials.add(ColorMaterial::from_color(Color::srgba(0.0, 0.0, 0.0, 0.85)));
+    fog.mat_explored =
+        materials.add(ColorMaterial::from_color(Color::srgba(0.0, 0.0, 0.0, 0.45)));
 }
 
-/// Spawn fog overlay entities for every tile (runs once after tilemap).
-/// Each tile gets its own material so alpha can be set independently.
+/// Spawn fog overlay entities using shared materials.
 pub fn spawn_fog_overlays(
     mut commands: Commands,
     map_res: Res<MapResource>,
+    mut fog: ResMut<FogOfWar>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     let map = &map_res.map;
 
-    let fog_mesh = meshes.add(Rhombus::new(
-        cc_core::coords::TILE_HALF_WIDTH * 2.0,
-        cc_core::coords::TILE_HALF_HEIGHT * 2.0,
-    ));
+    let fog_mesh = meshes.add(Rhombus::new(TILE_HALF_WIDTH * 2.0, TILE_HALF_HEIGHT * 2.0));
 
-    // Z=100.0 puts fog above all game entities (units ~0 to -1.3, props ~-5, tiles ~-10)
-    // but below UI elements (box select at 999.0).
+    // Z=100.0 puts fog above all game entities but below UI elements.
     const FOG_Z: f32 = 100.0;
+
+    let size = (map.width * map.height) as usize;
+    fog.entities = Vec::with_capacity(size);
+
+    // All tiles start as unexplored — use shared unexplored material
+    let mat = fog.mat_unexplored.clone();
 
     for y in 0..map.height as i32 {
         for x in 0..map.width as i32 {
@@ -92,15 +125,16 @@ pub fn spawn_fog_overlays(
             let screen = world_to_screen(world);
             let elevation_offset = tile.elevation as f32 * ELEVATION_PIXEL_OFFSET;
 
-            // Each tile gets its own material so we can set alpha independently
-            let fog_material = materials.add(ColorMaterial::from_color(Color::srgba(0.0, 0.0, 0.0, 0.85)));
+            let entity = commands
+                .spawn((
+                    FogOverlay,
+                    Mesh2d(fog_mesh.clone()),
+                    MeshMaterial2d(mat.clone()),
+                    Transform::from_xyz(screen.x, -screen.y + elevation_offset, FOG_Z),
+                ))
+                .id();
 
-            commands.spawn((
-                FogOverlay { grid_x: x, grid_y: y },
-                Mesh2d(fog_mesh.clone()),
-                MeshMaterial2d(fog_material),
-                Transform::from_xyz(screen.x, -screen.y + elevation_offset, FOG_Z),
-            ));
+            fog.entities.push(entity);
         }
     }
 }
@@ -150,33 +184,55 @@ pub fn update_fog_visibility(
     }
 }
 
-/// Update fog overlay material alpha based on visibility state.
+/// Update fog overlay visibility — only touches tiles whose state changed.
 pub fn render_fog_overlays(
-    fog: Res<FogOfWar>,
-    query: Query<(&FogOverlay, &MeshMaterial2d<ColorMaterial>)>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut fog: ResMut<FogOfWar>,
+    mut query: Query<(&mut MeshMaterial2d<ColorMaterial>, &mut Visibility), With<FogOverlay>>,
 ) {
-    if fog.width == 0 {
+    if fog.width == 0 || fog.entities.is_empty() {
         return;
     }
 
-    for (overlay, mat_handle) in query.iter() {
-        let Some(idx) = fog.index(overlay.grid_x, overlay.grid_y) else {
-            continue;
-        };
+    let size = (fog.width * fog.height) as usize;
+    let enabled_changed = fog.enabled != fog.prev_enabled;
+    fog.prev_enabled = fog.enabled;
 
-        let target_alpha = if !fog.enabled {
-            0.0
+    // Clone handles outside loop to avoid borrow issues
+    let mat_unexplored = fog.mat_unexplored.clone();
+    let mat_explored = fog.mat_explored.clone();
+
+    for idx in 0..size {
+        let new_state = if !fog.enabled {
+            TileFogState::Disabled
         } else if fog.visible[idx] {
-            0.0
+            TileFogState::Visible
         } else if fog.explored[idx] {
-            0.45
+            TileFogState::Explored
         } else {
-            0.85
+            TileFogState::Unexplored
         };
 
-        if let Some(mat) = materials.get_mut(&mat_handle.0) {
-            mat.color.set_alpha(target_alpha);
+        // Skip unchanged tiles — the key optimization
+        if new_state == fog.prev_state[idx] && !enabled_changed {
+            continue;
+        }
+        fog.prev_state[idx] = new_state;
+
+        let entity = fog.entities[idx];
+        if let Ok((mut mat_handle, mut visibility)) = query.get_mut(entity) {
+            match new_state {
+                TileFogState::Disabled | TileFogState::Visible => {
+                    *visibility = Visibility::Hidden;
+                }
+                TileFogState::Explored => {
+                    *visibility = Visibility::Inherited;
+                    mat_handle.0 = mat_explored.clone();
+                }
+                TileFogState::Unexplored => {
+                    *visibility = Visibility::Inherited;
+                    mat_handle.0 = mat_unexplored.clone();
+                }
+            }
         }
     }
 }

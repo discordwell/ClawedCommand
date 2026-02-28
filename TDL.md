@@ -30,6 +30,11 @@
 - [ ] Clarify building synonyms: barracks/post and refinery/market currently alias to same BuildingKind — split into separate variants if they become distinct buildings
 - [ ] Add `UnitKind` variants for other factions (Clawed, Seekers, Murder, Croak, LLAMA) so voice unit names resolve instead of logging Ignored
 
+## From Rendering Performance Review
+
+- [ ] Replace 4,096 fog overlay entities with a single full-screen quad + 64x64 fog texture (write pixel alpha directly, use shader for isometric diamond mask). Eliminates all entity queries and material swaps for fog. Priority increases at 128x128+ map sizes.
+- [ ] Consider replacing Gizmos terrain borders with spawned static Mesh2d line entities for 128x128+ maps (Gizmos are immediate-mode, rebuilt every frame)
+
 ## From Voice Pipeline Implementation
 
 - [ ] Run Python voice training tests after setting up PyTorch environment (`cd training/voice && python test_model.py`)
