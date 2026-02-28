@@ -1,12 +1,13 @@
-# Devstral Small 2 (24B) LoRA fine-tuning config
-# >>> Final A100 80GB run only — use devstral_24b_qlora.yaml for QLoRA iteration on L40S <<<
-# Hardware: 1x A100 80GB
+# Devstral Small 2 (24B) QLoRA fine-tuning config
+# Hardware: 1x L40S 48GB (Brev)
 # Framework: Unsloth + TRL SFTTrainer
+# Budget: ~$8 for 2 runs (~$4 each, ~1.5 hrs on L40S at ~$1.25/hr)
+# Note: For final full-LoRA run on A100 80GB, use devstral_24b_lora.yaml
 
 model:
   name: "mistralai/Devstral-Small-2-24B-Instruct-2512"
   max_seq_len: 4096
-  load_in_4bit: false          # Full precision on A100; set true for QLoRA on 4090
+  load_in_4bit: true              # QLoRA — fits L40S 48GB comfortably
   dtype: "bfloat16"
 
 lora:
@@ -23,11 +24,11 @@ lora:
     - down_proj
 
 training:
-  output_dir: "./outputs/devstral_24b_cc_v1"
+  output_dir: "./outputs/devstral_24b_qlora_cc_v1"
   learning_rate: 2.0e-4
   num_epochs: 3
-  per_device_batch_size: 4
-  gradient_accumulation_steps: 8
+  per_device_batch_size: 4        # 24B QLoRA fits batch 4 on 48GB
+  gradient_accumulation_steps: 8   # Effective batch size = 32
   warmup_ratio: 0.1
   weight_decay: 0.01
   optimizer: "adamw_8bit"
@@ -42,13 +43,13 @@ training:
 data:
   train_file: "../data/cc_train_mistral.jsonl"
   eval_file: "../data/cc_eval_mistral.jsonl"
-  chat_template: "mistral"      # Use Mistral's native chat template
+  chat_template: "mistral"        # Use Mistral's native chat template
 
 inference:
   engine: "vllm"
   vllm_args:
     tool_call_parser: "mistral"
     enable_auto_tool_choice: true
-  quantization: null             # Full precision on A100; Q4_K_M for local
+  quantization: "awq"
   gpu_memory_utilization: 0.9
   max_model_len: 4096

@@ -388,13 +388,18 @@ ClawedCommand/
 - **Milestone: vibecode a Lua script, issue voice command, watch agent execute with buff**
 
 ### Phase 4: Fine-tuning Pipeline
-- **Multi-model evaluation**: Compare Qwen2.5-Coder-32B, Devstral Small 2 (24B), Codestral (API), and xLAM-2-8B (stretch)
+- **GPU platform**: [NVIDIA Brev](https://brev.nvidia.com) — $100 GPU budget, $15 Mistral API credits
+- **Strategy**: QLoRA on L40S 48GB (~$1.25/hr) for fast iteration → final full LoRA on A100 80GB (~$2.50/hr) for the winner
+- **Multi-model evaluation**: Compare Qwen2.5-Coder-32B, Devstral Small 2 (24B), Codestral (API), and xLAM-2-8B
 - **Training data**: 50 gold hand-authored examples → 500-1000 synthetic variations via Claude → quality filtering
 - **Quick baseline**: Codestral via Mistral API fine-tuning (~30 min turnaround) to validate data quality
-- **Local training**: Unsloth + TRL SFTTrainer with LoRA (rank 32, alpha 64) on A100 80GB
+- **QLoRA iteration**: Unsloth + TRL SFTTrainer with 4-bit quantized LoRA (rank 32, alpha 64) on L40S 48GB
+- **Final LoRA**: Full-precision LoRA on A100 80GB for the winning model only
+- **Budget-aware order**: Codestral API ($10) → xLAM QLoRA ($4) → Devstral QLoRA ($8) → Qwen QLoRA ($12) → eval ($8) → final LoRA ($8)
 - **Format pipeline**: Validate → convert between Mistral/Qwen/xLAM chat templates → 90/10 train/eval split
 - **Evaluation harness**: Tool call accuracy (>95%), instruction following (>85%), multi-step completion (>70%), no-tool accuracy (>90%), latency (<2s)
 - Replay recording system + replay → training data converter
+- See [training/BREV_GUIDE.md](training/BREV_GUIDE.md) for step-by-step Brev setup and training instructions
 - **Milestone: fine-tuned model demonstrably outperforms base model at game-specific tool calling**
 
 ### Phase 5: Multiplayer

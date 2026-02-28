@@ -1,4 +1,5 @@
-# xLAM-2-8B (Salesforce) LoRA fine-tuning config — stretch goal
+# xLAM-2-8B (Salesforce) LoRA fine-tuning config
+# >>> Final A100 80GB run only — use xlam_8b_qlora.yaml for QLoRA iteration on L40S <<<
 # Hardware: Any GPU (consumer-grade is fine)
 # Framework: Unsloth + TRL SFTTrainer
 # Purpose-built for function calling. Very fast training iterations.

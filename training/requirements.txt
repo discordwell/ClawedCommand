@@ -1,0 +1,17 @@
+# ClawedCommand fine-tuning dependencies
+# Install on Brev instance: pip install -r requirements.txt
+# Tested on: Brev L40S 48GB and A100 80GB with CUDA 12.4
+
+# Core training stack — Unsloth Ampere build for L40S/A100
+unsloth[cu124-ampere-torch260]
+trl>=0.12
+datasets
+
+# Config and data handling
+pyyaml
+
+# Mistral API fine-tuning (train_mistral_api.py)
+mistralai
+
+# Synthetic data generation (generate_synthetic.py)
+anthropic

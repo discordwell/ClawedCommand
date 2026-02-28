@@ -1,4 +1,5 @@
 # Qwen2.5-Coder-32B-Instruct LoRA fine-tuning config
+# >>> Final A100 80GB run only — use qwen_32b_qlora.yaml for QLoRA iteration on L40S <<<
 # Hardware: 1x A100 80GB
 # Framework: Unsloth + TRL SFTTrainer
 
