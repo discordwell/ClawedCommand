@@ -188,11 +188,11 @@ units:
       name: Pawdler
       pose: idle standing, slightly slouched, reluctant posture
       description: Cat worker unit. Tabby cat in a tiny hard hat, holding a fish basket. Looks
-        like it would rather be napping.
+        like it would rather be napping. Motivation meter visible as a small thought bubble (fish vs pillow).
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Should look civilian/reluctant, not combat-oriented. Cute but lazy.
+      extra_notes: Should look civilian/reluctant, not combat-oriented. Cute but lazy. Spite Carry visual — angry eyebrows when motivated.
     output:
       type: single
       game_path: assets/sprites/units/pawdler_idle.png
@@ -281,11 +281,11 @@ units:
       name: The Chonk
       pose: sitting, immovable, taking up space
       description: Very fat cat sitting firmly on the ground. Enormous, round, unbothered.
-        Too large to move easily but impossible to move by force.
+        Too large to move easily but impossible to move by force. Subtle gravity distortion lines around it.
       width: 148
       height: 148
       direction: south-east
-      extra_notes: Visually larger than other units. Should look immovable and content.
+      extra_notes: Visually larger than other units. Should look immovable and content. Loaf Mode variant needed — fully flattened pancake cat.
     output:
       type: single
       game_path: assets/sprites/units/chonk_idle.png
@@ -341,11 +341,11 @@ units:
       name: Mouser
       pose: low crouch, stalking, nearly invisible
       description: Sleek black cat in stealth crouch. Almost invisible. Eyes gleaming in the
-        dark. Built for scouting.
+        dark. Built for scouting. Small sensor device strapped to collar for Dead Drops.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Stealth scout. Should look sneaky and fast. Dark coloring.
+      extra_notes: Stealth scout. Should look sneaky and fast. Dark coloring. Shadow Network visual — faint connecting lines between paired Mousers.
     output:
       type: single
       game_path: assets/sprites/units/mouser_idle.png
@@ -386,11 +386,12 @@ units:
       name: Mech Commander
       pose: standing in oversized mech suit, cat visible in cockpit
       description: Late-game hero unit. A small cat piloting an oversized mech suit. The cat
-        is clearly too small for it. Mech has weapon arms and command antenna.
+        is clearly too small for it. Mech has weapon arms, command antenna, and a glowing
+        Tactical Uplink dish on its back.
       width: 192
       height: 192
       direction: south-east
-      extra_notes: Hero/heavy unit. Cat is comically small inside the mech. Imposing but funny.
+      extra_notes: Hero/heavy unit. Cat is comically small inside the mech. Imposing but funny. Tactical Uplink aura should be visible as a faint hex grid around it.
     output:
       type: single
       game_path: assets/sprites/units/mech_commander_idle.png
