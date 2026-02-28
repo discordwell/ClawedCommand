@@ -114,6 +114,31 @@ impl Default for TerrainType {
     }
 }
 
+impl std::fmt::Display for TerrainType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, f)
+    }
+}
+
+impl std::str::FromStr for TerrainType {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        match s {
+            "Grass" => Ok(Self::Grass),
+            "Dirt" => Ok(Self::Dirt),
+            "Sand" => Ok(Self::Sand),
+            "Forest" => Ok(Self::Forest),
+            "Water" => Ok(Self::Water),
+            "Shallows" => Ok(Self::Shallows),
+            "Rock" => Ok(Self::Rock),
+            "Ramp" => Ok(Self::Ramp),
+            "Road" => Ok(Self::Road),
+            "TechRuins" => Ok(Self::TechRuins),
+            _ => Err(()),
+        }
+    }
+}
+
 /// Damage reduction from terrain cover.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CoverLevel {
@@ -123,12 +148,32 @@ pub enum CoverLevel {
 }
 
 impl CoverLevel {
+    pub const ALL: [CoverLevel; 3] = [Self::None, Self::Light, Self::Heavy];
+
     /// Damage multiplier (1.0 = full damage, 0.85 = light cover, 0.70 = heavy cover).
     pub fn damage_multiplier(self) -> Fixed {
         match self {
             Self::None => FIXED_ONE,
             Self::Light => Fixed::from_bits(55705),  // 0.85
             Self::Heavy => Fixed::from_bits(45875),  // 0.70
+        }
+    }
+}
+
+impl std::fmt::Display for CoverLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, f)
+    }
+}
+
+impl std::str::FromStr for CoverLevel {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        match s {
+            "None" => Ok(Self::None),
+            "Light" => Ok(Self::Light),
+            "Heavy" => Ok(Self::Heavy),
+            _ => Err(()),
         }
     }
 }
@@ -348,6 +393,26 @@ mod tests {
         assert!(elevation_damage_multiplier(-2) < elevation_damage_multiplier(-1));
         // Floor at 0.55
         assert!(elevation_damage_multiplier(-5) >= Fixed::from_bits(36044));
+    }
+
+    #[test]
+    fn terrain_type_display_from_str_round_trip() {
+        for terrain in TerrainType::ALL {
+            let s = terrain.to_string();
+            let parsed: TerrainType = s.parse().unwrap();
+            assert_eq!(parsed, terrain);
+        }
+        assert!("Bogus".parse::<TerrainType>().is_err());
+    }
+
+    #[test]
+    fn cover_level_display_from_str_round_trip() {
+        for cover in CoverLevel::ALL {
+            let s = cover.to_string();
+            let parsed: CoverLevel = s.parse().unwrap();
+            assert_eq!(parsed, cover);
+        }
+        assert!("Bogus".parse::<CoverLevel>().is_err());
     }
 
     #[test]

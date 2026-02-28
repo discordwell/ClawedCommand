@@ -442,10 +442,11 @@ fn make_harness_sim(
             movement_system,
             grid_sync_system,
             cleanup_system,
+            headless_despawn_system,
         )
             .chain(),
     );
-    schedule.add_systems(victory_system.after(cleanup_system));
+    schedule.add_systems(victory_system.after(headless_despawn_system));
 
     for (player_id, spawn_pos) in &spawn_positions {
         spawn_starting_entities(&mut world, *player_id, *spawn_pos, map_def);
@@ -554,38 +555,44 @@ fn spawn_combat_unit(world: &mut World, grid: GridPos, player_id: u8, kind: Unit
         .id()
 }
 
-fn check_elimination(world: &mut World) -> Option<u8> {
-    let mut has_entities = [false; 2];
-    for (owner,) in world.query::<(&Owner,)>().iter(world) {
-        if (owner.player_id as usize) < 2 {
-            has_entities[owner.player_id as usize] = true;
-        }
-    }
-    if !has_entities[0] && !has_entities[1] {
-        // Mutual elimination — attacker advantage (player 0 attacked first)
-        Some(0)
-    } else if !has_entities[0] && has_entities[1] {
-        Some(1)
-    } else if has_entities[0] && !has_entities[1] {
-        Some(0)
-    } else {
-        None
+/// Headless despawn: in the harness there's no client death_fade_system,
+/// so we despawn Dead entities immediately after cleanup marks them.
+fn headless_despawn_system(mut commands: Commands, dead: Query<Entity, With<Dead>>) {
+    for entity in dead.iter() {
+        commands.entity(entity).despawn();
     }
 }
 
-fn determine_leader(world: &mut World) -> Option<u8> {
+/// Count living (non-Dead) entities per player.
+fn count_living_entities(world: &mut World) -> [u32; 2] {
     let mut counts = [0u32; 2];
-    for (owner,) in world.query::<(&Owner,)>().iter(world) {
+    for (owner,) in world
+        .query_filtered::<(&Owner,), Without<Dead>>()
+        .iter(world)
+    {
         if (owner.player_id as usize) < 2 {
             counts[owner.player_id as usize] += 1;
         }
     }
-    if counts[0] > counts[1] {
-        Some(0)
-    } else if counts[1] > counts[0] {
-        Some(1)
-    } else {
-        None
+    counts
+}
+
+fn check_elimination(world: &mut World) -> Option<u8> {
+    let counts = count_living_entities(world);
+    match (counts[0] > 0, counts[1] > 0) {
+        (false, false) => Some(0), // mutual elimination — attacker advantage
+        (false, true) => Some(1),
+        (true, false) => Some(0),
+        (true, true) => None,
+    }
+}
+
+fn determine_leader(world: &mut World) -> Option<u8> {
+    let counts = count_living_entities(world);
+    match counts[0].cmp(&counts[1]) {
+        std::cmp::Ordering::Greater => Some(0),
+        std::cmp::Ordering::Less => Some(1),
+        std::cmp::Ordering::Equal => None,
     }
 }
 

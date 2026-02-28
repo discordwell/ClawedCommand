@@ -30,6 +30,13 @@
 - [ ] Clarify building synonyms: barracks/post and refinery/market currently alias to same BuildingKind — split into separate variants if they become distinct buildings
 - [ ] Add `UnitKind` variants for other factions (Clawed, Seekers, Murder, Croak, LLAMA) so voice unit names resolve instead of logging Ignored
 
+## From Wet Test Analysis
+
+- [ ] Add staleness detection for stuck gatherers: workers with MoveTarget but no positional progress should have Gathering removed after N ticks (stale_ticks counter on Gathering component)
+- [ ] AI workers are all busy gathering during BuildUp, leaving no idle workers for building — consider allowing AI to pull a worker off gathering for construction
+- [ ] Consolidate scattered tuning constants (HARVEST_TICKS, CARRY_AMOUNT, ATTACK_MOVE_SIGHT_RANGE, etc.) into `cc_core::tuning` module when count grows further
+- [ ] ReturningToBase deposits resources when MoveTarget removed even if worker is not near a drop-off (pre-existing, proximity check needed)
+
 ## From Rendering Performance Review
 
 - [ ] Replace 4,096 fog overlay entities with a single full-screen quad + 64x64 fog texture (write pixel alpha directly, use shader for isometric diamond mask). Eliminates all entity queries and material swaps for fog. Priority increases at 128x128+ map sizes.

@@ -446,17 +446,7 @@ fn run_ai_fsm(
                 }
             }
 
-            // Build LitterBox for more supply when nearing cap
-            if pres.supply + 2 >= pres.supply_cap && pres.food >= 75 {
-                if let Some(builder) = idle_workers.first() {
-                    let build_pos = find_build_position(box_pos, building_count);
-                    cmd_queue.push(GameCommand::Build {
-                        builder: EntityId(builder.to_bits()),
-                        building_kind: BuildingKind::LitterBox,
-                        position: build_pos,
-                    });
-                }
-            }
+            maybe_build_supply(pres, &idle_workers, box_pos, building_count, cmd_queue);
 
             // Train army from CatTree
             if let Some(ct_e) = cat_tree_entity {
@@ -572,17 +562,7 @@ fn run_ai_fsm(
                 }
             }
 
-            // Build LitterBox for more supply if needed
-            if pres.supply + 2 >= pres.supply_cap && pres.food >= 75 {
-                if let Some(builder) = idle_workers.first() {
-                    let build_pos = find_build_position(box_pos, building_count);
-                    cmd_queue.push(GameCommand::Build {
-                        builder: EntityId(builder.to_bits()),
-                        building_kind: BuildingKind::LitterBox,
-                        position: build_pos,
-                    });
-                }
-            }
+            maybe_build_supply(pres, &idle_workers, box_pos, building_count, cmd_queue);
 
             // Continue training workers (cap at 6 to reserve supply for army)
             if worker_count < 6 {
@@ -682,6 +662,26 @@ fn find_nearest_deposit(
     }
 
     best
+}
+
+/// Try to build a LitterBox for more supply when nearing cap.
+fn maybe_build_supply(
+    pres: &crate::resources::PlayerResourceState,
+    idle_workers: &[Entity],
+    box_pos: Option<GridPos>,
+    building_count: u32,
+    cmd_queue: &mut CommandQueue,
+) {
+    if pres.supply + 2 >= pres.supply_cap && pres.food >= 75 {
+        if let Some(builder) = idle_workers.first() {
+            let build_pos = find_build_position(box_pos, building_count);
+            cmd_queue.push(GameCommand::Build {
+                builder: EntityId(builder.to_bits()),
+                building_kind: BuildingKind::LitterBox,
+                position: build_pos,
+            });
+        }
+    }
 }
 
 /// Find a position near the base to place a building.
