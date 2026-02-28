@@ -1,0 +1,9 @@
+[package]
+name = "cc_client"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cc_core = { path = "../cc_core" }
+cc_sim = { path = "../cc_sim" }
+bevy = { workspace = true }

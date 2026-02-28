@@ -1,0 +1,50 @@
+# Qwen2.5-Coder-32B-Instruct LoRA fine-tuning config
+# Hardware: 1x A100 80GB
+# Framework: Unsloth + TRL SFTTrainer
+
+model:
+  name: "Qwen/Qwen2.5-Coder-32B-Instruct"
+  max_seq_len: 4096
+  load_in_4bit: false          # Full precision on A100 80GB
+  dtype: "bfloat16"
+
+lora:
+  rank: 32
+  alpha: 64                    # 2x rank
+  dropout: 0.0                 # Unsloth recommends 0 for speed
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+training:
+  output_dir: "./outputs/qwen_32b_cc_v1"
+  learning_rate: 2.0e-4
+  num_epochs: 3
+  per_device_batch_size: 4
+  gradient_accumulation_steps: 8   # Effective batch size = 32
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  optimizer: "adamw_8bit"
+  lr_scheduler_type: "cosine"
+  bf16: true
+  seed: 42
+  logging_steps: 10
+  eval_steps: 50
+  save_steps: 100
+  max_grad_norm: 1.0
+
+data:
+  train_file: "../data/cc_train_qwen.jsonl"
+  eval_file: "../data/cc_eval_qwen.jsonl"
+  chat_template: "qwen"         # Use Qwen's native chat template
+
+inference:
+  engine: "vllm"
+  quantization: null             # Full precision on A100
+  gpu_memory_utilization: 0.9
+  max_model_len: 4096

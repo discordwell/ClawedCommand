@@ -1,0 +1,53 @@
+# Devstral Small 2 (24B) LoRA fine-tuning config
+# Hardware: 1x A100 80GB (or QLoRA on RTX 4090)
+# Framework: Unsloth + TRL SFTTrainer
+
+model:
+  name: "mistralai/Devstral-Small-2-24B-Instruct-2512"
+  max_seq_len: 4096
+  load_in_4bit: false          # Full precision on A100; set true for QLoRA on 4090
+  dtype: "bfloat16"
+
+lora:
+  rank: 32
+  alpha: 64
+  dropout: 0.0
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+training:
+  output_dir: "./outputs/devstral_24b_cc_v1"
+  learning_rate: 2.0e-4
+  num_epochs: 3
+  per_device_batch_size: 4
+  gradient_accumulation_steps: 8
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  optimizer: "adamw_8bit"
+  lr_scheduler_type: "cosine"
+  bf16: true
+  seed: 42
+  logging_steps: 10
+  eval_steps: 50
+  save_steps: 100
+  max_grad_norm: 1.0
+
+data:
+  train_file: "../data/cc_train_mistral.jsonl"
+  eval_file: "../data/cc_eval_mistral.jsonl"
+  chat_template: "mistral"      # Use Mistral's native chat template
+
+inference:
+  engine: "vllm"
+  vllm_args:
+    tool_call_parser: "mistral"
+    enable_auto_tool_choice: true
+  quantization: null             # Full precision on A100; Q4_K_M for local
+  gpu_memory_utilization: 0.9
+  max_model_len: 4096

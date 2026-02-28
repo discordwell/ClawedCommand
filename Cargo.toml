@@ -1,0 +1,8 @@
+[workspace]
+members = ["crates/cc_core", "crates/cc_sim", "crates/cc_client"]
+resolver = "2"
+
+[workspace.dependencies]
+bevy = { version = "0.15", features = ["default"] }
+serde = { version = "1", features = ["derive"] }
+fixed = "1"
