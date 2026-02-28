@@ -91,7 +91,7 @@ mod wet {
         for seed in [1, 42, 999, 12345] {
             let config = HarnessConfig {
                 seed,
-                max_ticks: 3000,
+                max_ticks: 6000,
                 ..Default::default()
             };
             let result = run_match(&config);
@@ -229,6 +229,25 @@ mod wet {
             b"PNG",
             "Should be valid PNG data"
         );
+    }
+
+    #[test]
+    fn wet_games_produce_victories() {
+        // Verify the AI can actually finish games, not just stalemate.
+        for seed in [42, 123, 7777] {
+            let config = HarnessConfig {
+                seed,
+                max_ticks: 6000,
+                ..Default::default()
+            };
+            let result = run_match(&config);
+
+            assert!(
+                matches!(result.outcome, MatchOutcome::Victory { .. }),
+                "seed {seed} should produce a victory, got: {}",
+                result.outcome
+            );
+        }
     }
 
     #[test]

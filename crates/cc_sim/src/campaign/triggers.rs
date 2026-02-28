@@ -193,15 +193,9 @@ fn evaluate_condition(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cc_core::hero::HeroId;
-    use cc_core::mission::*;
 
     #[test]
     fn at_tick_condition() {
-        let campaign = CampaignState::default();
-        let heroes = bevy::ecs::system::SystemState::<
-            Query<(&HeroIdentity, &Position, &Owner, &Health, Has<Dead>)>,
-        >::new(&mut bevy::ecs::world::World::new());
         // We can't easily run Query outside of a Bevy world, so test the logic directly
         let cond = TriggerCondition::AtTick(10);
         // AtTick matches exact tick
@@ -211,7 +205,7 @@ mod tests {
     #[test]
     fn flag_condition() {
         let mut campaign = CampaignState::default();
-        let cond = TriggerCondition::FlagSet("test_flag".into());
+        let _cond = TriggerCondition::FlagSet("test_flag".into());
 
         // Flag not set → false
         assert!(!campaign.flags.contains(&"test_flag".to_string()));

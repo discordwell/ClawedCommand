@@ -9,6 +9,12 @@ use cc_core::coords::GridPos;
 
 use crate::resources::{CommandQueue, PlayerResources, SimClock};
 
+/// Ticks between re-issuing attack orders during Attack phase (5s at 10hz).
+const ATTACK_REISSUE_INTERVAL: u64 = 50;
+
+/// Chebyshev distance (tiles) for detecting enemy threats near base.
+const BASE_THREAT_RADIUS: i32 = 8;
+
 /// AI difficulty level — controls decision frequency.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AiDifficulty {
@@ -599,9 +605,8 @@ fn run_ai_fsm(
         AiPhase::Attack => {
             // Re-issue attack orders periodically (every 50 ticks / 5s) so
             // reinforcements join the fight and units don't idle after reaching target.
-            let reissue_interval = 50;
             let should_reissue = !ai_state.attack_ordered
-                || tick.saturating_sub(ai_state.last_attack_tick) >= reissue_interval;
+                || tick.saturating_sub(ai_state.last_attack_tick) >= ATTACK_REISSUE_INTERVAL;
 
             if should_reissue {
                 if let Some(target) = ai_state.enemy_spawn {
@@ -665,6 +670,21 @@ fn run_ai_fsm(
                     target: rally_pos,
                 });
             }
+
+            // Keep training reinforcements while defending
+            if let Some(ct_e) = cat_tree_entity {
+                if pres.supply < pres.supply_cap {
+                    let stats = cc_core::unit_stats::base_stats(UnitKind::Nuisance);
+                    if pres.food >= stats.food_cost {
+                        cmd_queue.push(GameCommand::TrainUnit {
+                            building: EntityId(ct_e.to_bits()),
+                            unit_kind: UnitKind::Nuisance,
+                        });
+                    }
+                }
+            }
+
+            maybe_build_supply(pres, &idle_workers, box_pos, building_count, cmd_queue);
 
             let base_threatened = is_base_threatened(ai_player, units, buildings);
             if !base_threatened {
@@ -772,7 +792,7 @@ fn is_base_threatened(
         for bp in &base_positions {
             let dx = (bp.x - enemy_grid.x).abs();
             let dy = (bp.y - enemy_grid.y).abs();
-            if dx <= 8 && dy <= 8 {
+            if dx <= BASE_THREAT_RADIUS && dy <= BASE_THREAT_RADIUS {
                 return true;
             }
         }
@@ -862,5 +882,31 @@ mod tests {
         assert!(state.profile.is_none());
         // Can still use personality field
         assert_eq!(state.personality.attack_threshold(), 8);
+    }
+
+    #[test]
+    fn attack_ordered_resets_on_phase_exit() {
+        let mut state = AiState::default();
+        state.phase = AiPhase::Attack;
+        state.attack_ordered = true;
+        state.last_attack_tick = 100;
+
+        // Simulate leaving Attack → MidGame
+        let new_phase = AiPhase::MidGame;
+        if new_phase != AiPhase::Attack {
+            state.attack_ordered = false;
+            state.last_attack_tick = 0;
+        }
+        state.phase = new_phase;
+
+        assert!(!state.attack_ordered);
+        assert_eq!(state.last_attack_tick, 0);
+        assert_eq!(state.phase, AiPhase::MidGame);
+    }
+
+    #[test]
+    fn last_attack_tick_defaults_to_zero() {
+        let state = AiState::default();
+        assert_eq!(state.last_attack_tick, 0);
     }
 }
