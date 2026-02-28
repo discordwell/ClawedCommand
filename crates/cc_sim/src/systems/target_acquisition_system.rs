@@ -2,7 +2,8 @@ use bevy::prelude::*;
 
 use cc_core::commands::EntityId;
 use cc_core::components::{
-    AttackMoveTarget, AttackStats, AttackTarget, Dead, HoldPosition, Owner, Position, UnitType,
+    AttackMoveTarget, AttackStats, AttackTarget, Building, Dead, HoldPosition, Owner, Position,
+    UnitType,
 };
 
 /// Auto-acquire enemy targets and clean up stale ones.
@@ -20,7 +21,10 @@ pub fn target_acquisition_system(
         ),
         (With<UnitType>, Without<Dead>),
     >,
-    potential_targets: Query<(Entity, &Position, &Owner), (With<UnitType>, Without<Dead>)>,
+    potential_targets: Query<
+        (Entity, &Position, &Owner),
+        (Or<(With<UnitType>, With<Building>)>, Without<Dead>),
+    >,
 ) {
     for (entity, pos, owner, stats, current_target, _hold, _atk_move) in units.iter() {
         // Check if current target is still alive

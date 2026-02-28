@@ -261,11 +261,12 @@ pub fn process_commands(
                 building_kind,
                 position,
             } => {
-                // Validate terrain is passable at build site
-                if let Some(terrain) = map_res.map.terrain_at(position) {
-                    if !cc_core::terrain::is_passable_for_faction(terrain, cc_core::terrain::FactionId::CatGPT) {
-                        continue; // Can't build on impassable terrain
-                    }
+                // Validate terrain is passable at build site (reject out-of-bounds too)
+                let Some(terrain) = map_res.map.terrain_at(position) else {
+                    continue; // Out of bounds
+                };
+                if !cc_core::terrain::is_passable_for_faction(terrain, cc_core::terrain::FactionId::CatGPT) {
+                    continue; // Can't build on impassable terrain
                 }
 
                 let builder_entity = Entity::from_bits(builder.0);

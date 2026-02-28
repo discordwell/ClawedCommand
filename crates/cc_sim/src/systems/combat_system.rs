@@ -6,8 +6,9 @@ use crate::resources::MapResource;
 use crate::systems::damage::ApplyDamageCommand;
 use cc_core::commands::EntityId;
 use cc_core::components::{
-    AttackStats, AttackTarget, AttackType, AttackTypeMarker, ChasingTarget, Dead, HoldPosition,
-    MoveTarget, Owner, Path, Position, Projectile, ProjectileTarget, UnitType, Velocity,
+    AttackStats, AttackTarget, AttackType, AttackTypeMarker, Building, ChasingTarget, Dead,
+    HoldPosition, MoveTarget, Owner, Path, Position, Projectile, ProjectileTarget, UnitType,
+    Velocity,
 };
 use cc_core::coords::WorldPos;
 use cc_core::math::{Fixed, FIXED_ONE};
@@ -32,7 +33,7 @@ pub fn combat_system(
         ),
         (With<UnitType>, Without<Dead>),
     >,
-    targets: Query<(Entity, &Position), (With<UnitType>, Without<Dead>)>,
+    targets: Query<(Entity, &Position), (Or<(With<UnitType>, With<Building>)>, Without<Dead>)>,
 ) {
     for (entity, pos, mut stats, atk_type, attack_target, owner, hold) in attackers.iter_mut() {
         // Tick cooldown
