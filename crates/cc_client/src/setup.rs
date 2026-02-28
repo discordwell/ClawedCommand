@@ -11,6 +11,7 @@ use cc_sim::resources::{MapResource, PlayerResources, SpawnPositions};
 
 use crate::renderer::resource_nodes::ResourceNodeSprites;
 use crate::renderer::unit_gen::{UnitSprites, kind_index};
+use crate::renderer::zoom_lod::StrategicIcon;
 
 /// Marker to distinguish unit entities from tile entities in queries.
 #[derive(Component)]
@@ -80,7 +81,14 @@ pub fn setup_game(
     let center_screen = world_to_screen(center_world);
     let cam_pos = Vec3::new(center_screen.x, -center_screen.y, 0.0);
 
-    commands.spawn((Camera2d, Transform::from_translation(cam_pos)));
+    commands.spawn((
+        Camera2d,
+        Transform::from_translation(cam_pos),
+        Projection::Orthographic(OrthographicProjection {
+            scale: 1.2,
+            ..OrthographicProjection::default_2d()
+        }),
+    ));
 
     // Shared team materials (still needed for selection rings)
     let team_materials = TeamMaterials {
@@ -201,7 +209,7 @@ pub fn setup_game(
             if let Some(ref sprites) = unit_sprites {
                 // Sprite-based unit
                 let image = sprites.sprites[kind_index(kind)].clone();
-                commands.spawn((
+                let unit_entity = commands.spawn((
                     Position { world },
                     Velocity::zero(),
                     GridCell { pos: grid },
@@ -224,7 +232,19 @@ pub fn setup_game(
                     },
                     Transform::from_xyz(screen.x, -screen.y + elevation_offset, depth_z(world))
                         .with_scale(Vec3::splat(scale)),
-                ));
+                )).id();
+
+                // Strategic zoom icon: small colored circle, hidden by default
+                let icon_mesh = meshes.add(Circle::new(4.0));
+                let icon_mat = materials.add(ColorMaterial::from_color(team_color(sp.player)));
+                let icon = commands.spawn((
+                    StrategicIcon,
+                    Mesh2d(icon_mesh),
+                    MeshMaterial2d(icon_mat),
+                    Transform::from_xyz(0.0, 0.0, 0.1),
+                    Visibility::Hidden,
+                )).id();
+                commands.entity(unit_entity).add_children(&[icon]);
             } else {
                 // Fallback: colored circle mesh
                 let body_mesh = meshes.add(Circle::new(12.0));
@@ -233,7 +253,7 @@ pub fn setup_game(
                 } else {
                     team_materials.enemy.clone()
                 };
-                commands.spawn((
+                let unit_entity = commands.spawn((
                     Position { world },
                     Velocity::zero(),
                     GridCell { pos: grid },
@@ -253,7 +273,19 @@ pub fn setup_game(
                     MeshMaterial2d(body_mat),
                     Transform::from_xyz(screen.x, -screen.y + elevation_offset, depth_z(world))
                         .with_scale(Vec3::splat(scale)),
-                ));
+                )).id();
+
+                // Strategic zoom icon
+                let icon_mesh = meshes.add(Circle::new(4.0));
+                let icon_mat = materials.add(ColorMaterial::from_color(team_color(sp.player)));
+                let icon = commands.spawn((
+                    StrategicIcon,
+                    Mesh2d(icon_mesh),
+                    MeshMaterial2d(icon_mat),
+                    Transform::from_xyz(0.0, 0.0, 0.1),
+                    Visibility::Hidden,
+                )).id();
+                commands.entity(unit_entity).add_children(&[icon]);
             }
 
             if (sp.player as usize) < total_spawned_per_player.len() {
@@ -272,18 +304,19 @@ pub fn setup_game(
     commands.insert_resource(team_materials);
 }
 
-/// Scale factor per unit kind.
+/// Scale factor per unit kind. Halved from original values to compensate for
+/// 2× sprite resolution (sprites are now double-sized for crisp close-up zoom).
 pub fn unit_scale(kind: UnitKind) -> f32 {
     match kind {
-        UnitKind::Pawdler => 0.7,
-        UnitKind::Nuisance => 1.0,
-        UnitKind::Mouser => 0.9,
-        UnitKind::FerretSapper => 0.9,
-        UnitKind::Hisser => 1.0,
-        UnitKind::FlyingFox => 0.8,
-        UnitKind::Yowler => 1.1,
-        UnitKind::Catnapper => 1.3,
-        UnitKind::Chonk => 1.4,
-        UnitKind::MechCommander => 1.6,
+        UnitKind::Pawdler => 0.35,
+        UnitKind::Nuisance => 0.5,
+        UnitKind::Mouser => 0.45,
+        UnitKind::FerretSapper => 0.45,
+        UnitKind::Hisser => 0.5,
+        UnitKind::FlyingFox => 0.4,
+        UnitKind::Yowler => 0.55,
+        UnitKind::Catnapper => 0.65,
+        UnitKind::Chonk => 0.7,
+        UnitKind::MechCommander => 0.8,
     }
 }

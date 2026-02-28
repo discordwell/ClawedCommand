@@ -1,11 +1,11 @@
 use bevy::prelude::*;
 
 use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::{Building, Owner, Position, ResourceDeposit, Selected, UnitType};
+use cc_core::components::{Building, Owner, Position, Producer, ResourceDeposit, Selected, UnitType};
 use cc_core::coords::{ScreenPos, screen_to_world};
 use cc_sim::resources::{CommandQueue, MapResource};
 
-use super::{DragSelectState, InputMode, PlacementPreview};
+use super::{DoubleClickState, DragSelectState, InputMode, PlacementPreview};
 
 /// Local player ID (TODO: make configurable for multiplayer)
 const LOCAL_PLAYER: u8 = 0;
@@ -13,19 +13,25 @@ const LOCAL_PLAYER: u8 = 0;
 /// Minimum drag distance (pixels) before box select activates.
 const DRAG_THRESHOLD: f32 = 5.0;
 
+/// Maximum time between clicks for double-click (seconds).
+const DOUBLE_CLICK_WINDOW: f64 = 0.3;
+
 pub fn handle_mouse_input(
     mouse_button: Res<ButtonInput<MouseButton>>,
     keyboard: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
     window: Single<&Window>,
     camera_q: Single<(&Camera, &GlobalTransform), With<Camera2d>>,
-    units: Query<(Entity, &Position, &Owner, Option<&Selected>), With<UnitType>>,
+    units: Query<(Entity, &Position, &Owner, Option<&Selected>, &UnitType)>,
     buildings_q: Query<(Entity, &Position, &Owner), With<Building>>,
+    selected_buildings_q: Query<(Entity, &Owner, Option<&Producer>), (With<Building>, With<Selected>)>,
     deposits: Query<(Entity, &Position), With<ResourceDeposit>>,
     map_res: Res<MapResource>,
     mut cmd_queue: ResMut<CommandQueue>,
     mut drag_state: ResMut<DragSelectState>,
     mut input_mode: ResMut<InputMode>,
     mut placement_preview: ResMut<PlacementPreview>,
+    mut dbl_click: ResMut<DoubleClickState>,
 ) {
     let Some(cursor_pos) = window.cursor_position() else {
         return;
@@ -58,8 +64,8 @@ pub fn handle_mouse_input(
             // Find a selected unit to be the builder
             let builder = units
                 .iter()
-                .find(|(_, _, owner, sel)| sel.is_some() && owner.player_id == LOCAL_PLAYER);
-            if let Some((builder_entity, _, _, _)) = builder {
+                .find(|(_, _, owner, sel, _)| sel.is_some() && owner.player_id == LOCAL_PLAYER);
+            if let Some((builder_entity, _, _, _, _)) = builder {
                 cmd_queue.push(GameCommand::Build {
                     builder: EntityId(builder_entity.to_bits()),
                     building_kind: kind,
@@ -92,8 +98,8 @@ pub fn handle_mouse_input(
         if *input_mode == InputMode::AttackMove {
             let selected_ids: Vec<EntityId> = units
                 .iter()
-                .filter(|(_, _, _, sel)| sel.is_some())
-                .map(|(entity, _, _, _)| EntityId(entity.to_bits()))
+                .filter(|(_, _, _, sel, _)| sel.is_some())
+                .map(|(entity, _, _, _, _)| EntityId(entity.to_bits()))
                 .collect();
             if !selected_ids.is_empty() {
                 let target = iso_world.to_grid();
@@ -135,7 +141,7 @@ pub fn handle_mouse_input(
                 }
 
                 let mut box_selected = Vec::new();
-                for (entity, pos, owner, _) in units.iter() {
+                for (entity, pos, owner, _, _) in units.iter() {
                     if owner.player_id != LOCAL_PLAYER {
                         continue;
                     }
@@ -155,14 +161,16 @@ pub fn handle_mouse_input(
         } else {
             // Click select: pick nearest unit or building
             let mut clicked_entity = None;
+            let mut clicked_unit_kind = None;
             let mut best_dist = f32::MAX;
 
             // Check units (0.8 radius)
-            for (entity, pos, _owner, _) in units.iter() {
+            for (entity, pos, _owner, _, unit_type) in units.iter() {
                 let dist = world_dist(pos, &iso_world);
                 if dist < 0.8 && dist < best_dist {
                     best_dist = dist;
                     clicked_entity = Some(entity);
+                    clicked_unit_kind = Some(unit_type.kind);
                 }
             }
 
@@ -172,18 +180,64 @@ pub fn handle_mouse_input(
                 if dist < 1.2 && dist < best_dist {
                     best_dist = dist;
                     clicked_entity = Some(entity);
+                    clicked_unit_kind = None; // buildings don't have UnitKind
                 }
             }
 
             if let Some(entity) = clicked_entity {
+                let now = time.elapsed_secs_f64();
+
+                // Double-click detection: if same unit kind within window, select all of type
+                if let Some(kind) = clicked_unit_kind {
+                    if dbl_click.last_click_kind == Some(kind)
+                        && (now - dbl_click.last_click_time) < DOUBLE_CLICK_WINDOW
+                    {
+                        // Double-click: select all visible own units of this type
+                        cmd_queue.push(GameCommand::Deselect);
+                        let mut all_of_type = Vec::new();
+                        for (e, pos, owner, _, ut) in units.iter() {
+                            if owner.player_id != LOCAL_PLAYER || ut.kind != kind {
+                                continue;
+                            }
+                            // Only units visible on screen
+                            if unit_to_viewport(pos, camera, camera_transform).is_some() {
+                                all_of_type.push(EntityId(e.to_bits()));
+                            }
+                        }
+                        if !all_of_type.is_empty() {
+                            cmd_queue.push(GameCommand::Select {
+                                unit_ids: all_of_type,
+                            });
+                        }
+                        dbl_click.last_click_kind = None;
+                        dbl_click.last_click_time = 0.0;
+                    } else {
+                        // Single click
+                        dbl_click.last_click_time = now;
+                        dbl_click.last_click_kind = Some(kind);
+
+                        if !shift {
+                            cmd_queue.push(GameCommand::Deselect);
+                        }
+                        cmd_queue.push(GameCommand::Select {
+                            unit_ids: vec![EntityId(entity.to_bits())],
+                        });
+                    }
+                } else {
+                    // Clicked a building — no double-click behavior
+                    dbl_click.last_click_kind = None;
+                    if !shift {
+                        cmd_queue.push(GameCommand::Deselect);
+                    }
+                    cmd_queue.push(GameCommand::Select {
+                        unit_ids: vec![EntityId(entity.to_bits())],
+                    });
+                }
+            } else {
+                dbl_click.last_click_kind = None;
                 if !shift {
                     cmd_queue.push(GameCommand::Deselect);
                 }
-                cmd_queue.push(GameCommand::Select {
-                    unit_ids: vec![EntityId(entity.to_bits())],
-                });
-            } else if !shift {
-                cmd_queue.push(GameCommand::Deselect);
             }
         }
 
@@ -203,11 +257,22 @@ pub fn handle_mouse_input(
 
         let selected_ids: Vec<EntityId> = units
             .iter()
-            .filter(|(_, _, _, sel)| sel.is_some())
-            .map(|(entity, _, _, _)| EntityId(entity.to_bits()))
+            .filter(|(_, _, _, sel, _)| sel.is_some())
+            .map(|(entity, _, _, _, _)| EntityId(entity.to_bits()))
             .collect();
 
+        // If no units selected, check for building rally point
         if selected_ids.is_empty() {
+            // Set rally point for selected producer buildings
+            for (entity, owner, producer) in selected_buildings_q.iter() {
+                if owner.player_id != LOCAL_PLAYER || producer.is_none() {
+                    continue;
+                }
+                cmd_queue.push(GameCommand::SetRallyPoint {
+                    building: EntityId(entity.to_bits()),
+                    target: cursor_grid,
+                });
+            }
             return;
         }
 
@@ -215,7 +280,7 @@ pub fn handle_mouse_input(
         let mut clicked_enemy = None;
         let mut best_dist = f32::MAX;
 
-        for (entity, pos, owner, _) in units.iter() {
+        for (entity, pos, owner, _, _) in units.iter() {
             if owner.player_id == LOCAL_PLAYER {
                 continue;
             }

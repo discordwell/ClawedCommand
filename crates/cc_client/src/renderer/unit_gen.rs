@@ -26,8 +26,8 @@ pub fn kind_index(kind: UnitKind) -> usize {
     }
 }
 
-/// Sprite dimensions per unit kind.
-fn sprite_size(kind: UnitKind) -> (usize, usize) {
+/// Base sprite dimensions per unit kind (drawing resolution).
+fn draw_size(kind: UnitKind) -> (usize, usize) {
     match kind {
         UnitKind::Pawdler => (16, 16),
         UnitKind::Nuisance => (14, 14),
@@ -40,6 +40,13 @@ fn sprite_size(kind: UnitKind) -> (usize, usize) {
         UnitKind::FerretSapper => (16, 18),
         UnitKind::MechCommander => (28, 28),
     }
+}
+
+/// Final sprite dimensions (2× draw size for crisp close-up zoom).
+/// Display size is controlled by `unit_scale()` in setup.rs via Transform.
+fn sprite_size(kind: UnitKind) -> (usize, usize) {
+    let (w, h) = draw_size(kind);
+    (w * 2, h * 2)
 }
 
 /// Generate unit sprite images at startup.
@@ -79,30 +86,44 @@ pub fn generate_unit_sprites(mut commands: Commands, mut images: ResMut<Assets<I
     });
 }
 
-/// Generate a unit sprite image. Drawn in neutral gray with dark outline;
-/// team color is applied as a tint via Sprite::color.
+/// Generate a unit sprite image. Drawn at 1× resolution in neutral gray with dark outline,
+/// then upscaled 2× with nearest-neighbor for crisp close-up zoom.
+/// Team color is applied as a tint via Sprite::color.
 fn generate_unit_image(kind: UnitKind) -> Image {
-    let (w, h) = sprite_size(kind);
-    let mut data = vec![0u8; w * h * 4];
+    let (dw, dh) = draw_size(kind);
+    let (fw, fh) = sprite_size(kind);
+    let mut draw_data = vec![0u8; dw * dh * 4];
 
-    // Draw the silhouette
+    // Draw the silhouette at 1× resolution
     match kind {
-        UnitKind::Pawdler => draw_pawdler(&mut data, w, h),
-        UnitKind::Nuisance => draw_nuisance(&mut data, w, h),
-        UnitKind::Chonk => draw_chonk(&mut data, w, h),
-        UnitKind::FlyingFox => draw_flying_fox(&mut data, w, h),
-        UnitKind::Hisser => draw_hisser(&mut data, w, h),
-        UnitKind::Yowler => draw_yowler(&mut data, w, h),
-        UnitKind::Mouser => draw_mouser(&mut data, w, h),
-        UnitKind::Catnapper => draw_catnapper(&mut data, w, h),
-        UnitKind::FerretSapper => draw_ferret_sapper(&mut data, w, h),
-        UnitKind::MechCommander => draw_mech_commander(&mut data, w, h),
+        UnitKind::Pawdler => draw_pawdler(&mut draw_data, dw, dh),
+        UnitKind::Nuisance => draw_nuisance(&mut draw_data, dw, dh),
+        UnitKind::Chonk => draw_chonk(&mut draw_data, dw, dh),
+        UnitKind::FlyingFox => draw_flying_fox(&mut draw_data, dw, dh),
+        UnitKind::Hisser => draw_hisser(&mut draw_data, dw, dh),
+        UnitKind::Yowler => draw_yowler(&mut draw_data, dw, dh),
+        UnitKind::Mouser => draw_mouser(&mut draw_data, dw, dh),
+        UnitKind::Catnapper => draw_catnapper(&mut draw_data, dw, dh),
+        UnitKind::FerretSapper => draw_ferret_sapper(&mut draw_data, dw, dh),
+        UnitKind::MechCommander => draw_mech_commander(&mut draw_data, dw, dh),
+    }
+
+    // Upscale 2× with nearest-neighbor
+    let mut data = vec![0u8; fw * fh * 4];
+    for fy in 0..fh {
+        for fx in 0..fw {
+            let sx = fx / 2;
+            let sy = fy / 2;
+            let src = (sy * dw + sx) * 4;
+            let dst = (fy * fw + fx) * 4;
+            data[dst..dst + 4].copy_from_slice(&draw_data[src..src + 4]);
+        }
     }
 
     Image::new(
         Extent3d {
-            width: w as u32,
-            height: h as u32,
+            width: fw as u32,
+            height: fh as u32,
             depth_or_array_layers: 1,
         },
         TextureDimension::D2,

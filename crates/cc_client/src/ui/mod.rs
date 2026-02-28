@@ -23,11 +23,9 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(EguiPlugin::default())
             .init_resource::<UiState>()
-            .add_systems(Startup, hud::setup_hud)
             .add_systems(
                 Update,
                 (
-                    hud::update_hud,
                     resource_bar::resource_bar_system,
                     unit_info::unit_info_system,
                     command_card::command_card_system,

@@ -3,7 +3,9 @@ use bevy_egui::{EguiContexts, egui};
 
 use cc_core::building_stats::building_stats;
 use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::{Building, BuildingKind, Owner, Producer, Selected, UnitKind, UnitType};
+use cc_core::components::{
+    Building, BuildingKind, Owner, Producer, ProductionQueue, Selected, UnitKind, UnitType,
+};
 use cc_sim::resources::{CommandQueue, PlayerResources};
 
 use crate::input::InputMode;
@@ -17,7 +19,16 @@ pub fn command_card_system(
     mut input_mode: ResMut<InputMode>,
     player_resources: Res<PlayerResources>,
     selected_units: Query<(Entity, &UnitType, &Owner), With<Selected>>,
-    selected_buildings: Query<(Entity, &Building, &Owner, Option<&Producer>), With<Selected>>,
+    selected_buildings: Query<
+        (
+            Entity,
+            &Building,
+            &Owner,
+            Option<&Producer>,
+            Option<&ProductionQueue>,
+        ),
+        With<Selected>,
+    >,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else { return };
 
@@ -97,8 +108,10 @@ pub fn command_card_system(
                 }
 
                 if has_buildings {
-                    // Building commands — show trainable units
-                    for (entity, building, owner, producer) in selected_buildings.iter() {
+                    // Building commands — show trainable units + cancel
+                    for (entity, building, owner, producer, prod_queue) in
+                        selected_buildings.iter()
+                    {
                         if owner.player_id != LOCAL_PLAYER || producer.is_none() {
                             continue;
                         }
@@ -111,6 +124,26 @@ pub fn command_card_system(
                                     building: EntityId(entity.to_bits()),
                                     unit_kind: *kind,
                                 });
+                            }
+                        }
+
+                        // Queue status + cancel button
+                        if let Some(queue) = prod_queue {
+                            if !queue.queue.is_empty() {
+                                ui.separator();
+                                ui.colored_label(
+                                    egui::Color32::LIGHT_GRAY,
+                                    format!("Q: {}", queue.queue.len()),
+                                );
+                                if ui
+                                    .button("Cancel")
+                                    .on_hover_text("Cancel front of queue (refunds resources)")
+                                    .clicked()
+                                {
+                                    cmd_queue.push(GameCommand::CancelQueue {
+                                        building: EntityId(entity.to_bits()),
+                                    });
+                                }
                             }
                         }
                     }

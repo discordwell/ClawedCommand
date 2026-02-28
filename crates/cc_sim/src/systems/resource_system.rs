@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use std::collections::VecDeque;
 
 use cc_core::components::{
-    Building, BuildingKind, GatherState, Gathering, MoveTarget, Owner, Path, Position,
+    Building, BuildingKind, Dead, GatherState, Gathering, MoveTarget, Owner, Path, Position,
     ResourceDeposit,
 };
 use cc_core::coords::WorldPos;
@@ -21,14 +21,17 @@ const CARRY_AMOUNT: u32 = 10;
 pub fn gathering_system(
     mut commands: Commands,
     map_res: Res<MapResource>,
-    mut gatherers: Query<(
-        Entity,
-        &Position,
-        &Owner,
-        &mut Gathering,
-        Option<&MoveTarget>,
-    )>,
-    deposits: Query<(Entity, &Position, &ResourceDeposit)>,
+    mut gatherers: Query<
+        (
+            Entity,
+            &Position,
+            &Owner,
+            &mut Gathering,
+            Option<&MoveTarget>,
+        ),
+        Without<Dead>,
+    >,
+    mut deposits: Query<(Entity, &Position, &mut ResourceDeposit)>,
     drop_offs: Query<(Entity, &Position, &Owner, &Building)>,
     mut player_resources: ResMut<PlayerResources>,
 ) {
@@ -40,6 +43,11 @@ pub fn gathering_system(
                     // Check proximity to deposit
                     let deposit_entity = Entity::from_bits(gathering.deposit_entity.0);
                     if let Ok((_, deposit_pos, deposit)) = deposits.get(deposit_entity) {
+                        if deposit.remaining == 0 {
+                            // Deposit depleted — stop gathering
+                            commands.entity(entity).remove::<Gathering>();
+                            continue;
+                        }
                         let dist = pos.world.distance_squared(deposit_pos.world);
                         let threshold = Fixed::from_num(2); // within ~1.4 tiles
                         if dist <= threshold {
@@ -62,8 +70,20 @@ pub fn gathering_system(
                 if *ticks_remaining > 0 {
                     *ticks_remaining -= 1;
                 } else {
-                    // Finished harvesting — pick up resources
-                    gathering.carried_amount = CARRY_AMOUNT;
+                    // Finished harvesting — pick up resources, deplete deposit
+                    let deposit_entity = Entity::from_bits(gathering.deposit_entity.0);
+                    let actual_carry = if let Ok((_, _, mut deposit)) =
+                        deposits.get_mut(deposit_entity)
+                    {
+                        let actual = CARRY_AMOUNT.min(deposit.remaining);
+                        deposit.remaining -= actual;
+                        actual
+                    } else {
+                        // Deposit gone — stop gathering
+                        commands.entity(entity).remove::<Gathering>();
+                        continue;
+                    };
+                    gathering.carried_amount = actual_carry;
 
                     // Find nearest drop-off (TheBox or FishMarket owned by same player)
                     let nearest_dropoff = find_nearest_dropoff(

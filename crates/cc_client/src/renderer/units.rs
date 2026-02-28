@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::setup::{TeamMaterials, UnitMesh, team_color, unit_scale};
 use crate::renderer::unit_gen::{UnitSprites, kind_index};
+use crate::renderer::zoom_lod::{StrategicIcon, ZoomTier};
 use cc_core::components::{Owner, Position, UnitType};
 use cc_core::coords::{depth_z, world_to_screen};
 use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
@@ -27,8 +28,10 @@ pub fn sync_unit_sprites(
 pub fn spawn_unit_visuals(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
     team_mats: Option<Res<TeamMaterials>>,
     unit_sprites: Option<Res<UnitSprites>>,
+    tier: Res<ZoomTier>,
     map_res: Res<MapResource>,
     new_units: Query<(Entity, &UnitType, &Owner, &Position), Without<UnitMesh>>,
 ) {
@@ -67,5 +70,22 @@ pub fn spawn_unit_visuals(
                     .with_scale(Vec3::splat(scale)),
             ));
         }
+
+        // Spawn strategic zoom icon as child (hidden unless in Strategic tier)
+        let icon_mesh = meshes.add(Circle::new(4.0));
+        let icon_mat = materials.add(ColorMaterial::from_color(team_color(owner.player_id)));
+        let icon_vis = if *tier == ZoomTier::Strategic {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+        let icon = commands.spawn((
+            StrategicIcon,
+            Mesh2d(icon_mesh),
+            MeshMaterial2d(icon_mat),
+            Transform::from_xyz(0.0, 0.0, 0.1),
+            icon_vis,
+        )).id();
+        commands.entity(entity).add_children(&[icon]);
     }
 }

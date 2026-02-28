@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::renderer::zoom_lod::ZoomTier;
 use crate::setup::{BuildingMesh, TeamMaterials, UnitMesh, team_color};
 use cc_core::components::{Dead, Owner, Selected};
 
@@ -12,6 +13,7 @@ pub struct SelectionRing;
 pub fn render_selection_indicators(
     mut commands: Commands,
     team_mats: Option<Res<TeamMaterials>>,
+    tier: Res<ZoomTier>,
     mut meshes: ResMut<Assets<Mesh>>,
     // Units with Sprite (new procedural sprites)
     mut sprite_units: Query<
@@ -28,12 +30,15 @@ pub fn render_selection_indicators(
         return;
     };
 
+    // In Strategic mode, hide unit sprites via alpha=0 so children (StrategicIcon) stay visible
+    let sprite_alpha = if *tier == ZoomTier::Strategic { 0.0 } else { 1.0 };
+
     // Update sprite tint based on selection state
     for (_entity, mut sprite, owner, selected, _children) in sprite_units.iter_mut() {
         if selected.is_some() {
-            sprite.color = Color::srgb(0.5, 0.9, 1.0); // Bright cyan tint
+            sprite.color = Color::srgba(0.5, 0.9, 1.0, sprite_alpha);
         } else {
-            sprite.color = team_color(owner.player_id);
+            sprite.color = team_color(owner.player_id).with_alpha(sprite_alpha);
         }
     }
 

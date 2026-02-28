@@ -8,6 +8,7 @@ pub mod health_bars;
 pub mod minimap;
 pub mod projectiles;
 pub mod props;
+pub mod rally_flag;
 pub mod resource_nodes;
 pub mod screenshot;
 pub mod selection;
@@ -18,6 +19,7 @@ pub mod tilemap;
 pub mod unit_gen;
 pub mod units;
 pub mod water;
+pub mod zoom_lod;
 
 use bevy::prelude::*;
 
@@ -28,6 +30,7 @@ impl Plugin for RenderPlugin {
         app.init_resource::<terrain_atlas::TerrainAtlas>()
             .init_resource::<screenshot::ScreenshotConfig>()
             .init_resource::<fog::FogOfWar>()
+            .init_resource::<zoom_lod::ZoomTier>()
             // Phase 1: Generate procedural sprite assets (no map dependency)
             .add_systems(
                 Startup,
@@ -60,20 +63,30 @@ impl Plugin for RenderPlugin {
                 Update,
                 (
                     camera::camera_system,
+                    zoom_lod::detect_zoom_tier.after(camera::camera_system),
+                    zoom_lod::toggle_lod_visuals
+                        .after(zoom_lod::detect_zoom_tier)
+                        .run_if(resource_changed::<zoom_lod::ZoomTier>),
                     units::sync_unit_sprites,
                     units::spawn_unit_visuals,
                     buildings::spawn_building_visuals,
                     buildings::sync_building_sprites,
                     buildings::render_placement_preview,
-                    selection::render_selection_indicators,
-                    health_bars::spawn_health_bars,
-                    health_bars::update_health_bars,
+                    selection::render_selection_indicators
+                        .after(zoom_lod::detect_zoom_tier),
+                    health_bars::spawn_health_bars
+                        .run_if(zoom_lod::is_tactical),
+                    health_bars::update_health_bars
+                        .run_if(zoom_lod::is_tactical),
                     health_bars::hide_dead_health_bars,
                     death::isolate_dead_material,
                     death::death_fade_system.after(death::isolate_dead_material),
-                    terrain_borders::draw_terrain_borders,
-                    water::animate_water,
-                    selection::pulse_selection_rings,
+                    terrain_borders::draw_terrain_borders
+                        .run_if(zoom_lod::is_tactical),
+                    water::animate_water
+                        .run_if(zoom_lod::is_tactical),
+                    selection::pulse_selection_rings
+                        .run_if(zoom_lod::is_tactical),
                     minimap::update_minimap,
                 ),
             )
@@ -81,6 +94,7 @@ impl Plugin for RenderPlugin {
                 Update,
                 (
                     box_select::render_box_select,
+                    rally_flag::rally_flag_system,
                     projectiles::spawn_projectile_sprites,
                     projectiles::sync_projectile_sprites,
                     fog::update_fog_visibility,
