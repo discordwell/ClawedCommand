@@ -28,19 +28,39 @@ pub fn setup_minimap(
     let w = map_res.map.width;
     let h = map_res.map.height;
 
-    // Create RGBA image
+    // Create RGBA image with correct size
+    let size = Extent3d {
+        width: w,
+        height: h,
+        depth_or_array_layers: 1,
+    };
     let mut image = Image::new_fill(
-        Extent3d {
-            width: w,
-            height: h,
-            depth_or_array_layers: 1,
-        },
+        size,
         TextureDimension::D2,
         &[0, 0, 0, 255],
         TextureFormat::Rgba8UnormSrgb,
         default(),
     );
-    image.texture_descriptor.usage = TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST;
+    image.texture_descriptor.usage =
+        TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST | TextureUsages::RENDER_ATTACHMENT;
+
+    // Paint initial terrain so it's not black on first frame
+    if let Some(data) = image.data.as_mut() {
+        let map = &map_res.map;
+        for y in 0..(h as usize) {
+            for x in 0..(w as usize) {
+                let grid = cc_core::coords::GridPos::new(x as i32, y as i32);
+                if let Some(tile) = map.get(grid) {
+                    let (r, g, b) = minimap_terrain_color(tile.terrain);
+                    let idx = (y * w as usize + x) * 4;
+                    data[idx] = r;
+                    data[idx + 1] = g;
+                    data[idx + 2] = b;
+                    data[idx + 3] = 255;
+                }
+            }
+        }
+    }
 
     let image_handle = images.add(image);
 
@@ -60,8 +80,9 @@ pub fn setup_minimap(
                 border: UiRect::all(Val::Px(2.0)),
                 ..default()
             },
+            ZIndex(100),
             BorderColor::all(Color::srgba(0.8, 0.8, 0.8, 0.6)),
-            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.5)),
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.8)),
         ))
         .with_children(|parent| {
             parent.spawn((

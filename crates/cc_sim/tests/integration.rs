@@ -741,10 +741,10 @@ fn melee_attack_kills_target() {
     // Plus 2 extra ticks for cleanup phases
     run_ticks(&mut world, &mut schedule, 150);
 
-    // Target should be despawned
+    // Target should have Dead marker (client handles despawn after fade)
     assert!(
-        world.get_entity(target).is_err(),
-        "Target should be despawned after death"
+        world.entity(target).contains::<Dead>(),
+        "Target should be marked Dead after lethal damage"
     );
 }
 
@@ -757,12 +757,12 @@ fn two_units_fight_to_death() {
     // Both will auto-acquire each other since they are adjacent enemies
     run_ticks(&mut world, &mut schedule, 200);
 
-    // At least one should be dead
-    let a_alive = world.get_entity(a).is_ok();
-    let b_alive = world.get_entity(b).is_ok();
+    // At least one should have the Dead marker
+    let a_dead = world.entity(a).contains::<Dead>();
+    let b_dead = world.entity(b).contains::<Dead>();
     assert!(
-        !a_alive || !b_alive,
-        "After 200 ticks of fighting, at least one unit should be dead"
+        a_dead || b_dead,
+        "After 200 ticks of fighting, at least one unit should be Dead"
     );
 }
 
@@ -781,8 +781,8 @@ fn focus_fire_3v1() {
     run_ticks(&mut world, &mut schedule, 80);
 
     assert!(
-        world.get_entity(target).is_err(),
-        "Target should die quickly under focus fire"
+        world.entity(target).contains::<Dead>(),
+        "Target should be marked Dead quickly under focus fire"
     );
     // Attackers should still be alive
     assert!(world.get_entity(a1).is_ok(), "Attacker 1 should survive");

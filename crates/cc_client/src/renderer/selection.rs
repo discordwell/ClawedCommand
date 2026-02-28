@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::setup::{TeamMaterials, UnitMesh};
+use crate::setup::{TeamMaterials, UnitMesh, team_color};
 use cc_core::components::{Owner, Selected};
 
 /// Local player ID (TODO: make configurable for multiplayer)
@@ -10,20 +10,15 @@ const LOCAL_PLAYER: u8 = 0;
 #[derive(Component)]
 pub struct SelectionRing;
 
-/// Update unit material based on ownership and selection state.
+/// Update unit sprite tint based on ownership and selection state.
 /// Spawn/despawn selection ring annulus on selection changes.
 pub fn render_selection_indicators(
     mut commands: Commands,
     team_mats: Option<Res<TeamMaterials>>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut query: Query<
-        (
-            Entity,
-            &mut MeshMaterial2d<ColorMaterial>,
-            &Owner,
-            Option<&Selected>,
-            Option<&Children>,
-        ),
+    // Units with Sprite (new procedural sprites)
+    mut sprite_units: Query<
+        (Entity, &mut Sprite, &Owner, Option<&Selected>, Option<&Children>),
         With<UnitMesh>,
     >,
     ring_query: Query<Entity, With<SelectionRing>>,
@@ -34,14 +29,12 @@ pub fn render_selection_indicators(
         return;
     };
 
-    // Swap material based on selection state
-    for (_entity, mut mat, owner, selected, _children) in query.iter_mut() {
+    // Update sprite tint based on selection state
+    for (_entity, mut sprite, owner, selected, _children) in sprite_units.iter_mut() {
         if selected.is_some() {
-            mat.0 = team_mats.selected.clone();
-        } else if owner.player_id == LOCAL_PLAYER {
-            mat.0 = team_mats.player.clone();
+            sprite.color = Color::srgb(0.5, 0.9, 1.0); // Bright cyan tint
         } else {
-            mat.0 = team_mats.enemy.clone();
+            sprite.color = team_color(owner.player_id);
         }
     }
 
@@ -64,7 +57,7 @@ pub fn render_selection_indicators(
 
     // Despawn selection rings for deselected units
     for entity in removed_selected.read() {
-        if let Ok((_e, _mat, _owner, _sel, Some(children))) = query.get(entity) {
+        if let Ok((_e, _sprite, _owner, _sel, Some(children))) = sprite_units.get(entity) {
             for child in children.iter() {
                 if ring_query.get(child).is_ok() {
                     commands.entity(child).despawn();

@@ -27,6 +27,6 @@ fn main() {
         .add_plugins(input::InputPlugin)
         .add_plugins(ui::UiPlugin)
         .add_plugins(VoicePlugin)
-        .add_systems(Startup, setup::setup_game)
+        .add_systems(PreStartup, setup::setup_game)
         .run();
 }

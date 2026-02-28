@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/cc_core", "crates/cc_sim", "crates/cc_client", "crates/cc_voice"]
+members = ["crates/cc_core", "crates/cc_sim", "crates/cc_client", "crates/cc_voice", "crates/cc_agent"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -15,4 +15,4 @@ realfft = "3.4"
 crossbeam-channel = "0.5"
 cpal = "0.15"
 log = "0.4"
-bevy_egui = "0.35"
+bevy_egui = "0.39"

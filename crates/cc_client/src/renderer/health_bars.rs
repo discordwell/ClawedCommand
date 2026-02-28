@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 
 use crate::setup::UnitMesh;
-use cc_core::components::{Dead, Health, UnitType};
+use cc_core::components::{Dead, Health, Owner, UnitKind, UnitType};
+
+/// Local player ID for showing enemy health bars.
+const LOCAL_PLAYER: u8 = 0;
 
 /// Marker added to parent unit once health bars have been spawned.
 #[derive(Component)]
@@ -15,23 +18,36 @@ pub struct HealthBarBg;
 #[derive(Component)]
 pub struct HealthBarFg;
 
-const BAR_WIDTH: f32 = 22.0;
 const BAR_HEIGHT: f32 = 3.0;
-const BAR_Y_OFFSET: f32 = 14.0;
+const BAR_Y_OFFSET: f32 = 20.0;
+
+/// Scale bar width per unit kind (larger units get wider bars).
+fn bar_width_for_kind(kind: UnitKind) -> f32 {
+    match kind {
+        UnitKind::Pawdler | UnitKind::Mouser => 16.0,
+        UnitKind::Nuisance | UnitKind::FerretSapper => 20.0,
+        UnitKind::Hisser | UnitKind::Yowler | UnitKind::FlyingFox => 22.0,
+        UnitKind::Catnapper => 26.0,
+        UnitKind::Chonk => 30.0,
+        UnitKind::MechCommander => 34.0,
+    }
+}
 
 /// Spawn health bar child entities for units that don't have one yet.
 pub fn spawn_health_bars(
     mut commands: Commands,
-    units: Query<Entity, (With<UnitMesh>, With<Health>, Without<HasHealthBar>)>,
+    units: Query<(Entity, &UnitType), (With<UnitMesh>, With<Health>, Without<HasHealthBar>)>,
 ) {
-    for entity in units.iter() {
+    for (entity, unit_type) in units.iter() {
+        let bar_width = bar_width_for_kind(unit_type.kind);
+
         // Background (dark)
         let bg = commands
             .spawn((
                 HealthBarBg,
                 Sprite {
                     color: Color::srgba(0.1, 0.1, 0.1, 0.8),
-                    custom_size: Some(Vec2::new(BAR_WIDTH, BAR_HEIGHT)),
+                    custom_size: Some(Vec2::new(bar_width, BAR_HEIGHT)),
                     ..default()
                 },
                 Transform::from_xyz(0.0, BAR_Y_OFFSET, 0.1),
@@ -45,7 +61,7 @@ pub fn spawn_health_bars(
                 HealthBarFg,
                 Sprite {
                     color: Color::srgb(0.2, 0.9, 0.2),
-                    custom_size: Some(Vec2::new(BAR_WIDTH, BAR_HEIGHT)),
+                    custom_size: Some(Vec2::new(bar_width, BAR_HEIGHT)),
                     ..default()
                 },
                 Transform::from_xyz(0.0, BAR_Y_OFFSET, 0.2),
@@ -60,47 +76,71 @@ pub fn spawn_health_bars(
     }
 }
 
-/// Update health bar fill width, color gradient, and visibility based on current HP.
-pub fn update_health_bars(
-    units: Query<(&Health, &Children), (With<UnitType>, Without<Dead>)>,
+/// Hide health bars when a unit dies.
+pub fn hide_dead_health_bars(
+    dead_units: Query<&Children, (Added<Dead>, With<HasHealthBar>)>,
     mut bg_bars: Query<&mut Visibility, (With<HealthBarBg>, Without<HealthBarFg>)>,
+    mut fg_bars: Query<&mut Visibility, (With<HealthBarFg>, Without<HealthBarBg>)>,
+) {
+    for children in dead_units.iter() {
+        for child in children.iter() {
+            if let Ok(mut vis) = bg_bars.get_mut(child) {
+                *vis = Visibility::Hidden;
+            }
+            if let Ok(mut vis) = fg_bars.get_mut(child) {
+                *vis = Visibility::Hidden;
+            }
+        }
+    }
+}
+
+/// Update health bar fill width, color gradient, and visibility based on current HP.
+/// Shows bars always for enemy units (not just when damaged).
+pub fn update_health_bars(
+    units: Query<(&Health, &UnitType, &Owner, &Children), (With<UnitMesh>, Without<Dead>)>,
+    mut bg_bars: Query<(&mut Sprite, &mut Visibility), (With<HealthBarBg>, Without<HealthBarFg>)>,
     mut fg_bars: Query<
         (&mut Sprite, &mut Transform, &mut Visibility),
         (With<HealthBarFg>, Without<HealthBarBg>),
     >,
 ) {
-    for (health, children) in units.iter() {
+    for (health, unit_type, owner, children) in units.iter() {
         let ratio: f32 = if health.max > cc_core::math::FIXED_ZERO {
             (health.current / health.max).to_num::<f32>().clamp(0.0, 1.0)
         } else {
             0.0
         };
 
+        let bar_width = bar_width_for_kind(unit_type.kind);
+        let is_enemy = owner.player_id != LOCAL_PLAYER;
         let damaged = ratio < 1.0;
+        // Show bars if damaged OR if it's an enemy unit
+        let should_show = damaged || is_enemy;
 
         for child in children.iter() {
-            // Update BG visibility
-            if let Ok(mut vis) = bg_bars.get_mut(child) {
-                *vis = if damaged {
+            // Update BG visibility and size
+            if let Ok((mut bg_sprite, mut vis)) = bg_bars.get_mut(child) {
+                *vis = if should_show {
                     Visibility::Inherited
                 } else {
                     Visibility::Hidden
                 };
+                bg_sprite.custom_size = Some(Vec2::new(bar_width, BAR_HEIGHT));
             }
 
             // Update FG bar
             if let Ok((mut sprite, mut transform, mut vis)) = fg_bars.get_mut(child) {
-                *vis = if damaged {
+                *vis = if should_show {
                     Visibility::Inherited
                 } else {
                     Visibility::Hidden
                 };
 
-                let fill_width = BAR_WIDTH * ratio;
+                let fill_width = bar_width * ratio;
                 sprite.custom_size = Some(Vec2::new(fill_width, BAR_HEIGHT));
 
                 // Offset so bar shrinks from right
-                let x_offset = (fill_width - BAR_WIDTH) / 2.0;
+                let x_offset = (fill_width - bar_width) / 2.0;
                 transform.translation.x = x_offset;
 
                 // Smooth color gradient: green → yellow → red

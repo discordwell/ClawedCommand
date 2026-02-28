@@ -68,9 +68,25 @@ pub fn camera_system(
     transform.translation.x += pan.x * scale;
     transform.translation.y += pan.y * scale;
 
-    // Zoom (scroll wheel)
+    // Zoom toward cursor (scroll wheel)
     for event in scroll_events.read() {
+        let old_scale = ortho.scale;
         ortho.scale -= event.y * ZOOM_SPEED;
         ortho.scale = ortho.scale.clamp(MIN_ZOOM, MAX_ZOOM);
+        let new_scale = ortho.scale;
+
+        // Adjust camera position so the world point under the cursor stays fixed
+        if let Some(cursor) = window.cursor_position() {
+            let w = window.width();
+            let h = window.height();
+            // Cursor offset from window center in screen pixels
+            let cursor_offset = Vec2::new(cursor.x - w / 2.0, -(cursor.y - h / 2.0));
+            // World-space offset = cursor_offset * scale
+            let world_before = cursor_offset * old_scale;
+            let world_after = cursor_offset * new_scale;
+            let delta = world_before - world_after;
+            transform.translation.x += delta.x;
+            transform.translation.y += delta.y;
+        }
     }
 }
