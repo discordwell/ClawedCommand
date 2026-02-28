@@ -1,14 +1,19 @@
 use bevy::prelude::*;
 
+use cc_core::abilities::unit_abilities;
 use cc_core::building_stats::building_stats;
 use cc_core::components::{
-    AttackStats, AttackTypeMarker, Building, GridCell, Health, MoveTarget, MovementSpeed, Owner,
-    Position, Producer, ProductionQueue, RallyPoint, UnderConstruction, UnitType, Velocity,
+    AbilitySlots, AttackStats, AttackType, AttackTypeMarker, Building, BuildingKind, GridCell,
+    Health, MoveTarget, MovementSpeed, Owner, Position, Producer, ProductionQueue, RallyPoint,
+    ResearchQueue, Researcher, StatModifiers, UnderConstruction, UnitType, Velocity,
 };
 use cc_core::coords::WorldPos;
+use cc_core::math::Fixed;
+use cc_core::status_effects::StatusEffects;
 use cc_core::unit_stats::base_stats;
 
 use crate::resources::PlayerResources;
+use crate::systems::research_system::apply_upgrades_to_new_unit;
 
 /// Ticks UnderConstruction, ticks ProductionQueue, spawns units on completion.
 pub fn production_system(
@@ -41,6 +46,28 @@ pub fn production_system(
                         .entity(entity)
                         .insert((Producer, ProductionQueue::default()));
                 }
+
+                // ScratchingPost gets Researcher + ResearchQueue
+                if building.kind == BuildingKind::ScratchingPost {
+                    commands
+                        .entity(entity)
+                        .insert((Researcher, ResearchQueue::default()));
+                }
+
+                // LaserPointer gets AttackStats for tower combat
+                if building.kind == BuildingKind::LaserPointer {
+                    commands.entity(entity).insert((
+                        AttackStats {
+                            damage: Fixed::from_bits(10 << 16), // 10 damage
+                            range: Fixed::from_bits(6 << 16),   // 6 range
+                            attack_speed: 15,                    // 1.5s between attacks
+                            cooldown_remaining: 0,
+                        },
+                        AttackTypeMarker {
+                            attack_type: AttackType::Ranged,
+                        },
+                    ));
+                }
             }
             continue; // Don't process production while under construction
         }
@@ -60,6 +87,30 @@ pub fn production_system(
                     let spawn_grid = pos.world.to_grid();
                     let spawn_world = WorldPos::from_grid(spawn_grid);
 
+                    let mut health = Health {
+                        current: stats.health,
+                        max: stats.health,
+                    };
+                    let mut attack_stats = AttackStats {
+                        damage: stats.damage,
+                        range: stats.range,
+                        attack_speed: stats.attack_speed,
+                        cooldown_remaining: 0,
+                    };
+                    let mut move_speed = MovementSpeed { speed: stats.speed };
+
+                    // Apply completed upgrades to newly spawned unit
+                    let player_id = owner.player_id as usize;
+                    if let Some(pres) = _player_resources.players.get(player_id) {
+                        apply_upgrades_to_new_unit(
+                            kind,
+                            &pres.completed_upgrades,
+                            &mut health,
+                            &mut attack_stats,
+                            &mut move_speed,
+                        );
+                    }
+
                     let new_entity = commands
                         .spawn((
                             Position { world: spawn_world },
@@ -69,20 +120,15 @@ pub fn production_system(
                                 player_id: owner.player_id,
                             },
                             UnitType { kind },
-                            Health {
-                                current: stats.health,
-                                max: stats.health,
-                            },
-                            MovementSpeed { speed: stats.speed },
-                            AttackStats {
-                                damage: stats.damage,
-                                range: stats.range,
-                                attack_speed: stats.attack_speed,
-                                cooldown_remaining: 0,
-                            },
+                            health,
+                            move_speed,
+                            attack_stats,
                             AttackTypeMarker {
                                 attack_type: stats.attack_type,
                             },
+                            AbilitySlots::from_abilities(unit_abilities(kind)),
+                            StatusEffects::default(),
+                            StatModifiers::default(),
                         ))
                         .id();
 

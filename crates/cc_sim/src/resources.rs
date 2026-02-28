@@ -1,5 +1,8 @@
 use bevy::prelude::*;
+use std::collections::HashSet;
+
 use cc_core::commands::{EntityId, GameCommand};
+use cc_core::components::UpgradeType;
 use cc_core::coords::GridPos;
 use cc_core::map::GameMap;
 
@@ -72,6 +75,8 @@ pub struct PlayerResourceState {
     pub nfts: u32,
     pub supply: u32,
     pub supply_cap: u32,
+    /// Upgrades that have been fully researched.
+    pub completed_upgrades: HashSet<UpgradeType>,
 }
 
 impl Default for PlayerResourceState {
@@ -82,7 +87,41 @@ impl Default for PlayerResourceState {
             nfts: 0,
             supply: 0,
             supply_cap: 0, // All supply comes from buildings (TheBox provides 10)
+            completed_upgrades: HashSet::new(),
         }
+    }
+}
+
+/// Deterministic RNG for simulation randomness (Hairball, Contagious Yawning, etc.).
+/// Seeded at match start for deterministic replay.
+#[derive(Resource)]
+pub struct SimRng {
+    state: u64,
+}
+
+impl SimRng {
+    pub fn new(seed: u64) -> Self {
+        Self { state: seed }
+    }
+
+    /// Simple LCG for deterministic pseudo-random numbers.
+    pub fn next_u64(&mut self) -> u64 {
+        self.state = self
+            .state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        self.state >> 33
+    }
+
+    /// Returns a value in [0, max) deterministically.
+    pub fn next_bounded(&mut self, max: u32) -> u32 {
+        (self.next_u64() % max as u64) as u32
+    }
+}
+
+impl Default for SimRng {
+    fn default() -> Self {
+        Self::new(42)
     }
 }
 

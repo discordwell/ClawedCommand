@@ -51,6 +51,44 @@ pub fn building_stats(kind: BuildingKind) -> BuildingBaseStats {
             supply_provided: 10,
             can_produce: &[],
         },
+        BuildingKind::ServerRack => BuildingBaseStats {
+            health: Fixed::from_bits(250 << 16),
+            build_time: 120, // 12 seconds
+            food_cost: 100,
+            gpu_cost: 75,
+            supply_provided: 0,
+            can_produce: &[
+                UnitKind::FlyingFox,
+                UnitKind::Mouser,
+                UnitKind::Catnapper,
+                UnitKind::FerretSapper,
+                UnitKind::MechCommander,
+            ],
+        },
+        BuildingKind::ScratchingPost => BuildingBaseStats {
+            health: Fixed::from_bits(200 << 16),
+            build_time: 100, // 10 seconds
+            food_cost: 100,
+            gpu_cost: 50,
+            supply_provided: 0,
+            can_produce: &[],
+        },
+        BuildingKind::CatFlap => BuildingBaseStats {
+            health: Fixed::from_bits(400 << 16),
+            build_time: 100, // 10 seconds
+            food_cost: 150,
+            gpu_cost: 0,
+            supply_provided: 0,
+            can_produce: &[],
+        },
+        BuildingKind::LaserPointer => BuildingBaseStats {
+            health: Fixed::from_bits(150 << 16),
+            build_time: 80, // 8 seconds
+            food_cost: 75,
+            gpu_cost: 25,
+            supply_provided: 0,
+            can_produce: &[],
+        },
     }
 }
 
@@ -65,6 +103,10 @@ mod tests {
             BuildingKind::CatTree,
             BuildingKind::FishMarket,
             BuildingKind::LitterBox,
+            BuildingKind::ServerRack,
+            BuildingKind::ScratchingPost,
+            BuildingKind::CatFlap,
+            BuildingKind::LaserPointer,
         ];
         for kind in kinds {
             let stats = building_stats(kind);
@@ -87,17 +129,43 @@ mod tests {
     }
 
     #[test]
-    fn cat_tree_produces_combat_units() {
+    fn cat_tree_produces_basic_combat_units() {
         let stats = building_stats(BuildingKind::CatTree);
         assert!(stats.can_produce.contains(&UnitKind::Nuisance));
         assert!(stats.can_produce.contains(&UnitKind::Hisser));
         assert!(stats.can_produce.contains(&UnitKind::Chonk));
         assert!(stats.can_produce.contains(&UnitKind::Yowler));
+        // CatTree should NOT produce advanced units (those moved to ServerRack)
+        assert!(!stats.can_produce.contains(&UnitKind::FlyingFox));
+        assert!(!stats.can_produce.contains(&UnitKind::MechCommander));
+    }
+
+    #[test]
+    fn server_rack_produces_advanced_units() {
+        let stats = building_stats(BuildingKind::ServerRack);
+        assert!(stats.can_produce.contains(&UnitKind::FlyingFox));
+        assert!(stats.can_produce.contains(&UnitKind::Mouser));
+        assert!(stats.can_produce.contains(&UnitKind::Catnapper));
+        assert!(stats.can_produce.contains(&UnitKind::FerretSapper));
+        assert!(stats.can_produce.contains(&UnitKind::MechCommander));
     }
 
     #[test]
     fn litter_box_provides_supply() {
         let stats = building_stats(BuildingKind::LitterBox);
         assert_eq!(stats.supply_provided, 10);
+    }
+
+    #[test]
+    fn laser_pointer_has_zero_supply() {
+        let stats = building_stats(BuildingKind::LaserPointer);
+        assert_eq!(stats.supply_provided, 0);
+        assert!(stats.can_produce.is_empty());
+    }
+
+    #[test]
+    fn scratching_post_no_production() {
+        let stats = building_stats(BuildingKind::ScratchingPost);
+        assert!(stats.can_produce.is_empty());
     }
 }

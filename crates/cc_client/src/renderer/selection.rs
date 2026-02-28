@@ -8,6 +8,10 @@ use cc_core::components::{Dead, Owner, Selected};
 #[derive(Component)]
 pub struct SelectionRing;
 
+/// Stores the base inverse-parent-scale so pulse_selection_rings can modulate it.
+#[derive(Component)]
+pub struct RingBaseScale(pub f32);
+
 /// Update unit sprite tint based on ownership and selection state.
 /// Spawn/despawn selection ring annulus on selection changes.
 pub fn render_selection_indicators(
@@ -25,6 +29,7 @@ pub fn render_selection_indicators(
     added_selected_buildings: Query<Entity, (With<BuildingMesh>, Added<Selected>, Without<UnitMesh>)>,
     mut removed_selected: RemovedComponents<Selected>,
     all_with_children: Query<Option<&Children>, Or<(With<UnitMesh>, With<BuildingMesh>)>>,
+    all_transforms: Query<&Transform, Or<(With<UnitMesh>, With<BuildingMesh>)>>,
 ) {
     let Some(team_mats) = team_mats else {
         return;
@@ -49,16 +54,25 @@ pub fn render_selection_indicators(
         .collect();
 
     if !newly_selected.is_empty() {
-        // Doubled from 10/12 to compensate for halved unit_scale (2× sprite resolution)
-        let ring_mesh = meshes.add(Annulus::new(20.0, 24.0));
+        // World-space ring size; inverse parent scale keeps it consistent
+        let ring_mesh = meshes.add(Annulus::new(10.0, 12.0));
         let ring_mat = team_mats.selected.clone();
         for entity in newly_selected {
+            let parent_scale = all_transforms
+                .get(entity)
+                .map(|t| t.scale.x)
+                .unwrap_or(1.0)
+                .max(0.01);
+            let inverse_scale = 1.0 / parent_scale;
+
             let ring = commands
                 .spawn((
                     SelectionRing,
+                    RingBaseScale(inverse_scale),
                     Mesh2d(ring_mesh.clone()),
                     MeshMaterial2d(ring_mat.clone()),
-                    Transform::from_xyz(0.0, 0.0, 0.05),
+                    Transform::from_xyz(0.0, 0.0, 0.05)
+                        .with_scale(Vec3::splat(inverse_scale)),
                 ))
                 .id();
             commands.entity(entity).add_children(&[ring]);
@@ -77,11 +91,14 @@ pub fn render_selection_indicators(
     }
 }
 
-/// Pulse selection ring scale using sin(time).
-pub fn pulse_selection_rings(time: Res<Time>, mut rings: Query<&mut Transform, With<SelectionRing>>) {
+/// Pulse selection ring scale using sin(time), preserving base inverse-parent-scale.
+pub fn pulse_selection_rings(
+    time: Res<Time>,
+    mut rings: Query<(&mut Transform, &RingBaseScale), With<SelectionRing>>,
+) {
     let t = time.elapsed_secs();
     let pulse = 1.0 + (t * 3.0).sin() * 0.1;
-    for mut transform in rings.iter_mut() {
-        transform.scale = Vec3::splat(pulse);
+    for (mut transform, base) in rings.iter_mut() {
+        transform.scale = Vec3::splat(pulse * base.0);
     }
 }

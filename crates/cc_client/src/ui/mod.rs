@@ -1,3 +1,4 @@
+pub mod ability_bar;
 pub mod agent_chat;
 pub mod command_card;
 pub mod construct_mode;
@@ -29,6 +30,7 @@ impl Plugin for UiPlugin {
                     resource_bar::resource_bar_system,
                     unit_info::unit_info_system,
                     command_card::command_card_system,
+                    ability_bar::ability_bar_system,
                     notifications::notification_system,
                     construct_mode::construct_mode_system,
                     agent_chat::agent_chat_system,

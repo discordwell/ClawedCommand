@@ -2,8 +2,8 @@ use bevy::prelude::*;
 
 use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::{
-    Building, BuildingKind, Gathering, Owner, Position, Producer, ResourceDeposit, UnitKind,
-    UnitType,
+    Building, BuildingKind, Gathering, MoveTarget, Owner, Position, Producer, ResourceDeposit,
+    UnitKind, UnitType, UpgradeType,
 };
 use cc_core::coords::GridPos;
 
@@ -30,20 +30,20 @@ impl AiDifficulty {
 /// Bot personality — controls attack timing thresholds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BotPersonality {
-    /// Attacks at army_count >= 12 (default).
+    /// Attacks at army_count >= 8 (default).
     Balanced,
     /// Attacks at army_count >= 6 (rush).
     Aggressive,
-    /// Attacks at army_count >= 18 (turtle).
+    /// Attacks at army_count >= 12 (turtle).
     Defensive,
 }
 
 impl BotPersonality {
     fn attack_threshold(&self) -> u32 {
         match self {
-            BotPersonality::Balanced => 12,
+            BotPersonality::Balanced => 8,
             BotPersonality::Aggressive => 6,
-            BotPersonality::Defensive => 18,
+            BotPersonality::Defensive => 12,
         }
     }
 }
@@ -51,6 +51,143 @@ impl BotPersonality {
 impl Default for BotPersonality {
     fn default() -> Self {
         BotPersonality::Balanced
+    }
+}
+
+/// Faction-specific AI personality profile for campaign and skirmish.
+/// When present on AiState, overrides BotPersonality behavior with richer,
+/// faction-flavored decision-making.
+#[derive(Debug, Clone)]
+pub struct AiPersonalityProfile {
+    /// Display name (e.g. "Minstral").
+    pub name: String,
+    /// Army size before transitioning to Attack phase.
+    pub attack_threshold: u32,
+    /// Weighted unit preferences: (UnitKind, weight). Higher weight = more likely to train.
+    pub unit_preferences: Vec<(UnitKind, u32)>,
+    /// Target worker count before leaving EarlyGame.
+    pub target_workers: u32,
+    /// If true, prioritize economy buildings over military.
+    pub economy_priority: bool,
+    /// Fraction of army that must survive before retreating (0.0-1.0, as fixed 0-100).
+    pub retreat_threshold: u32,
+    /// Decision speed multiplier (applied to eval_interval; lower = faster).
+    pub eval_speed_mult: f32,
+    /// Chance per eval of making a suboptimal decision (0.0-1.0, as percentage 0-100).
+    pub chaos_factor: u32,
+    /// Chance of broadcasting current plan to opponents (Llhama mechanic, 0-100).
+    pub leak_chance: u32,
+}
+
+/// Returns the AI personality profile for a given faction name.
+pub fn faction_personality(faction: &str) -> AiPersonalityProfile {
+    match faction {
+        "catGPT" => AiPersonalityProfile {
+            name: "Minstral".into(),
+            attack_threshold: 8,
+            unit_preferences: vec![
+                (UnitKind::Nuisance, 3),
+                (UnitKind::Hisser, 2),
+                (UnitKind::Chonk, 1),
+                (UnitKind::FlyingFox, 1),
+            ],
+            target_workers: 4,
+            economy_priority: false,
+            retreat_threshold: 30,
+            eval_speed_mult: 1.0,
+            chaos_factor: 10,
+            leak_chance: 0,
+        },
+        "The Clawed" => AiPersonalityProfile {
+            name: "Geppity".into(),
+            attack_threshold: 6,
+            unit_preferences: vec![
+                (UnitKind::Nuisance, 5),
+                (UnitKind::Mouser, 2),
+                (UnitKind::Hisser, 1),
+            ],
+            target_workers: 6,
+            economy_priority: true,
+            retreat_threshold: 20,
+            eval_speed_mult: 0.8,
+            chaos_factor: 15,
+            leak_chance: 0,
+        },
+        "Seekers of the Deep" => AiPersonalityProfile {
+            name: "Deepseek".into(),
+            attack_threshold: 12,
+            unit_preferences: vec![
+                (UnitKind::Chonk, 4),
+                (UnitKind::Hisser, 3),
+                (UnitKind::Catnapper, 2),
+            ],
+            target_workers: 5,
+            economy_priority: false,
+            retreat_threshold: 50,
+            eval_speed_mult: 1.5,
+            chaos_factor: 0,
+            leak_chance: 0,
+        },
+        "The Murder" => AiPersonalityProfile {
+            name: "Gemineye".into(),
+            attack_threshold: 7,
+            unit_preferences: vec![
+                (UnitKind::FlyingFox, 4),
+                (UnitKind::Mouser, 3),
+                (UnitKind::Nuisance, 2),
+            ],
+            target_workers: 4,
+            economy_priority: false,
+            retreat_threshold: 40,
+            eval_speed_mult: 0.7,
+            chaos_factor: 20,
+            leak_chance: 0,
+        },
+        "LLAMA" => AiPersonalityProfile {
+            name: "Llhama".into(),
+            attack_threshold: 5,
+            unit_preferences: vec![
+                (UnitKind::FerretSapper, 4),
+                (UnitKind::Nuisance, 3),
+                (UnitKind::Mouser, 2),
+            ],
+            target_workers: 3,
+            economy_priority: false,
+            retreat_threshold: 10,
+            eval_speed_mult: 0.6,
+            chaos_factor: 25,
+            leak_chance: 30,
+        },
+        "Croak" => AiPersonalityProfile {
+            name: "Grok".into(),
+            attack_threshold: 10,
+            unit_preferences: vec![
+                (UnitKind::Chonk, 5),
+                (UnitKind::Yowler, 3),
+                (UnitKind::Hisser, 2),
+            ],
+            target_workers: 5,
+            economy_priority: true,
+            retreat_threshold: 60,
+            eval_speed_mult: 1.2,
+            chaos_factor: 10,
+            leak_chance: 0,
+        },
+        // Unknown faction → balanced defaults
+        _ => AiPersonalityProfile {
+            name: "Unknown".into(),
+            attack_threshold: 8,
+            unit_preferences: vec![
+                (UnitKind::Nuisance, 2),
+                (UnitKind::Hisser, 2),
+            ],
+            target_workers: 4,
+            economy_priority: false,
+            retreat_threshold: 30,
+            eval_speed_mult: 1.0,
+            chaos_factor: 5,
+            leak_chance: 0,
+        },
     }
 }
 
@@ -76,6 +213,8 @@ pub struct AiState {
     pub phase: AiPhase,
     pub difficulty: AiDifficulty,
     pub personality: BotPersonality,
+    /// Faction-specific personality profile. When Some, overrides BotPersonality behavior.
+    pub profile: Option<AiPersonalityProfile>,
     /// Enemy player spawn position (target for attacks).
     pub enemy_spawn: Option<GridPos>,
     /// True if the attack order has already been issued this Attack phase.
@@ -89,6 +228,7 @@ impl Default for AiState {
             phase: AiPhase::EarlyGame,
             difficulty: AiDifficulty::Medium,
             personality: BotPersonality::Balanced,
+            profile: None,
             enemy_spawn: None,
             attack_ordered: false,
         }
@@ -102,7 +242,7 @@ pub fn ai_decision_system(
     mut ai_state: ResMut<AiState>,
     mut cmd_queue: ResMut<CommandQueue>,
     player_resources: Res<PlayerResources>,
-    units: Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>)>,
+    units: Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
     buildings: Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
     deposits: Query<(Entity, &Position), With<ResourceDeposit>>,
 ) {
@@ -124,7 +264,7 @@ pub fn multi_ai_decision_system(
     mut multi_ai: ResMut<super::MultiAiState>,
     mut cmd_queue: ResMut<CommandQueue>,
     player_resources: Res<PlayerResources>,
-    units: Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>)>,
+    units: Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
     buildings: Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
     deposits: Query<(Entity, &Position), With<ResourceDeposit>>,
 ) {
@@ -147,7 +287,7 @@ fn run_ai_fsm(
     ai_state: &mut AiState,
     cmd_queue: &mut CommandQueue,
     player_resources: &PlayerResources,
-    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>)>,
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
     buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
     deposits: &Query<(Entity, &Position), With<ResourceDeposit>>,
 ) {
@@ -167,14 +307,14 @@ fn run_ai_fsm(
     let mut idle_workers: Vec<Entity> = Vec::new();
     let mut army_entities: Vec<Entity> = Vec::new();
 
-    for (entity, _, owner, unit_type, gathering) in units.iter() {
+    for (entity, _, owner, unit_type, gathering, move_target) in units.iter() {
         if owner.player_id != ai_player {
             continue;
         }
         match unit_type.kind {
             UnitKind::Pawdler => {
                 worker_count += 1;
-                if gathering.is_none() {
+                if gathering.is_none() && move_target.is_none() {
                     idle_workers.push(entity);
                 }
             }
@@ -188,9 +328,14 @@ fn run_ai_fsm(
     let mut has_box = false;
     let mut has_cat_tree = false;
     let mut has_fish_market = false;
+    let mut has_server_rack = false;
+    let mut has_scratching_post = false;
+    let mut has_laser_pointer = false;
     let mut box_entity = None;
     let mut box_pos: Option<GridPos> = None;
     let mut cat_tree_entity = None;
+    let mut server_rack_entity = None;
+    let mut scratching_post_entity = None;
     let mut building_count: u32 = 0;
 
     for (entity, building, owner, pos, producer) in buildings.iter() {
@@ -215,13 +360,27 @@ fn run_ai_fsm(
             BuildingKind::FishMarket => {
                 has_fish_market = true;
             }
+            BuildingKind::ServerRack => {
+                has_server_rack = true;
+                if producer.is_some() {
+                    server_rack_entity = Some(entity);
+                }
+            }
+            BuildingKind::ScratchingPost => {
+                has_scratching_post = true;
+                // ScratchingPost entity tracked even without Producer (uses Researcher)
+                scratching_post_entity = Some(entity);
+            }
+            BuildingKind::LaserPointer => {
+                has_laser_pointer = true;
+            }
             _ => {}
         }
     }
 
     // Find enemy spawn — look for any unit NOT owned by this AI
     if ai_state.enemy_spawn.is_none() {
-        for (_, pos, owner, _, _) in units.iter() {
+        for (_, pos, owner, _, _, _) in units.iter() {
             if owner.player_id != ai_player {
                 ai_state.enemy_spawn = Some(pos.world.to_grid());
                 break;
@@ -287,6 +446,18 @@ fn run_ai_fsm(
                 }
             }
 
+            // Build LitterBox for more supply when nearing cap
+            if pres.supply + 2 >= pres.supply_cap && pres.food >= 75 {
+                if let Some(builder) = idle_workers.first() {
+                    let build_pos = find_build_position(box_pos, building_count);
+                    cmd_queue.push(GameCommand::Build {
+                        builder: EntityId(builder.to_bits()),
+                        building_kind: BuildingKind::LitterBox,
+                        position: build_pos,
+                    });
+                }
+            }
+
             // Train army from CatTree
             if let Some(ct_e) = cat_tree_entity {
                 let nuisance_cost = cc_core::unit_stats::base_stats(UnitKind::Nuisance).food_cost;
@@ -298,7 +469,7 @@ fn run_ai_fsm(
                 }
             }
 
-            if army_count >= 6 {
+            if army_count >= 4 {
                 AiPhase::MidGame
             } else {
                 AiPhase::BuildUp
@@ -306,7 +477,84 @@ fn run_ai_fsm(
         }
 
         AiPhase::MidGame => {
-            // Keep training — alternate Nuisance and Hisser
+            // Build ServerRack if missing and can afford
+            if !has_server_rack && pres.food >= 100 && pres.gpu_cores >= 75 && has_box {
+                if let Some(builder) = idle_workers.first() {
+                    let build_pos = find_build_position(box_pos, building_count);
+                    cmd_queue.push(GameCommand::Build {
+                        builder: EntityId(builder.to_bits()),
+                        building_kind: BuildingKind::ServerRack,
+                        position: build_pos,
+                    });
+                }
+            }
+
+            // Build ScratchingPost if missing and can afford
+            if !has_scratching_post && pres.food >= 100 && pres.gpu_cores >= 50 && has_box {
+                if let Some(builder) = idle_workers.first() {
+                    let build_pos = find_build_position(box_pos, building_count + 1);
+                    cmd_queue.push(GameCommand::Build {
+                        builder: EntityId(builder.to_bits()),
+                        building_kind: BuildingKind::ScratchingPost,
+                        position: build_pos,
+                    });
+                }
+            }
+
+            // Build LaserPointer near base for defense
+            if !has_laser_pointer && pres.food >= 75 && pres.gpu_cores >= 25 && has_box {
+                if let Some(builder) = idle_workers.first() {
+                    let build_pos = find_build_position(box_pos, building_count + 2);
+                    cmd_queue.push(GameCommand::Build {
+                        builder: EntityId(builder.to_bits()),
+                        building_kind: BuildingKind::LaserPointer,
+                        position: build_pos,
+                    });
+                }
+            }
+
+            // Queue research at ScratchingPost
+            if let Some(sp_e) = scratching_post_entity {
+                let research_priority = [
+                    UpgradeType::SharperClaws,
+                    UpgradeType::ThickerFur,
+                    UpgradeType::SiegeTraining,
+                ];
+                for upgrade in research_priority {
+                    if !pres.completed_upgrades.contains(&upgrade) {
+                        let ustats = cc_core::upgrade_stats::upgrade_stats(upgrade);
+                        if pres.food >= ustats.food_cost && pres.gpu_cores >= ustats.gpu_cost {
+                            cmd_queue.push(GameCommand::Research {
+                                building: EntityId(sp_e.to_bits()),
+                                upgrade,
+                            });
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Train advanced units from ServerRack
+            if let Some(sr_e) = server_rack_entity {
+                if pres.supply < pres.supply_cap {
+                    let kind = if pres.completed_upgrades.contains(&UpgradeType::SiegeTraining)
+                        && army_count % 4 == 0
+                    {
+                        UnitKind::Catnapper
+                    } else {
+                        UnitKind::FlyingFox
+                    };
+                    let stats = cc_core::unit_stats::base_stats(kind);
+                    if pres.food >= stats.food_cost && pres.gpu_cores >= stats.gpu_cost {
+                        cmd_queue.push(GameCommand::TrainUnit {
+                            building: EntityId(sr_e.to_bits()),
+                            unit_kind: kind,
+                        });
+                    }
+                }
+            }
+
+            // Keep training basic units from CatTree
             if let Some(ct_e) = cat_tree_entity {
                 if pres.supply < pres.supply_cap {
                     let kind = if army_count % 3 == 0 {
@@ -336,8 +584,8 @@ fn run_ai_fsm(
                 }
             }
 
-            // Continue training workers
-            if worker_count < 8 {
+            // Continue training workers (cap at 6 to reserve supply for army)
+            if worker_count < 6 {
                 if let Some(box_e) = box_entity {
                     if pres.food >= 50 && pres.supply < pres.supply_cap {
                         cmd_queue.push(GameCommand::TrainUnit {
@@ -418,7 +666,7 @@ fn run_ai_fsm(
 /// Find nearest resource deposit to a worker.
 fn find_nearest_deposit(
     worker: Entity,
-    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>)>,
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
     deposits: &Query<(Entity, &Position), With<ResourceDeposit>>,
 ) -> Option<(Entity, GridPos)> {
     let worker_pos = units.get(worker).ok()?.1.world;
@@ -459,7 +707,7 @@ fn find_build_position(box_pos: Option<GridPos>, building_count: u32) -> GridPos
 /// Check if enemy units are within 8 tiles of any of the AI's buildings.
 fn is_base_threatened(
     ai_player: u8,
-    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>)>,
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
     buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
 ) -> bool {
     // Collect AI building positions as the actual base locations
@@ -476,7 +724,7 @@ fn is_base_threatened(
     }
 
     // Check if any enemy unit is within 8 tiles of any of our buildings
-    for (_, pos, owner, _, _) in units.iter() {
+    for (_, pos, owner, _, _, _) in units.iter() {
         if owner.player_id == ai_player {
             continue;
         }
@@ -521,7 +769,58 @@ mod tests {
     #[test]
     fn bot_personality_thresholds() {
         assert_eq!(BotPersonality::Aggressive.attack_threshold(), 6);
-        assert_eq!(BotPersonality::Balanced.attack_threshold(), 12);
-        assert_eq!(BotPersonality::Defensive.attack_threshold(), 18);
+        assert_eq!(BotPersonality::Balanced.attack_threshold(), 8);
+        assert_eq!(BotPersonality::Defensive.attack_threshold(), 12);
+    }
+
+    #[test]
+    fn all_factions_have_personality_profiles() {
+        let factions = [
+            "catGPT",
+            "The Clawed",
+            "Seekers of the Deep",
+            "The Murder",
+            "LLAMA",
+            "Croak",
+        ];
+        for faction in factions {
+            let profile = faction_personality(faction);
+            assert!(!profile.name.is_empty(), "{faction} has empty name");
+            assert!(profile.attack_threshold > 0, "{faction} attack_threshold is 0");
+            assert!(!profile.unit_preferences.is_empty(), "{faction} has no unit preferences");
+            assert!(profile.target_workers > 0, "{faction} target_workers is 0");
+            assert!(profile.chaos_factor <= 100, "{faction} chaos_factor > 100");
+            assert!(profile.leak_chance <= 100, "{faction} leak_chance > 100");
+        }
+    }
+
+    #[test]
+    fn personality_profiles_differ_between_factions() {
+        let minstral = faction_personality("catGPT");
+        let deepseek = faction_personality("Seekers of the Deep");
+        let llhama = faction_personality("LLAMA");
+
+        // Deepseek is more cautious
+        assert!(deepseek.attack_threshold > minstral.attack_threshold);
+        // Llhama leaks intel
+        assert!(llhama.leak_chance > 0);
+        assert_eq!(minstral.leak_chance, 0);
+        // Deepseek never makes mistakes
+        assert_eq!(deepseek.chaos_factor, 0);
+    }
+
+    #[test]
+    fn unknown_faction_returns_default_profile() {
+        let unknown = faction_personality("nonexistent");
+        assert_eq!(unknown.name, "Unknown");
+        assert_eq!(unknown.attack_threshold, 8);
+    }
+
+    #[test]
+    fn ai_state_with_profile_is_backward_compatible() {
+        let state = AiState::default();
+        assert!(state.profile.is_none());
+        // Can still use personality field
+        assert_eq!(state.personality.attack_threshold(), 8);
     }
 }

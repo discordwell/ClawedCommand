@@ -4,9 +4,11 @@ use bevy_egui::{EguiContexts, egui};
 use cc_core::building_stats::building_stats;
 use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::{
-    Building, BuildingKind, Owner, Producer, ProductionQueue, Selected, UnitKind, UnitType,
+    Building, BuildingKind, Owner, Producer, ProductionQueue, ResearchQueue, Researcher, Selected,
+    UnitKind, UnitType, UpgradeType,
 };
 use cc_core::unit_stats::base_stats;
+use cc_core::upgrade_stats::upgrade_stats;
 use cc_sim::resources::{CommandQueue, PlayerResources};
 
 use crate::input::InputMode;
@@ -27,6 +29,8 @@ pub fn command_card_system(
             &Owner,
             Option<&Producer>,
             Option<&ProductionQueue>,
+            Option<&Researcher>,
+            Option<&ResearchQueue>,
         ),
         With<Selected>,
     >,
@@ -93,6 +97,10 @@ pub fn command_card_system(
                         (BuildingKind::CatTree, "CatTree"),
                         (BuildingKind::FishMarket, "FishMkt"),
                         (BuildingKind::LitterBox, "LitterBox"),
+                        (BuildingKind::ServerRack, "SrvRack"),
+                        (BuildingKind::ScratchingPost, "ScrPost"),
+                        (BuildingKind::CatFlap, "CatFlap"),
+                        (BuildingKind::LaserPointer, "Laser"),
                     ];
                     for (kind, label) in buildable {
                         let bstats = building_stats(kind);
@@ -100,7 +108,11 @@ pub fn command_card_system(
                             .map(|p| p.food >= bstats.food_cost && p.gpu_cores >= bstats.gpu_cost)
                             .unwrap_or(false);
 
-                        let btn_text = format!("{} ({}F)", label, bstats.food_cost);
+                        let btn_text = if bstats.gpu_cost > 0 {
+                            format!("{} ({}F/{}G)", label, bstats.food_cost, bstats.gpu_cost)
+                        } else {
+                            format!("{} ({}F)", label, bstats.food_cost)
+                        };
                         let btn = egui::Button::new(&btn_text);
                         if ui.add_enabled(can_afford, btn).clicked() {
                             *input_mode = InputMode::BuildPlacement { kind };
@@ -109,53 +121,132 @@ pub fn command_card_system(
                 }
 
                 if has_buildings {
-                    // Building commands — show trainable units + cancel
-                    for (entity, building, owner, producer, prod_queue) in
+                    // Building commands — show trainable units, research, cancel
+                    for (entity, building, owner, producer, prod_queue, researcher, research_queue) in
                         selected_buildings.iter()
                     {
-                        if owner.player_id != LOCAL_PLAYER || producer.is_none() {
+                        if owner.player_id != LOCAL_PLAYER {
                             continue;
                         }
 
-                        ui.separator();
-                        let trainable = trainable_units(building.kind);
-                        for kind in trainable {
-                            let ustats = base_stats(*kind);
-                            let can_afford = pres
-                                .map(|p| {
-                                    p.food >= ustats.food_cost
-                                        && p.gpu_cores >= ustats.gpu_cost
-                                        && p.supply + ustats.supply_cost <= p.supply_cap
-                                })
-                                .unwrap_or(false);
+                        // Production building — show trainable units
+                        if producer.is_some() {
+                            ui.separator();
+                            let trainable = trainable_units(building.kind);
+                            for kind in trainable {
+                                let ustats = base_stats(*kind);
 
-                            let btn_text =
-                                format!("Train {:?} ({}F/{}S)", kind, ustats.food_cost, ustats.supply_cost);
-                            let btn = egui::Button::new(&btn_text);
-                            if ui.add_enabled(can_afford, btn).clicked() {
-                                cmd_queue.push(GameCommand::TrainUnit {
-                                    building: EntityId(entity.to_bits()),
-                                    unit_kind: *kind,
-                                });
+                                // Check upgrade prerequisites
+                                let prereq_met = pres
+                                    .map(|p| {
+                                        if *kind == UnitKind::Catnapper {
+                                            p.completed_upgrades.contains(&UpgradeType::SiegeTraining)
+                                        } else if *kind == UnitKind::MechCommander {
+                                            p.completed_upgrades.contains(&UpgradeType::MechPrototype)
+                                        } else {
+                                            true
+                                        }
+                                    })
+                                    .unwrap_or(true);
+
+                                let can_afford = prereq_met && pres
+                                    .map(|p| {
+                                        p.food >= ustats.food_cost
+                                            && p.gpu_cores >= ustats.gpu_cost
+                                            && p.supply + ustats.supply_cost <= p.supply_cap
+                                    })
+                                    .unwrap_or(false);
+
+                                let btn_text = if !prereq_met {
+                                    format!("{:?} [LOCKED]", kind)
+                                } else {
+                                    format!("Train {:?} ({}F/{}S)", kind, ustats.food_cost, ustats.supply_cost)
+                                };
+                                let btn = egui::Button::new(&btn_text);
+                                if ui.add_enabled(can_afford, btn).clicked() {
+                                    cmd_queue.push(GameCommand::TrainUnit {
+                                        building: EntityId(entity.to_bits()),
+                                        unit_kind: *kind,
+                                    });
+                                }
+                            }
+
+                            // Queue status + cancel button
+                            if let Some(queue) = prod_queue {
+                                if !queue.queue.is_empty() {
+                                    ui.separator();
+                                    ui.colored_label(
+                                        egui::Color32::LIGHT_GRAY,
+                                        format!("Q: {}", queue.queue.len()),
+                                    );
+                                    if ui
+                                        .button("Cancel")
+                                        .on_hover_text("Cancel front of queue (refunds resources)")
+                                        .clicked()
+                                    {
+                                        cmd_queue.push(GameCommand::CancelQueue {
+                                            building: EntityId(entity.to_bits()),
+                                        });
+                                    }
+                                }
                             }
                         }
 
-                        // Queue status + cancel button
-                        if let Some(queue) = prod_queue {
-                            if !queue.queue.is_empty() {
-                                ui.separator();
-                                ui.colored_label(
-                                    egui::Color32::LIGHT_GRAY,
-                                    format!("Q: {}", queue.queue.len()),
-                                );
-                                if ui
-                                    .button("Cancel")
-                                    .on_hover_text("Cancel front of queue (refunds resources)")
-                                    .clicked()
-                                {
-                                    cmd_queue.push(GameCommand::CancelQueue {
+                        // Research building (ScratchingPost) — show research buttons
+                        if researcher.is_some() {
+                            ui.separator();
+                            let upgrades = [
+                                (UpgradeType::SharperClaws, "Claws +2D"),
+                                (UpgradeType::ThickerFur, "Fur +25HP"),
+                                (UpgradeType::NimblePaws, "Paws +10%S"),
+                                (UpgradeType::SiegeTraining, "Siege Trn"),
+                                (UpgradeType::MechPrototype, "Mech Proto"),
+                            ];
+                            for (upgrade, label) in upgrades {
+                                let ustats = upgrade_stats(upgrade);
+                                let already_done = pres
+                                    .map(|p| p.completed_upgrades.contains(&upgrade))
+                                    .unwrap_or(false);
+
+                                if already_done {
+                                    continue;
+                                }
+
+                                let can_afford = pres
+                                    .map(|p| {
+                                        p.food >= ustats.food_cost
+                                            && p.gpu_cores >= ustats.gpu_cost
+                                    })
+                                    .unwrap_or(false);
+
+                                let btn_text =
+                                    format!("{} ({}F/{}G)", label, ustats.food_cost, ustats.gpu_cost);
+                                let btn = egui::Button::new(&btn_text);
+                                if ui.add_enabled(can_afford, btn).clicked() {
+                                    cmd_queue.push(GameCommand::Research {
                                         building: EntityId(entity.to_bits()),
+                                        upgrade,
                                     });
+                                }
+                            }
+
+                            // Research queue status
+                            if let Some(rqueue) = research_queue {
+                                if !rqueue.queue.is_empty() {
+                                    ui.separator();
+                                    ui.colored_label(
+                                        egui::Color32::LIGHT_GRAY,
+                                        format!("R: {}", rqueue.queue.len()),
+                                    );
+                                    if ui
+                                        .button("CancelR")
+                                        .on_hover_text("Cancel front of research queue (refunds)")
+                                        .clicked()
+                                    {
+                                        cmd_queue.push(GameCommand::CancelResearch {
+                                            building: EntityId(entity.to_bits()),
+                                        });
+                                    }
                                 }
                             }
                         }

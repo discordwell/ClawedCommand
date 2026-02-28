@@ -315,6 +315,10 @@ fn parse_building_kind_str(s: &str) -> Option<BuildingKind> {
         "CatTree" => Some(BuildingKind::CatTree),
         "FishMarket" => Some(BuildingKind::FishMarket),
         "LitterBox" => Some(BuildingKind::LitterBox),
+        "ServerRack" => Some(BuildingKind::ServerRack),
+        "ScratchingPost" => Some(BuildingKind::ScratchingPost),
+        "CatFlap" => Some(BuildingKind::CatFlap),
+        "LaserPointer" => Some(BuildingKind::LaserPointer),
         _ => None,
     }
 }

@@ -3,16 +3,19 @@ use std::collections::VecDeque;
 
 use crate::pathfinding;
 use crate::resources::{CommandQueue, ControlGroups, MapResource, PlayerResources};
+use cc_core::abilities::{ability_def, AbilityActivation};
 use cc_core::building_stats::building_stats;
 use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::{
-    AttackMoveTarget, AttackTarget, Building, ChasingTarget, Gathering, GatherState, Health,
-    HoldPosition, MoveTarget, Owner, Path, Position, Producer, ProductionQueue, RallyPoint,
-    ResourceDeposit, Selected, UnderConstruction,
+    AbilitySlots, AttackMoveTarget, AttackTarget, Building, ChasingTarget,
+    Gathering, GatherState, Health, HoldPosition, MoveTarget, Owner, Path, Position, Producer,
+    ProductionQueue, RallyPoint, ResearchQueue, Researcher, ResourceDeposit, Selected,
+    StatModifiers, UnderConstruction, UnitKind, UpgradeType,
 };
 use cc_core::coords::WorldPos;
 use cc_core::terrain::FactionId;
 use cc_core::unit_stats::base_stats;
+use cc_core::upgrade_stats::upgrade_stats;
 
 /// Process all queued commands for this tick.
 pub fn process_commands(
@@ -31,6 +34,8 @@ pub fn process_commands(
     buildings: Query<(Entity, &Building, &Owner, Option<&Producer>, Option<&UnderConstruction>)>,
     mut prod_queues: Query<&mut ProductionQueue>,
     deposits: Query<&Position, With<ResourceDeposit>>,
+    mut ability_query: Query<(&mut AbilitySlots, Option<&StatModifiers>)>,
+    mut research_queues: Query<(&Owner, &mut ResearchQueue), With<Researcher>>,
 ) {
     let pending = cmd_queue.drain();
 
@@ -347,6 +352,20 @@ pub fn process_commands(
                         continue;
                     }
 
+                    // Gate advanced units behind upgrade prerequisites
+                    if let Some(pres) = player_resources.players.get(player_id as usize) {
+                        if unit_kind == UnitKind::Catnapper
+                            && !pres.completed_upgrades.contains(&UpgradeType::SiegeTraining)
+                        {
+                            continue;
+                        }
+                        if unit_kind == UnitKind::MechCommander
+                            && !pres.completed_upgrades.contains(&UpgradeType::MechPrototype)
+                        {
+                            continue;
+                        }
+                    }
+
                     let ustats = base_stats(unit_kind);
 
                     // Validate resources + supply
@@ -417,6 +436,121 @@ pub fn process_commands(
                             if group_ids.contains(&eid) {
                                 commands.entity(entity).insert(Selected);
                             }
+                        }
+                    }
+                }
+            }
+
+            GameCommand::ActivateAbility {
+                unit_id,
+                slot,
+                target: _ability_target,
+            } => {
+                let entity = Entity::from_bits(unit_id.0);
+                if let Ok((mut ability_slots, stat_mods)) = ability_query.get_mut(entity) {
+                    let slot_idx = slot as usize;
+                    if slot_idx >= 3 {
+                        continue;
+                    }
+
+                    let ability_state = &mut ability_slots.slots[slot_idx];
+                    let def = ability_def(ability_state.id);
+
+                    // Check silenced
+                    if stat_mods.is_some_and(|m| m.silenced) {
+                        continue;
+                    }
+
+                    // Check cooldown
+                    if ability_state.cooldown_remaining > 0 {
+                        continue;
+                    }
+
+                    // Check charges (for charge-based abilities)
+                    if def.max_charges > 0 && ability_state.charges == 0 {
+                        continue;
+                    }
+
+                    // Check GPU cost
+                    if def.gpu_cost > 0 {
+                        // Find owner to deduct GPU
+                        if let Ok((_, _, owner_opt, _, _)) = query.get(entity) {
+                            let player_id = owner_opt.map(|o| o.player_id).unwrap_or(0) as usize;
+                            if let Some(pres) = player_resources.players.get_mut(player_id) {
+                                if pres.gpu_cores < def.gpu_cost {
+                                    continue;
+                                }
+                                pres.gpu_cores -= def.gpu_cost;
+                            } else {
+                                continue;
+                            }
+                        }
+                    }
+
+                    // Activate
+                    match def.activation {
+                        AbilityActivation::Toggle => {
+                            ability_state.active = !ability_state.active;
+                            ability_state.cooldown_remaining = def.cooldown_ticks;
+                        }
+                        AbilityActivation::Activated => {
+                            ability_state.active = true;
+                            ability_state.cooldown_remaining = def.cooldown_ticks;
+                            ability_state.duration_remaining = def.duration_ticks;
+                            if def.max_charges > 0 {
+                                ability_state.charges -= 1;
+                            }
+                        }
+                        AbilityActivation::Passive => {
+                            // Passives can't be manually activated
+                        }
+                    }
+                }
+            }
+
+            GameCommand::Research { building, upgrade } => {
+                let building_entity = Entity::from_bits(building.0);
+                if let Ok((owner, mut queue)) = research_queues.get_mut(building_entity) {
+                    let player_id = owner.player_id as usize;
+
+                    // Check not already researched
+                    if let Some(pres) = player_resources.players.get(player_id) {
+                        if pres.completed_upgrades.contains(&upgrade) {
+                            continue;
+                        }
+                    }
+
+                    // Check not already in queue
+                    if queue.queue.iter().any(|(u, _)| *u == upgrade) {
+                        continue;
+                    }
+
+                    let ustats = upgrade_stats(upgrade);
+
+                    // Validate resources
+                    if let Some(pres) = player_resources.players.get_mut(player_id) {
+                        if pres.food < ustats.food_cost || pres.gpu_cores < ustats.gpu_cost {
+                            continue;
+                        }
+                        pres.food -= ustats.food_cost;
+                        pres.gpu_cores -= ustats.gpu_cost;
+                    } else {
+                        continue;
+                    }
+
+                    queue.queue.push_back((upgrade, ustats.research_time));
+                }
+            }
+
+            GameCommand::CancelResearch { building } => {
+                let building_entity = Entity::from_bits(building.0);
+                if let Ok((owner, mut queue)) = research_queues.get_mut(building_entity) {
+                    if let Some((upgrade, _)) = queue.queue.pop_front() {
+                        let player_id = owner.player_id as usize;
+                        let ustats = upgrade_stats(upgrade);
+                        if let Some(pres) = player_resources.players.get_mut(player_id) {
+                            pres.food += ustats.food_cost;
+                            pres.gpu_cores += ustats.gpu_cost;
                         }
                     }
                 }

@@ -31,15 +31,16 @@ impl Plugin for RenderPlugin {
             .init_resource::<screenshot::ScreenshotConfig>()
             .init_resource::<fog::FogOfWar>()
             .init_resource::<zoom_lod::ZoomTier>()
-            // Phase 1: Generate procedural sprite assets (no map dependency)
+            // Phase 0: Generate sprite assets before anything else (PreStartup)
             .add_systems(
-                Startup,
+                PreStartup,
                 (
-                    tile_gen::generate_terrain_tiles,
                     unit_gen::generate_unit_sprites,
                     resource_nodes::generate_resource_sprites,
                 ),
             )
+            // Phase 1: Generate terrain tiles at Startup (no map dependency)
+            .add_systems(Startup, tile_gen::generate_terrain_tiles)
             // Phase 2: setup_game creates map + spawns units (needs sprite resources)
             // setup_game is registered in main.rs; tilemap runs after both tile_gen and setup_game
             .add_systems(

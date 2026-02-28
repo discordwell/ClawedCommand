@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
+use crate::abilities::AbilityId;
 use crate::commands::EntityId;
 use crate::coords::{GridPos, WorldPos};
+use crate::hero::HeroId;
 use crate::math::Fixed;
 
 // ---------------------------------------------------------------------------
@@ -22,12 +24,20 @@ pub enum ResourceType {
 pub enum BuildingKind {
     /// HQ — pre-built, produces Pawdler, resource drop-off.
     TheBox,
-    /// Barracks — produces combat units.
+    /// Barracks — produces basic combat units (Nuisance, Hisser, Chonk, Yowler).
     CatTree,
     /// Resource drop-off + slight gather bonus.
     FishMarket,
     /// Supply depot — increases supply cap.
     LitterBox,
+    /// Advanced tech building — produces FlyingFox, Mouser, Catnapper, FerretSapper, MechCommander.
+    ServerRack,
+    /// Research building — upgrades (SharperClaws, ThickerFur, etc.).
+    ScratchingPost,
+    /// Garrison building — units enter for protection (garrison mechanic deferred).
+    CatFlap,
+    /// Defensive tower — auto-attacks enemies in range.
+    LaserPointer,
 }
 
 /// State machine for the Pawdler gather loop.
@@ -270,3 +280,166 @@ pub struct Gathering {
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
 pub struct Producer;
+
+// ---------------------------------------------------------------------------
+// Ability / Status Effect components
+// ---------------------------------------------------------------------------
+
+/// Runtime state for a single ability slot.
+#[derive(Debug, Clone, Copy)]
+pub struct AbilityState {
+    pub id: AbilityId,
+    /// Ticks remaining before ability can be used again.
+    pub cooldown_remaining: u32,
+    /// Whether this ability is currently active (toggle on, or activated duration running).
+    pub active: bool,
+    /// Ticks remaining on the active duration (for Activated abilities).
+    pub duration_remaining: u32,
+    /// Current charges (for charge-based abilities).
+    pub charges: u32,
+}
+
+/// The 3 ability slots for a unit.
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct AbilitySlots {
+    pub slots: [AbilityState; 3],
+}
+
+impl AbilitySlots {
+    /// Create ability slots from a unit's ability IDs, initialized to ready state.
+    pub fn from_abilities(ids: [AbilityId; 3]) -> Self {
+        Self {
+            slots: ids.map(|id| {
+                let def = crate::abilities::ability_def(id);
+                AbilityState {
+                    id,
+                    cooldown_remaining: 0,
+                    active: false,
+                    duration_remaining: 0,
+                    charges: def.max_charges,
+                }
+            }),
+        }
+    }
+}
+
+/// Aggregate stat modifiers computed from status effects each tick.
+/// Multiplicative modifiers default to 1.0 (FIXED_ONE), boolean flags to false.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct StatModifiers {
+    pub speed_multiplier: Fixed,
+    pub damage_multiplier: Fixed,
+    pub attack_speed_multiplier: Fixed,
+    pub damage_reduction: Fixed,
+    pub gather_speed_multiplier: Fixed,
+    pub cooldown_multiplier: Fixed,
+    pub invulnerable: bool,
+    pub immobilized: bool,
+    pub silenced: bool,
+}
+
+impl Default for StatModifiers {
+    fn default() -> Self {
+        Self {
+            speed_multiplier: Fixed::ONE,
+            damage_multiplier: Fixed::ONE,
+            attack_speed_multiplier: Fixed::ONE,
+            damage_reduction: Fixed::ONE,
+            gather_speed_multiplier: Fixed::ONE,
+            cooldown_multiplier: Fixed::ONE,
+            invulnerable: false,
+            immobilized: false,
+            silenced: false,
+        }
+    }
+}
+
+/// The type of aura a unit emits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuraType {
+    GravitationalChonk,
+    HarmonicResonance,
+    Lullaby,
+    ContagiousYawning,
+    TacticalUplink,
+    MinstralUplink,
+}
+
+/// Component for units that emit an area-of-effect aura.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct Aura {
+    pub aura_type: AuraType,
+    pub radius: Fixed,
+    pub active: bool,
+}
+
+/// Component for stealth-capable units.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct Stealth {
+    pub stealthed: bool,
+    pub detection_radius: Fixed,
+}
+
+/// Component for entities visible through fog of war.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct VisibleThroughFog {
+    pub remaining_ticks: u32,
+}
+
+// ---------------------------------------------------------------------------
+// Research / Upgrade components
+// ---------------------------------------------------------------------------
+
+/// Available upgrade types that can be researched at the ScratchingPost.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum UpgradeType {
+    /// +2 damage for all combat units.
+    SharperClaws,
+    /// +25 HP for all combat units.
+    ThickerFur,
+    /// +10% speed for all units.
+    NimblePaws,
+    /// Unlocks Catnapper training at ServerRack.
+    SiegeTraining,
+    /// Unlocks MechCommander training at ServerRack.
+    MechPrototype,
+}
+
+/// Research queue for a ScratchingPost (parallels ProductionQueue).
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct ResearchQueue {
+    pub queue: VecDeque<(UpgradeType, u32)>, // (upgrade, ticks_remaining)
+}
+
+impl Default for ResearchQueue {
+    fn default() -> Self {
+        Self {
+            queue: VecDeque::new(),
+        }
+    }
+}
+
+/// Marker: this building can perform research (fully constructed ScratchingPost).
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct Researcher;
+
+// ---------------------------------------------------------------------------
+// Hero components
+// ---------------------------------------------------------------------------
+
+/// Marks an entity as a named hero character.
+/// Heroes are regular units with boosted stats and story significance.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct HeroIdentity {
+    pub hero_id: HeroId,
+    /// If true, mission fails when this hero dies.
+    pub mission_critical: bool,
+}

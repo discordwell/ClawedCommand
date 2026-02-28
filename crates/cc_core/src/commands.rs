@@ -1,4 +1,4 @@
-use crate::components::{BuildingKind, UnitKind};
+use crate::components::{BuildingKind, UnitKind, UpgradeType};
 use crate::coords::GridPos;
 
 /// Unique identifier for entities in commands.
@@ -64,4 +64,28 @@ pub enum GameCommand {
     },
     /// Recall (select) units in a control group.
     RecallControlGroup { group: u8 },
+    /// Activate a unit's ability by slot index.
+    ActivateAbility {
+        unit_id: EntityId,
+        slot: u8,
+        target: AbilityTarget,
+    },
+    /// Queue research at a ScratchingPost.
+    Research {
+        building: EntityId,
+        upgrade: UpgradeType,
+    },
+    /// Cancel the front item in a building's research queue.
+    CancelResearch { building: EntityId },
+}
+
+/// Target for an ability activation.
+#[derive(Debug, Clone, Copy)]
+pub enum AbilityTarget {
+    /// Ability targets self (no external target).
+    SelfCast,
+    /// Ability targets a grid position.
+    Position(GridPos),
+    /// Ability targets a specific entity.
+    Entity(EntityId),
 }

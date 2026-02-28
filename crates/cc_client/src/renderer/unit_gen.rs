@@ -3,11 +3,13 @@ use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 
 use cc_core::components::UnitKind;
 
-/// Resource holding procedurally generated unit sprite images.
+/// Resource holding unit sprite image handles (art from disk or procedural fallback).
 #[derive(Resource)]
 pub struct UnitSprites {
     /// One image handle per UnitKind (indexed by kind_index).
     pub sprites: [Handle<Image>; 10],
+    /// True if at least one sprite was loaded from a PNG file on disk.
+    pub art_loaded: bool,
 }
 
 /// Map UnitKind to array index.
@@ -49,25 +51,58 @@ fn sprite_size(kind: UnitKind) -> (usize, usize) {
     (w * 2, h * 2)
 }
 
-/// Generate unit sprite images at startup.
-pub fn generate_unit_sprites(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
-    let kinds = [
-        UnitKind::Pawdler,
-        UnitKind::Nuisance,
-        UnitKind::Chonk,
-        UnitKind::FlyingFox,
-        UnitKind::Hisser,
-        UnitKind::Yowler,
-        UnitKind::Mouser,
-        UnitKind::Catnapper,
-        UnitKind::FerretSapper,
-        UnitKind::MechCommander,
-    ];
+/// Return the asset path for a unit's idle sprite PNG (relative to `assets/`).
+pub fn sprite_file_path(kind: UnitKind) -> String {
+    let name = match kind {
+        UnitKind::Pawdler => "pawdler",
+        UnitKind::Nuisance => "nuisance",
+        UnitKind::Chonk => "chonk",
+        UnitKind::FlyingFox => "flying_fox",
+        UnitKind::Hisser => "hisser",
+        UnitKind::Yowler => "yowler",
+        UnitKind::Mouser => "mouser",
+        UnitKind::Catnapper => "catnapper",
+        UnitKind::FerretSapper => "ferret_sapper",
+        UnitKind::MechCommander => "mech_commander",
+    };
+    format!("sprites/units/{name}_idle.png")
+}
 
+/// All unit kinds in canonical order.
+pub const ALL_KINDS: [UnitKind; 10] = [
+    UnitKind::Pawdler,
+    UnitKind::Nuisance,
+    UnitKind::Chonk,
+    UnitKind::FlyingFox,
+    UnitKind::Hisser,
+    UnitKind::Yowler,
+    UnitKind::Mouser,
+    UnitKind::Catnapper,
+    UnitKind::FerretSapper,
+    UnitKind::MechCommander,
+];
+
+/// Generate unit sprite handles at startup. Tries to load PNGs from disk first,
+/// falls back to procedural generation for any missing sprites.
+pub fn generate_unit_sprites(
+    mut commands: Commands,
+    mut images: ResMut<Assets<Image>>,
+    asset_server: Res<AssetServer>,
+) {
     let mut handles: Vec<Handle<Image>> = Vec::with_capacity(10);
-    for kind in kinds {
-        let img = generate_unit_image(kind);
-        handles.push(images.add(img));
+    let mut any_art_loaded = false;
+
+    for kind in ALL_KINDS {
+        let asset_path = sprite_file_path(kind);
+        let disk_path = std::path::Path::new("assets").join(&asset_path);
+
+        if disk_path.exists() {
+            handles.push(asset_server.load(asset_path));
+            any_art_loaded = true;
+        } else {
+            let img = generate_unit_image(kind);
+            handles.push(images.add(img));
+        }
     }
 
     commands.insert_resource(UnitSprites {
@@ -83,6 +118,7 @@ pub fn generate_unit_sprites(mut commands: Commands, mut images: ResMut<Assets<I
             handles[8].clone(),
             handles[9].clone(),
         ],
+        art_loaded: any_art_loaded,
     });
 }
 
@@ -426,5 +462,55 @@ fn draw_mech_commander(data: &mut [u8], w: usize, h: usize) {
         set_pixel(data, w, h, cx as i32 - 4, py as i32, 80, 80, 90, 255);
         set_pixel(data, w, h, cx as i32 + 4, py as i32, 80, 80, 90, 255);
         set_pixel(data, w, h, cx as i32 + 5, py as i32, 80, 80, 90, 255);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sprite_file_paths_match_catalog() {
+        // Verify paths match asset_catalog.yaml game_path entries (minus "assets/" prefix)
+        assert_eq!(sprite_file_path(UnitKind::Pawdler), "sprites/units/pawdler_idle.png");
+        assert_eq!(sprite_file_path(UnitKind::Nuisance), "sprites/units/nuisance_idle.png");
+        assert_eq!(sprite_file_path(UnitKind::Chonk), "sprites/units/chonk_idle.png");
+        assert_eq!(sprite_file_path(UnitKind::FlyingFox), "sprites/units/flying_fox_idle.png");
+        assert_eq!(sprite_file_path(UnitKind::Hisser), "sprites/units/hisser_idle.png");
+        assert_eq!(sprite_file_path(UnitKind::Yowler), "sprites/units/yowler_idle.png");
+        assert_eq!(sprite_file_path(UnitKind::Mouser), "sprites/units/mouser_idle.png");
+        assert_eq!(sprite_file_path(UnitKind::Catnapper), "sprites/units/catnapper_idle.png");
+        assert_eq!(sprite_file_path(UnitKind::FerretSapper), "sprites/units/ferret_sapper_idle.png");
+        assert_eq!(sprite_file_path(UnitKind::MechCommander), "sprites/units/mech_commander_idle.png");
+    }
+
+    #[test]
+    fn all_kinds_have_sprite_paths() {
+        for kind in ALL_KINDS {
+            let path = sprite_file_path(kind);
+            assert!(path.starts_with("sprites/units/"), "Path should be under sprites/units/: {path}");
+            assert!(path.ends_with("_idle.png"), "Path should end with _idle.png: {path}");
+        }
+    }
+
+    #[test]
+    fn kind_index_covers_all_kinds() {
+        for (i, kind) in ALL_KINDS.iter().enumerate() {
+            assert_eq!(kind_index(*kind), i, "kind_index mismatch for {kind:?}");
+        }
+    }
+
+    #[test]
+    fn all_kinds_constant_has_ten_entries() {
+        assert_eq!(ALL_KINDS.len(), 10);
+    }
+
+    #[test]
+    fn procedural_images_are_nonzero() {
+        for kind in ALL_KINDS {
+            let img = generate_unit_image(kind);
+            let has_nonzero = img.data.iter().any(|&b| b != 0);
+            assert!(has_nonzero, "Procedural image for {kind:?} is all zeros");
+        }
     }
 }

@@ -1,3 +1,5 @@
+pub mod ability_system;
+pub mod aura_system;
 pub mod cleanup_system;
 pub mod combat_system;
 pub mod command_system;
@@ -6,14 +8,18 @@ pub mod grid_sync_system;
 pub mod movement_system;
 pub mod production_system;
 pub mod projectile_system;
+pub mod research_system;
 pub mod resource_system;
+pub mod stat_modifier_system;
+pub mod status_effect_system;
 pub mod target_acquisition_system;
 pub mod tick_system;
+pub mod tower_combat_system;
 pub mod victory_system;
 
 use bevy::prelude::*;
 
-use crate::resources::{CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock, SpawnPositions};
+use crate::resources::{CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock, SimRng, SpawnPositions};
 use cc_core::map::GameMap;
 
 pub struct SimSystemsPlugin;
@@ -31,6 +37,7 @@ impl Plugin for SimSystemsPlugin {
             .init_resource::<PlayerResources>()
             .init_resource::<GameState>()
             .init_resource::<SpawnPositions>()
+            .init_resource::<SimRng>()
             .insert_resource(MapResource {
                 map: GameMap::new(64, 64),
             })
@@ -39,10 +46,16 @@ impl Plugin for SimSystemsPlugin {
                 (
                     tick_system::tick_system,
                     command_system::process_commands,
+                    ability_system::ability_cooldown_system,
+                    status_effect_system::status_effect_system,
+                    aura_system::aura_system,
+                    stat_modifier_system::stat_modifier_system,
                     production_system::production_system,
+                    research_system::research_system,
                     resource_system::gathering_system,
                     target_acquisition_system::target_acquisition_system,
                     combat_system::combat_system,
+                    tower_combat_system::tower_combat_system,
                     projectile_system::projectile_system,
                     movement_system::movement_system,
                     grid_sync_system::grid_sync_system,

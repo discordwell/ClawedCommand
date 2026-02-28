@@ -29,6 +29,11 @@ fn main() {
         .add_plugins(input::InputPlugin)
         .add_plugins(ui::UiPlugin)
         .add_plugins(VoicePlugin)
-        .add_systems(PreStartup, setup::setup_game)
+        .add_systems(
+            PreStartup,
+            setup::setup_game
+                .after(renderer::unit_gen::generate_unit_sprites)
+                .after(renderer::resource_nodes::generate_resource_sprites),
+        )
         .run();
 }

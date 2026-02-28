@@ -1,0 +1,107 @@
+use bevy::prelude::*;
+
+use cc_core::components::{Dead, StatModifiers};
+use cc_core::math::{Fixed, FIXED_ONE};
+use cc_core::status_effects::{StatusEffectId, StatusEffects};
+
+/// Recompute StatModifiers from StatusEffects every tick.
+/// Clean slate each tick — no stale state.
+pub fn stat_modifier_system(
+    mut query: Query<(&StatusEffects, &mut StatModifiers), Without<Dead>>,
+) {
+    for (effects, mut modifiers) in query.iter_mut() {
+        // Reset to defaults
+        *modifiers = StatModifiers::default();
+
+        for instance in &effects.effects {
+            if instance.remaining_ticks == 0 {
+                continue;
+            }
+
+            match instance.effect {
+                StatusEffectId::Zoomies => {
+                    // +100% speed
+                    modifiers.speed_multiplier =
+                        modifiers.speed_multiplier + FIXED_ONE;
+                }
+                StatusEffectId::LoafModeActive => {
+                    // Immobile + 50% damage reduction
+                    modifiers.immobilized = true;
+                    modifiers.damage_reduction =
+                        modifiers.damage_reduction * Fixed::from_bits(32768); // 0.5
+                }
+                StatusEffectId::Motivated => {
+                    // +15% damage
+                    modifiers.damage_multiplier = modifiers.damage_multiplier
+                        * Fixed::from_bits((1 << 16) + (1 << 16) * 15 / 100); // 1.15
+                }
+                StatusEffectId::HarmonicBuff => {
+                    // +20% damage, +10% speed
+                    modifiers.damage_multiplier = modifiers.damage_multiplier
+                        * Fixed::from_bits((1 << 16) + (1 << 16) * 20 / 100); // 1.20
+                    modifiers.speed_multiplier = modifiers.speed_multiplier
+                        * Fixed::from_bits((1 << 16) + (1 << 16) * 10 / 100); // 1.10
+                }
+                StatusEffectId::LullabyDebuff => {
+                    // -30% speed, -15% attack speed
+                    modifiers.speed_multiplier = modifiers.speed_multiplier
+                        * Fixed::from_bits((1 << 16) - (1 << 16) * 30 / 100); // 0.70
+                    modifiers.attack_speed_multiplier = modifiers.attack_speed_multiplier
+                        * Fixed::from_bits((1 << 16) + (1 << 16) * 15 / 100); // 1.15 (slower)
+                }
+                StatusEffectId::TacticalLink => {
+                    // -20% cooldowns
+                    modifiers.cooldown_multiplier = modifiers.cooldown_multiplier
+                        * Fixed::from_bits((1 << 16) - (1 << 16) * 20 / 100); // 0.80
+                }
+                StatusEffectId::Annoyed => {
+                    // -5% damage per stack (stacking debuff from Nuisance)
+                    let reduction_per_stack =
+                        Fixed::from_bits((1 << 16) * 5 / 100); // 0.05
+                    let total_reduction = reduction_per_stack
+                        * Fixed::from_num(instance.stacks as i32);
+                    let mult = (FIXED_ONE - total_reduction).max(Fixed::from_bits((1 << 16) / 2)); // floor at 0.5
+                    modifiers.damage_multiplier = modifiers.damage_multiplier * mult;
+                }
+                StatusEffectId::Corroded => {
+                    // -10% damage reduction per stack (takes more damage)
+                    let increase_per_stack =
+                        Fixed::from_bits((1 << 16) * 10 / 100); // 0.10
+                    let total_increase = increase_per_stack
+                        * Fixed::from_num(instance.stacks as i32);
+                    let mult = FIXED_ONE + total_increase; // > 1.0 means takes more damage
+                    modifiers.damage_reduction = modifiers.damage_reduction * mult;
+                }
+                StatusEffectId::Disoriented => {
+                    // -50% speed (CC)
+                    modifiers.speed_multiplier = modifiers.speed_multiplier
+                        * Fixed::from_bits(32768); // 0.5
+                }
+                StatusEffectId::Drowsed => {
+                    // Immobile + silenced (CC)
+                    modifiers.immobilized = true;
+                    modifiers.silenced = true;
+                }
+                StatusEffectId::Tilted => {
+                    // -30% speed, -20% damage (CC)
+                    modifiers.speed_multiplier = modifiers.speed_multiplier
+                        * Fixed::from_bits((1 << 16) - (1 << 16) * 30 / 100); // 0.70
+                    modifiers.damage_multiplier = modifiers.damage_multiplier
+                        * Fixed::from_bits((1 << 16) - (1 << 16) * 20 / 100); // 0.80
+                }
+                StatusEffectId::NineLivesReviving => {
+                    // Invulnerable during revive
+                    modifiers.invulnerable = true;
+                    modifiers.immobilized = true;
+                }
+                StatusEffectId::Overridden => {
+                    // Silenced while overridden
+                    modifiers.silenced = true;
+                }
+                StatusEffectId::Tagged | StatusEffectId::CcImmune => {
+                    // These don't affect stats
+                }
+            }
+        }
+    }
+}

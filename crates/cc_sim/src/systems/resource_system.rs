@@ -56,6 +56,9 @@ pub fn gathering_system(
                                 ticks_remaining: HARVEST_TICKS,
                             };
                             gathering.carried_type = deposit.resource_type;
+                        } else {
+                            // Arrived but not close enough — release so AI can reassign
+                            commands.entity(entity).remove::<Gathering>();
                         }
                     } else {
                         // Deposit gone — stop gathering
@@ -156,9 +159,11 @@ pub fn gathering_system(
                             commands.entity(entity).insert(MoveTarget {
                                 target: WorldPos::from_grid(first_waypoint),
                             });
+                            gathering.state = GatherState::MovingToDeposit;
+                        } else {
+                            // Re-pathfinding failed — release so AI can reassign
+                            commands.entity(entity).remove::<Gathering>();
                         }
-
-                        gathering.state = GatherState::MovingToDeposit;
                     } else {
                         // Deposit gone
                         commands.entity(entity).remove::<Gathering>();

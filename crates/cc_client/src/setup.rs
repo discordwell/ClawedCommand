@@ -204,7 +204,8 @@ pub fn setup_game(
             let screen = world_to_screen(world);
             let elevation_offset = map_res.map.elevation_at(grid) as f32 * ELEVATION_PIXEL_OFFSET;
             let stats = base_stats(kind);
-            let scale = unit_scale(kind);
+            let art_loaded = unit_sprites.as_ref().map_or(false, |s| s.art_loaded);
+            let scale = unit_scale(kind, art_loaded);
             let tint = team_color(sp.player);
 
             if let Some(ref sprites) = unit_sprites {
@@ -291,19 +292,35 @@ pub fn setup_game(
     commands.insert_resource(team_materials);
 }
 
-/// Scale factor per unit kind. Halved from original values to compensate for
-/// 2× sprite resolution (sprites are now double-sized for crisp close-up zoom).
-pub fn unit_scale(kind: UnitKind) -> f32 {
-    match kind {
-        UnitKind::Pawdler => 0.35,
-        UnitKind::Nuisance => 0.5,
-        UnitKind::Mouser => 0.45,
-        UnitKind::FerretSapper => 0.45,
-        UnitKind::Hisser => 0.5,
-        UnitKind::FlyingFox => 0.4,
-        UnitKind::Yowler => 0.55,
-        UnitKind::Catnapper => 0.65,
-        UnitKind::Chonk => 0.7,
-        UnitKind::MechCommander => 0.8,
+/// Scale factor per unit kind.
+/// When `art_loaded` is true, uses smaller scales for 128px art sprites.
+/// When false, uses original procedural scales (2× sprite resolution).
+pub fn unit_scale(kind: UnitKind, art_loaded: bool) -> f32 {
+    if art_loaded {
+        match kind {
+            UnitKind::Pawdler => 0.19,
+            UnitKind::Nuisance => 0.20,
+            UnitKind::Mouser => 0.19,
+            UnitKind::FerretSapper => 0.22,
+            UnitKind::Hisser => 0.23,
+            UnitKind::FlyingFox => 0.22,
+            UnitKind::Yowler => 0.25,
+            UnitKind::Catnapper => 0.28,
+            UnitKind::Chonk => 0.30,
+            UnitKind::MechCommander => 0.38,
+        }
+    } else {
+        match kind {
+            UnitKind::Pawdler => 0.35,
+            UnitKind::Nuisance => 0.5,
+            UnitKind::Mouser => 0.45,
+            UnitKind::FerretSapper => 0.45,
+            UnitKind::Hisser => 0.5,
+            UnitKind::FlyingFox => 0.4,
+            UnitKind::Yowler => 0.55,
+            UnitKind::Catnapper => 0.65,
+            UnitKind::Chonk => 0.7,
+            UnitKind::MechCommander => 0.8,
+        }
     }
 }

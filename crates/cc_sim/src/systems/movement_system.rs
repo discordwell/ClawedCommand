@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::resources::MapResource;
-use cc_core::components::{MoveTarget, MovementSpeed, Path, Position, Velocity};
+use cc_core::components::{MoveTarget, MovementSpeed, Path, Position, StatModifiers, Velocity};
 use cc_core::coords::WorldPos;
 use cc_core::math::{Fixed, FIXED_ONE, FIXED_ZERO, approx_distance};
 
@@ -24,9 +24,17 @@ pub fn movement_system(
         &MovementSpeed,
         Option<&MoveTarget>,
         Option<&mut Path>,
+        Option<&StatModifiers>,
     )>,
 ) {
-    for (entity, mut pos, mut vel, speed, move_target, path) in query.iter_mut() {
+    for (entity, mut pos, mut vel, speed, move_target, path, modifiers) in query.iter_mut() {
+        // Check immobilized
+        if modifiers.is_some_and(|m| m.immobilized) {
+            vel.dx = FIXED_ZERO;
+            vel.dy = FIXED_ZERO;
+            continue;
+        }
+
         let Some(target) = move_target else {
             // No target -- zero velocity
             vel.dx = FIXED_ZERO;
@@ -41,11 +49,18 @@ pub fn movement_system(
             .movement_cost(grid_pos)
             .unwrap_or(FIXED_ONE);
 
-        // Effective speed = base_speed / terrain_movement_cost
-        let effective_speed = if terrain_cost > FIXED_ZERO {
-            speed.speed / terrain_cost
+        // Apply speed_multiplier from StatModifiers
+        let base_speed = if let Some(mods) = modifiers {
+            speed.speed * mods.speed_multiplier
         } else {
             speed.speed
+        };
+
+        // Effective speed = base_speed / terrain_movement_cost
+        let effective_speed = if terrain_cost > FIXED_ZERO {
+            base_speed / terrain_cost
+        } else {
+            base_speed
         };
 
         let dx = target.target.x - pos.world.x;

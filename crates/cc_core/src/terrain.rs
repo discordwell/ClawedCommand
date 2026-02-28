@@ -1,7 +1,9 @@
+use serde::{Deserialize, Serialize};
+
 use crate::math::{Fixed, FIXED_ONE, FIXED_ZERO};
 
 /// Terrain type for each tile on the map.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum TerrainType {
     Grass = 0,

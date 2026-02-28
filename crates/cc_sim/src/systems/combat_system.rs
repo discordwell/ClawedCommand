@@ -7,8 +7,8 @@ use crate::systems::damage::ApplyDamageCommand;
 use cc_core::commands::EntityId;
 use cc_core::components::{
     AttackStats, AttackTarget, AttackType, AttackTypeMarker, Building, ChasingTarget, Dead,
-    HoldPosition, MoveTarget, Owner, Path, Position, Projectile, ProjectileTarget, UnitType,
-    Velocity,
+    HoldPosition, MoveTarget, Owner, Path, Position, Projectile, ProjectileTarget, StatModifiers,
+    UnitType, Velocity,
 };
 use cc_core::coords::WorldPos;
 use cc_core::math::{Fixed, FIXED_ONE};
@@ -30,12 +30,13 @@ pub fn combat_system(
             Option<&AttackTarget>,
             Option<&Owner>,
             Option<&HoldPosition>,
+            Option<&StatModifiers>,
         ),
         (With<UnitType>, Without<Dead>),
     >,
-    targets: Query<(Entity, &Position), (Or<(With<UnitType>, With<Building>)>, Without<Dead>)>,
+    targets: Query<(Entity, &Position, Option<&StatModifiers>), (Or<(With<UnitType>, With<Building>)>, Without<Dead>)>,
 ) {
-    for (entity, pos, mut stats, atk_type, attack_target, owner, hold) in attackers.iter_mut() {
+    for (entity, pos, mut stats, atk_type, attack_target, owner, hold, attacker_mods) in attackers.iter_mut() {
         // Tick cooldown
         if stats.cooldown_remaining > 0 {
             stats.cooldown_remaining -= 1;
@@ -46,10 +47,15 @@ pub fn combat_system(
         };
 
         let target_entity = Entity::from_bits(target.target.0);
-        let Ok((_, target_pos)) = targets.get(target_entity) else {
+        let Ok((_, target_pos, target_mods)) = targets.get(target_entity) else {
             // Target doesn't exist or is dead
             continue;
         };
+
+        // Skip if target is invulnerable
+        if target_mods.is_some_and(|m| m.invulnerable) {
+            continue;
+        }
 
         let dist_sq = pos.world.distance_squared(target_pos.world);
         let range_sq = stats.range * stats.range;
@@ -57,7 +63,15 @@ pub fn combat_system(
         if dist_sq <= range_sq {
             // In range — attack if cooldown is ready
             if stats.cooldown_remaining == 0 {
-                stats.cooldown_remaining = stats.attack_speed;
+                // Apply attack_speed_multiplier to cooldown reset
+                let base_cooldown = stats.attack_speed;
+                let cooldown = if let Some(mods) = attacker_mods {
+                    let adjusted = Fixed::from_num(base_cooldown as i32) * mods.attack_speed_multiplier;
+                    adjusted.to_num::<u32>().max(1)
+                } else {
+                    base_cooldown
+                };
+                stats.cooldown_remaining = cooldown;
 
                 // Calculate damage with cover + elevation modifiers
                 let target_grid = target_pos.world.to_grid();
@@ -73,7 +87,17 @@ pub fn combat_system(
                 let elev_mult =
                     cc_core::terrain::elevation_damage_multiplier(elev_advantage);
 
-                let final_damage = stats.damage * cover_mult * elev_mult;
+                let mut final_damage = stats.damage * cover_mult * elev_mult;
+
+                // Apply attacker's damage_multiplier
+                if let Some(mods) = attacker_mods {
+                    final_damage = final_damage * mods.damage_multiplier;
+                }
+
+                // Apply target's damage_reduction
+                if let Some(mods) = target_mods {
+                    final_damage = final_damage * mods.damage_reduction;
+                }
 
                 match atk_type.attack_type {
                     AttackType::Melee => {

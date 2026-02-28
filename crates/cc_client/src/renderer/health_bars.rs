@@ -18,19 +18,25 @@ pub struct HealthBarBg;
 #[derive(Component)]
 pub struct HealthBarFg;
 
-const BAR_HEIGHT: f32 = 6.0;
-const BAR_Y_OFFSET: f32 = 40.0;
+/// World-space constants for unit health bars.
+/// Child entities use inverse parent scale, so these map directly to screen pixels.
+const UNIT_BAR_HEIGHT: f32 = 3.0;
+const UNIT_BAR_Y_OFFSET: f32 = 12.0;
 
-/// Scale bar width per unit kind (larger units get wider bars).
-/// Dimensions are doubled to compensate for halved unit_scale (2× sprite resolution).
+/// Constants for building health bars (parent scale = 1.0, no adjustment needed).
+const BUILDING_BAR_HEIGHT: f32 = 6.0;
+const BUILDING_BAR_Y_OFFSET: f32 = 40.0;
+
+/// World-space bar width per unit kind. Inverse parent scale on the child entity
+/// cancels the parent's unit_scale, so these values are the desired screen size.
 fn bar_width_for_kind(kind: UnitKind) -> f32 {
     match kind {
-        UnitKind::Pawdler | UnitKind::Mouser => 32.0,
-        UnitKind::Nuisance | UnitKind::FerretSapper => 40.0,
-        UnitKind::Hisser | UnitKind::Yowler | UnitKind::FlyingFox => 44.0,
-        UnitKind::Catnapper => 52.0,
-        UnitKind::Chonk => 60.0,
-        UnitKind::MechCommander => 68.0,
+        UnitKind::Pawdler | UnitKind::Mouser => 16.0,
+        UnitKind::Nuisance | UnitKind::FerretSapper => 20.0,
+        UnitKind::Hisser | UnitKind::Yowler | UnitKind::FlyingFox => 22.0,
+        UnitKind::Catnapper => 26.0,
+        UnitKind::Chonk => 30.0,
+        UnitKind::MechCommander => 34.0,
     }
 }
 
@@ -38,25 +44,37 @@ fn bar_width_for_kind(kind: UnitKind) -> f32 {
 fn bar_width_for_building(kind: BuildingKind) -> f32 {
     match kind {
         BuildingKind::TheBox => 30.0,
-        BuildingKind::CatTree => 28.0,
-        BuildingKind::FishMarket => 24.0,
-        BuildingKind::LitterBox => 20.0,
+        BuildingKind::CatTree | BuildingKind::ServerRack => 28.0,
+        BuildingKind::FishMarket | BuildingKind::ScratchingPost | BuildingKind::CatFlap => 24.0,
+        BuildingKind::LitterBox | BuildingKind::LaserPointer => 20.0,
     }
 }
 
 /// Spawn health bar child entities for units and buildings that don't have one yet.
+/// Unit health bars use inverse parent scale for consistent world-space sizing.
 pub fn spawn_health_bars(
     mut commands: Commands,
-    units: Query<(Entity, Option<&UnitType>, Option<&Building>), (Or<(With<UnitMesh>, With<BuildingMesh>)>, With<Health>, Without<HasHealthBar>)>,
+    units: Query<(Entity, &Transform, Option<&UnitType>, Option<&Building>), (Or<(With<UnitMesh>, With<BuildingMesh>)>, With<Health>, Without<HasHealthBar>)>,
 ) {
-    for (entity, unit_type, building) in units.iter() {
-        let bar_width = if let Some(ut) = unit_type {
-            bar_width_for_kind(ut.kind)
+    for (entity, parent_transform, unit_type, building) in units.iter() {
+        let parent_scale = parent_transform.scale.x.max(0.01);
+
+        let (bar_width, bar_height, bar_y_offset, inverse_scale) = if unit_type.is_some() {
+            let kind = unit_type.unwrap().kind;
+            (
+                bar_width_for_kind(kind),
+                UNIT_BAR_HEIGHT,
+                UNIT_BAR_Y_OFFSET,
+                1.0 / parent_scale,
+            )
         } else if let Some(b) = building {
-            bar_width_for_building(b.kind)
+            (bar_width_for_building(b.kind), BUILDING_BAR_HEIGHT, BUILDING_BAR_Y_OFFSET, 1.0)
         } else {
-            20.0
+            (20.0, BUILDING_BAR_HEIGHT, BUILDING_BAR_Y_OFFSET, 1.0)
         };
+
+        // Y offset is in parent-local space; divide by parent_scale for world-space positioning
+        let local_y = bar_y_offset * inverse_scale;
 
         // Background (dark)
         let bg = commands
@@ -64,10 +82,11 @@ pub fn spawn_health_bars(
                 HealthBarBg,
                 Sprite {
                     color: Color::srgba(0.1, 0.1, 0.1, 0.8),
-                    custom_size: Some(Vec2::new(bar_width, BAR_HEIGHT)),
+                    custom_size: Some(Vec2::new(bar_width, bar_height)),
                     ..default()
                 },
-                Transform::from_xyz(0.0, BAR_Y_OFFSET, 0.1),
+                Transform::from_xyz(0.0, local_y, 0.1)
+                    .with_scale(Vec3::splat(inverse_scale)),
                 Visibility::Hidden,
             ))
             .id();
@@ -78,10 +97,11 @@ pub fn spawn_health_bars(
                 HealthBarFg,
                 Sprite {
                     color: Color::srgb(0.2, 0.9, 0.2),
-                    custom_size: Some(Vec2::new(bar_width, BAR_HEIGHT)),
+                    custom_size: Some(Vec2::new(bar_width, bar_height)),
                     ..default()
                 },
-                Transform::from_xyz(0.0, BAR_Y_OFFSET, 0.2),
+                Transform::from_xyz(0.0, local_y, 0.2)
+                    .with_scale(Vec3::splat(inverse_scale)),
                 Visibility::Hidden,
             ))
             .id();
@@ -115,7 +135,7 @@ pub fn hide_dead_health_bars(
 /// Shows bars always for enemy units/buildings (not just when damaged).
 pub fn update_health_bars(
     units: Query<
-        (&Health, Option<&UnitType>, Option<&Building>, &Owner, &Children),
+        (&Health, &Transform, Option<&UnitType>, Option<&Building>, &Owner, &Children),
         (Or<(With<UnitMesh>, With<BuildingMesh>)>, Without<Dead>),
     >,
     mut bg_bars: Query<(&mut Sprite, &mut Visibility), (With<HealthBarBg>, Without<HealthBarFg>)>,
@@ -124,19 +144,22 @@ pub fn update_health_bars(
         (With<HealthBarFg>, Without<HealthBarBg>),
     >,
 ) {
-    for (health, unit_type, building, owner, children) in units.iter() {
+    for (health, parent_transform, unit_type, building, owner, children) in units.iter() {
         let ratio: f32 = if health.max > cc_core::math::FIXED_ZERO {
             (health.current / health.max).to_num::<f32>().clamp(0.0, 1.0)
         } else {
             0.0
         };
 
-        let bar_width = if let Some(ut) = unit_type {
-            bar_width_for_kind(ut.kind)
+        let parent_scale = parent_transform.scale.x.max(0.01);
+        let is_unit = unit_type.is_some();
+
+        let (bar_width, bar_height) = if let Some(ut) = unit_type {
+            (bar_width_for_kind(ut.kind), UNIT_BAR_HEIGHT)
         } else if let Some(b) = building {
-            bar_width_for_building(b.kind)
+            (bar_width_for_building(b.kind), BUILDING_BAR_HEIGHT)
         } else {
-            20.0
+            (20.0, BUILDING_BAR_HEIGHT)
         };
 
         let is_enemy = owner.player_id != LOCAL_PLAYER;
@@ -150,7 +173,7 @@ pub fn update_health_bars(
                 } else {
                     Visibility::Hidden
                 };
-                bg_sprite.custom_size = Some(Vec2::new(bar_width, BAR_HEIGHT));
+                bg_sprite.custom_size = Some(Vec2::new(bar_width, bar_height));
             }
 
             if let Ok((mut sprite, mut transform, mut vis)) = fg_bars.get_mut(child) {
@@ -161,9 +184,15 @@ pub fn update_health_bars(
                 };
 
                 let fill_width = bar_width * ratio;
-                sprite.custom_size = Some(Vec2::new(fill_width, BAR_HEIGHT));
+                sprite.custom_size = Some(Vec2::new(fill_width, bar_height));
 
-                let x_offset = (fill_width - bar_width) / 2.0;
+                // X offset is in parent-local space; for units with inverse scale,
+                // divide by parent_scale so the offset aligns in world space.
+                let x_offset = if is_unit {
+                    (fill_width - bar_width) / (2.0 * parent_scale)
+                } else {
+                    (fill_width - bar_width) / 2.0
+                };
                 transform.translation.x = x_offset;
 
                 sprite.color = if ratio > 0.5 {

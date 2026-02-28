@@ -39,7 +39,8 @@ pub fn spawn_unit_visuals(
         let screen = world_to_screen(pos.world);
         let grid = pos.world.to_grid();
         let elev = map_res.map.elevation_at(grid) as f32 * ELEVATION_PIXEL_OFFSET;
-        let scale = unit_scale(unit_type.kind);
+        let art_loaded = unit_sprites.as_ref().map_or(false, |s| s.art_loaded);
+        let scale = unit_scale(unit_type.kind, art_loaded);
         let tint = team_color(owner.player_id);
 
         if let Some(ref sprites) = unit_sprites {

@@ -410,6 +410,7 @@ fn make_harness_sim(
                 phase: AiPhase::EarlyGame,
                 difficulty: bot.difficulty,
                 personality: bot.personality,
+                profile: None,
                 enemy_spawn: None,
                 attack_ordered: false,
             })

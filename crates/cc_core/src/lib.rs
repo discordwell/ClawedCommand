@@ -1,10 +1,15 @@
+pub mod abilities;
 pub mod building_stats;
 pub mod commands;
 pub mod components;
 pub mod coords;
+pub mod hero;
 pub mod map;
 pub mod map_format;
 pub mod map_gen;
 pub mod math;
+pub mod mission;
+pub mod status_effects;
 pub mod terrain;
 pub mod unit_stats;
+pub mod upgrade_stats;
