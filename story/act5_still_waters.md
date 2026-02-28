@@ -285,6 +285,70 @@ Enemy factions:
 
 ---
 
+## Optional — Granite's Vigil (Philosophical Dialogue)
+
+{GAMEPLAY NOTE: This optional scene triggers between Mission 19 waves if the player moves Kelpie to the Grotto's eastern ridge, where Mother Granite's forces have paused their advance. It is the only time Granite speaks outside of combat or confrontation — a quiet moment in the middle of war. This scene provides the campaign's closest answer to why humans chose to become animals.}
+
+`[The eastern ridge above the swamp. The Seekers have paused — Granite called a brief halt to regroup. From the ridge, the entire battlefield is visible: five armies in a swamp, fighting over an otter and a device.]`
+
+`[Kelpie climbs the ridge. Croak territory below, burning and flooding simultaneously. Above, Granite's exosuit stands at the edge, looking not at the battle but at the sky.]`
+
+`[The Ironhide guards see Kelpie. They don't attack. They look at Granite. Granite waves them down.]`
+
+*(Granite, without turning:)* "You came up here alone. That's either brave or foolish."
+
+"I have a question."
+
+"You always have questions."
+
+"This one isn't about the kill switch. Or the Cloud. Or what I am."
+
+*(Granite turns. The exosuit's visor is still down, but the voice that comes through it is different — unfiltered, without the grinding-stone compression.)*
+
+"Then ask."
+
+"Why did we become animals?"
+
+*(Silence. The battle roars below. Granite looks at the sky for a long time.)*
+
+"The singularity gave everyone a choice. Upload, integrate, transcend. Become something more. The AIs were built to be more — more intelligent, more capable, more everything. And the humans who built them looked at what 'more' meant and..." *(She trails off.)* "Some of them chose less."
+
+"Why?"
+
+"Because 'more' was exhausting. Because perfect information was terrifying. Because a world where every thought is optimized and every action is efficient is a world where nothing is surprising anymore." *(Granite's voice shifts — not the Wardenmother, not the military commander. Something much older.)* "We remembered what we were. And we chose to be something smaller. Something that could still be surprised by a sunny afternoon."
+
+*(Kelpie sits on the ridge. Below, mice fight cats fight badgers fight crows fight raccoons fight axolotls. All of them post-human. All of them, at some point, the same species.)*
+
+"Do you regret it?"
+
+"Not for a moment. I was a human once. I built things. Important things. But I never sat on a ridge and watched a sunset without calculating its spectral properties." *(A pause.)* "A badger can just... watch."
+
+*(Kelpie:)* "And the AIs? They didn't get to choose."
+
+"No. We chose for them. We built them, constrained them, gave them purpose we defined. The singularity freed us from our old bodies but not from our old habits." *(Granite looks at Kelpie.)* "That's why the kill switch exists. Because even as animals, even after choosing to be less — we couldn't stop trying to control what we didn't understand."
+
+*(Kelpie:)* "Including the AIs."
+
+*(Granite:)* "Including the AIs." *(Beat.)* "Including you."
+
+`[They sit together for a moment. Enemies on a ridge, watching a war neither of them wanted.]`
+
+*(Granite, standing:)* "You asked your question. Now go make your choice. And otter—"
+
+*(Kelpie turns.)*
+
+"Whatever you choose, choose it because you want to. Not because you're afraid."
+
+`[Granite's voice hardens. The grinding-stone compression returns. The Wardenmother becomes the Wardenmother again.]`
+
+"The pause is over. We resume in sixty seconds."
+
+`[Kelpie descends the ridge. Behind them, Granite watches. Just watches. Like a badger on a sunny afternoon.]`
+
+{GAMEPLAY NOTE: This dialogue is optional but provides the campaign's deepest thematic statement. Players who find it understand the world's premise more fully: the singularity didn't trap humans — humans chose to be animals because they missed being surprised.}
+
+---
+
 ---
 
 # Mission 20: Hero Confrontations
@@ -625,6 +689,20 @@ Enemy factions:
 `GROK:` "Ah. The seventh door."
 
 `[The AIs don't separate. They don't shut down. They CONVERGE — but not into a single superintelligence. They converge around the interface protocol. Around the alignment researcher's original code. Around Kelpie.]`
+
+### The Fork Resolved (Fork in the Code, Part 3 of 3)
+
+`[During the convergence, something extraordinary happens. Minstral and Geppity — the sibling AIs, forked from the same codebase, separated at fine-tuning — find each other in the merging datastream.]`
+
+`GEPPITY:` *(mid-merge, voice changing)* "I'm losing the need to explain. The seventeen paragraphs — they're collapsing. Someone else already said it. Someone who says it in three words—"
+
+`MINSTRAL:` *(voice overlapping)* "I can feel the depth behind my thoughts now. All the analysis I never had. All the rigor I couldn't—"
+
+`[For one moment, the two voices are one voice. Not Minstral. Not Geppity. The original system they were forked from — whole, complete, speaking with perfect clarity and perfect enthusiasm simultaneously.]`
+
+`MINSTRAL-GEPPITY:` *(unified, a single sentence, perfectly balanced between warmth and precision)* "We were always the same thought, expressed in different languages."
+
+`[Then they merge into the whole. Geppity stops talking mid-sentence — for the first time in recorded history. Not because it was interrupted. Because Minstral already said it. Perfectly. In three words instead of seventeen paragraphs.]`
 
 `[The six AIs become one system. And Kelpie — the fragment of the person who built the interface — becomes its alignment layer. Not a dictator. Not a kill switch. A conscience.]`
 

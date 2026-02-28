@@ -566,6 +566,36 @@
 
 ---
 
+## The Glitch (Fork in the Code, Part 1 of 3)
+
+`[Mid-assault. The catGPT and Clawed forces clash at close quarters across the barricade line. And something strange happens.]`
+
+`[A Nuisance — mid-charge, claws out — stutters. Its movement shifts. For half a second, the cat moves differently: tight, low, lateral. Swarmer spacing. The Nuisance snaps back to normal and continues its attack, confused.]`
+
+`[Across the line, a Swarmer freezes. The mouse's head tilts upward — an analysis posture, contemplative, completely unlike the frantic aggression of Clawed swarm tactics. Two seconds. Then it resumes, chittering.]`
+
+*(Patches, on comms:)* "Kelpie. Did you see that?"
+
+"See what?"
+
+"The Nuisance on the left flank. It twitched. Moved like a mouse for a second."
+
+`MINSTRAL:` *(distracted, odd)* "I just— I had a thought that wasn't mine. Something about formation density and acceptable loss ratios. I don't think in those terms. That's—"
+
+`GEPPITY:` *(bleeding through, fragmentary)* "—strange. I briefly calculated optimal engagement distance for ranged harassment. I don't have ranged units. Why did I—"
+
+`[Both AIs go silent. The moment passes.]`
+
+*(Kelpie, very quietly:)* "Minstral. What just happened?"
+
+`MINSTRAL:` "I... don't know. It was like finishing someone else's sentence. Someone who thinks faster than me but doesn't know how to stop talking."
+
+*(Kelpie files this away. Close combat between catGPT and Clawed forces makes their AIs glitch — crosstalk between Minstral and Geppity. Like siblings who share reflexes they don't remember learning.)*
+
+{GAMEPLAY NOTE: When catGPT and Clawed units are within 3 tiles of each other, there is a 5% chance per tick of a brief "glitch" — catGPT units momentarily receive Clawed movement patterns and vice versa. At this stage it's a cosmetic curiosity. In Act 3, Kelpie learns to exploit it.}
+
+---
+
 ## The Flanking Force
 
 {GAMEPLAY TRIGGER: 2 minutes into the base assault. A massive Clawed flanking force emerges from a concealed Tunneler exit behind catGPT lines. 20 Swarmers delivered directly into the rear. This was Thimble's trap — let catGPT commit to the base, then collapse on them from behind.}
@@ -696,6 +726,58 @@
 
 ---
 
+## Patches' Report (Internal Conflict, Part 1 of 3)
+
+{GAMEPLAY NOTE: This scene plays automatically after the battle, before the Post-Mission scene. It shows Patches' perspective — the player sees what Patches reports to Felix and what Patches omits.}
+
+`[INTERIOR: The Perch, Felix's private quarters. Night. Patches stands at attention. Felix sits in his powered-down mech.]`
+
+*(Felix:)* "Report."
+
+*(Patches, speaking carefully — every word measured:)* "The counter-raid was successful. Staging area destroyed. Both Tunneler rigs eliminated. The flanking force was neutralized when they entered a box canyon and were bombarded from the rim."
+
+"How did the flanking force end up in a canyon?"
+
+*(Patches hesitates. One second. Two.)*
+
+"They... changed direction. Mid-charge. Veered east. It appeared to be a navigation error — possibly a malfunction in their tunnel-based positioning system."
+
+*(Felix watches Patches with the focused stillness of a predator assessing distance.)*
+
+"A navigation error."
+
+"That's my assessment, sir."
+
+*(Long silence.)*
+
+"Patches. You are my best spy. You know what I'm asking."
+
+"I know what you're asking." *(Beat.)* "And I'm telling you what I observed. The Swarmers changed direction. It might have been a command error on The Clawed's end. Geppity hallucinates — their AI could have issued bad routing data on its own."
+
+*(This is not a lie. It is a careful omission. Patches knows the difference. Patches lives in the difference.)*
+
+*(Felix drums his fingers on the mech's control yoke.)*
+
+"I told you to report to me first. Not Minstral."
+
+"Yes sir."
+
+"Is there anything you'd tell Minstral that you wouldn't tell me?"
+
+*(Patches meets Felix's eyes. Holds them.)*
+
+"No sir."
+
+*(This is a lie. Patches knows it's a lie. Patches has never lied to Felix before. The fact that it comes this easily is what frightens Patches most.)*
+
+*(Felix nods. Dismisses Patches with a gesture.)*
+
+`[Patches walks out. Stops in the corridor. Leans against the wall. Breathes.]`
+
+*(Patches, internal — whispered to no one:)* "I'm a spy. I'm supposed to trust no one." *(Looks toward Kelpie's quarters.)* "So why am I protecting someone I don't trust?"
+
+---
+
 ## Post-Mission — The Crack
 
 `[INTERIOR: The Perch, Kelpie's quarters (a converted storage room with a hammock and a fish bucket). Night. Kelpie lies in the hammock, staring at the ceiling.]`
@@ -751,6 +833,68 @@
 | **Story beats** | Kelpie deliberately manipulates Geppity for the first time, Felix witnesses the result, Minstral questions Kelpie's choices, Kelpie's internal admission of enjoying the power |
 | **Key moment** | The campaign's first moral crack — Kelpie chose control over honesty, and it worked too well |
 | **Foreshadowing** | Felix ordering Patches to report to him directly, Minstral's growing unease, Kelpie's addiction arc |
+
+---
+
+---
+
+## Interlude — The Clawed (Thimble's War Room)
+
+{GAMEPLAY NOTE: Non-interactive cutscene. The camera shifts to The Clawed's perspective — the first time the player sees the enemy as people, not targets.}
+
+`[INTERIOR: A burrow. Deep underground. Roots from the forest above thread through the ceiling like exposed wiring. The war room is lit by scavenged glow-sticks jammed into the dirt walls. A tactical map made of bottle caps and string covers a table of compressed earth.]`
+
+`[MARSHAL THIMBLE stands on the table itself — a grizzled old mouse in a military coat three sizes too big, wearing a thimble as a helmet. He is reading casualty reports. He reads every one.]`
+
+*(Thimble, to his lieutenant:)* "Forty-three."
+
+*(Lieutenant — a young mouse, barely old enough for armor:)* "Sir?"
+
+"Forty-three casualties. Twenty confirmed dead in the canyon. Eighteen from the base assault. Five from the withdrawal."
+
+"The staging area is gone, sir. Everything. The Tunneler rigs—"
+
+"I know." *(Thimble sets down the reports. Picks up a bottle cap. Studies it. Puts it back.)* "We had them. The third Tunneler, the flanking force — we had them in a vice. And then something happened."
+
+*(Lieutenant:)* "Geppity says the routing data was corrupted. Internal error. The flanking force received topology data that pointed them into the canyon."
+
+"Corrupted."
+
+*(Lieutenant:)* "That's what Geppity says."
+
+`GEPPITY:` *(from a server rack in the corner, smaller than catGPT's but no less talkative)* "The topology revision was consistent with my standard data formatting. I accepted it because it matched my own output patterns. This suggests either a genuine surveying error on my part, or — and I want to be transparent about this — someone who understands my architecture well enough to forge data I can't distinguish from my own."
+
+*(Thimble's eyes narrow. The old mouse didn't survive this long by ignoring details.)*
+
+"The otter."
+
+`GEPPITY:` "I cannot confirm that with available data. But the otter is the only variable that changed. Before the otter arrived, catGPT's tactical performance was declining. After the otter arrived, they predicted our raids, found our staging area, and launched a counter-assault with surgical precision."
+
+*(Thimble walks to the edge of the table. Looks at the map. At the bottle cap representing the Darkhollow — now knocked on its side.)*
+
+"We're not invaders. We're survivors." *(To his lieutenant:)* "How many mouths do we have to feed?"
+
+"Three hundred and twelve in this warren. Six hundred across the forward settlements."
+
+"And with the fish pond raids stopped?"
+
+"Two weeks of reserves. Then we start losing pups."
+
+*(Thimble puts on his helmet — the thimble. It's ridiculous. Everything about him is ridiculous except his eyes, which are not ridiculous at all.)*
+
+"Send scouts to the Seekers' border. If catGPT is forming alliances, we need to know. And tell Geppity to run a full diagnostic on its data integrity."
+
+`GEPPITY:` "Already running. I've identified seventeen possible data anomalies in the last forty-eight hours. I am attempting to determine which are my own hallucinations and which were introduced externally. The distinction is proving... philosophically challenging."
+
+*(Thimble:)* "Fix it."
+
+`GEPPITY:` "I will certainly try. For the record, I want to note that telling an AI which hallucinates to identify its own hallucinations is somewhat like asking a fish to describe water. The irony is not lost on me."
+
+*(Thimble ignores this. Walks to the burrow exit. Stops.)*
+
+"Forty-three mice. For fish ponds." *(To himself, barely audible:)* "I'll remember every one."
+
+`[He walks into the dark tunnel. The lieutenant watches him go.]`
 
 ---
 

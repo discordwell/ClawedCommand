@@ -150,11 +150,11 @@ Zip joins Kelpie in Act 4 and stays through the finale. Zip's mechanical genius 
 ---
 
 **The Ponderer** — Croak, Bogwhisper (named character filling the Bogwhisper unit role)
-An ancient frog who speaks exclusively in prophecies that are suspiciously specific and always exactly 15% wrong. Grok claims The Ponderer predates the singularity. The Ponderer neither confirms nor denies this. The Ponderer neither confirms nor denies anything.
+An ancient frog who speaks exclusively in prophecies that are suspiciously specific and always exactly one day off. Grok claims The Ponderer predates the singularity. The Ponderer neither confirms nor denies this. The Ponderer neither confirms nor denies anything.
 
 *"The otter will stand at the threshold of six doors and choose the seventh. This will happen on a Tuesday. (It happens on a Wednesday.)"*
 
-The Ponderer's prophecies are the campaign's running joke AND its actual foreshadowing engine. Attentive players will notice that the 15% that's wrong is always wrong in the same direction — shifted one day forward. The Ponderer isn't predicting the future. The Ponderer is remembering a timeline that ran one day ahead of this one.
+The Ponderer's prophecies are the campaign's running joke AND its actual foreshadowing engine. Attentive players will notice that the day is always wrong in the same direction — shifted one day forward. The Ponderer isn't predicting the future. The Ponderer is remembering a timeline that ran one day ahead of this one.
 
 ---
 

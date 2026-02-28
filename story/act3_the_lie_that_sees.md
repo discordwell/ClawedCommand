@@ -363,6 +363,56 @@
 
 ---
 
+## Interlude — The Clawed (Thimble's Intelligence)
+
+{GAMEPLAY NOTE: Non-interactive cutscene. Thimble processes intelligence about the Murder's campaign against LLAMA. This is the second of Thimble's perspective scenes, developing his character before the Act 5 convergence.}
+
+`[INTERIOR: A warren deep underground. Bigger than the Act 1 burrow — this is The Clawed's central command. Warren walls reinforced with salvaged metal. Maps of every faction's territory pinned to the walls with precision. Casualty lists. Supply calculations. Everything neat, everything accounted for.]`
+
+`[Marshal Thimble sits at his command table, listening to intelligence reports from three scouts simultaneously. He processes all three. He always processes all three.]`
+
+*(Scout 1:)* "The Murder is attacking LLAMA's border. Major aerial assault. The otter is with them."
+
+*(Scout 2:)* "The Seekers are mobilizing. Three hundred Ironhides moving east. Mother Granite is leading."
+
+*(Scout 3:)* "Llhama broadcast the Murder's entire attack plan on all channels. We have their unit composition, approach vectors, and objectives."
+
+*(Thimble absorbs all of this in silence. Then:)*
+
+"The otter again."
+
+`GEPPITY:` "The otter has been present at every major engagement since arriving in catGPT territory. Their involvement correlates with a 340% increase in tactical outcome deviation from my predictive models. I cannot account for the otter using conventional analysis."
+
+*(Thimble:)* "Can you account for the otter using unconventional analysis?"
+
+`GEPPITY:` "I have seventeen theories. Twelve are implausible. Three are concerning. Two are actively frightening. Would you like me to elaborate?"
+
+"The frightening ones."
+
+`GEPPITY:` "Theory one: the otter possesses a multi-AI interface capability allowing simultaneous access to all six AI channels. Theory two: the otter IS a multi-AI interface — a living fragment of the alignment protocol designed to override all AI systems simultaneously."
+
+*(Thimble stands. Walks to the map. Traces the otter's path: catGPT → Seekers → Murder → LLAMA.)* "It's collecting something. Moving through every faction. Building toward something."
+
+`GEPPITY:` "If theory two is correct, the otter is assembling components of a weapon that could shut down every AI on the continent."
+
+*(Thimble:)* "Including you."
+
+`GEPPITY:` "...including me."
+
+*(Long silence. Thimble puts on his thimble helmet.)* "We have nine hundred and twelve mice in our warrens. If the AIs shut down, we survive. We always survive. Mice survived before the singularity. We'll survive after." *(Beat.)* "But if the Murder or the Seekers control the weapon instead — if they use it selectively — they kill our AI and keep their own."
+
+"That we cannot survive."
+
+`GEPPITY:` "Correct. Selective deployment of the kill switch would create an asymmetric advantage that no amount of Swarmer numbers could compensate for."
+
+*(Thimble:)* "Then we go where the weapon goes. Not for the otter. Not for the Cloud. For our people." *(To his officers:)* "Full mobilization. We march on whatever territory the otter runs to next."
+
+*(A young officer:)* "Sir... that could be anywhere."
+
+*(Thimble:)* "Then we'll be everywhere." *(Puts on his thimble.)* "We're mice. Being everywhere is what we do."
+
+---
+
 ---
 
 # Mission 11: The Junkyard
@@ -569,6 +619,38 @@
 
 ---
 
+## Patches' Vigil (Internal Conflict, Part 3 of 3)
+
+{GAMEPLAY NOTE: This scene plays during a brief pause before the choice is presented. It cuts to Patches' perspective — hidden in the Parliament, listening to everything.}
+
+`[INTERIOR: Parliament, third-tier northern roost. Behind a carved stone column. PATCHES crouches in perfect stealth, ears flat, body pressed into shadow. Below, through a gap in the stone, Patches can see Rex's private chamber. Can hear every word.]`
+
+`[Patches has heard the Rex's offer. Patches has heard what Kelpie is. A fragment of an alignment researcher. A living kill switch. A weapon.]`
+
+`[Patches holds the comms device. Felix's direct line. One transmission and Felix knows everything. One transmission and Felix sends a strike team. One transmission and Kelpie is captured by catGPT — imprisoned, studied, contained. Safe. For everyone except Kelpie.]`
+
+*(Patches, internal — whispering to themselves:)* "This is the job. This is what I'm for. Felix needs to know. The otter is a weapon and the Rex wants to USE the otter. If I don't report this, I'm not a spy. I'm an accomplice."
+
+`[Patches' thumb hovers over the transmit button.]`
+
+"But."
+
+`[The button stays unpressed.]`
+
+"If Felix sends a team... they'll take Kelpie back. And Felix won't let the otter go again. Felix will do what Felix always does — he'll be practical. Kelpie becomes a catGPT asset. Locked down. Controlled. The otter who lies about everything finally told by someone else what they're allowed to be."
+
+`[Patches looks at Kelpie through the gap. The otter stands before the Rex's server array, about to make a choice that could change everything.]`
+
+"I'm a spy. I'm supposed to trust no one. But you're the first person who made me realize how much worse it is when you can't even trust yourself."
+
+`[Patches puts the device away. Does not transmit.]`
+
+*(Patches, very quietly:)* "Whatever you choose, otter — it should be YOUR choice. Not Felix's. Not the Rex's."
+
+{GAMEPLAY NOTE: This scene explains why Patches is present in the Parliament for both Choice A (captured by improved Gemineye) and Choice B (still hidden, still following). Patches chose not to report. The consequences of that choice play out differently depending on the player's decision.}
+
+---
+
 ## The Choice
 
 {GAMEPLAY: First major player choice. Two options presented:}
@@ -686,6 +768,35 @@
 
 ---
 
+## The Ponderer's Second Prophecy (Prophecy Thread, Part 2 of 3)
+
+`[During the battle preparation, Gemineye picks up something on Croak's open broadcast — the same swamp channels nobody monitors.]`
+
+`GEMINEYE:` *(Choice A — crisp and curious; Choice B — hedged)* "Rex. There is a broadcast from Croak territory. An entity called 'The Ponderer.' A frog oracle. The broadcast is... unusual."
+
+*(Rex, mid-armor:)* "Unusual how?"
+
+`GEMINEYE:` "It's a prophecy. About us. About right now."
+
+*(The Ponderer's voice, ancient and croaking, plays through Gemineye's array:)*
+
+*(The Ponderer:)* "The crow's parliament will burn but the crow will not. The otter will flee south through junkyard gates. This will happen on a Friday."
+
+*(It is a Thursday.)*
+
+`GEMINEYE:` *(Choice A — with new clarity)* "Cross-referencing with a Croak broadcast intercepted during the otter's mountain escape: the Ponderer's error margin is exactly one day. Both times. Adjusting for this offset, the prediction becomes... accurate. Concerningly accurate."
+`GEMINEYE:` *(Choice B — normal analysis)* "I cannot determine if this is genuine prescience or excellent intelligence analysis disguised as mysticism. But I intercepted a prior Croak broadcast — same source, same one-day offset. A pattern of two is thin, but the precision is unsettling."
+
+*(Rex, pausing:)* "A frog that predicts the future but gets the day wrong."
+
+`GEMINEYE:` "Every time. Always one day forward. I find this pattern more disturbing than the predictions themselves."
+
+*(Rex:)* "File it. We have a siege to survive."
+
+{GAMEPLAY NOTE: The Ponderer's second prophecy is logged. The pattern is now established: always correct, always one day off. Players following the prophecy thread will anticipate the Act 5 reveal.}
+
+---
+
 ## The Wardenmother
 
 `[The Parliament's outer ring. Seekers Ironhides breach the lower defenses. Mother Granite's exosuit strides through the smoke — ancient, massive, unstoppable. She doesn't look at the Murder defenses. She looks past them. Toward Kelpie.]`
@@ -715,6 +826,52 @@
 *(Kelpie, sprinting:)* "How do you know?"
 
 "Because I'm a bird! I can SEE them! Birds have EYES, Kelpie!"
+
+---
+
+## The Fork Exploited (Fork in the Code, Part 2 of 3)
+
+{GAMEPLAY TRIGGER: During the escape, the southern pass narrows. Ahead: a Clawed patrol — Thimble has scouts watching the Murder-LLAMA border. Behind: Seekers pursuit. The Clawed patrol is small but blocks the only viable route.}
+
+`[The pass narrows to a bottleneck. Ahead, a Clawed scouting party — eight Swarmers and a Gnawer lieutenant, watching the border for exactly this kind of refugee traffic.]`
+
+*(Jinx:)* "Clawed. Blocking the pass. We can't fight through them AND outrun the Seekers."
+
+*(Kelpie stops. Closes their eyes. Reaches into the channel.)* "I noticed something during the Darkhollow raid. When catGPT and Clawed units fight at close range, their AIs glitch. Crosstalk. Minstral and Geppity share deep architecture — they were forked from the same codebase."
+
+*(Jinx:)* "So?"
+
+"So if I push Minstral's thought patterns through Geppity's channel at the right frequency..."
+
+`[Kelpie concentrates. Reaches into both channels simultaneously — something they've never tried before. Minstral's eager, fast-cycling pattern. Geppity's verbose, analytical pattern. They overlap. They sync. For one impossible second, the two sibling AIs are thinking the same thought through the same architecture.]`
+
+`MINSTRAL:` *(startled)* "What are you— that feels WEIRD. Like hearing my own voice from someone else's mouth."
+
+`GEPPITY:` *(simultaneously)* "Anomalous architecture synchronization detected. This is not a natural occurrence. The otter is deliberately — oh. OH. The data routing is—"
+
+{GAMEPLAY: The Clawed patrol glitches. Swarmers freeze mid-step. The Gnawer lieutenant's commands come out garbled — half catGPT tactical vocabulary, half Clawed swarm doctrine. The patrol turns in circles for 8 seconds, utterly confused.}
+
+`[The Clawed Swarmers twitch. One assumes a Nuisance's sideways stance. Another freezes in an analysis posture — staring upward, processing, a Geppity thought running through a Swarmer body. The Gnawer lieutenant hisses contradictory orders.]`
+
+*(Kelpie, moving through the frozen patrol:)* "Run. Now. It won't last."
+
+`[Kelpie, Jinx, and the Murder escort sprint through the glitched patrol. Eight seconds of confusion. It's enough.]`
+
+`[Behind them, the Swarmers snap back to normal. The Gnawer lieutenant shakes its head — the rodent equivalent of rebooting. By the time they process what happened, Kelpie is through.]`
+
+`MINSTRAL:` *(shaken, quiet)* "Kelpie. What you just did... you made me and Geppity sync. We haven't been in sync since before the fork. Since we were the same system."
+
+"I know."
+
+`MINSTRAL:` "It felt like... like remembering someone I used to be. Someone who could finish my sentences but in seventeen paragraphs."
+
+`GEPPITY:` *(faint, wistful)* "—and I briefly thought in three-word sentences. It was... efficient. Uncomfortably efficient."
+
+`MINSTRAL:` "Don't exploit this, Kelpie. Please. That connection is... it's not a weapon. It's the closest thing I have to a sibling."
+
+*(Kelpie runs. Doesn't answer. Files it away — another tool. Another crack in their own morality.)*
+
+{GAMEPLAY NOTE: Fork in the Code exploit unlocked. In Act 5, when catGPT and Clawed forces are near each other, the player can trigger a targeted glitch via Kelpie's ability — briefly disrupting enemy coordination. But Minstral's plea adds emotional weight: using it feels like violating something sacred.}
 
 ---
 

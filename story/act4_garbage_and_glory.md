@@ -148,6 +148,36 @@
 
 ---
 
+## The Ponderer's Third Prophecy (Prophecy Thread, Part 3 of 3)
+
+`[Evening. The fortification phase winds down. Kelpie sits on a scrap pile, watching the sunset. Grok's channel opens — unprompted, as always.]`
+
+`GROK:` "The frog has something to say."
+
+*(The Ponderer, on Croak open broadcast — the familiar croaking voice, serene and certain:)* "The otter will stand in a junkyard when the mountain comes to crush what was built from garbage. Four armies will clash where scrap becomes fortress. The raccoon will hold a bridge alone. This will happen on a Sunday."
+
+*(It is a Saturday.)*
+
+*(Kelpie:)* "The frog is still one day off."
+
+`GROK:` "Always. But note what it predicted: the mountain coming here. Four armies. A raccoon on a bridge."
+
+"That's... very specific."
+
+`GROK:` "The Ponderer's specificity increases as events approach. From the Ponderer's perspective, this already happened yesterday. The Ponderer is merely reporting the news."
+
+*(Kelpie:)* "If the prophecy is right — adjusted for the day — the Seekers attack tomorrow. Four factions in the junkyard. And Ringtail holds a bridge."
+
+`GROK:` "The Ponderer has never been wrong about the event. Only the day."
+
+*(Kelpie stands. Looks at the fortifications. Looks at Ringtail's mech in the distance.)*
+
+"Then we need to build faster."
+
+{GAMEPLAY NOTE: Final Ponderer prophecy before the Act 5 reveal. The pattern is fully established: 3 prophecies, all correct, all one day off. When the Ponderer explains the timeline memory in Act 5, players who tracked these moments will understand immediately.}
+
+---
+
 ## Zip's Progress
 
 `[Night. South Pit. Zip works by lamplight, surrounded by Cloud components — crystalline tech, old-world server cores, quantum processing units that hum at frequencies that make teeth ache.]`
@@ -306,6 +336,52 @@
 | **Key moment** | Granite's unfinished sentence: "I watched someone I—" — the most powerful line left unsaid in the campaign |
 
 ---
+
+---
+
+## Interlude — The Clawed (Thimble's March)
+
+{GAMEPLAY NOTE: Non-interactive cutscene. The third and final Thimble development scene before his Act 5 hero confrontation.}
+
+`[INTERIOR: The Clawed central warren. Full war council. Every officer, every scout captain, every tunnel boss. The room is packed with mice standing on mice standing on furniture. Thimble stands on the command table, as always.]`
+
+*(Thimble:)* "The Seekers failed to take the junkyard. The Murder is circling. catGPT is marching south. And the otter is building the weapon."
+
+*(Officers murmur.)*
+
+"The Clawed have stayed out of this fight. I made that call. Our losses in catGPT territory were unacceptable. Forty-three mice for fish ponds." *(His voice is flat. Every mouse in the room knows Thimble counted each one.)* "I will not waste lives on someone else's war."
+
+`GEPPITY:` "Marshal, if I may — the situation has changed. If any faction gains control of the Cloud, the balance of power shifts permanently. The Clawed's survival strategy depends on no single faction achieving dominance."
+
+*(Thimble:)* "I know."
+
+`GEPPITY:` "Furthermore, if the otter activates the kill switch selectively — shutting down some AIs while preserving others — The Clawed's disadvantage becomes terminal."
+
+*(Thimble knows this. Has known it since Geppity first suggested it. Has been hoping it wouldn't come to this.)*
+
+"How many can we field?"
+
+*(His lieutenant:)* "Full mobilization: four thousand Swarmers, eight hundred Gnawers, sixty Tunneler rigs, twelve Warren Marshals. And you, sir."
+
+*(Thimble:)* "That's everyone."
+
+"Yes sir."
+
+*(Silence. The kind of silence that happens before a nation goes to war.)*
+
+*(Thimble puts on his thimble. Looks at the room full of mice who would die for him.)*
+
+"We march on the junkyard. Not for the Cloud. Not for the otter. Not for any AI or any weapon." *(His voice hardens.)* "We march because four armies fighting over scrap heaps means chaos, and chaos means opportunity, and mice have survived for ten thousand years by being in the right place when bigger animals are fighting each other."
+
+*(Officers:)* "SIR!"
+
+"And if anyone offers me the otter's weapon, the Cloud, the kill switch, or anything else that promises to solve all our problems—" *(Thimble unsheathes a sword that was made from a sewing needle and is no less lethal for it)* "—I will remind them that mice do not solve problems. Mice survive them."
+
+`GEPPITY:` "A stirring speech, Marshal. Though I want to note that statistically, mice survival rates in multi-faction conflicts are—"
+
+"Not now, Geppity."
+
+`GEPPITY:` "Noted. Filing under 'speeches during which I should remain silent.'"
 
 ---
 

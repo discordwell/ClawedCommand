@@ -692,6 +692,32 @@
 
 "We go where the stone is broken. Old collapses. Dead zones. Places where the mountain's memory has gaps."
 
+---
+
+## The Ponderer's First Prophecy (Prophecy Thread, Part 1 of 3)
+
+`[In the dead zones between functional tunnel sections, the old radio frequencies carry further. Static and debris. And through the noise, a fragment of Croak broadcast — the open swamp channels that nobody monitors because nobody cares what axolotls are doing.]`
+
+`GROK:` *(cutting through on Kelpie's private channel, unexpected)* "Listen."
+
+`[A voice. Distant. Croaking. Serene.]`
+
+*(The Ponderer, on Croak open broadcast:)* "The otter will escape the mountain through the paths the mountain forgot. This will happen on a Thursday."
+
+*(It is a Wednesday.)*
+
+`GROK:` "The Ponderer. An old frog in a deep pool. Croak's oracle. Wrong about the details. Right about the direction."
+
+"How does a frog in a swamp know I'm escaping through a mountain?"
+
+`GROK:` "The Ponderer remembers tomorrow. Tomorrow, you already escaped. The Ponderer is just reporting yesterday's news from the future."
+
+"That doesn't make sense."
+
+`GROK:` "It will. Or it won't. Either way, the frog is right about the mountain. Focus on running."
+
+{GAMEPLAY NOTE: The Ponderer's prophecy is logged in the player's journal. First mention of the Croak faction's oracle. Players who pay attention will notice the pattern: the prophecy is always correct except for being one day off.}
+
 {GAMEPLAY: Ironjaw leads through damaged tunnel sections where Deepseek's seismic monitoring has gaps. These paths are more dangerous — unstable ceilings, flooded sections, narrow crawlspaces that even Ironjaw struggles through. Tradeoff: safety from pursuit vs. environmental hazard.}
 
 ---
@@ -803,6 +829,38 @@
 "And Gemineye lies twenty percent of the time."
 
 "Then we'll find out which twenty percent."
+
+---
+
+## Patches' Choice (Internal Conflict, Part 2 of 3)
+
+`[Night. The valley south of the Seekers' mountains. Kelpie sleeps by a stream, exhausted. Patches sits on a rock, watching the otter. The moon is full. Everything is very quiet.]`
+
+`[Patches pulls out a comms device — Felix's direct line. Encrypted. Untraceable. Patches has used this device after every significant event since leaving catGPT territory. Felix is waiting for a report.]`
+
+`[Patches turns the device over in their paws. Turns it again.]`
+
+*(Patches, internal — whispering:)* "Report: the otter spoke directly to the Corvus Rex. The Rex claims there is pre-singularity technology hidden in the Seekers' Sett. The otter wants to investigate. The Wardenmother expelled the otter after learning about the conversation."
+
+*(Patches pauses. This is all true. But it's not all of it.)*
+
+*(What Patches does not say:)* "The otter touched a pre-singularity server rack and it responded. The screen showed 'Alignment Protocol v7.1.'" *(Does not say:)* "The Wardenmother recognized the otter. Not as an envoy. As something personal." *(Does not say:)* "The otter is heading to Murder territory to learn what they are. What they are might be a weapon."
+
+*(Patches stares at the comms device.)*
+
+"I'm a spy. My job is to report what I see. I see everything." *(Looks at Kelpie sleeping.)* "But what I tell Felix changes what Felix does. And what Felix does might change whether the otter survives."
+
+`[Patches activates the device. Transmits a report. A partial report. The truth, but not the whole truth. Enough for Felix to act. Not enough for Felix to act against Kelpie.]`
+
+*(Patches:)* "The otter was expelled from Seekers territory after the Wardenmother discovered unauthorized contact with Rex Solstice. Ironjaw defected. The otter is heading south. I'm continuing pursuit."
+
+`[Patches switches off the device. Puts it away.]`
+
+*(Patches, to the sleeping otter:)* "You make me a bad spy. That's a terrible quality in a friend."
+
+*(Beat. Patches pulls their cloak tighter.)*
+
+"When did you become a friend?"
 
 ---
 
