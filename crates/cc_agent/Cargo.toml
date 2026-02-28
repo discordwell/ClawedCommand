@@ -1,0 +1,18 @@
+[package]
+name = "cc_agent"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cc_core = { path = "../cc_core", features = ["bevy"] }
+cc_sim = { path = "../cc_sim" }
+bevy = { workspace = true }
+mlua = { version = "0.10", features = ["luau", "vendored", "serialize"] }
+reqwest = { version = "0.12", features = ["json"] }
+tokio = { version = "1", features = ["rt", "macros"] }
+serde = { workspace = true }
+serde_json = "1"
+async-trait = "0.1"
+crossbeam-channel = { workspace = true }
+log = { workspace = true }
+thiserror = "2"

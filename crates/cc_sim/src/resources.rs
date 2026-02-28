@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use cc_core::commands::{EntityId, GameCommand};
+use cc_core::coords::GridPos;
 use cc_core::map::GameMap;
 
 /// Queue of commands to process each simulation tick.
@@ -44,6 +45,25 @@ impl Default for ControlGroups {
     }
 }
 
+/// Current game state — Playing or Victory with a winner.
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GameState {
+    Playing,
+    Victory { winner: u8 },
+}
+
+impl Default for GameState {
+    fn default() -> Self {
+        GameState::Playing
+    }
+}
+
+/// Spawn positions for each player (player_id → grid position).
+#[derive(Resource, Default, Debug, Clone)]
+pub struct SpawnPositions {
+    pub positions: Vec<(u8, GridPos)>,
+}
+
 /// Per-player resource state.
 #[derive(Debug, Clone)]
 pub struct PlayerResourceState {
@@ -57,7 +77,7 @@ pub struct PlayerResourceState {
 impl Default for PlayerResourceState {
     fn default() -> Self {
         Self {
-            food: 200,
+            food: 300,
             gpu_cores: 50,
             nfts: 0,
             supply: 0,

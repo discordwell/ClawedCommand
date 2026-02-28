@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 const PAN_SPEED: f32 = 300.0;
 const ZOOM_SPEED: f32 = 0.1;
+const KEY_ZOOM_SPEED: f32 = 1.0;
 const EDGE_SCROLL_MARGIN: f32 = 20.0;
 const EDGE_SCROLL_SPEED: f32 = 200.0;
 const MIN_ZOOM: f32 = 0.3;
@@ -67,6 +68,16 @@ pub fn camera_system(
     let scale = ortho.scale;
     transform.translation.x += pan.x * scale;
     transform.translation.y += pan.y * scale;
+
+    // Keyboard zoom: =/+ zooms in, -/_ zooms out (center-screen)
+    if keyboard.pressed(KeyCode::Equal) {
+        ortho.scale -= KEY_ZOOM_SPEED * dt;
+        ortho.scale = ortho.scale.clamp(MIN_ZOOM, MAX_ZOOM);
+    }
+    if keyboard.pressed(KeyCode::Minus) {
+        ortho.scale += KEY_ZOOM_SPEED * dt;
+        ortho.scale = ortho.scale.clamp(MIN_ZOOM, MAX_ZOOM);
+    }
 
     // Zoom toward cursor (scroll wheel)
     for event in scroll_events.read() {

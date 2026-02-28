@@ -1,5 +1,6 @@
 pub mod autotile;
 pub mod box_select;
+pub mod buildings;
 pub mod camera;
 pub mod death;
 pub mod fog;
@@ -27,6 +28,7 @@ impl Plugin for RenderPlugin {
         app.init_resource::<terrain_atlas::TerrainAtlas>()
             .init_resource::<screenshot::ScreenshotConfig>()
             .init_resource::<fog::FogOfWar>()
+            // Phase 1: Generate procedural sprite assets (no map dependency)
             .add_systems(
                 Startup,
                 (
@@ -35,12 +37,15 @@ impl Plugin for RenderPlugin {
                     resource_nodes::generate_resource_sprites,
                 ),
             )
+            // Phase 2: setup_game creates map + spawns units (needs sprite resources)
+            // setup_game is registered in main.rs; tilemap runs after both tile_gen and setup_game
             .add_systems(
                 Startup,
-                // setup_game runs in PreStartup, so map is ready by Startup
                 tilemap::spawn_tilemap
-                    .after(tile_gen::generate_terrain_tiles),
+                    .after(tile_gen::generate_terrain_tiles)
+                    .after(crate::setup::setup_game),
             )
+            // Phase 3: Systems that depend on the tilemap being spawned
             .add_systems(Startup, props::spawn_props.after(tilemap::spawn_tilemap))
             .add_systems(Startup, minimap::setup_minimap.after(tilemap::spawn_tilemap))
             .add_systems(
@@ -55,6 +60,10 @@ impl Plugin for RenderPlugin {
                 (
                     camera::camera_system,
                     units::sync_unit_sprites,
+                    units::spawn_unit_visuals,
+                    buildings::spawn_building_visuals,
+                    buildings::sync_building_sprites,
+                    buildings::render_placement_preview,
                     selection::render_selection_indicators,
                     health_bars::spawn_health_bars,
                     health_bars::update_health_bars,

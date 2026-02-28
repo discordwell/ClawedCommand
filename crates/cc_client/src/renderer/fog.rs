@@ -66,6 +66,7 @@ pub fn init_fog(mut fog: ResMut<FogOfWar>, map_res: Res<MapResource>) {
 }
 
 /// Spawn fog overlay entities for every tile (runs once after tilemap).
+/// Each tile gets its own material so alpha can be set independently.
 pub fn spawn_fog_overlays(
     mut commands: Commands,
     map_res: Res<MapResource>,
@@ -78,8 +79,10 @@ pub fn spawn_fog_overlays(
         cc_core::coords::TILE_HALF_WIDTH * 2.0,
         cc_core::coords::TILE_HALF_HEIGHT * 2.0,
     ));
-    // Unexplored: dark overlay
-    let fog_material = materials.add(ColorMaterial::from_color(Color::srgba(0.0, 0.0, 0.0, 0.85)));
+
+    // Z=100.0 puts fog above all game entities (units ~0 to -1.3, props ~-5, tiles ~-10)
+    // but below UI elements (box select at 999.0).
+    const FOG_Z: f32 = 100.0;
 
     for y in 0..map.height as i32 {
         for x in 0..map.width as i32 {
@@ -89,11 +92,14 @@ pub fn spawn_fog_overlays(
             let screen = world_to_screen(world);
             let elevation_offset = tile.elevation as f32 * ELEVATION_PIXEL_OFFSET;
 
+            // Each tile gets its own material so we can set alpha independently
+            let fog_material = materials.add(ColorMaterial::from_color(Color::srgba(0.0, 0.0, 0.0, 0.85)));
+
             commands.spawn((
                 FogOverlay { grid_x: x, grid_y: y },
                 Mesh2d(fog_mesh.clone()),
-                MeshMaterial2d(fog_material.clone()),
-                Transform::from_xyz(screen.x, -screen.y + elevation_offset, -5.0),
+                MeshMaterial2d(fog_material),
+                Transform::from_xyz(screen.x, -screen.y + elevation_offset, FOG_Z),
             ));
         }
     }

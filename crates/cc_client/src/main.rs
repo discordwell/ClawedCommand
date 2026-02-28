@@ -4,6 +4,7 @@ mod setup;
 mod ui;
 
 use bevy::prelude::*;
+use cc_agent::AgentPlugin;
 use cc_sim::SimPlugin;
 use cc_voice::VoicePlugin;
 
@@ -26,7 +27,13 @@ fn main() {
         .add_plugins(renderer::RenderPlugin)
         .add_plugins(input::InputPlugin)
         .add_plugins(ui::UiPlugin)
+        .add_plugins(AgentPlugin)
         .add_plugins(VoicePlugin)
-        .add_systems(PreStartup, setup::setup_game)
+        .add_systems(
+            Startup,
+            setup::setup_game
+                .after(renderer::unit_gen::generate_unit_sprites)
+                .after(renderer::resource_nodes::generate_resource_sprites),
+        )
         .run();
 }

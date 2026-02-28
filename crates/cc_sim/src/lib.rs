@@ -1,4 +1,6 @@
 pub mod ai;
+#[cfg(feature = "harness")]
+pub mod harness;
 pub mod pathfinding;
 pub mod resources;
 pub mod systems;

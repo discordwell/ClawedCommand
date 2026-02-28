@@ -7,5 +7,6 @@ edition = "2024"
 cc_core = { path = "../cc_core", features = ["bevy"] }
 cc_sim = { path = "../cc_sim" }
 cc_voice = { path = "../cc_voice", default-features = false }
+cc_agent = { path = "../cc_agent" }
 bevy = { workspace = true }
 bevy_egui = { workspace = true }

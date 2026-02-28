@@ -9,13 +9,19 @@ pub mod projectile_system;
 pub mod resource_system;
 pub mod target_acquisition_system;
 pub mod tick_system;
+pub mod victory_system;
 
 use bevy::prelude::*;
 
-use crate::resources::{CommandQueue, ControlGroups, MapResource, PlayerResources, SimClock};
+use crate::resources::{CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock, SpawnPositions};
 use cc_core::map::GameMap;
 
 pub struct SimSystemsPlugin;
+
+/// Run condition: only run the main sim chain while the game is still playing.
+fn game_is_playing(state: Res<GameState>) -> bool {
+    *state == GameState::Playing
+}
 
 impl Plugin for SimSystemsPlugin {
     fn build(&self, app: &mut App) {
@@ -23,6 +29,8 @@ impl Plugin for SimSystemsPlugin {
             .init_resource::<SimClock>()
             .init_resource::<ControlGroups>()
             .init_resource::<PlayerResources>()
+            .init_resource::<GameState>()
+            .init_resource::<SpawnPositions>()
             .insert_resource(MapResource {
                 map: GameMap::new(64, 64),
             })
@@ -40,7 +48,12 @@ impl Plugin for SimSystemsPlugin {
                     grid_sync_system::grid_sync_system,
                     cleanup_system::cleanup_system,
                 )
-                    .chain(),
+                    .chain()
+                    .run_if(game_is_playing),
+            )
+            .add_systems(
+                FixedUpdate,
+                victory_system::victory_system,
             );
     }
 }

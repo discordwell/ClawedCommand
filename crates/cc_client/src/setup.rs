@@ -1,12 +1,13 @@
 use bevy::prelude::*;
 
+use cc_core::building_stats::building_stats;
 use cc_core::components::*;
 use cc_core::coords::{GridPos, WorldPos, depth_z, world_to_screen};
 use cc_core::map_format::ResourceKind;
 use cc_core::map_gen::{self, MapGenParams};
 use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
 use cc_core::unit_stats::base_stats;
-use cc_sim::resources::{MapResource, PlayerResources};
+use cc_sim::resources::{MapResource, PlayerResources, SpawnPositions};
 
 use crate::renderer::resource_nodes::ResourceNodeSprites;
 use crate::renderer::unit_gen::{UnitSprites, kind_index};
@@ -14,6 +15,10 @@ use crate::renderer::unit_gen::{UnitSprites, kind_index};
 /// Marker to distinguish unit entities from tile entities in queries.
 #[derive(Component)]
 pub struct UnitMesh;
+
+/// Marker for building entities in the renderer.
+#[derive(Component)]
+pub struct BuildingMesh;
 
 /// Marker for the dark outline child entity behind a unit (kept for compatibility).
 #[derive(Component)]
@@ -37,13 +42,23 @@ pub fn team_color(player_id: u8) -> Color {
     }
 }
 
-/// Set up the initial game state: procedurally generated map, camera, starter units.
+/// Building mesh color by player.
+pub fn building_color(player_id: u8) -> Color {
+    if player_id == 0 {
+        Color::srgb(0.3, 0.5, 0.9) // Blue
+    } else {
+        Color::srgb(0.9, 0.3, 0.3) // Red
+    }
+}
+
+/// Set up the initial game state: procedurally generated map, camera, starter units + base.
 pub fn setup_game(
     mut commands: Commands,
     mut map_res: ResMut<MapResource>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut player_resources: ResMut<PlayerResources>,
+    mut spawn_positions: ResMut<SpawnPositions>,
     unit_sprites: Option<Res<UnitSprites>>,
     resource_sprites: Option<Res<ResourceNodeSprites>>,
 ) {
@@ -123,19 +138,51 @@ pub fn setup_game(
         }
     }
 
-    // --- Spawn units per player ---
+    // --- Record spawn positions and spawn base + units per player ---
     let mut total_spawned_per_player = [0u32; 2];
 
     for sp in &map_def.spawn_points {
         let base_pos = GridPos::new(sp.pos.0, sp.pos.1);
 
+        // Record spawn position for AI
+        spawn_positions.positions.push((sp.player, base_pos));
+
+        // --- Spawn TheBox (HQ) at spawn point center ---
+        let box_world = WorldPos::from_grid(base_pos);
+        let box_screen = world_to_screen(box_world);
+        let box_elev = map_res.map.elevation_at(base_pos) as f32 * ELEVATION_PIXEL_OFFSET;
+        let bstats = building_stats(BuildingKind::TheBox);
+
+        let box_mesh = meshes.add(Rectangle::new(28.0, 28.0));
+        let box_mat = materials.add(ColorMaterial::from_color(building_color(sp.player)));
+        commands.spawn((
+            Position { world: box_world },
+            Velocity::zero(),
+            GridCell { pos: base_pos },
+            Owner { player_id: sp.player },
+            Building { kind: BuildingKind::TheBox },
+            Health { current: bstats.health, max: bstats.health },
+            Producer,
+            ProductionQueue::default(),
+            BuildingMesh,
+            Mesh2d(box_mesh),
+            MeshMaterial2d(box_mat),
+            Transform::from_xyz(box_screen.x, -box_screen.y + box_elev, depth_z(box_world) - 0.05),
+        ));
+
+        // Update supply cap for TheBox
+        if let Some(pres) = player_resources.players.get_mut(sp.player as usize) {
+            pres.supply_cap += bstats.supply_provided;
+        }
+
+        // --- Spawn starter units: 4 Pawdlers + 2 Nuisance ---
         let unit_configs: [(i32, i32, UnitKind); 6] = [
-            (0, 0, UnitKind::Nuisance),
-            (1, 0, UnitKind::Nuisance),
-            (0, 1, UnitKind::Nuisance),
+            (1, 0, UnitKind::Pawdler),
+            (0, 1, UnitKind::Pawdler),
+            (-1, 0, UnitKind::Pawdler),
+            (0, -1, UnitKind::Pawdler),
             (1, 1, UnitKind::Nuisance),
-            (-1, 0, UnitKind::Hisser),
-            (0, -1, UnitKind::Hisser),
+            (-1, 1, UnitKind::Nuisance),
         ];
 
         for &(dx, dy, kind) in &unit_configs {
@@ -226,7 +273,7 @@ pub fn setup_game(
 }
 
 /// Scale factor per unit kind.
-fn unit_scale(kind: UnitKind) -> f32 {
+pub fn unit_scale(kind: UnitKind) -> f32 {
     match kind {
         UnitKind::Pawdler => 0.7,
         UnitKind::Nuisance => 1.0,

@@ -4,25 +4,27 @@ use crate::setup::UnitMesh;
 use cc_core::components::Dead;
 
 /// Timer tracking how long a unit has been dead (for client-side fade).
+/// Stores (elapsed_time, original_scale).
 #[derive(Component)]
-pub struct DeathTimer(pub f32);
+pub struct DeathTimer(pub f32, pub f32);
 
 const FADE_DURATION: f32 = 0.8;
 
 /// When a unit is first marked Dead, prepare for death animation.
 /// For Mesh2d units: clone shared material so fade doesn't affect living units.
-/// For all units: insert a DeathTimer.
+/// For all units: insert a DeathTimer with original scale.
 pub fn isolate_dead_material(
     mut commands: Commands,
     mesh_query: Query<
-        (Entity, Option<&MeshMaterial2d<ColorMaterial>>),
+        (Entity, Option<&MeshMaterial2d<ColorMaterial>>, &Transform),
         (Added<Dead>, With<UnitMesh>, Without<DeathTimer>),
     >,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    for (entity, mesh_mat) in mesh_query.iter() {
+    for (entity, mesh_mat, transform) in mesh_query.iter() {
+        let original_scale = transform.scale.x;
         let mut ecmds = commands.entity(entity);
-        ecmds.insert(DeathTimer(0.0));
+        ecmds.insert(DeathTimer(0.0, original_scale));
 
         // Clone material for Mesh2d units so fade doesn't affect living units
         if let Some(mat) = mesh_mat {
@@ -56,10 +58,9 @@ pub fn death_fade_system(
         let progress = (timer.0 / FADE_DURATION).clamp(0.0, 1.0);
         let alpha = 1.0 - progress;
 
-        // Shrink toward 0.5× original size
+        // Shrink toward 0.5× original size using stored original scale
         let shrink = 1.0 - progress * 0.5;
-        let base_scale = transform.scale.x / (1.0 - (timer.0 - dt).max(0.0) / FADE_DURATION * 0.5).max(0.01);
-        transform.scale = Vec3::splat(base_scale * shrink);
+        transform.scale = Vec3::splat(timer.1 * shrink);
 
         if let Some(mut sprite) = sprite {
             // Sprite-based: tint toward red and fade alpha

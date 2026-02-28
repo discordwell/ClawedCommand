@@ -47,7 +47,8 @@ pub fn spawn_props(
             let world = WorldPos::from_grid(grid);
             let screen = world_to_screen(world);
             let elev_offset = tile.elevation as f32 * ELEVATION_PIXEL_OFFSET;
-            let base_z = depth_z(world) - 5.0;
+            // Props sit between tiles (z=-10) and units (z~0 to -1.3)
+            let base_z = depth_z(world) - 3.0;
 
             let sx = screen.x + offset_x;
             let sy = -screen.y + elev_offset + offset_y;

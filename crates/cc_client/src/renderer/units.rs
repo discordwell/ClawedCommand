@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 
-use crate::setup::UnitMesh;
-use cc_core::components::Position;
+use crate::setup::{TeamMaterials, UnitMesh, team_color, unit_scale};
+use crate::renderer::unit_gen::{UnitSprites, kind_index};
+use cc_core::components::{Owner, Position, UnitType};
 use cc_core::coords::{depth_z, world_to_screen};
 use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
 use cc_sim::resources::MapResource;
@@ -18,5 +19,53 @@ pub fn sync_unit_sprites(
         transform.translation.x = screen.x;
         transform.translation.y = -screen.y + elevation_offset;
         transform.translation.z = depth_z(pos.world);
+    }
+}
+
+/// Spawn visual components for units produced by production_system (which lacks client visuals).
+/// Detects entities with UnitType but without UnitMesh and gives them renderable components.
+pub fn spawn_unit_visuals(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    team_mats: Option<Res<TeamMaterials>>,
+    unit_sprites: Option<Res<UnitSprites>>,
+    map_res: Res<MapResource>,
+    new_units: Query<(Entity, &UnitType, &Owner, &Position), Without<UnitMesh>>,
+) {
+    for (entity, unit_type, owner, pos) in new_units.iter() {
+        let screen = world_to_screen(pos.world);
+        let grid = pos.world.to_grid();
+        let elev = map_res.map.elevation_at(grid) as f32 * ELEVATION_PIXEL_OFFSET;
+        let scale = unit_scale(unit_type.kind);
+        let tint = team_color(owner.player_id);
+
+        if let Some(ref sprites) = unit_sprites {
+            let image = sprites.sprites[kind_index(unit_type.kind)].clone();
+            commands.entity(entity).insert((
+                UnitMesh,
+                Sprite {
+                    image,
+                    color: tint,
+                    ..default()
+                },
+                Transform::from_xyz(screen.x, -screen.y + elev, depth_z(pos.world))
+                    .with_scale(Vec3::splat(scale)),
+            ));
+        } else if let Some(ref team_mats) = team_mats {
+            // Fallback: colored circle mesh
+            let body_mesh = meshes.add(Circle::new(12.0));
+            let body_mat = if owner.player_id == 0 {
+                team_mats.player.clone()
+            } else {
+                team_mats.enemy.clone()
+            };
+            commands.entity(entity).insert((
+                UnitMesh,
+                Mesh2d(body_mesh),
+                MeshMaterial2d(body_mat),
+                Transform::from_xyz(screen.x, -screen.y + elev, depth_z(pos.world))
+                    .with_scale(Vec3::splat(scale)),
+            ));
+        }
     }
 }

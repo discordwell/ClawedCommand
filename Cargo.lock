@@ -1877,6 +1877,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_egui",
+ "cc_agent",
  "cc_core",
  "cc_sim",
  "cc_voice",
@@ -1900,6 +1901,10 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "cc_core",
+ "image",
+ "log",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

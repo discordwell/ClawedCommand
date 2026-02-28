@@ -33,9 +33,9 @@ pub fn handle_keyboard(
         *input_mode = InputMode::AttackMove;
     }
 
-    // Escape — Deselect all + cancel attack-move mode
+    // Escape — Cancel special modes or deselect all
     if keyboard.just_pressed(KeyCode::Escape) {
-        if *input_mode == InputMode::AttackMove {
+        if *input_mode != InputMode::Normal {
             *input_mode = InputMode::Normal;
         } else {
             cmd_queue.push(GameCommand::Deselect);

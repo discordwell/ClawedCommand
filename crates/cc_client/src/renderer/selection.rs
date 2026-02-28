@@ -1,10 +1,7 @@
 use bevy::prelude::*;
 
-use crate::setup::{TeamMaterials, UnitMesh, team_color};
-use cc_core::components::{Owner, Selected};
-
-/// Local player ID (TODO: make configurable for multiplayer)
-const LOCAL_PLAYER: u8 = 0;
+use crate::setup::{BuildingMesh, TeamMaterials, UnitMesh, team_color};
+use cc_core::components::{Dead, Owner, Selected};
 
 /// Marker for selection ring child entity.
 #[derive(Component)]
@@ -19,11 +16,13 @@ pub fn render_selection_indicators(
     // Units with Sprite (new procedural sprites)
     mut sprite_units: Query<
         (Entity, &mut Sprite, &Owner, Option<&Selected>, Option<&Children>),
-        With<UnitMesh>,
+        (With<UnitMesh>, Without<Dead>),
     >,
     ring_query: Query<Entity, With<SelectionRing>>,
-    added_selected: Query<Entity, (With<UnitMesh>, Added<Selected>)>,
+    added_selected_units: Query<Entity, (With<UnitMesh>, Added<Selected>)>,
+    added_selected_buildings: Query<Entity, (With<BuildingMesh>, Added<Selected>, Without<UnitMesh>)>,
     mut removed_selected: RemovedComponents<Selected>,
+    all_with_children: Query<Option<&Children>, Or<(With<UnitMesh>, With<BuildingMesh>)>>,
 ) {
     let Some(team_mats) = team_mats else {
         return;
@@ -38,11 +37,16 @@ pub fn render_selection_indicators(
         }
     }
 
-    // Spawn selection rings for newly selected units
-    if !added_selected.is_empty() {
+    // Spawn selection rings for newly selected units and buildings
+    let newly_selected: Vec<Entity> = added_selected_units
+        .iter()
+        .chain(added_selected_buildings.iter())
+        .collect();
+
+    if !newly_selected.is_empty() {
         let ring_mesh = meshes.add(Annulus::new(10.0, 12.0));
         let ring_mat = team_mats.selected.clone();
-        for entity in added_selected.iter() {
+        for entity in newly_selected {
             let ring = commands
                 .spawn((
                     SelectionRing,
@@ -55,9 +59,9 @@ pub fn render_selection_indicators(
         }
     }
 
-    // Despawn selection rings for deselected units
+    // Despawn selection rings for deselected units and buildings
     for entity in removed_selected.read() {
-        if let Ok((_e, _sprite, _owner, _sel, Some(children))) = sprite_units.get(entity) {
+        if let Ok(Some(children)) = all_with_children.get(entity) {
             for child in children.iter() {
                 if ring_query.get(child).is_ok() {
                     commands.entity(child).despawn();

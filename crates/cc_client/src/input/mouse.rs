@@ -1,11 +1,12 @@
 use bevy::prelude::*;
+use bevy_egui::EguiContexts;
 
 use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::{Owner, Position, ResourceDeposit, Selected, UnitType};
+use cc_core::components::{Building, Owner, Position, ResourceDeposit, Selected, UnitType};
 use cc_core::coords::{ScreenPos, screen_to_world};
-use cc_sim::resources::CommandQueue;
+use cc_sim::resources::{CommandQueue, MapResource};
 
-use super::{DragSelectState, InputMode};
+use super::{DragSelectState, InputMode, PlacementPreview};
 
 /// Local player ID (TODO: make configurable for multiplayer)
 const LOCAL_PLAYER: u8 = 0;
@@ -19,11 +20,22 @@ pub fn handle_mouse_input(
     window: Single<&Window>,
     camera_q: Single<(&Camera, &GlobalTransform), With<Camera2d>>,
     units: Query<(Entity, &Position, &Owner, Option<&Selected>), With<UnitType>>,
+    buildings_q: Query<(Entity, &Position, &Owner), With<Building>>,
     deposits: Query<(Entity, &Position), With<ResourceDeposit>>,
+    map_res: Res<MapResource>,
     mut cmd_queue: ResMut<CommandQueue>,
     mut drag_state: ResMut<DragSelectState>,
     mut input_mode: ResMut<InputMode>,
+    mut placement_preview: ResMut<PlacementPreview>,
+    mut egui_contexts: EguiContexts,
 ) {
+    // Don't process game mouse input when egui wants pointer focus
+    if egui_contexts
+        .ctx_mut()
+        .is_ok_and(|ctx| ctx.wants_pointer_input())
+    {
+        return;
+    }
     let Some(cursor_pos) = window.cursor_position() else {
         return;
     };
@@ -39,6 +51,46 @@ pub fn handle_mouse_input(
         x: world_pos.x,
         y: -world_pos.y,
     });
+
+    let cursor_grid = iso_world.to_grid();
+
+    // --- BuildPlacement mode ---
+    if let InputMode::BuildPlacement { kind } = *input_mode {
+        let valid = map_res.map.is_passable(cursor_grid)
+            && !buildings_q
+                .iter()
+                .any(|(_, pos, _)| pos.world.to_grid() == cursor_grid);
+        placement_preview.grid_pos = Some(cursor_grid);
+        placement_preview.valid = valid;
+
+        if mouse_button.just_pressed(MouseButton::Left) && valid {
+            // Find a selected unit to be the builder
+            let builder = units
+                .iter()
+                .find(|(_, _, owner, sel)| sel.is_some() && owner.player_id == LOCAL_PLAYER);
+            if let Some((builder_entity, _, _, _)) = builder {
+                cmd_queue.push(GameCommand::Build {
+                    builder: EntityId(builder_entity.to_bits()),
+                    building_kind: kind,
+                    position: cursor_grid,
+                });
+            }
+            *input_mode = InputMode::Normal;
+            placement_preview.grid_pos = None;
+            return;
+        }
+
+        if mouse_button.just_pressed(MouseButton::Right) {
+            *input_mode = InputMode::Normal;
+            placement_preview.grid_pos = None;
+            return;
+        }
+
+        return;
+    }
+
+    // Clear placement preview when not in placement mode
+    placement_preview.grid_pos = None;
 
     // --- Left click down: start drag ---
     if mouse_button.just_pressed(MouseButton::Left) {
@@ -96,7 +148,6 @@ pub fn handle_mouse_input(
                     if owner.player_id != LOCAL_PLAYER {
                         continue;
                     }
-                    // Convert unit world pos to screen (viewport) coords
                     let unit_screen = unit_to_viewport(pos, camera, camera_transform);
                     if let Some(sp) = unit_screen {
                         if sp.x >= min_x && sp.x <= max_x && sp.y >= min_y && sp.y <= max_y {
@@ -111,26 +162,29 @@ pub fn handle_mouse_input(
                 }
             }
         } else {
-            // Click select: pick nearest unit
-            let mut clicked_unit = None;
+            // Click select: pick nearest unit or building
+            let mut clicked_entity = None;
             let mut best_dist = f32::MAX;
 
+            // Check units (0.8 radius)
             for (entity, pos, _owner, _) in units.iter() {
-                let ux: f32 = pos.world.x.to_num();
-                let uy: f32 = pos.world.y.to_num();
-                let iso_x: f32 = iso_world.x.to_num();
-                let iso_y: f32 = iso_world.y.to_num();
-                let dx = ux - iso_x;
-                let dy = uy - iso_y;
-                let dist = (dx * dx + dy * dy).sqrt();
-
+                let dist = world_dist(pos, &iso_world);
                 if dist < 0.8 && dist < best_dist {
                     best_dist = dist;
-                    clicked_unit = Some(entity);
+                    clicked_entity = Some(entity);
                 }
             }
 
-            if let Some(entity) = clicked_unit {
+            // Check buildings (1.2 radius, only if no closer unit)
+            for (entity, pos, _owner) in buildings_q.iter() {
+                let dist = world_dist(pos, &iso_world);
+                if dist < 1.2 && dist < best_dist {
+                    best_dist = dist;
+                    clicked_entity = Some(entity);
+                }
+            }
+
+            if let Some(entity) = clicked_entity {
                 if !shift {
                     cmd_queue.push(GameCommand::Deselect);
                 }
@@ -149,9 +203,10 @@ pub fn handle_mouse_input(
 
     // --- Right click: smart command ---
     if mouse_button.just_pressed(MouseButton::Right) {
-        // Cancel attack-move mode on right-click
-        if *input_mode == InputMode::AttackMove {
+        // Cancel special modes on right-click
+        if *input_mode != InputMode::Normal {
             *input_mode = InputMode::Normal;
+            placement_preview.grid_pos = None;
             return;
         }
 
@@ -173,15 +228,28 @@ pub fn handle_mouse_input(
             if owner.player_id == LOCAL_PLAYER {
                 continue;
             }
-            let ux: f32 = pos.world.x.to_num();
-            let uy: f32 = pos.world.y.to_num();
-            let iso_x: f32 = iso_world.x.to_num();
-            let iso_y: f32 = iso_world.y.to_num();
-            let dx = ux - iso_x;
-            let dy = uy - iso_y;
-            let dist = (dx * dx + dy * dy).sqrt();
-
+            let dist = world_dist(pos, &iso_world);
             if dist < 0.8 && dist < best_dist {
+                best_dist = dist;
+                clicked_enemy = Some(entity);
+            }
+        }
+
+        if let Some(enemy) = clicked_enemy {
+            cmd_queue.push(GameCommand::Attack {
+                unit_ids: selected_ids,
+                target: EntityId(enemy.to_bits()),
+            });
+            return;
+        }
+
+        // Check: right-click on enemy building → Attack
+        for (entity, pos, owner) in buildings_q.iter() {
+            if owner.player_id == LOCAL_PLAYER {
+                continue;
+            }
+            let dist = world_dist(pos, &iso_world);
+            if dist < 1.2 && dist < best_dist {
                 best_dist = dist;
                 clicked_enemy = Some(entity);
             }
@@ -200,14 +268,7 @@ pub fn handle_mouse_input(
         best_dist = f32::MAX;
 
         for (entity, pos) in deposits.iter() {
-            let ux: f32 = pos.world.x.to_num();
-            let uy: f32 = pos.world.y.to_num();
-            let iso_x: f32 = iso_world.x.to_num();
-            let iso_y: f32 = iso_world.y.to_num();
-            let dx = ux - iso_x;
-            let dy = uy - iso_y;
-            let dist = (dx * dx + dy * dy).sqrt();
-
+            let dist = world_dist(pos, &iso_world);
             if dist < 1.0 && dist < best_dist {
                 best_dist = dist;
                 clicked_deposit = Some(entity);
@@ -231,6 +292,17 @@ pub fn handle_mouse_input(
     }
 }
 
+/// Distance between a Position and a WorldPos in world units.
+fn world_dist(pos: &Position, iso_world: &cc_core::coords::WorldPos) -> f32 {
+    let ux: f32 = pos.world.x.to_num();
+    let uy: f32 = pos.world.y.to_num();
+    let iso_x: f32 = iso_world.x.to_num();
+    let iso_y: f32 = iso_world.y.to_num();
+    let dx = ux - iso_x;
+    let dy = uy - iso_y;
+    (dx * dx + dy * dy).sqrt()
+}
+
 /// Convert a unit's world position to viewport (screen) coordinates.
 fn unit_to_viewport(
     pos: &Position,
@@ -240,8 +312,6 @@ fn unit_to_viewport(
     use cc_core::coords::world_to_screen;
 
     let screen = world_to_screen(pos.world);
-    // Apply isometric → Bevy coordinate (Y flip)
     let bevy_world = Vec3::new(screen.x, -screen.y, 0.0);
-
     camera.world_to_viewport(camera_transform, bevy_world).ok()
 }

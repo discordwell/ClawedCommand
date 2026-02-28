@@ -27,6 +27,33 @@ impl AiDifficulty {
     }
 }
 
+/// Bot personality — controls attack timing thresholds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BotPersonality {
+    /// Attacks at army_count >= 12 (default).
+    Balanced,
+    /// Attacks at army_count >= 6 (rush).
+    Aggressive,
+    /// Attacks at army_count >= 18 (turtle).
+    Defensive,
+}
+
+impl BotPersonality {
+    fn attack_threshold(&self) -> u32 {
+        match self {
+            BotPersonality::Balanced => 12,
+            BotPersonality::Aggressive => 6,
+            BotPersonality::Defensive => 18,
+        }
+    }
+}
+
+impl Default for BotPersonality {
+    fn default() -> Self {
+        BotPersonality::Balanced
+    }
+}
+
 /// FSM states for the scripted AI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AiPhase {
@@ -48,6 +75,7 @@ pub struct AiState {
     pub player_id: u8,
     pub phase: AiPhase,
     pub difficulty: AiDifficulty,
+    pub personality: BotPersonality,
     /// Enemy player spawn position (target for attacks).
     pub enemy_spawn: Option<GridPos>,
 }
@@ -58,12 +86,14 @@ impl Default for AiState {
             player_id: 1,
             phase: AiPhase::EarlyGame,
             difficulty: AiDifficulty::Medium,
+            personality: BotPersonality::Balanced,
             enemy_spawn: None,
         }
     }
 }
 
 /// Main AI decision system — runs in FixedUpdate after cleanup.
+/// Controls the single-player AI (player 1) for normal games.
 pub fn ai_decision_system(
     clock: Res<SimClock>,
     mut ai_state: ResMut<AiState>,
@@ -73,8 +103,53 @@ pub fn ai_decision_system(
     buildings: Query<(Entity, &Building, &Owner, Option<&Producer>)>,
     deposits: Query<(Entity, &Position), With<ResourceDeposit>>,
 ) {
+    run_ai_fsm(
+        clock.tick,
+        &mut ai_state,
+        &mut cmd_queue,
+        &player_resources,
+        &units,
+        &buildings,
+        &deposits,
+    );
+}
+
+/// Multi-player AI decision system — runs all AIs in MultiAiState.
+/// Used by the wet test harness for AI-vs-AI matches.
+pub fn multi_ai_decision_system(
+    clock: Res<SimClock>,
+    mut multi_ai: ResMut<super::MultiAiState>,
+    mut cmd_queue: ResMut<CommandQueue>,
+    player_resources: Res<PlayerResources>,
+    units: Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>)>,
+    buildings: Query<(Entity, &Building, &Owner, Option<&Producer>)>,
+    deposits: Query<(Entity, &Position), With<ResourceDeposit>>,
+) {
+    for ai_state in multi_ai.players.iter_mut() {
+        run_ai_fsm(
+            clock.tick,
+            ai_state,
+            &mut cmd_queue,
+            &player_resources,
+            &units,
+            &buildings,
+            &deposits,
+        );
+    }
+}
+
+/// Core FSM logic shared between single-AI and multi-AI systems.
+fn run_ai_fsm(
+    tick: u64,
+    ai_state: &mut AiState,
+    cmd_queue: &mut CommandQueue,
+    player_resources: &PlayerResources,
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>)>,
+    buildings: &Query<(Entity, &Building, &Owner, Option<&Producer>)>,
+    deposits: &Query<(Entity, &Position), With<ResourceDeposit>>,
+) {
     let interval = ai_state.difficulty.eval_interval();
-    if clock.tick % interval != 0 || clock.tick == 0 {
+    if tick % interval != 0 || tick == 0 {
         return;
     }
 
@@ -137,11 +212,10 @@ pub fn ai_decision_system(
         }
     }
 
-    // Find enemy spawn (for attack phase)
+    // Find enemy spawn — look for any unit NOT owned by this AI
     if ai_state.enemy_spawn.is_none() {
-        // Find nearest player 0 unit or building and record position
         for (_, pos, owner, _, _) in units.iter() {
-            if owner.player_id == 0 {
+            if owner.player_id != ai_player {
                 ai_state.enemy_spawn = Some(pos.world.to_grid());
                 break;
             }
@@ -150,13 +224,15 @@ pub fn ai_decision_system(
 
     // Assign idle workers to nearest deposit
     for worker in &idle_workers {
-        if let Some((deposit_entity, _)) = find_nearest_deposit(*worker, &units, &deposits) {
+        if let Some((deposit_entity, _)) = find_nearest_deposit(*worker, units, deposits) {
             cmd_queue.push(GameCommand::GatherResource {
                 unit_ids: vec![EntityId(worker.to_bits())],
                 deposit: EntityId(deposit_entity.to_bits()),
             });
         }
     }
+
+    let attack_threshold = ai_state.personality.attack_threshold();
 
     // FSM transitions
     let new_phase = match ai_state.phase {
@@ -183,7 +259,7 @@ pub fn ai_decision_system(
             // Build FishMarket if missing
             if !has_fish_market && pres.food >= 100 && has_box {
                 if let Some(box_e) = box_entity {
-                    let build_pos = find_build_position(&units, ai_player);
+                    let build_pos = find_build_position(units, ai_player);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(box_e.to_bits()),
                         building_kind: BuildingKind::FishMarket,
@@ -195,7 +271,7 @@ pub fn ai_decision_system(
             // Build CatTree if missing
             if !has_cat_tree && pres.food >= 150 && has_box {
                 if let Some(box_e) = box_entity {
-                    let build_pos = find_build_position(&units, ai_player);
+                    let build_pos = find_build_position(units, ai_player);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(box_e.to_bits()),
                         building_kind: BuildingKind::CatTree,
@@ -243,7 +319,7 @@ pub fn ai_decision_system(
             // Build LitterBox for more supply if needed
             if pres.supply + 2 >= pres.supply_cap && pres.food >= 75 {
                 if let Some(box_e) = box_entity {
-                    let build_pos = find_build_position(&units, ai_player);
+                    let build_pos = find_build_position(units, ai_player);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(box_e.to_bits()),
                         building_kind: BuildingKind::LitterBox,
@@ -264,7 +340,7 @@ pub fn ai_decision_system(
                 }
             }
 
-            if army_count >= 12 {
+            if army_count >= attack_threshold {
                 AiPhase::Attack
             } else {
                 AiPhase::MidGame
@@ -287,7 +363,7 @@ pub fn ai_decision_system(
             }
 
             // Check if base is under attack (enemy units near our box)
-            let base_threatened = is_base_threatened(&units, ai_player, &buildings);
+            let base_threatened = is_base_threatened(units, ai_player, buildings);
             if base_threatened {
                 AiPhase::Defend
             } else if army_count < 4 {
@@ -323,7 +399,7 @@ pub fn ai_decision_system(
                 }
             }
 
-            let base_threatened = is_base_threatened(&units, ai_player, &buildings);
+            let base_threatened = is_base_threatened(units, ai_player, buildings);
             if !base_threatened {
                 AiPhase::MidGame
             } else {
@@ -386,13 +462,45 @@ fn find_build_position(
     }
 }
 
-/// Check if enemy units are near the AI's box.
+/// Check if enemy units are within 8 tiles of any of the AI's buildings.
 fn is_base_threatened(
-    _units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>)>,
-    _ai_player: u8,
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>)>,
+    ai_player: u8,
     _buildings: &Query<(Entity, &Building, &Owner, Option<&Producer>)>,
 ) -> bool {
-    // Simplified — always false for now, will improve when buildings have Position in query
+    // Collect AI unit positions as proxy for base location (buildings lack Position in this query)
+    // Use workers as base indicator since they stay near base
+    let mut base_positions: Vec<GridPos> = Vec::new();
+    let mut enemy_positions: Vec<GridPos> = Vec::new();
+
+    for (_, pos, owner, unit_type, _) in units.iter() {
+        let grid = pos.world.to_grid();
+        if owner.player_id == ai_player {
+            if unit_type.kind == UnitKind::Pawdler {
+                base_positions.push(grid);
+            }
+        } else {
+            enemy_positions.push(grid);
+        }
+    }
+
+    if base_positions.is_empty() {
+        return false;
+    }
+
+    // Average worker position as base center
+    let avg_x: i32 = base_positions.iter().map(|p| p.x).sum::<i32>() / base_positions.len() as i32;
+    let avg_y: i32 = base_positions.iter().map(|p| p.y).sum::<i32>() / base_positions.len() as i32;
+
+    // Check if any enemy is within 8 tiles of base center
+    for ep in &enemy_positions {
+        let dx = (ep.x - avg_x).abs();
+        let dy = (ep.y - avg_y).abs();
+        if dx <= 8 && dy <= 8 {
+            return true;
+        }
+    }
+
     false
 }
 
@@ -418,5 +526,13 @@ mod tests {
         assert_eq!(state.player_id, 1);
         assert_eq!(state.phase, AiPhase::EarlyGame);
         assert_eq!(state.difficulty, AiDifficulty::Medium);
+        assert_eq!(state.personality, BotPersonality::Balanced);
+    }
+
+    #[test]
+    fn bot_personality_thresholds() {
+        assert_eq!(BotPersonality::Aggressive.attack_threshold(), 6);
+        assert_eq!(BotPersonality::Balanced.attack_threshold(), 12);
+        assert_eq!(BotPersonality::Defensive.attack_threshold(), 18);
     }
 }
