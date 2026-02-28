@@ -1,0 +1,11 @@
+Create a projectile or visual effect sprite for a 2D isometric RTS game.
+
+Projectile: {name}
+Description: {description}
+
+Specifications:
+- Small and clean, output size: {width}x{height} pixels
+- Should read clearly against varied terrain backgrounds
+- If animated, provide {frame_count} frames in a horizontal strip
+- Bright, high-contrast so it's visible during fast combat
+- {extra_notes}

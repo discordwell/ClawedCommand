@@ -1,0 +1,12 @@
+Create a UI element for a 2D RTS game interface.
+
+Element: {name}
+Description: {description}
+Context: {context}
+
+Specifications:
+- Output size: {width}x{height} pixels
+- Clean, readable at target size
+- Should match the game's vector art style but be clearly UI (not world-space)
+- Consistent padding and alignment for integration into a HUD layout
+- {extra_notes}

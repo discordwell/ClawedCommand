@@ -1,0 +1,11 @@
+Create a single isometric terrain tile for a 2D RTS game.
+
+Tile type: {tile_type}
+Description: {description}
+
+Specifications:
+- Isometric diamond shape, viewed from standard RTS top-down isometric angle (~30 degrees)
+- Tile size: {width}x{height} pixels
+- The tile must tile seamlessly with adjacent terrain
+- Keep detail level appropriate for a tile that will be repeated across a map
+- {extra_notes}

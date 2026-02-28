@@ -3,6 +3,10 @@ name = "cc_core"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+bevy = ["dep:bevy_ecs"]
+
 [dependencies]
+bevy_ecs = { version = "0.15", optional = true }
 serde = { workspace = true }
 fixed = { workspace = true }

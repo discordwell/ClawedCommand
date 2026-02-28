@@ -1,0 +1,11 @@
+Create an isometric resource deposit sprite for a 2D RTS game.
+
+Resource: {name}
+Description: {description}
+
+Specifications:
+- Isometric perspective, viewed from standard RTS top-down angle (~30 degrees)
+- Output size: {width}x{height} pixels
+- Should look like a natural deposit/node that workers would harvest from
+- Visually distinct and recognizable even at small zoom levels
+- {extra_notes}

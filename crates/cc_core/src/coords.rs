@@ -48,9 +48,10 @@ impl WorldPos {
     }
 
     pub fn to_grid(self) -> GridPos {
+        // Use floor() so negative coords map correctly (e.g. -0.5 → -1, not 0)
         GridPos {
-            x: self.x.to_num::<i32>(),
-            y: self.y.to_num::<i32>(),
+            x: self.x.floor().to_num::<i32>(),
+            y: self.y.floor().to_num::<i32>(),
         }
     }
 
@@ -77,6 +78,14 @@ pub fn world_to_screen(world: WorldPos) -> ScreenPos {
         x: (wx - wy) * TILE_HALF_WIDTH,
         y: (wx + wy) * TILE_HALF_HEIGHT,
     }
+}
+
+/// Compute Z depth for isometric sorting.
+/// Higher world Y + X = further "south" = rendered in front = lower Z.
+pub fn depth_z(world: WorldPos) -> f32 {
+    let wx: f32 = world.x.to_num();
+    let wy: f32 = world.y.to_num();
+    -(wx + wy) * 0.01
 }
 
 /// Convert screen pixel coordinates back to world position (inverse isometric).
@@ -113,6 +122,32 @@ mod tests {
         let epsilon = Fixed::from_num(0.01f32);
         assert!((original.x - back.x).abs() < epsilon);
         assert!((original.y - back.y).abs() < epsilon);
+    }
+
+    #[test]
+    fn to_grid_negative_coords_use_floor() {
+        // -0.5 should map to grid -1, not 0 (truncation toward zero would give 0)
+        let world = WorldPos::new(Fixed::from_num(-0.5f32), Fixed::from_num(-0.5f32));
+        let grid = world.to_grid();
+        assert_eq!(grid, GridPos::new(-1, -1));
+
+        // -1.9 should map to grid -2
+        let world2 = WorldPos::new(Fixed::from_num(-1.9f32), Fixed::from_num(-1.9f32));
+        let grid2 = world2.to_grid();
+        assert_eq!(grid2, GridPos::new(-2, -2));
+
+        // Positive values still work: 1.9 → 1
+        let world3 = WorldPos::new(Fixed::from_num(1.9f32), Fixed::from_num(1.9f32));
+        let grid3 = world3.to_grid();
+        assert_eq!(grid3, GridPos::new(1, 1));
+    }
+
+    #[test]
+    fn depth_z_ordering() {
+        // Entity at (5,5) should be in front of (0,0) → lower z value
+        let z_origin = depth_z(WorldPos::new(fixed_from_i32(0), fixed_from_i32(0)));
+        let z_south = depth_z(WorldPos::new(fixed_from_i32(5), fixed_from_i32(5)));
+        assert!(z_south < z_origin);
     }
 
     #[test]

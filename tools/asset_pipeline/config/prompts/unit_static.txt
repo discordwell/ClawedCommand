@@ -1,0 +1,12 @@
+Create a single static isometric sprite for a 2D RTS unit.
+
+Unit: {name}
+Pose: {pose}
+Description: {description}
+
+Specifications:
+- Isometric perspective, viewed from standard RTS top-down angle (~30 degrees)
+- Output size: {width}x{height} pixels
+- Unit should face {direction}
+- Clear silhouette that reads well at small sizes
+- {extra_notes}

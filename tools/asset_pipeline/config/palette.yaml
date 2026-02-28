@@ -1,0 +1,54 @@
+# ClawedCommand Target Color Palette
+# Into the Breach / Northgard inspired — muted naturals with accent pops
+
+terrain:
+  grass_light: "#7EC850"
+  grass_dark: "#5A9A32"
+  dirt: "#C4A265"
+  dirt_dark: "#8B7340"
+  stone: "#8C8C8C"
+  stone_dark: "#5E5E5E"
+  water: "#4A90D9"
+  water_dark: "#2D6BB5"
+  sand: "#E8D5A3"
+  snow: "#E8EEF2"
+
+buildings:
+  metal_light: "#B0BEC5"
+  metal_mid: "#78909C"
+  metal_dark: "#455A64"
+  accent_blue: "#42A5F5"
+  accent_orange: "#FF7043"
+  window_glow: "#81D4FA"
+
+units:
+  player_primary: "#42A5F5"
+  player_secondary: "#1E88E5"
+  enemy_primary: "#EF5350"
+  enemy_secondary: "#C62828"
+  skin: "#FFCCBC"
+  armor_light: "#B0BEC5"
+  armor_dark: "#546E7A"
+
+resources:
+  ore: "#FFB74D"
+  ore_dark: "#E65100"
+  energy_crystal: "#CE93D8"
+  energy_glow: "#E1BEE7"
+  credits_gold: "#FFD54F"
+
+ui:
+  panel_bg: "#263238"
+  panel_border: "#37474F"
+  text_primary: "#ECEFF1"
+  text_secondary: "#90A4AE"
+  health_green: "#66BB6A"
+  health_red: "#EF5350"
+  mana_blue: "#42A5F5"
+
+outline:
+  default: "#263238"
+  heavy: "#1A1A2E"
+
+# Tolerance for palette normalization (delta-E distance)
+match_tolerance: 15.0

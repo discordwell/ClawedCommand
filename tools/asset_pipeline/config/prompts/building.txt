@@ -1,0 +1,13 @@
+Create a single isometric building sprite for a 2D RTS game.
+
+Building: {name}
+Description: {description}
+Faction style: {faction}
+
+Specifications:
+- Isometric perspective, viewed from standard RTS top-down angle (~30 degrees)
+- Output size: {width}x{height} pixels
+- The building should clearly read at game zoom as a {name}
+- Include subtle structural details (windows, panels, vents) but keep overall silhouette clean
+- Base footprint should suggest a {footprint} tile area
+- {extra_notes}

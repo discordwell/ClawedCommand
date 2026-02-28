@@ -1,0 +1,15 @@
+Create a sprite sheet of animation frames for a 2D isometric RTS unit.
+
+Unit: {name}
+Animation: {animation}
+Description: {description}
+
+Specifications:
+- Arranged in a single horizontal row, {frame_count} frames, evenly spaced
+- Each frame is {frame_width}x{frame_height} pixels
+- Total sheet size: {sheet_width}x{frame_height} pixels
+- All frames show the unit facing {direction} in isometric perspective
+- Animation should smoothly loop from first to last frame
+- Consistent proportions and position across all frames (no drifting)
+- Each frame must be fully contained within its grid cell with no overlap
+- {extra_notes}

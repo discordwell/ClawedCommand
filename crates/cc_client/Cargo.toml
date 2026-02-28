@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-cc_core = { path = "../cc_core" }
+cc_core = { path = "../cc_core", features = ["bevy"] }
 cc_sim = { path = "../cc_sim" }
 bevy = { workspace = true }
