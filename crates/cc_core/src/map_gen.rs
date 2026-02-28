@@ -399,6 +399,9 @@ pub fn generate_map(params: &MapGenParams) -> MapDefinition {
     // Step 8: Re-carve lanes post-symmetry to ensure they survive
     carve_lanes(&mut map, &layout, w, h);
 
+    // Step 8b: Re-paint center features that symmetry enforcement may have bisected
+    paint_center_features(&mut map, &layout, w, h);
+
     // Step 9: Place ramps at elevation transitions on lane paths
     place_ramps_on_lanes(&mut map, &layout, w, h);
 
@@ -585,6 +588,37 @@ fn carve_lanes(map: &mut GameMap, layout: &TemplateLayout, w: u32, h: u32) {
                 }
             }
         });
+    }
+}
+
+/// Re-paint any template zone whose center is at the map midpoint.
+/// Symmetry enforcement copies one half onto the other, which bisects features
+/// straddling the centre line. Because centre features are inherently symmetric,
+/// repainting them as complete circles restores the intended shape without
+/// breaking balance.
+fn paint_center_features(map: &mut GameMap, layout: &TemplateLayout, w: u32, h: u32) {
+    let mid_x = 0.5f32;
+    let mid_y = 0.5f32;
+    let threshold = 0.02f32;
+
+    for zone in &layout.zones {
+        if (zone.center.0 - mid_x).abs() < threshold && (zone.center.1 - mid_y).abs() < threshold {
+            let cx = (zone.center.0 * w as f32) as i32;
+            let cy = (zone.center.1 * h as f32) as i32;
+            let r = (zone.radius * w.max(h) as f32) as i32;
+
+            for dy in -r..=r {
+                for dx in -r..=r {
+                    if dx * dx + dy * dy <= r * r {
+                        let pos = GridPos::new(cx + dx, cy + dy);
+                        if let Some(tile) = map.get_mut(pos) {
+                            tile.terrain = zone.terrain;
+                            tile.elevation = zone.elevation;
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1396,5 +1430,42 @@ mod tests {
         assert_eq!(def.width, 96);
         assert_eq!(def.height, 96);
         assert!(def.validate().is_ok());
+    }
+
+    #[test]
+    fn valley_center_pool_is_not_bisected() {
+        let params = MapGenParams {
+            template: MapTemplate::Valley,
+            seed: 42,
+            ..Default::default()
+        };
+        let def = generate_map(&params);
+        let map = def.to_game_map();
+        let cy = def.height as i32 / 2;
+
+        let mut above = 0u32;
+        let mut below = 0u32;
+        for y in 0..def.height as i32 {
+            for x in 0..def.width as i32 {
+                if let Some(t) = map.terrain_at(GridPos::new(x, y)) {
+                    if t == TerrainType::Water {
+                        if y < cy {
+                            above += 1;
+                        } else if y > cy {
+                            below += 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Both halves must have water, and counts should be within 20%
+        assert!(above > 0, "No water tiles above center");
+        assert!(below > 0, "No water tiles below center");
+        let ratio = above.min(below) as f32 / above.max(below) as f32;
+        assert!(
+            ratio >= 0.80,
+            "Water distribution is lopsided: above={above}, below={below}, ratio={ratio:.2}"
+        );
     }
 }
