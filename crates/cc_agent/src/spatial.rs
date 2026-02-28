@@ -101,31 +101,7 @@ impl SpatialIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cc_core::commands::EntityId;
-    use cc_core::components::{AttackType, UnitKind};
-    use cc_core::coords::WorldPos;
-    use cc_core::math::fixed_from_i32;
-
-    fn make_unit(id: u64, x: i32, y: i32) -> UnitSnapshot {
-        UnitSnapshot {
-            id: EntityId(id),
-            kind: UnitKind::Hisser,
-            pos: GridPos::new(x, y),
-            world_pos: WorldPos::from_grid(GridPos::new(x, y)),
-            owner: 0,
-            health_current: fixed_from_i32(100),
-            health_max: fixed_from_i32(100),
-            speed: fixed_from_i32(1),
-            attack_damage: fixed_from_i32(10),
-            attack_range: fixed_from_i32(5),
-            attack_speed: 10,
-            attack_type: AttackType::Ranged,
-            is_moving: false,
-            is_attacking: false,
-            is_idle: true,
-            is_dead: false,
-        }
-    }
+    use crate::test_fixtures::make_unit_simple as make_unit;
 
     #[test]
     fn empty_index() {

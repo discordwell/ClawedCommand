@@ -560,46 +560,9 @@ impl<'a> ScriptContext<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cc_core::components::AttackType;
     use cc_core::coords::WorldPos;
     use cc_core::math::fixed_from_i32;
-    use cc_sim::resources::PlayerResourceState;
-
-    fn make_unit(id: u64, kind: UnitKind, x: i32, y: i32, owner: u8) -> UnitSnapshot {
-        UnitSnapshot {
-            id: EntityId(id),
-            kind,
-            pos: GridPos::new(x, y),
-            world_pos: WorldPos::from_grid(GridPos::new(x, y)),
-            owner,
-            health_current: fixed_from_i32(100),
-            health_max: fixed_from_i32(100),
-            speed: fixed_from_i32(1),
-            attack_damage: fixed_from_i32(10),
-            attack_range: fixed_from_i32(5),
-            attack_speed: 10,
-            attack_type: AttackType::Ranged,
-            is_moving: false,
-            is_attacking: false,
-            is_idle: true,
-            is_dead: false,
-        }
-    }
-
-    fn make_snapshot(my_units: Vec<UnitSnapshot>, enemy_units: Vec<UnitSnapshot>) -> GameStateSnapshot {
-        GameStateSnapshot {
-            tick: 0,
-            map_width: 64,
-            map_height: 64,
-            player_id: 0,
-            my_units,
-            enemy_units,
-            my_buildings: vec![],
-            enemy_buildings: vec![],
-            resource_deposits: vec![],
-            my_resources: PlayerResourceState::default(),
-        }
-    }
+    use crate::test_fixtures::{make_unit, make_snapshot};
 
     #[test]
     fn my_units_returns_all_alive() {

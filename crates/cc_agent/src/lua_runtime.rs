@@ -1,10 +1,9 @@
 use std::cell::RefCell;
 
 use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::{AttackType, BuildingKind, ResourceType, UnitKind};
+use cc_core::components::{BuildingKind, ResourceType, UnitKind};
 use cc_core::coords::GridPos;
 use cc_core::math::Fixed;
-use cc_core::terrain::CoverLevel;
 use mlua::prelude::*;
 
 use crate::script_context::ScriptContext;
@@ -39,7 +38,7 @@ pub fn execute_script_with_context(
             let f = scope
                 .create_function(|lua, (_self, filter): (LuaValue, Option<String>)| {
                     let mut ctx = cell.borrow_mut();
-                    let kind = filter.and_then(|s| parse_unit_kind(&s));
+                    let kind = filter.and_then(|s| s.parse::<UnitKind>().ok());
                     let units = ctx.my_units(kind);
                     let tbl = lua.create_table()?;
                     for (i, unit) in units.iter().enumerate() {
@@ -231,7 +230,7 @@ pub fn execute_script_with_context(
                     let mut ctx = cell.borrow_mut();
                     match ctx.terrain_at(GridPos::new(x, y)) {
                         Some(t) => Ok(LuaValue::String(
-                            lua.create_string(terrain_type_name(t))?,
+                            lua.create_string(t.to_string())?,
                         )),
                         None => Ok(LuaValue::Nil),
                     }
@@ -263,7 +262,7 @@ pub fn execute_script_with_context(
                 .create_function(|_, (_self, x, y): (LuaValue, i32, i32)| {
                     let mut ctx = cell.borrow_mut();
                     let cover = ctx.cover_at(GridPos::new(x, y));
-                    Ok(cover_level_name(cover))
+                    Ok(cover.to_string())
                 })
                 ?;
             ctx_table
@@ -347,7 +346,7 @@ pub fn execute_script_with_context(
             let f = scope
                 .create_function(|lua, (_self, x, y, kind): (LuaValue, i32, i32, Option<String>)| {
                     let mut ctx = cell.borrow_mut();
-                    let res_kind = kind.and_then(|s| parse_resource_type(&s));
+                    let res_kind = kind.and_then(|s| s.parse::<ResourceType>().ok());
                     match ctx.nearest_deposit(GridPos::new(x, y), res_kind) {
                         Some(dep) => Ok(LuaValue::Table(deposit_to_lua_table(lua, dep)?)),
                         None => Ok(LuaValue::Nil),
@@ -365,7 +364,7 @@ pub fn execute_script_with_context(
             let f = scope
                 .create_function(|lua, (_self, filter): (LuaValue, Option<String>)| {
                     let mut ctx = cell.borrow_mut();
-                    let kind = filter.and_then(|s| parse_building_kind(&s));
+                    let kind = filter.and_then(|s| s.parse::<BuildingKind>().ok());
                     let buildings = ctx.my_buildings(kind);
                     let tbl = lua.create_table()?;
                     for (i, b) in buildings.iter().enumerate() {
@@ -518,8 +517,8 @@ pub fn execute_script_with_context(
             let f = scope
                 .create_function(
                     move |_, (_self, builder_id, building_type, x, y): (LuaValue, u64, String, i32, i32)| {
-                        let kind = parse_building_kind(&building_type)
-                            .ok_or_else(|| mlua::Error::RuntimeError(
+                        let kind = building_type.parse::<BuildingKind>()
+                            .map_err(|_| mlua::Error::RuntimeError(
                                 format!("Unknown building type: {building_type}"),
                             ))?;
                         let mut ctx = cell.borrow_mut();
@@ -537,8 +536,8 @@ pub fn execute_script_with_context(
             let f = scope
                 .create_function(
                     move |_, (_self, building_id, unit_type): (LuaValue, u64, String)| {
-                        let kind = parse_unit_kind(&unit_type)
-                            .ok_or_else(|| mlua::Error::RuntimeError(
+                        let kind = unit_type.parse::<UnitKind>()
+                            .map_err(|_| mlua::Error::RuntimeError(
                                 format!("Unknown unit type: {unit_type}"),
                             ))?;
                         let mut ctx = cell.borrow_mut();
@@ -591,127 +590,28 @@ pub fn execute_script_with_context(
 }
 
 /// Execute a Lua script in a sandboxed environment (command-only, no queries).
-/// Kept for backwards compatibility with simple scripts.
-pub fn execute_script(source: &str, _player_id: u8) -> Result<Vec<GameCommand>, LuaScriptError> {
-    let lua = Lua::new();
+/// Thin wrapper around `execute_script_with_context` with an empty game state.
+pub fn execute_script(source: &str, player_id: u8) -> Result<Vec<GameCommand>, LuaScriptError> {
+    use cc_core::map::GameMap;
+    use cc_core::terrain::FactionId;
+    use cc_sim::resources::PlayerResourceState;
+    use crate::snapshot::GameStateSnapshot;
 
-    let commands: std::sync::Arc<std::sync::Mutex<Vec<GameCommand>>> =
-        std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-
-    let ctx = lua.create_table().map_err(LuaScriptError::Lua)?;
-
-    // Note: All functions accept `_self: LuaValue` as first arg because
-    // Luau colon syntax `ctx:method(args)` passes `ctx` as first arg.
-
-    // ctx:move_units(unit_ids, x, y)
-    {
-        let cmds = commands.clone();
-        let f = lua
-            .create_function(move |_, (_self, unit_ids, x, y): (LuaValue, Vec<u64>, i32, i32)| {
-                cmds.lock().unwrap().push(GameCommand::Move {
-                    unit_ids: unit_ids.into_iter().map(EntityId).collect(),
-                    target: GridPos::new(x, y),
-                });
-                Ok(())
-            })
-            .map_err(LuaScriptError::Lua)?;
-        ctx.set("move_units", f).map_err(LuaScriptError::Lua)?;
-    }
-
-    // ctx:attack_units(unit_ids, target_id)
-    {
-        let cmds = commands.clone();
-        let f = lua
-            .create_function(move |_, (_self, unit_ids, target_id): (LuaValue, Vec<u64>, u64)| {
-                cmds.lock().unwrap().push(GameCommand::Attack {
-                    unit_ids: unit_ids.into_iter().map(EntityId).collect(),
-                    target: EntityId(target_id),
-                });
-                Ok(())
-            })
-            .map_err(LuaScriptError::Lua)?;
-        ctx.set("attack_units", f).map_err(LuaScriptError::Lua)?;
-    }
-
-    // ctx:attack_move(unit_ids, x, y)
-    {
-        let cmds = commands.clone();
-        let f = lua
-            .create_function(move |_, (_self, unit_ids, x, y): (LuaValue, Vec<u64>, i32, i32)| {
-                cmds.lock().unwrap().push(GameCommand::AttackMove {
-                    unit_ids: unit_ids.into_iter().map(EntityId).collect(),
-                    target: GridPos::new(x, y),
-                });
-                Ok(())
-            })
-            .map_err(LuaScriptError::Lua)?;
-        ctx.set("attack_move", f).map_err(LuaScriptError::Lua)?;
-    }
-
-    // ctx:stop(unit_ids)
-    {
-        let cmds = commands.clone();
-        let f = lua
-            .create_function(move |_, (_self, unit_ids): (LuaValue, Vec<u64>)| {
-                cmds.lock().unwrap().push(GameCommand::Stop {
-                    unit_ids: unit_ids.into_iter().map(EntityId).collect(),
-                });
-                Ok(())
-            })
-            .map_err(LuaScriptError::Lua)?;
-        ctx.set("stop", f).map_err(LuaScriptError::Lua)?;
-    }
-
-    // ctx:hold(unit_ids)
-    {
-        let cmds = commands.clone();
-        let f = lua
-            .create_function(move |_, (_self, unit_ids): (LuaValue, Vec<u64>)| {
-                cmds.lock().unwrap().push(GameCommand::HoldPosition {
-                    unit_ids: unit_ids.into_iter().map(EntityId).collect(),
-                });
-                Ok(())
-            })
-            .map_err(LuaScriptError::Lua)?;
-        ctx.set("hold", f).map_err(LuaScriptError::Lua)?;
-    }
-
-    lua.globals()
-        .set("ctx", ctx)
-        .map_err(LuaScriptError::Lua)?;
-
-    // Remove os/debug libraries before sandboxing
-    lua.globals()
-        .set("os", LuaValue::Nil)
-        .map_err(LuaScriptError::Lua)?;
-    lua.globals()
-        .set("debug", LuaValue::Nil)
-        .map_err(LuaScriptError::Lua)?;
-
-    lua.sandbox(true).map_err(LuaScriptError::Lua)?;
-
-    let count = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0));
-    lua.set_interrupt(move |_| {
-        let c = count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        if c >= INSTRUCTION_LIMIT {
-            Err(mlua::Error::RuntimeError(
-                "Script exceeded instruction limit".into(),
-            ))
-        } else {
-            Ok(mlua::VmState::Continue)
-        }
-    });
-
-    lua.load(source)
-        .exec()
-        .map_err(LuaScriptError::Lua)?;
-
-    let result = std::sync::Arc::try_unwrap(commands)
-        .unwrap_or_else(|arc| arc.lock().unwrap().clone().into())
-        .into_inner()
-        .unwrap();
-
-    Ok(result)
+    let empty_snap = GameStateSnapshot {
+        tick: 0,
+        map_width: 1,
+        map_height: 1,
+        player_id,
+        my_units: vec![],
+        enemy_units: vec![],
+        my_buildings: vec![],
+        enemy_buildings: vec![],
+        resource_deposits: vec![],
+        my_resources: PlayerResourceState::default(),
+    };
+    let map = GameMap::new(1, 1);
+    let mut ctx = ScriptContext::new(&empty_snap, &map, player_id, FactionId::CatGPT);
+    execute_script_with_context(source, &mut ctx)
 }
 
 // ---------------------------------------------------------------------------
@@ -721,7 +621,7 @@ pub fn execute_script(source: &str, _player_id: u8) -> Result<Vec<GameCommand>, 
 fn unit_to_lua_table(lua: &Lua, unit: &UnitSnapshot) -> LuaResult<LuaTable> {
     let tbl = lua.create_table()?;
     tbl.set("id", unit.id.0)?;
-    tbl.set("kind", unit_kind_name(unit.kind))?;
+    tbl.set("kind", unit.kind.to_string())?;
     tbl.set("x", unit.pos.x)?;
     tbl.set("y", unit.pos.y)?;
     tbl.set("hp", fixed_to_f64(unit.health_current))?;
@@ -730,13 +630,7 @@ fn unit_to_lua_table(lua: &Lua, unit: &UnitSnapshot) -> LuaResult<LuaTable> {
     tbl.set("atk_dmg", fixed_to_f64(unit.attack_damage))?;
     tbl.set("atk_range", fixed_to_f64(unit.attack_range))?;
     tbl.set("atk_speed", unit.attack_speed)?;
-    tbl.set(
-        "atk_type",
-        match unit.attack_type {
-            AttackType::Melee => "Melee",
-            AttackType::Ranged => "Ranged",
-        },
-    )?;
+    tbl.set("atk_type", unit.attack_type.to_string())?;
     tbl.set("moving", unit.is_moving)?;
     tbl.set("attacking", unit.is_attacking)?;
     tbl.set("idle", unit.is_idle)?;
@@ -750,7 +644,7 @@ fn building_to_lua_table(
 ) -> LuaResult<LuaTable> {
     let tbl = lua.create_table()?;
     tbl.set("id", building.id.0)?;
-    tbl.set("kind", building_kind_name(building.kind))?;
+    tbl.set("kind", building.kind.to_string())?;
     tbl.set("x", building.pos.x)?;
     tbl.set("y", building.pos.y)?;
     tbl.set("hp", fixed_to_f64(building.health_current))?;
@@ -767,7 +661,7 @@ fn deposit_to_lua_table(
 ) -> LuaResult<LuaTable> {
     let tbl = lua.create_table()?;
     tbl.set("id", deposit.id.0)?;
-    tbl.set("kind", resource_type_name(deposit.resource_type))?;
+    tbl.set("kind", deposit.resource_type.to_string())?;
     tbl.set("x", deposit.pos.x)?;
     tbl.set("y", deposit.pos.y)?;
     tbl.set("remaining", deposit.remaining)?;
@@ -776,109 +670,6 @@ fn deposit_to_lua_table(
 
 fn fixed_to_f64(v: Fixed) -> f64 {
     v.to_num::<f64>()
-}
-
-// ---------------------------------------------------------------------------
-// Helpers: String ↔ enum conversion
-// ---------------------------------------------------------------------------
-
-fn unit_kind_name(kind: UnitKind) -> &'static str {
-    match kind {
-        UnitKind::Pawdler => "Pawdler",
-        UnitKind::Nuisance => "Nuisance",
-        UnitKind::Chonk => "Chonk",
-        UnitKind::FlyingFox => "FlyingFox",
-        UnitKind::Hisser => "Hisser",
-        UnitKind::Yowler => "Yowler",
-        UnitKind::Mouser => "Mouser",
-        UnitKind::Catnapper => "Catnapper",
-        UnitKind::FerretSapper => "FerretSapper",
-        UnitKind::MechCommander => "MechCommander",
-    }
-}
-
-fn parse_unit_kind(s: &str) -> Option<UnitKind> {
-    match s {
-        "Pawdler" => Some(UnitKind::Pawdler),
-        "Nuisance" => Some(UnitKind::Nuisance),
-        "Chonk" => Some(UnitKind::Chonk),
-        "FlyingFox" => Some(UnitKind::FlyingFox),
-        "Hisser" => Some(UnitKind::Hisser),
-        "Yowler" => Some(UnitKind::Yowler),
-        "Mouser" => Some(UnitKind::Mouser),
-        "Catnapper" => Some(UnitKind::Catnapper),
-        "FerretSapper" => Some(UnitKind::FerretSapper),
-        "MechCommander" => Some(UnitKind::MechCommander),
-        _ => None,
-    }
-}
-
-fn building_kind_name(kind: BuildingKind) -> &'static str {
-    match kind {
-        BuildingKind::TheBox => "TheBox",
-        BuildingKind::CatTree => "CatTree",
-        BuildingKind::FishMarket => "FishMarket",
-        BuildingKind::LitterBox => "LitterBox",
-        BuildingKind::ServerRack => "ServerRack",
-        BuildingKind::ScratchingPost => "ScratchingPost",
-        BuildingKind::CatFlap => "CatFlap",
-        BuildingKind::LaserPointer => "LaserPointer",
-    }
-}
-
-fn parse_building_kind(s: &str) -> Option<BuildingKind> {
-    match s {
-        "TheBox" => Some(BuildingKind::TheBox),
-        "CatTree" => Some(BuildingKind::CatTree),
-        "FishMarket" => Some(BuildingKind::FishMarket),
-        "LitterBox" => Some(BuildingKind::LitterBox),
-        "ServerRack" => Some(BuildingKind::ServerRack),
-        "ScratchingPost" => Some(BuildingKind::ScratchingPost),
-        "CatFlap" => Some(BuildingKind::CatFlap),
-        "LaserPointer" => Some(BuildingKind::LaserPointer),
-        _ => None,
-    }
-}
-
-fn terrain_type_name(t: cc_core::terrain::TerrainType) -> &'static str {
-    use cc_core::terrain::TerrainType;
-    match t {
-        TerrainType::Grass => "Grass",
-        TerrainType::Dirt => "Dirt",
-        TerrainType::Sand => "Sand",
-        TerrainType::Forest => "Forest",
-        TerrainType::Water => "Water",
-        TerrainType::Shallows => "Shallows",
-        TerrainType::Rock => "Rock",
-        TerrainType::Ramp => "Ramp",
-        TerrainType::Road => "Road",
-        TerrainType::TechRuins => "TechRuins",
-    }
-}
-
-fn resource_type_name(r: ResourceType) -> &'static str {
-    match r {
-        ResourceType::Food => "Food",
-        ResourceType::GpuCores => "GpuCores",
-        ResourceType::Nft => "Nft",
-    }
-}
-
-fn parse_resource_type(s: &str) -> Option<ResourceType> {
-    match s {
-        "Food" => Some(ResourceType::Food),
-        "GpuCores" => Some(ResourceType::GpuCores),
-        "Nft" => Some(ResourceType::Nft),
-        _ => None,
-    }
-}
-
-fn cover_level_name(c: CoverLevel) -> &'static str {
-    match c {
-        CoverLevel::None => "None",
-        CoverLevel::Light => "Light",
-        CoverLevel::Heavy => "Heavy",
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -903,14 +694,12 @@ impl std::error::Error for LuaScriptError {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cc_core::components::AttackType;
-    use cc_core::coords::WorldPos;
     use cc_core::map::GameMap;
-    use cc_core::math::fixed_from_i32;
     use cc_core::terrain::FactionId;
     use cc_sim::resources::PlayerResourceState;
 
     use crate::snapshot::GameStateSnapshot;
+    use crate::test_fixtures::make_unit;
 
     // Keep original tests working with execute_script (no context)
     #[test]
@@ -966,27 +755,6 @@ mod tests {
     // -------------------------------------------------------------------
     // New tests for execute_script_with_context
     // -------------------------------------------------------------------
-
-    fn make_unit(id: u64, kind: UnitKind, x: i32, y: i32, owner: u8) -> crate::snapshot::UnitSnapshot {
-        crate::snapshot::UnitSnapshot {
-            id: EntityId(id),
-            kind,
-            pos: GridPos::new(x, y),
-            world_pos: WorldPos::from_grid(GridPos::new(x, y)),
-            owner,
-            health_current: fixed_from_i32(100),
-            health_max: fixed_from_i32(100),
-            speed: fixed_from_i32(1),
-            attack_damage: fixed_from_i32(10),
-            attack_range: fixed_from_i32(5),
-            attack_speed: 10,
-            attack_type: AttackType::Ranged,
-            is_moving: false,
-            is_attacking: false,
-            is_idle: true,
-            is_dead: false,
-        }
-    }
 
     fn make_test_snapshot() -> GameStateSnapshot {
         GameStateSnapshot {

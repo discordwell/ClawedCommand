@@ -115,7 +115,7 @@ pub fn execute_tool(
             };
             let kind_filter = args.get("kind")
                 .and_then(|v| v.as_str())
-                .and_then(parse_unit_kind_str);
+                .and_then(|s| s.parse::<UnitKind>().ok());
             let units: Vec<Value> = snap.my_units.iter()
                 .filter(|u| !u.is_dead)
                 .filter(|u| kind_filter.is_none_or(|k| u.kind == k))
@@ -131,7 +131,7 @@ pub fn execute_tool(
             let buildings: Vec<Value> = snap.my_buildings.iter()
                 .map(|b| serde_json::json!({
                     "id": b.id.0,
-                    "kind": format!("{:?}", b.kind),
+                    "kind": b.kind.to_string(),
                     "x": b.pos.x, "y": b.pos.y,
                     "hp": b.health_current.to_num::<f64>(),
                     "hp_max": b.health_max.to_num::<f64>(),
@@ -172,7 +172,7 @@ pub fn execute_tool(
                 .filter(|d| d.remaining > 0)
                 .map(|d| serde_json::json!({
                     "id": d.id.0,
-                    "kind": format!("{:?}", d.resource_type),
+                    "kind": d.resource_type.to_string(),
                     "x": d.pos.x, "y": d.pos.y,
                     "remaining": d.remaining,
                 }))
@@ -212,7 +212,7 @@ pub fn execute_tool(
             let Some(building_type) = args["building_type"].as_str() else {
                 return (serde_json::json!({"error": "missing required field: building_type"}), vec![]);
             };
-            let Some(kind) = parse_building_kind_str(building_type) else {
+            let Some(kind) = building_type.parse::<BuildingKind>().ok() else {
                 return (serde_json::json!({"error": format!("unknown building type: {building_type}")}), vec![]);
             };
             let Some(x) = args["x"].as_i64() else {
@@ -234,7 +234,7 @@ pub fn execute_tool(
             let Some(unit_type) = args["unit_type"].as_str() else {
                 return (serde_json::json!({"error": "missing required field: unit_type"}), vec![]);
             };
-            let Some(kind) = parse_unit_kind_str(unit_type) else {
+            let Some(kind) = unit_type.parse::<UnitKind>().ok() else {
                 return (serde_json::json!({"error": format!("unknown unit type: {unit_type}")}), vec![]);
             };
             (serde_json::json!({"status": "ok"}), vec![GameCommand::TrainUnit {
@@ -294,7 +294,7 @@ fn parse_entity_ids(args: &Value, key: &str) -> Vec<EntityId> {
 fn unit_to_json(unit: &crate::snapshot::UnitSnapshot) -> Value {
     serde_json::json!({
         "id": unit.id.0,
-        "kind": format!("{:?}", unit.kind),
+        "kind": unit.kind.to_string(),
         "x": unit.pos.x,
         "y": unit.pos.y,
         "hp": unit.health_current.to_num::<f64>(),
@@ -309,32 +309,3 @@ fn unit_to_json(unit: &crate::snapshot::UnitSnapshot) -> Value {
     })
 }
 
-fn parse_building_kind_str(s: &str) -> Option<BuildingKind> {
-    match s {
-        "TheBox" => Some(BuildingKind::TheBox),
-        "CatTree" => Some(BuildingKind::CatTree),
-        "FishMarket" => Some(BuildingKind::FishMarket),
-        "LitterBox" => Some(BuildingKind::LitterBox),
-        "ServerRack" => Some(BuildingKind::ServerRack),
-        "ScratchingPost" => Some(BuildingKind::ScratchingPost),
-        "CatFlap" => Some(BuildingKind::CatFlap),
-        "LaserPointer" => Some(BuildingKind::LaserPointer),
-        _ => None,
-    }
-}
-
-fn parse_unit_kind_str(s: &str) -> Option<UnitKind> {
-    match s {
-        "Pawdler" => Some(UnitKind::Pawdler),
-        "Nuisance" => Some(UnitKind::Nuisance),
-        "Chonk" => Some(UnitKind::Chonk),
-        "FlyingFox" => Some(UnitKind::FlyingFox),
-        "Hisser" => Some(UnitKind::Hisser),
-        "Yowler" => Some(UnitKind::Yowler),
-        "Mouser" => Some(UnitKind::Mouser),
-        "Catnapper" => Some(UnitKind::Catnapper),
-        "FerretSapper" => Some(UnitKind::FerretSapper),
-        "MechCommander" => Some(UnitKind::MechCommander),
-        _ => None,
-    }
-}

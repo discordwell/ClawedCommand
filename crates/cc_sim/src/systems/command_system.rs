@@ -13,6 +13,7 @@ use cc_core::components::{
     StatModifiers, UnderConstruction, UnitKind, UpgradeType,
 };
 use cc_core::coords::WorldPos;
+use cc_core::math::{FIXED_ONE, fixed_from_i32};
 use cc_core::terrain::FactionId;
 use cc_core::unit_stats::base_stats;
 use cc_core::upgrade_stats::upgrade_stats;
@@ -487,15 +488,19 @@ pub fn process_commands(
                         }
                     }
 
+                    // Apply cooldown_multiplier from StatModifiers (e.g. TacticalUplink)
+                    let cd_mult = stat_mods.map(|m| m.cooldown_multiplier).unwrap_or(FIXED_ONE);
+                    let effective_cooldown = (fixed_from_i32(def.cooldown_ticks as i32) * cd_mult).to_num::<u32>();
+
                     // Activate
                     match def.activation {
                         AbilityActivation::Toggle => {
                             ability_state.active = !ability_state.active;
-                            ability_state.cooldown_remaining = def.cooldown_ticks;
+                            ability_state.cooldown_remaining = effective_cooldown;
                         }
                         AbilityActivation::Activated => {
                             ability_state.active = true;
-                            ability_state.cooldown_remaining = def.cooldown_ticks;
+                            ability_state.cooldown_remaining = effective_cooldown;
                             ability_state.duration_remaining = def.duration_ticks;
                             if def.max_charges > 0 {
                                 ability_state.charges -= 1;
@@ -510,6 +515,31 @@ pub fn process_commands(
 
             GameCommand::Research { building, upgrade } => {
                 let building_entity = Entity::from_bits(building.0);
+
+                // Check if upgrade is already queued at ANY ScratchingPost for this player
+                // (prevents double-research across multiple buildings)
+                {
+                    let mut already_queued = false;
+                    let target_player = research_queues
+                        .get(building_entity)
+                        .map(|(o, _)| o.player_id)
+                        .ok();
+
+                    if let Some(pid) = target_player {
+                        for (rq_owner, rq_queue) in research_queues.iter() {
+                            if rq_owner.player_id == pid
+                                && rq_queue.queue.iter().any(|(u, _)| *u == upgrade)
+                            {
+                                already_queued = true;
+                                break;
+                            }
+                        }
+                    }
+                    if already_queued {
+                        continue;
+                    }
+                }
+
                 if let Ok((owner, mut queue)) = research_queues.get_mut(building_entity) {
                     let player_id = owner.player_id as usize;
 
@@ -518,11 +548,6 @@ pub fn process_commands(
                         if pres.completed_upgrades.contains(&upgrade) {
                             continue;
                         }
-                    }
-
-                    // Check not already in queue
-                    if queue.queue.iter().any(|(u, _)| *u == upgrade) {
-                        continue;
                     }
 
                     let ustats = upgrade_stats(upgrade);

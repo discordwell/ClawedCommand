@@ -28,12 +28,15 @@ use crate::resources::{
     SpawnPositions,
 };
 use crate::systems::{
+    ability_system::ability_cooldown_system, aura_system::aura_system,
     cleanup_system::cleanup_system, combat_system::combat_system,
     command_system::process_commands, grid_sync_system::grid_sync_system,
     movement_system::movement_system, production_system::production_system,
-    projectile_system::projectile_system, resource_system::gathering_system,
+    projectile_system::projectile_system, research_system::research_system,
+    resource_system::gathering_system, stat_modifier_system::stat_modifier_system,
+    status_effect_system::status_effect_system,
     target_acquisition_system::target_acquisition_system, tick_system::tick_system,
-    victory_system::victory_system,
+    tower_combat_system::tower_combat_system, victory_system::victory_system,
 };
 
 use invariants::{InvariantChecker, Severity};
@@ -413,6 +416,7 @@ fn make_harness_sim(
                 profile: None,
                 enemy_spawn: None,
                 attack_ordered: false,
+                last_attack_tick: 0,
             })
             .collect(),
     };
@@ -434,10 +438,16 @@ fn make_harness_sim(
             tick_system,
             crate::ai::fsm::multi_ai_decision_system,
             process_commands,
+            ability_cooldown_system,
+            status_effect_system,
+            aura_system,
+            stat_modifier_system,
             production_system,
+            research_system,
             gathering_system,
             target_acquisition_system,
             combat_system,
+            tower_combat_system,
             projectile_system,
             movement_system,
             grid_sync_system,

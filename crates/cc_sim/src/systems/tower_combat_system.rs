@@ -4,7 +4,7 @@ use crate::resources::MapResource;
 use cc_core::commands::EntityId;
 use cc_core::components::{
     AttackStats, AttackTypeMarker, Building, Dead, Owner, Position, Projectile,
-    ProjectileTarget, UnderConstruction, UnitType, Velocity,
+    ProjectileTarget, StatModifiers, UnderConstruction, UnitType, Velocity,
 };
 use cc_core::math::{Fixed, FIXED_ONE};
 
@@ -27,7 +27,7 @@ pub fn tower_combat_system(
         (With<Building>, Without<Dead>, Without<UnderConstruction>),
     >,
     potential_targets: Query<
-        (Entity, &Position, &Owner),
+        (Entity, &Position, &Owner, Option<&StatModifiers>),
         (With<UnitType>, Without<Dead>),
     >,
 ) {
@@ -42,9 +42,14 @@ pub fn tower_combat_system(
         let mut best_target: Option<(Entity, Fixed)> = None;
         let range_sq = stats.range * stats.range;
 
-        for (target_entity, target_pos, target_owner) in potential_targets.iter() {
+        for (target_entity, target_pos, target_owner, target_mods) in potential_targets.iter() {
             // Skip allies
             if target_owner.player_id == tower_owner.player_id {
+                continue;
+            }
+
+            // Skip invulnerable targets
+            if target_mods.map(|m| m.invulnerable).unwrap_or(false) {
                 continue;
             }
 
@@ -60,7 +65,7 @@ pub fn tower_combat_system(
             continue;
         };
 
-        let Ok((_, target_pos, _)) = potential_targets.get(target_entity) else {
+        let Ok((_, target_pos, _, target_mods)) = potential_targets.get(target_entity) else {
             continue;
         };
 
@@ -80,7 +85,9 @@ pub fn tower_combat_system(
         let elev_advantage = map_res.map.elevation_advantage(attacker_grid, target_grid);
         let elev_mult = cc_core::terrain::elevation_damage_multiplier(elev_advantage);
 
-        let final_damage = stats.damage * cover_mult * elev_mult;
+        // Apply target's damage_reduction from StatModifiers
+        let dr_mult = target_mods.map(|m| m.damage_reduction).unwrap_or(FIXED_ONE);
+        let final_damage = stats.damage * cover_mult * elev_mult * dr_mult;
 
         // Towers always fire ranged projectiles
         commands.spawn((

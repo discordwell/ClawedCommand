@@ -657,8 +657,12 @@ fn apply_noise_detail(
 
             let nx = x as f64 * 0.08;
             let ny = y as f64 * 0.08;
-            let tn = terrain_noise.get([nx, ny]);
-            let wn = water_noise.get([nx * 0.5, ny * 0.5]);
+            // Mirror coordinates for 180° rotational symmetry
+            let mx = (w - 1 - x) as f64 * 0.08;
+            let my = (h - 1 - y) as f64 * 0.08;
+            // Average noise at (x,y) and its rotational counterpart
+            let tn = (terrain_noise.get([nx, ny]) + terrain_noise.get([mx, my])) * 0.5;
+            let wn = (water_noise.get([nx * 0.5, ny * 0.5]) + water_noise.get([mx * 0.5, my * 0.5])) * 0.5;
 
             let terrain = if tn > (1.0 - params.forest_ratio as f64 * 3.0) && tile.elevation > 0 {
                 TerrainType::Forest

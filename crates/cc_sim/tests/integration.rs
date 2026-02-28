@@ -11,14 +11,17 @@ use cc_core::coords::{GridPos, WorldPos};
 use cc_core::map::GameMap;
 use cc_core::math::Fixed;
 use cc_sim::pathfinding;
-use cc_sim::resources::{CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock, SpawnPositions};
+use cc_sim::resources::{CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock, SimRng, SpawnPositions};
 use cc_sim::systems::{
+    ability_system::ability_cooldown_system, aura_system::aura_system,
     cleanup_system::cleanup_system, combat_system::combat_system,
     command_system::process_commands, grid_sync_system::grid_sync_system,
     movement_system::movement_system, production_system::production_system,
-    projectile_system::projectile_system, resource_system::gathering_system,
+    projectile_system::projectile_system, research_system::research_system,
+    resource_system::gathering_system, stat_modifier_system::stat_modifier_system,
+    status_effect_system::status_effect_system,
     target_acquisition_system::target_acquisition_system, tick_system::tick_system,
-    victory_system::victory_system,
+    tower_combat_system::tower_combat_system, victory_system::victory_system,
 };
 
 // ---------------------------------------------------------------------------
@@ -31,6 +34,7 @@ fn make_sim(map: GameMap) -> (World, Schedule) {
     world.insert_resource(SimClock::default());
     world.insert_resource(ControlGroups::default());
     world.insert_resource(PlayerResources::default());
+    world.insert_resource(SimRng::default());
     world.insert_resource(MapResource { map });
 
     // Mirror production pipeline from SimSystemsPlugin, using FixedUpdate label
@@ -39,10 +43,16 @@ fn make_sim(map: GameMap) -> (World, Schedule) {
         (
             tick_system,
             process_commands,
+            ability_cooldown_system,
+            status_effect_system,
+            aura_system,
+            stat_modifier_system,
             production_system,
+            research_system,
             gathering_system,
             target_acquisition_system,
             combat_system,
+            tower_combat_system,
             projectile_system,
             movement_system,
             grid_sync_system,
@@ -1022,6 +1032,7 @@ fn make_full_sim(map: GameMap) -> (World, Schedule) {
     world.insert_resource(PlayerResources::default());
     world.insert_resource(GameState::default());
     world.insert_resource(SpawnPositions::default());
+    world.insert_resource(SimRng::default());
     world.insert_resource(MapResource { map });
 
     let mut schedule = Schedule::new(FixedUpdate);
@@ -1029,10 +1040,16 @@ fn make_full_sim(map: GameMap) -> (World, Schedule) {
         (
             tick_system,
             process_commands,
+            ability_cooldown_system,
+            status_effect_system,
+            aura_system,
+            stat_modifier_system,
             production_system,
+            research_system,
             gathering_system,
             target_acquisition_system,
             combat_system,
+            tower_combat_system,
             projectile_system,
             movement_system,
             grid_sync_system,
@@ -1545,4 +1562,418 @@ fn test_victory_with_more_than_two_players() {
         GameState::Playing,
         "Game should continue with 2 remaining TheBoxes"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 4A: Abilities, Buildings, Tech Tree integration tests
+// ---------------------------------------------------------------------------
+
+use cc_core::abilities::unit_abilities;
+use cc_core::commands::AbilityTarget;
+use cc_core::status_effects::StatusEffects;
+
+/// Spawn a combat unit with full Phase 4A components (AbilitySlots, StatusEffects, StatModifiers).
+fn spawn_full_unit(
+    world: &mut World,
+    grid: GridPos,
+    player_id: u8,
+    kind: UnitKind,
+) -> Entity {
+    let stats = base_stats(kind);
+    world
+        .spawn((
+            Position { world: WorldPos::from_grid(grid) },
+            Velocity::zero(),
+            GridCell { pos: grid },
+            Owner { player_id },
+            UnitType { kind },
+            Health { current: stats.health, max: stats.health },
+            MovementSpeed { speed: stats.speed },
+            AttackStats {
+                damage: stats.damage,
+                range: stats.range,
+                attack_speed: stats.attack_speed,
+                cooldown_remaining: 0,
+            },
+            AttackTypeMarker { attack_type: stats.attack_type },
+            AbilitySlots::from_abilities(unit_abilities(kind)),
+            StatusEffects::default(),
+            StatModifiers::default(),
+        ))
+        .id()
+}
+
+/// Spawn a ScratchingPost (already constructed) for research tests.
+fn spawn_scratching_post(world: &mut World, grid: GridPos, player_id: u8) -> Entity {
+    let bstats = cc_core::building_stats::building_stats(BuildingKind::ScratchingPost);
+    world
+        .spawn((
+            Position { world: WorldPos::from_grid(grid) },
+            Velocity::zero(),
+            GridCell { pos: grid },
+            Owner { player_id },
+            Building { kind: BuildingKind::ScratchingPost },
+            Health { current: bstats.health, max: bstats.health },
+            Researcher,
+            ResearchQueue::default(),
+        ))
+        .id()
+}
+
+/// Spawn a ServerRack (already constructed) for advanced unit training.
+fn spawn_server_rack(world: &mut World, grid: GridPos, player_id: u8) -> Entity {
+    let bstats = cc_core::building_stats::building_stats(BuildingKind::ServerRack);
+    world
+        .spawn((
+            Position { world: WorldPos::from_grid(grid) },
+            Velocity::zero(),
+            GridCell { pos: grid },
+            Owner { player_id },
+            Building { kind: BuildingKind::ServerRack },
+            Health { current: bstats.health, max: bstats.health },
+            Producer,
+            ProductionQueue::default(),
+        ))
+        .id()
+}
+
+/// Spawn a LaserPointer tower (already constructed).
+fn spawn_laser_pointer(world: &mut World, grid: GridPos, player_id: u8) -> Entity {
+    let bstats = cc_core::building_stats::building_stats(BuildingKind::LaserPointer);
+    world
+        .spawn((
+            Position { world: WorldPos::from_grid(grid) },
+            Velocity::zero(),
+            GridCell { pos: grid },
+            Owner { player_id },
+            Building { kind: BuildingKind::LaserPointer },
+            Health { current: bstats.health, max: bstats.health },
+            AttackStats {
+                damage: Fixed::from_num(10),
+                range: Fixed::from_num(6),
+                attack_speed: 15,
+                cooldown_remaining: 0,
+            },
+            AttackTypeMarker { attack_type: AttackType::Ranged },
+        ))
+        .id()
+}
+
+#[test]
+fn test_ability_infrastructure_on_spawn() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let box_e = spawn_the_box(&mut world, GridPos::new(10, 10), 0);
+    world.resource_mut::<PlayerResources>().players[0].supply = 0;
+
+    world.resource_mut::<CommandQueue>().push(GameCommand::TrainUnit {
+        building: EntityId(box_e.to_bits()),
+        unit_kind: UnitKind::Pawdler,
+    });
+
+    run_ticks(&mut world, &mut schedule, 55);
+
+    // Find the trained Pawdler
+    let has_full_components = world
+        .query_filtered::<(&UnitType, &AbilitySlots, &StatusEffects, &StatModifiers), ()>()
+        .iter(&world)
+        .any(|(ut, _, _, _)| ut.kind == UnitKind::Pawdler);
+
+    assert!(has_full_components, "Trained unit should have AbilitySlots, StatusEffects, and StatModifiers");
+}
+
+#[test]
+fn test_activate_ability_cooldown_cycle() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    // Nuisance slot 2 = Zoomies: Activated, cooldown 120, gpu_cost 10, duration 30
+    let unit = spawn_full_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+
+    // Ensure GPU available
+    world.resource_mut::<PlayerResources>().players[0].gpu_cores = 100;
+
+    // Activate Zoomies (slot 2)
+    world.resource_mut::<CommandQueue>().push(GameCommand::ActivateAbility {
+        unit_id: EntityId(unit.to_bits()),
+        slot: 2,
+        target: AbilityTarget::SelfCast,
+    });
+
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let slots = world.get::<AbilitySlots>(unit).unwrap();
+    assert!(slots.slots[2].active, "Zoomies should be active after activation");
+    assert!(slots.slots[2].cooldown_remaining > 0, "Cooldown should be set");
+
+    // Try to activate again — should be rejected (on cooldown)
+    let gpu_before = world.resource::<PlayerResources>().players[0].gpu_cores;
+    world.resource_mut::<CommandQueue>().push(GameCommand::ActivateAbility {
+        unit_id: EntityId(unit.to_bits()),
+        slot: 2,
+        target: AbilityTarget::SelfCast,
+    });
+    run_ticks(&mut world, &mut schedule, 1);
+    let gpu_after = world.resource::<PlayerResources>().players[0].gpu_cores;
+    assert_eq!(gpu_before, gpu_after, "GPU should not be deducted when ability is on cooldown");
+
+    // Run until cooldown expires (120 ticks)
+    run_ticks(&mut world, &mut schedule, 125);
+
+    let slots = world.get::<AbilitySlots>(unit).unwrap();
+    assert_eq!(slots.slots[2].cooldown_remaining, 0, "Cooldown should have expired");
+    assert!(!slots.slots[2].active, "Duration should have expired (30 ticks < 125 ticks)");
+}
+
+#[test]
+fn test_stat_modifiers_affect_combat() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    // Two adjacent melee units, one with boosted damage
+    let attacker = spawn_full_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    let target = spawn_full_unit(&mut world, GridPos::new(6, 5), 1, UnitKind::Chonk);
+
+    // Boost attacker's damage_multiplier to 2x via stat modifiers
+    world.get_mut::<StatModifiers>(attacker).unwrap().damage_multiplier = Fixed::from_num(2);
+
+    let initial_hp = world.get::<Health>(target).unwrap().current;
+    issue_attack(&mut world, &[attacker], target);
+    run_ticks(&mut world, &mut schedule, 15);
+
+    let hp_after = world.get::<Health>(target).unwrap().current;
+    let damage_dealt = initial_hp - hp_after;
+    let base_damage = base_stats(UnitKind::Nuisance).damage;
+
+    assert!(
+        damage_dealt > base_damage,
+        "Damage with 2x multiplier ({damage_dealt}) should exceed base ({base_damage})"
+    );
+}
+
+#[test]
+fn test_stat_modifiers_affect_movement() {
+    use cc_core::status_effects::{StatusEffectId, StatusInstance};
+
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let fast_unit = spawn_full_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    let normal_unit = spawn_full_unit(&mut world, GridPos::new(5, 8), 0, UnitKind::Nuisance);
+
+    // Apply Zoomies status effect (grants +100% speed via stat_modifier_system)
+    world.get_mut::<StatusEffects>(fast_unit).unwrap().effects.push(StatusInstance {
+        effect: StatusEffectId::Zoomies,
+        remaining_ticks: 100,
+        stacks: 1,
+        source: EntityId(0),
+    });
+
+    issue_move(&mut world, &[fast_unit], GridPos::new(15, 5));
+    issue_move(&mut world, &[normal_unit], GridPos::new(15, 8));
+    run_ticks(&mut world, &mut schedule, 30);
+
+    let fast_pos = world.get::<Position>(fast_unit).unwrap().world;
+    let normal_pos = world.get::<Position>(normal_unit).unwrap().world;
+
+    // Fast unit should be further along (higher x)
+    assert!(
+        fast_pos.x > normal_pos.x,
+        "Boosted unit should move faster: fast_x={}, normal_x={}",
+        fast_pos.x, normal_pos.x
+    );
+}
+
+#[test]
+fn test_server_rack_trains_advanced_units() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let rack = spawn_server_rack(&mut world, GridPos::new(10, 10), 0);
+
+    world.resource_mut::<PlayerResources>().players[0].food = 500;
+    world.resource_mut::<PlayerResources>().players[0].gpu_cores = 200;
+    world.resource_mut::<PlayerResources>().players[0].supply = 0;
+    world.resource_mut::<PlayerResources>().players[0].supply_cap = 20;
+
+    // Train a FlyingFox (no upgrade gate)
+    world.resource_mut::<CommandQueue>().push(GameCommand::TrainUnit {
+        building: EntityId(rack.to_bits()),
+        unit_kind: UnitKind::FlyingFox,
+    });
+
+    // FlyingFox train_time = 80 ticks
+    run_ticks(&mut world, &mut schedule, 85);
+
+    let fox_count = world
+        .query_filtered::<&UnitType, ()>()
+        .iter(&world)
+        .filter(|ut| ut.kind == UnitKind::FlyingFox)
+        .count();
+
+    assert_eq!(fox_count, 1, "FlyingFox should have been trained from ServerRack");
+}
+
+#[test]
+fn test_laser_pointer_fires_at_enemies() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let _tower = spawn_laser_pointer(&mut world, GridPos::new(10, 10), 0);
+    let target = spawn_full_unit(&mut world, GridPos::new(13, 10), 1, UnitKind::Nuisance);
+
+    let initial_hp = world.get::<Health>(target).unwrap().current;
+
+    // Tower has range 6, target is 3 tiles away — should fire
+    run_ticks(&mut world, &mut schedule, 30);
+
+    let hp_after = world.get::<Health>(target).unwrap().current;
+    assert!(
+        hp_after < initial_hp,
+        "LaserPointer should damage nearby enemy: initial={initial_hp}, after={hp_after}"
+    );
+}
+
+#[test]
+fn test_research_completes_and_applies() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let sp = spawn_scratching_post(&mut world, GridPos::new(10, 10), 0);
+
+    // Give enough resources
+    world.resource_mut::<PlayerResources>().players[0].food = 500;
+    world.resource_mut::<PlayerResources>().players[0].gpu_cores = 200;
+
+    // Spawn a combat unit to receive the upgrade
+    let unit = spawn_full_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    let dmg_before = world.get::<AttackStats>(unit).unwrap().damage;
+
+    // Research SharperClaws (+2 damage, 200 ticks)
+    world.resource_mut::<CommandQueue>().push(GameCommand::Research {
+        building: EntityId(sp.to_bits()),
+        upgrade: UpgradeType::SharperClaws,
+    });
+
+    run_ticks(&mut world, &mut schedule, 205);
+
+    let dmg_after = world.get::<AttackStats>(unit).unwrap().damage;
+    assert!(
+        dmg_after > dmg_before,
+        "SharperClaws should add +2 damage: before={dmg_before}, after={dmg_after}"
+    );
+
+    // Verify upgrade is recorded
+    let completed = &world.resource::<PlayerResources>().players[0].completed_upgrades;
+    assert!(completed.contains(&UpgradeType::SharperClaws), "SharperClaws should be in completed_upgrades");
+}
+
+#[test]
+fn test_upgrade_gates_unit_training() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let rack = spawn_server_rack(&mut world, GridPos::new(10, 10), 0);
+
+    world.resource_mut::<PlayerResources>().players[0].food = 1000;
+    world.resource_mut::<PlayerResources>().players[0].gpu_cores = 500;
+    world.resource_mut::<PlayerResources>().players[0].supply = 0;
+    world.resource_mut::<PlayerResources>().players[0].supply_cap = 20;
+
+    // Try training MechCommander without MechPrototype — should be rejected
+    world.resource_mut::<CommandQueue>().push(GameCommand::TrainUnit {
+        building: EntityId(rack.to_bits()),
+        unit_kind: UnitKind::MechCommander,
+    });
+
+    run_ticks(&mut world, &mut schedule, 500);
+
+    let mech_count = world
+        .query_filtered::<&UnitType, ()>()
+        .iter(&world)
+        .filter(|ut| ut.kind == UnitKind::MechCommander)
+        .count();
+
+    assert_eq!(mech_count, 0, "MechCommander should not train without MechPrototype upgrade");
+}
+
+#[test]
+fn test_cancel_research_refunds() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let sp = spawn_scratching_post(&mut world, GridPos::new(10, 10), 0);
+
+    world.resource_mut::<PlayerResources>().players[0].food = 500;
+    world.resource_mut::<PlayerResources>().players[0].gpu_cores = 200;
+
+    // Queue SharperClaws (costs 150F, 50G)
+    world.resource_mut::<CommandQueue>().push(GameCommand::Research {
+        building: EntityId(sp.to_bits()),
+        upgrade: UpgradeType::SharperClaws,
+    });
+
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let food_after_queue = world.resource::<PlayerResources>().players[0].food;
+    let gpu_after_queue = world.resource::<PlayerResources>().players[0].gpu_cores;
+    assert_eq!(food_after_queue, 350, "150 food should be deducted");
+    assert_eq!(gpu_after_queue, 150, "50 GPU should be deducted");
+
+    // Cancel research
+    world.resource_mut::<CommandQueue>().push(GameCommand::CancelResearch {
+        building: EntityId(sp.to_bits()),
+    });
+
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let food_after_cancel = world.resource::<PlayerResources>().players[0].food;
+    let gpu_after_cancel = world.resource::<PlayerResources>().players[0].gpu_cores;
+    assert_eq!(food_after_cancel, 500, "Food should be refunded on cancel");
+    assert_eq!(gpu_after_cancel, 200, "GPU should be refunded on cancel");
+}
+
+#[test]
+fn test_new_units_get_upgrades() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let sp = spawn_scratching_post(&mut world, GridPos::new(10, 10), 0);
+
+    // Build a CatTree (already constructed) to train Nuisance from
+    let cat_tree = {
+        let bstats = cc_core::building_stats::building_stats(BuildingKind::CatTree);
+        world
+            .spawn((
+                Position { world: WorldPos::from_grid(GridPos::new(15, 15)) },
+                Velocity::zero(),
+                GridCell { pos: GridPos::new(15, 15) },
+                Owner { player_id: 0 },
+                Building { kind: BuildingKind::CatTree },
+                Health { current: bstats.health, max: bstats.health },
+                Producer,
+                ProductionQueue::default(),
+            ))
+            .id()
+    };
+
+    world.resource_mut::<PlayerResources>().players[0].food = 1000;
+    world.resource_mut::<PlayerResources>().players[0].gpu_cores = 200;
+    world.resource_mut::<PlayerResources>().players[0].supply = 0;
+    world.resource_mut::<PlayerResources>().players[0].supply_cap = 20;
+
+    // Research ThickerFur (+25 HP for combat units, 200 ticks)
+    world.resource_mut::<CommandQueue>().push(GameCommand::Research {
+        building: EntityId(sp.to_bits()),
+        upgrade: UpgradeType::ThickerFur,
+    });
+
+    run_ticks(&mut world, &mut schedule, 205);
+
+    // Verify upgrade completed
+    assert!(
+        world.resource::<PlayerResources>().players[0]
+            .completed_upgrades.contains(&UpgradeType::ThickerFur),
+        "ThickerFur should be completed"
+    );
+
+    // Train a Nuisance (combat unit) — it should spawn with +25 HP
+    world.resource_mut::<CommandQueue>().push(GameCommand::TrainUnit {
+        building: EntityId(cat_tree.to_bits()),
+        unit_kind: UnitKind::Nuisance,
+    });
+
+    // Nuisance train_time = 60 ticks
+    run_ticks(&mut world, &mut schedule, 65);
+
+    let base_hp = base_stats(UnitKind::Nuisance).health;
+    let expected_hp = base_hp + Fixed::from_num(25);
+
+    let has_boosted_unit = world
+        .query_filtered::<(&UnitType, &Health), ()>()
+        .iter(&world)
+        .any(|(ut, hp)| ut.kind == UnitKind::Nuisance && hp.max >= expected_hp);
+
+    assert!(has_boosted_unit, "Newly trained Nuisance should have +25 HP from ThickerFur");
 }

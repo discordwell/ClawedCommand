@@ -9,6 +9,9 @@ pub mod script_context;
 pub mod snapshot;
 pub mod spatial;
 
+#[cfg(test)]
+pub(crate) mod test_fixtures;
+
 use bevy::prelude::*;
 
 pub struct AgentPlugin;

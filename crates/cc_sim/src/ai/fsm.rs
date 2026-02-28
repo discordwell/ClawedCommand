@@ -219,6 +219,8 @@ pub struct AiState {
     pub enemy_spawn: Option<GridPos>,
     /// True if the attack order has already been issued this Attack phase.
     pub attack_ordered: bool,
+    /// Tick when last attack order was sent — used to periodically re-issue orders.
+    pub last_attack_tick: u64,
 }
 
 impl Default for AiState {
@@ -231,6 +233,7 @@ impl Default for AiState {
             profile: None,
             enemy_spawn: None,
             attack_ordered: false,
+            last_attack_tick: 0,
         }
     }
 }
@@ -378,12 +381,22 @@ fn run_ai_fsm(
         }
     }
 
-    // Find enemy spawn — look for any unit NOT owned by this AI
+    // Find enemy base — prefer enemy TheBox building, fall back to any enemy unit
     if ai_state.enemy_spawn.is_none() {
-        for (_, pos, owner, _, _, _) in units.iter() {
-            if owner.player_id != ai_player {
+        // First: look for enemy TheBox
+        for (_, building, owner, pos, _) in buildings.iter() {
+            if owner.player_id != ai_player && building.kind == BuildingKind::TheBox {
                 ai_state.enemy_spawn = Some(pos.world.to_grid());
                 break;
+            }
+        }
+        // Fallback: any enemy unit
+        if ai_state.enemy_spawn.is_none() {
+            for (_, pos, owner, _, _, _) in units.iter() {
+                if owner.player_id != ai_player {
+                    ai_state.enemy_spawn = Some(pos.world.to_grid());
+                    break;
+                }
             }
         }
     }
@@ -584,8 +597,13 @@ fn run_ai_fsm(
         }
 
         AiPhase::Attack => {
-            // Send army toward enemy spawn (only once per Attack phase)
-            if !ai_state.attack_ordered {
+            // Re-issue attack orders periodically (every 50 ticks / 5s) so
+            // reinforcements join the fight and units don't idle after reaching target.
+            let reissue_interval = 50;
+            let should_reissue = !ai_state.attack_ordered
+                || tick.saturating_sub(ai_state.last_attack_tick) >= reissue_interval;
+
+            if should_reissue {
                 if let Some(target) = ai_state.enemy_spawn {
                     if !army_entities.is_empty() {
                         let ids: Vec<EntityId> = army_entities
@@ -597,9 +615,30 @@ fn run_ai_fsm(
                             target,
                         });
                         ai_state.attack_ordered = true;
+                        ai_state.last_attack_tick = tick;
                     }
                 }
             }
+
+            // Keep economy running during attack — train reinforcements
+            if let Some(ct_e) = cat_tree_entity {
+                if pres.supply < pres.supply_cap {
+                    let kind = if army_count % 3 == 0 {
+                        UnitKind::Hisser
+                    } else {
+                        UnitKind::Nuisance
+                    };
+                    let stats = cc_core::unit_stats::base_stats(kind);
+                    if pres.food >= stats.food_cost {
+                        cmd_queue.push(GameCommand::TrainUnit {
+                            building: EntityId(ct_e.to_bits()),
+                            unit_kind: kind,
+                        });
+                    }
+                }
+            }
+
+            maybe_build_supply(pres, &idle_workers, box_pos, building_count, cmd_queue);
 
             // Check if base is under attack (enemy units near our buildings)
             let base_threatened = is_base_threatened(ai_player, units, buildings);
@@ -639,6 +678,7 @@ fn run_ai_fsm(
     // Reset attack flag when leaving Attack phase
     if new_phase != AiPhase::Attack {
         ai_state.attack_ordered = false;
+        ai_state.last_attack_tick = 0;
     }
     ai_state.phase = new_phase;
 }

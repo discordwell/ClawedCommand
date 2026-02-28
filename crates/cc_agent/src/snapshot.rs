@@ -219,28 +219,7 @@ pub fn build_snapshot(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cc_core::math::fixed_from_i32;
-
-    fn make_unit_snapshot(id: u64, kind: UnitKind, x: i32, y: i32, owner: u8) -> UnitSnapshot {
-        UnitSnapshot {
-            id: EntityId(id),
-            kind,
-            pos: GridPos::new(x, y),
-            world_pos: WorldPos::from_grid(GridPos::new(x, y)),
-            owner,
-            health_current: fixed_from_i32(100),
-            health_max: fixed_from_i32(100),
-            speed: fixed_from_i32(1),
-            attack_damage: fixed_from_i32(10),
-            attack_range: fixed_from_i32(5),
-            attack_speed: 10,
-            attack_type: AttackType::Ranged,
-            is_moving: false,
-            is_attacking: false,
-            is_idle: true,
-            is_dead: false,
-        }
-    }
+    use crate::test_fixtures::make_unit as make_unit_snapshot;
 
     #[test]
     fn snapshot_unit_by_id_finds_own_units() {

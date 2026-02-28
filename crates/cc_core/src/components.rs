@@ -19,6 +19,24 @@ pub enum ResourceType {
     Nft,
 }
 
+impl std::fmt::Display for ResourceType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, f)
+    }
+}
+
+impl std::str::FromStr for ResourceType {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        match s {
+            "Food" => Ok(Self::Food),
+            "GpuCores" => Ok(Self::GpuCores),
+            "Nft" => Ok(Self::Nft),
+            _ => Err(()),
+        }
+    }
+}
+
 /// Building types for the cat faction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BuildingKind {
@@ -38,6 +56,29 @@ pub enum BuildingKind {
     CatFlap,
     /// Defensive tower — auto-attacks enemies in range.
     LaserPointer,
+}
+
+impl std::fmt::Display for BuildingKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, f)
+    }
+}
+
+impl std::str::FromStr for BuildingKind {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        match s {
+            "TheBox" => Ok(Self::TheBox),
+            "CatTree" => Ok(Self::CatTree),
+            "FishMarket" => Ok(Self::FishMarket),
+            "LitterBox" => Ok(Self::LitterBox),
+            "ServerRack" => Ok(Self::ServerRack),
+            "ScratchingPost" => Ok(Self::ScratchingPost),
+            "CatFlap" => Ok(Self::CatFlap),
+            "LaserPointer" => Ok(Self::LaserPointer),
+            _ => Err(()),
+        }
+    }
 }
 
 /// State machine for the Pawdler gather loop.
@@ -101,6 +142,31 @@ pub enum UnitKind {
     MechCommander, // Hero/Heavy (Cat in Mech) — late-game, commands nearby units
 }
 
+impl std::fmt::Display for UnitKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, f)
+    }
+}
+
+impl std::str::FromStr for UnitKind {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        match s {
+            "Pawdler" => Ok(Self::Pawdler),
+            "Nuisance" => Ok(Self::Nuisance),
+            "Chonk" => Ok(Self::Chonk),
+            "FlyingFox" => Ok(Self::FlyingFox),
+            "Hisser" => Ok(Self::Hisser),
+            "Yowler" => Ok(Self::Yowler),
+            "Mouser" => Ok(Self::Mouser),
+            "Catnapper" => Ok(Self::Catnapper),
+            "FerretSapper" => Ok(Self::FerretSapper),
+            "MechCommander" => Ok(Self::MechCommander),
+            _ => Err(()),
+        }
+    }
+}
+
 /// Identifies what type of unit this entity is.
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
@@ -151,6 +217,23 @@ pub struct Path {
 pub enum AttackType {
     Melee,
     Ranged,
+}
+
+impl std::fmt::Display for AttackType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, f)
+    }
+}
+
+impl std::str::FromStr for AttackType {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        match s {
+            "Melee" => Ok(Self::Melee),
+            "Ranged" => Ok(Self::Ranged),
+            _ => Err(()),
+        }
+    }
 }
 
 /// Combat statistics for a unit.
@@ -442,4 +525,57 @@ pub struct HeroIdentity {
     pub hero_id: HeroId,
     /// If true, mission fails when this hero dies.
     pub mission_critical: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resource_type_display_from_str_round_trip() {
+        for rt in [ResourceType::Food, ResourceType::GpuCores, ResourceType::Nft] {
+            let s = rt.to_string();
+            let parsed: ResourceType = s.parse().unwrap();
+            assert_eq!(parsed, rt);
+        }
+        assert!("Bogus".parse::<ResourceType>().is_err());
+    }
+
+    #[test]
+    fn building_kind_display_from_str_round_trip() {
+        for kind in [
+            BuildingKind::TheBox, BuildingKind::CatTree, BuildingKind::FishMarket,
+            BuildingKind::LitterBox, BuildingKind::ServerRack, BuildingKind::ScratchingPost,
+            BuildingKind::CatFlap, BuildingKind::LaserPointer,
+        ] {
+            let s = kind.to_string();
+            let parsed: BuildingKind = s.parse().unwrap();
+            assert_eq!(parsed, kind);
+        }
+        assert!("Bogus".parse::<BuildingKind>().is_err());
+    }
+
+    #[test]
+    fn unit_kind_display_from_str_round_trip() {
+        for kind in [
+            UnitKind::Pawdler, UnitKind::Nuisance, UnitKind::Chonk, UnitKind::FlyingFox,
+            UnitKind::Hisser, UnitKind::Yowler, UnitKind::Mouser, UnitKind::Catnapper,
+            UnitKind::FerretSapper, UnitKind::MechCommander,
+        ] {
+            let s = kind.to_string();
+            let parsed: UnitKind = s.parse().unwrap();
+            assert_eq!(parsed, kind);
+        }
+        assert!("Bogus".parse::<UnitKind>().is_err());
+    }
+
+    #[test]
+    fn attack_type_display_from_str_round_trip() {
+        for at in [AttackType::Melee, AttackType::Ranged] {
+            let s = at.to_string();
+            let parsed: AttackType = s.parse().unwrap();
+            assert_eq!(parsed, at);
+        }
+        assert!("Bogus".parse::<AttackType>().is_err());
+    }
 }

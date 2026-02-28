@@ -165,7 +165,7 @@ pub fn mission_objective_system(
                 // This is a FAIL condition — if the hero is dead, mission fails
                 for (identity, _owner, is_dead) in heroes.iter() {
                     if identity.hero_id == *hero_id && is_dead {
-                        fail_writer.send(MissionFailedEvent {
+                        fail_writer.write(MissionFailedEvent {
                             reason: format!(
                                 "{:?} has fallen. Mission failed.",
                                 hero_id
@@ -188,7 +188,7 @@ pub fn mission_objective_system(
     // Check mission-critical heroes
     for (identity, _owner, is_dead) in heroes.iter() {
         if identity.mission_critical && is_dead {
-            fail_writer.send(MissionFailedEvent {
+            fail_writer.write(MissionFailedEvent {
                 reason: format!("{:?} was mission-critical and has fallen.", identity.hero_id),
             });
             campaign.phase = CampaignPhase::Debriefing;
@@ -198,11 +198,12 @@ pub fn mission_objective_system(
 
     // Check if all primary objectives are complete
     if campaign.all_primary_complete() {
-        victory_writer.send(MissionVictoryEvent);
+        victory_writer.write(MissionVictoryEvent);
         campaign.phase = CampaignPhase::Debriefing;
-        if let Some(mission) = &campaign.current_mission {
-            if !campaign.completed_missions.contains(&mission.id) {
-                campaign.completed_missions.push(mission.id.clone());
+        let mission_id = campaign.current_mission.as_ref().map(|m| m.id.clone());
+        if let Some(id) = mission_id {
+            if !campaign.completed_missions.contains(&id) {
+                campaign.completed_missions.push(id);
             }
         }
     }

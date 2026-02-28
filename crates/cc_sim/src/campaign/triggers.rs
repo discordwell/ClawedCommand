@@ -86,7 +86,7 @@ pub fn trigger_check_system(
                         .filter_map(|&idx| mission.dialogue.get(idx).cloned())
                         .collect();
                     if !lines.is_empty() {
-                        dialogue_writer.send(DialogueEvent { lines });
+                        dialogue_writer.write(DialogueEvent { lines });
                     }
                 }
                 TriggerAction::SpawnWave(wave_id) => {
@@ -101,7 +101,7 @@ pub fn trigger_check_system(
                     }
                 }
                 TriggerAction::CompleteObjective(obj_id) => {
-                    objective_writer.send(ObjectiveCompleteEvent {
+                    objective_writer.write(ObjectiveCompleteEvent {
                         objective_id: obj_id.clone(),
                     });
                 }
@@ -116,7 +116,7 @@ pub fn trigger_check_system(
             campaign.fired_triggers.push(trigger_id.clone());
         }
 
-        trigger_writer.send(TriggerFiredEvent {
+        trigger_writer.write(TriggerFiredEvent {
             trigger_id: trigger_id.clone(),
         });
     }

@@ -509,7 +509,8 @@ mod tests {
     fn procedural_images_are_nonzero() {
         for kind in ALL_KINDS {
             let img = generate_unit_image(kind);
-            let has_nonzero = img.data.iter().any(|&b| b != 0);
+            let data = img.data.as_ref().expect("Image should have data");
+            let has_nonzero = data.iter().any(|&b| b != 0);
             assert!(has_nonzero, "Procedural image for {kind:?} is all zeros");
         }
     }
