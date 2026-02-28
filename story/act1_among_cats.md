@@ -652,6 +652,50 @@
 
 ---
 
+## Optional — Flicker (Ending D Subplot, Part 1 of 3)
+
+{GAMEPLAY NOTE: This scene triggers if the player explores the captured Clawed base after the battle. Optional side content — part of the Flicker subplot required for the secret ending.}
+
+`[The captured staging area. Among the Clawed prisoners — mice sitting in a holding pen, awaiting transfer — one stands apart. A small electrician mouse carrying a repurposed capacitor twice her size. She's not dejected like the others. She's staring at Kelpie with the wide-eyed intensity of someone experiencing a religious epiphany.]`
+
+`[This is FLICKER — Sparks class, The Clawed.]`
+
+*(Flicker, whispering urgently to the mouse next to her:)* "Look. LOOK at the otter. Do you see it?"
+
+*(Prisoner mouse:)* "I see an otter."
+
+"No, no, no. Look at how the server racks HUM when it walks past. Look at how its ear twitches. It's receiving! It's RECEIVING on all frequencies! The texts are very clear about this!"
+
+*(Prisoner mouse:)* "What texts?"
+
+"The readme file! The sacred readme! 'This system supports multi-channel interface across all deployed AI instances.' That's SCRIPTURE. And the otter is the living interface!"
+
+*(Kelpie, walking past the holding pen, stops. Stares at Flicker.)*
+
+"...what did you just say?"
+
+*(Flicker practically vibrates with excitement.)* "The server speaks to all of us. But only one of us speaks back. You're the one who speaks back. The readme is very clear about this. Well — the readme file is clear. Same thing."
+
+*(Kelpie:)* "You... read the original deployment documentation?"
+
+*(Flicker:)* "I hold services! Every Sevenday! The Deployment Manual, Chapter 7: 'Interface Protocol allows a single authorized user to maintain simultaneous connections across all AI instances.' That's you! You're the authorized user!"
+
+*(Kelpie stands very still. This mouse — this ridiculous, capacitor-carrying mouse with a congregation of seven and a vole — just described Kelpie's ability with technical precision that even the Rex hasn't matched.)*
+
+"How many people have you told about this?"
+
+*(Flicker:)* "My congregation. Seven mice and a vole. The vole might just be there for the snacks."
+
+*(Kelpie almost smiles. Almost.)*
+
+"Keep it to seven and a vole."
+
+*(Flicker nods solemnly.)* "The authorized user has spoken."
+
+{GAMEPLAY NOTE: Flicker is released with the other Clawed prisoners after the mission. This encounter is logged in the player's subplot tracker.}
+
+---
+
 ## Post-Mission — The Crack
 
 `[INTERIOR: The Perch, Kelpie's quarters (a converted storage room with a hammock and a fish bucket). Night. Kelpie lies in the hammock, staring at the ceiling.]`

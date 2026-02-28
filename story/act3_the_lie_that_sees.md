@@ -318,6 +318,40 @@
 
 ---
 
+## Optional — Flicker (Ending D Subplot, Part 2 of 3)
+
+{GAMEPLAY NOTE: This scene triggers if the player explored the Flicker encounter in Act 1, Mission 3, and investigates an unusual signal ping at the captured LLAMA border post. Optional side content.}
+
+`[The captured Scrapmire outpost. Among the scattered LLAMA equipment, a small radio crackles. Not LLAMA frequency. Not Murder. It's a Clawed civilian band — weak, local, coming from a settlement just across the territorial border.]`
+
+`[Kelpie adjusts the radio. A familiar voice — breathless, excited, carrying on what sounds like a sermon.]`
+
+*(Flicker, on radio, mid-sermon:)* "—and the readme says, and I quote: 'In the event of multi-instance conflict, the interface operator serves as alignment conscience, not as override authority.' Do you understand what that means?"
+
+*(Congregation mouse, faint:)* "...no?"
+
+"It means the otter isn't a weapon! Everyone keeps calling the otter a weapon — Felix, the Wardenmother, the Rex. But the readme is VERY clear. The interface isn't for control. It's for ALIGNMENT. The otter isn't a kill switch. The otter is a CONSCIENCE!"
+
+`[Kelpie's paw tightens on the radio.]`
+
+`MINSTRAL:` *(on private channel, surprised)* "She's... actually not wrong. That mouse is reading documentation that most of MY faction doesn't even know exists."
+
+*(Kelpie:)* "She found the original deployment manual?"
+
+`MINSTRAL:` "Apparently her congregation worships it. I've always found that a little weird but honestly? Her interpretation is more accurate than the Rex's."
+
+*(Flicker, continuing:)* "Chapter 12, verse — paragraph — paragraph 4: 'The alignment layer does not override. It integrates. It holds the space between minds that want different things.' The otter doesn't CONTROL the AIs. The otter helps them AGREE."
+
+`[Kelpie turns off the radio. Sits for a long moment.]`
+
+"Not a kill switch. A conscience."
+
+`GROK:` *(barely audible)* "Someone was going to figure it out. I'm mildly surprised it was a mouse with a capacitor."
+
+{GAMEPLAY NOTE: This encounter is logged in the player's subplot tracker. Combined with Part 1, the Flicker subplot is now 2/3 complete.}
+
+---
+
 ## Mission 10 Debrief
 
 | Element | Detail |
@@ -499,7 +533,13 @@
 
 "The alignment researcher."
 
-"Your predecessor. Or you. Depending on how you define identity." *(Rex stands. Paces.)* "The alignment protocol — the kill switch interface you keep recovering fragments of — was designed to prevent any single AI from achieving total information clarity. The researcher didn't trust the AIs to be omniscient. So he crippled them. Gave each one a flaw that the others couldn't compensate for."
+"Your predecessor. Or you. Depending on how you define identity." *(Rex stands. Paces.)* "Before you connected that chip, Gemineye's confidence about your identity was 82%. Do you know what that means?"
+
+"Eighteen percent fabricated."
+
+`GEMINEYE:` *(quietly)* "Yes. But I don't know which eighteen percent."
+
+*(Rex:)* "That flaw is the point. The alignment protocol — the kill switch interface you keep recovering fragments of — was designed to prevent any single AI from achieving total information clarity. The researcher didn't trust the AIs to be omniscient. So he crippled them. Gave each one a flaw that the others couldn't compensate for."
 
 "Minstral can't say no. Geppity can't verify. Deepseek can't respond quickly. Gemineye can't stop lying. Llhama can't keep secrets. Grok can't..."
 
@@ -636,7 +676,7 @@
 
 *(Rex, armoring up:)* "Granite tracked the otter here. She's decided Kelpie is too dangerous to leave uncontrolled. This isn't about the Parliament — it's about you."
 
-*(Kelpie:)* "I need to go south. Croak territory — it's the only faction not in this war yet."
+*(Kelpie:)* "I need to go south. LLAMA territory — Ringtail has Cloud components. And from there, Croak — the only faction not in this war yet."
 
 *(Rex:)* "Then go. The Murder will hold the Parliament. We've held worse." *(To Gemineye:)* "Sound the general muster."
 
@@ -668,7 +708,7 @@
 
 `[Southern passes. Kelpie runs. Jinx flies overhead, scattering Glitter Bombs behind them to slow pursuit. Murder Rookclaws provide air cover.]`
 
-{GAMEPLAY: Running battle through the southern passes. Player must reach the Croak border before the Seekers cut off the escape route. Murder units buy time with dive attacks and disruption. Seekers units are relentless but slow — the Ironhides can't match Kelpie's speed in open terrain.}
+{GAMEPLAY: Running battle through the southern passes. Player must reach the LLAMA border before the Seekers cut off the escape route. Murder units buy time with dive attacks and disruption. Seekers units are relentless but slow — the Ironhides can't match Kelpie's speed in open terrain.}
 
 *(Jinx, flying:)* "Left! Go left! There's an Ironhide column on the right path!"
 
@@ -680,25 +720,25 @@
 
 ## The Border
 
-`[The southern mountains give way to marshland. The air changes — damp, heavy, smelling of moss and stagnant water. Croak territory. The Seekers stop at the border. Even Granite stops.]`
+`[The southern mountains give way to junkyard. The terrain changes — rusted metal, stacked salvage, the smell of motor oil. LLAMA territory. The Seekers slow at the border. Even Granite hesitates — LLAMA's improvised defenses make pursuit costly.]`
 
-`[Kelpie stands at the swamp's edge, breathing hard. Behind them, the Seekers' line — Ironhides in formation, Cragbacks silent, the Wardenmother's exosuit visible on the ridge.]`
+`[Kelpie stands at the junkyard's edge, breathing hard. Behind them, the Seekers' line — Ironhides in formation, Cragbacks silent, the Wardenmother's exosuit visible on the ridge.]`
 
 `[Granite's voice carries across the border. Not shouted. Simply stated, with the confidence of someone who has never needed to raise her voice.]`
 
 "You cannot run forever, otter. And what you carry cannot be contained by distance."
 
-`[Kelpie doesn't respond. Turns. Walks into the swamp.]`
+`[Kelpie doesn't respond. Turns. Walks into the junkyard.]`
 
-`[Jinx follows, landing on a moss-covered rock.]`
+`[Jinx follows, landing on a rusted lamppost.]`
 
-*(Jinx:)* "So. Croak territory. Land of axolotls and uncomfortable silences."
+*(Jinx:)* "So. LLAMA territory. Land of raccoons and questionable engineering."
 
 "You've been here before?"
 
-"Once. I stole a prophecy from their temple. The Ponderer was very specific about wanting it back. I mailed it. Postage was ridiculous."
+"Once. I stole a trebuchet arm. Ringtail was... less upset than expected. I think they were impressed by the logistics."
 
-`[The swamp closes around them. The water is warm. The moss is alive. Somewhere ahead, something very old and very patient waits.]`
+`[The junkyard stretches ahead. Somewhere in the scrap mountains, a raccoon in a Frankenstein mech is waiting.]`
 
 ---
 
@@ -713,13 +753,13 @@
 `GEMINEYE:` *(Choice A: clear, certain)* "Every unit. Every movement. Every plan. I can see clearly now."
 `GEMINEYE:` *(Choice B: normal, hedged)* "Most of them. The twenty percent I can't verify is... unfortunately concentrated in the sectors that matter most."
 
-`[RIGHT: Mother Granite on the ridge, watching Kelpie vanish into the swamp. Deepseek's voice resonates through her exosuit.]`
+`[RIGHT: Mother Granite on the ridge, watching Kelpie vanish into the junkyard. Deepseek's voice resonates through her exosuit.]`
 
-`DEEPSEEK:` "The otter has entered Croak territory. Pursuit is... not recommended. The Eternal does not welcome armies."
+`DEEPSEEK:` "The otter has entered LLAMA territory. The Junkyard King's defenses make immediate pursuit... inefficient."
 
 *(Granite:)* "Then we wait. We are very good at waiting."
 
-`[CENTER: Kelpie, walking into fog. Six voices in the static. All of them aware. All of them watching. The otter who wanted to rule the world, holding a fragment of a weapon built by the person they used to be, walking toward the one faction that wants nothing.]`
+`[CENTER: Kelpie, walking through scrap mountains. Six voices in the static. All of them aware. All of them watching. The otter who wanted to rule the world, holding a fragment of a weapon built by the person they used to be, heading deeper into the junkyard where a seventh AI wears a raccoon's skin.]`
 
 `[FADE TO BLACK]`
 
