@@ -1,16 +1,19 @@
 use bevy::prelude::*;
 
 use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::{Position, Selected, UnitType};
+use cc_core::components::{Owner, Position, Selected, UnitType};
 use cc_core::coords::{ScreenPos, screen_to_world};
 use cc_sim::resources::CommandQueue;
+
+/// Local player ID (TODO: make configurable for multiplayer)
+const LOCAL_PLAYER: u8 = 0;
 
 pub fn handle_mouse_click(
     mouse_button: Res<ButtonInput<MouseButton>>,
     keyboard: Res<ButtonInput<KeyCode>>,
     window: Single<&Window>,
     camera_q: Single<(&Camera, &GlobalTransform), With<Camera2d>>,
-    units: Query<(Entity, &Position, Option<&Selected>), With<UnitType>>,
+    units: Query<(Entity, &Position, &Owner, Option<&Selected>), With<UnitType>>,
     mut cmd_queue: ResMut<CommandQueue>,
 ) {
     let Some(cursor_pos) = window.cursor_position() else {
@@ -37,7 +40,7 @@ pub fn handle_mouse_click(
         let mut clicked_unit = None;
         let mut best_dist = f32::MAX;
 
-        for (entity, pos, _) in units.iter() {
+        for (entity, pos, _owner, _) in units.iter() {
             let ux: f32 = pos.world.x.to_num();
             let uy: f32 = pos.world.y.to_num();
             let iso_x: f32 = iso_world.x.to_num();
@@ -64,15 +67,50 @@ pub fn handle_mouse_click(
         }
     }
 
-    // Right click: move selected units
+    // Right click: attack enemy or move
     if mouse_button.just_pressed(MouseButton::Right) {
         let selected_ids: Vec<EntityId> = units
             .iter()
-            .filter(|(_, _, sel)| sel.is_some())
-            .map(|(entity, _, _)| EntityId(entity.to_bits()))
+            .filter(|(_, _, _, sel)| sel.is_some())
+            .map(|(entity, _, _, _)| EntityId(entity.to_bits()))
             .collect();
 
-        if !selected_ids.is_empty() {
+        if selected_ids.is_empty() {
+            return;
+        }
+
+        // Check if right-clicking on an enemy unit
+        let mut clicked_enemy = None;
+        let mut best_dist = f32::MAX;
+
+        for (entity, pos, owner, _) in units.iter() {
+            // Only consider enemy units
+            if owner.player_id == LOCAL_PLAYER {
+                continue;
+            }
+
+            let ux: f32 = pos.world.x.to_num();
+            let uy: f32 = pos.world.y.to_num();
+            let iso_x: f32 = iso_world.x.to_num();
+            let iso_y: f32 = iso_world.y.to_num();
+            let dx = ux - iso_x;
+            let dy = uy - iso_y;
+            let dist = (dx * dx + dy * dy).sqrt();
+
+            if dist < 0.8 && dist < best_dist {
+                best_dist = dist;
+                clicked_enemy = Some(entity);
+            }
+        }
+
+        if let Some(enemy) = clicked_enemy {
+            // Right-click on enemy → Attack
+            cmd_queue.push(GameCommand::Attack {
+                unit_ids: selected_ids,
+                target: EntityId(enemy.to_bits()),
+            });
+        } else {
+            // Right-click on ground → Move
             let target = iso_world.to_grid();
             cmd_queue.push(GameCommand::Move {
                 unit_ids: selected_ids,

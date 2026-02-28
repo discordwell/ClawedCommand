@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
+use crate::commands::EntityId;
 use crate::coords::{GridPos, WorldPos};
 use crate::math::Fixed;
 
@@ -96,4 +97,79 @@ pub struct MoveTarget {
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
 pub struct Path {
     pub waypoints: VecDeque<GridPos>,
+}
+
+// ---------------------------------------------------------------------------
+// Combat components
+// ---------------------------------------------------------------------------
+
+/// Whether a unit attacks in melee or at range.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum AttackType {
+    Melee,
+    Ranged,
+}
+
+/// Combat statistics for a unit.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct AttackStats {
+    pub damage: Fixed,
+    pub range: Fixed,
+    pub attack_speed: u32,        // ticks between attacks
+    pub cooldown_remaining: u32,  // ticks until next attack
+}
+
+/// Marker: which attack type this unit uses.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct AttackTypeMarker {
+    pub attack_type: AttackType,
+}
+
+/// The entity this unit is targeting for attack.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct AttackTarget {
+    pub target: EntityId,
+}
+
+/// Marker: unit is chasing a target to get into attack range.
+/// Distinguished from player-issued MoveTarget so Stop clears it.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct ChasingTarget {
+    pub target: EntityId,
+}
+
+/// A projectile in flight.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct Projectile {
+    pub damage: Fixed,
+    pub speed: Fixed,
+}
+
+/// Which entity this projectile is homing toward.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct ProjectileTarget {
+    pub target: EntityId,
+}
+
+/// Marker: this entity is dead (awaiting despawn next tick).
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct Dead;
+
+/// Marker: unit should hold position (attack in range only, no chasing).
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct HoldPosition;
+
+/// Unit is attack-moving toward a grid position (engages enemies along the way).
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct AttackMoveTarget {
+    pub target: GridPos,
 }

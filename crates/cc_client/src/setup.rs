@@ -3,8 +3,8 @@ use bevy::prelude::*;
 use cc_core::components::*;
 use cc_core::coords::{GridPos, WorldPos, depth_z, world_to_screen};
 use cc_core::map_gen::{self, MapGenParams};
-use cc_core::math::Fixed;
 use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
+use cc_core::unit_stats::base_stats;
 use cc_sim::resources::MapResource;
 
 /// Set up the initial game state: procedurally generated map, camera, starter units.
@@ -28,17 +28,17 @@ pub fn setup_game(mut commands: Commands, mut map_res: ResMut<MapResource>) {
     for sp in &map_def.spawn_points {
         let base_pos = GridPos::new(sp.pos.0, sp.pos.1);
 
-        // Spawn a cluster of units around each spawn point
-        let offsets = [
-            (0, 0),
-            (1, 0),
-            (0, 1),
-            (1, 1),
-            (-1, 0),
-            (0, -1),
+        // Mix of unit types: first 4 Nuisance (melee), last 2 Hisser (ranged)
+        let unit_configs: [(i32, i32, UnitKind); 6] = [
+            (0, 0, UnitKind::Nuisance),
+            (1, 0, UnitKind::Nuisance),
+            (0, 1, UnitKind::Nuisance),
+            (1, 1, UnitKind::Nuisance),
+            (-1, 0, UnitKind::Hisser),
+            (0, -1, UnitKind::Hisser),
         ];
 
-        for &(dx, dy) in &offsets {
+        for &(dx, dy, kind) in &unit_configs {
             let grid = GridPos::new(base_pos.x + dx, base_pos.y + dy);
 
             // Skip impassable positions
@@ -49,6 +49,8 @@ pub fn setup_game(mut commands: Commands, mut map_res: ResMut<MapResource>) {
             let world = WorldPos::from_grid(grid);
             let screen = world_to_screen(world);
             let elevation_offset = map_res.map.elevation_at(grid) as f32 * ELEVATION_PIXEL_OFFSET;
+
+            let stats = base_stats(kind);
 
             // Color by player
             let color = if sp.player == 0 {
@@ -65,15 +67,23 @@ pub fn setup_game(mut commands: Commands, mut map_res: ResMut<MapResource>) {
                 Owner {
                     player_id: sp.player,
                 },
-                UnitType {
-                    kind: UnitKind::Nuisance,
-                },
+                UnitType { kind },
                 Health {
-                    current: Fixed::from_num(100),
-                    max: Fixed::from_num(100),
+                    current: stats.health,
+                    max: stats.health,
                 },
                 MovementSpeed {
-                    speed: Fixed::from_num(0.15f32),
+                    speed: stats.speed,
+                },
+                // Combat components
+                AttackStats {
+                    damage: stats.damage,
+                    range: stats.range,
+                    attack_speed: stats.attack_speed,
+                    cooldown_remaining: 0,
+                },
+                AttackTypeMarker {
+                    attack_type: stats.attack_type,
                 },
                 // Rendering: colored rectangle as placeholder sprite
                 Sprite {

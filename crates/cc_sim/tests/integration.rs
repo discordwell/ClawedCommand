@@ -13,8 +13,10 @@ use cc_core::math::Fixed;
 use cc_sim::pathfinding;
 use cc_sim::resources::{CommandQueue, MapResource, SimClock};
 use cc_sim::systems::{
+    cleanup_system::cleanup_system, combat_system::combat_system,
     command_system::process_commands, grid_sync_system::grid_sync_system,
-    movement_system::movement_system, tick_system::tick_system,
+    movement_system::movement_system, projectile_system::projectile_system,
+    target_acquisition_system::target_acquisition_system, tick_system::tick_system,
 };
 
 // ---------------------------------------------------------------------------
@@ -33,8 +35,12 @@ fn make_sim(map: GameMap) -> (World, Schedule) {
         (
             tick_system,
             process_commands,
+            target_acquisition_system,
+            combat_system,
+            projectile_system,
             movement_system,
             grid_sync_system,
+            cleanup_system,
         )
             .chain(),
     );
@@ -572,4 +578,341 @@ fn generated_map_is_valid_for_simulation() {
         GridPos::new(sp0.0 + 2, sp0.1),
         "Unit should move on generated map"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Combat helpers
+// ---------------------------------------------------------------------------
+
+use cc_core::unit_stats::base_stats;
+
+/// Spawn a combat-ready unit with full stats from base_stats().
+fn spawn_combat_unit(
+    world: &mut World,
+    grid: GridPos,
+    player_id: u8,
+    kind: UnitKind,
+) -> Entity {
+    let stats = base_stats(kind);
+    world
+        .spawn((
+            Position {
+                world: WorldPos::from_grid(grid),
+            },
+            Velocity::zero(),
+            GridCell { pos: grid },
+            Owner { player_id },
+            UnitType { kind },
+            Health {
+                current: stats.health,
+                max: stats.health,
+            },
+            MovementSpeed {
+                speed: stats.speed,
+            },
+            AttackStats {
+                damage: stats.damage,
+                range: stats.range,
+                attack_speed: stats.attack_speed,
+                cooldown_remaining: 0,
+            },
+            AttackTypeMarker {
+                attack_type: stats.attack_type,
+            },
+        ))
+        .id()
+}
+
+fn issue_attack(world: &mut World, attackers: &[Entity], target: Entity) {
+    let ids = attackers.iter().map(|e| EntityId(e.to_bits())).collect();
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::Attack {
+            unit_ids: ids,
+            target: EntityId(target.to_bits()),
+        });
+}
+
+fn issue_hold(world: &mut World, entities: &[Entity]) {
+    let ids = entities.iter().map(|e| EntityId(e.to_bits())).collect();
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::HoldPosition { unit_ids: ids });
+}
+
+fn issue_attack_move(world: &mut World, entities: &[Entity], target: GridPos) {
+    let ids = entities.iter().map(|e| EntityId(e.to_bits())).collect();
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::AttackMove {
+            unit_ids: ids,
+            target,
+        });
+}
+
+// ---------------------------------------------------------------------------
+// Combat integration tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn attack_command_sets_target() {
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let attacker = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    let target = spawn_combat_unit(&mut world, GridPos::new(6, 5), 1, UnitKind::Nuisance);
+
+    issue_attack(&mut world, &[attacker], target);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    assert!(
+        world.get::<AttackTarget>(attacker).is_some(),
+        "Attacker should have AttackTarget after Attack command"
+    );
+}
+
+#[test]
+fn stop_clears_combat_state() {
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    // Place enemy far away so auto-acquire (weapon range only) won't re-acquire after Stop
+    let attacker = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    let target = spawn_combat_unit(&mut world, GridPos::new(20, 20), 1, UnitKind::Nuisance);
+
+    issue_attack(&mut world, &[attacker], target);
+    run_ticks(&mut world, &mut schedule, 1);
+    assert!(world.get::<AttackTarget>(attacker).is_some());
+
+    issue_stop(&mut world, &[attacker]);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    assert!(
+        world.get::<AttackTarget>(attacker).is_none(),
+        "Stop should clear AttackTarget"
+    );
+}
+
+#[test]
+fn hold_position_sets_marker() {
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let unit = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+
+    issue_hold(&mut world, &[unit]);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    assert!(
+        world.get::<HoldPosition>(unit).is_some(),
+        "Unit should have HoldPosition marker"
+    );
+}
+
+#[test]
+fn melee_attack_damages_target() {
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    // Place two melee units adjacent to each other
+    let attacker = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    let target = spawn_combat_unit(&mut world, GridPos::new(6, 5), 1, UnitKind::Nuisance);
+
+    let initial_hp = world.get::<Health>(target).unwrap().current;
+
+    issue_attack(&mut world, &[attacker], target);
+
+    // Run enough ticks for at least one attack (cooldown = 10 ticks)
+    run_ticks(&mut world, &mut schedule, 15);
+
+    let hp_after = world.get::<Health>(target).unwrap().current;
+    assert!(
+        hp_after < initial_hp,
+        "Target should have taken damage: initial={initial_hp}, after={hp_after}"
+    );
+}
+
+#[test]
+fn melee_attack_kills_target() {
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let attacker = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    let target = spawn_combat_unit(&mut world, GridPos::new(6, 5), 1, UnitKind::Nuisance);
+
+    issue_attack(&mut world, &[attacker], target);
+
+    // Nuisance: 8 dmg, 10-tick cooldown, target has 80 HP → 10 attacks needed → ~100 ticks
+    // Plus 2 extra ticks for cleanup phases
+    run_ticks(&mut world, &mut schedule, 150);
+
+    // Target should be despawned
+    assert!(
+        world.get_entity(target).is_err(),
+        "Target should be despawned after death"
+    );
+}
+
+#[test]
+fn two_units_fight_to_death() {
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let a = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    let b = spawn_combat_unit(&mut world, GridPos::new(6, 5), 1, UnitKind::Nuisance);
+
+    // Both will auto-acquire each other since they are adjacent enemies
+    run_ticks(&mut world, &mut schedule, 200);
+
+    // At least one should be dead
+    let a_alive = world.get_entity(a).is_ok();
+    let b_alive = world.get_entity(b).is_ok();
+    assert!(
+        !a_alive || !b_alive,
+        "After 200 ticks of fighting, at least one unit should be dead"
+    );
+}
+
+#[test]
+fn focus_fire_3v1() {
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let a1 = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    let a2 = spawn_combat_unit(&mut world, GridPos::new(5, 6), 0, UnitKind::Nuisance);
+    let a3 = spawn_combat_unit(&mut world, GridPos::new(5, 4), 0, UnitKind::Nuisance);
+    let target = spawn_combat_unit(&mut world, GridPos::new(6, 5), 1, UnitKind::Nuisance);
+
+    // Focus-fire all three on the target
+    issue_attack(&mut world, &[a1, a2, a3], target);
+
+    // 3 attackers × 8 dmg per 10 ticks = 24 dmg/10 ticks → target (80 HP) dies in ~40 ticks
+    run_ticks(&mut world, &mut schedule, 80);
+
+    assert!(
+        world.get_entity(target).is_err(),
+        "Target should die quickly under focus fire"
+    );
+    // Attackers should still be alive
+    assert!(world.get_entity(a1).is_ok(), "Attacker 1 should survive");
+    assert!(world.get_entity(a2).is_ok(), "Attacker 2 should survive");
+    assert!(world.get_entity(a3).is_ok(), "Attacker 3 should survive");
+}
+
+#[test]
+fn attacker_pathfinds_into_range() {
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    // Place attacker far from target (melee range = 1)
+    // Use Chonk as target (300 HP tank) so it survives long enough to verify damage
+    let attacker = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    let target = spawn_combat_unit(&mut world, GridPos::new(10, 5), 1, UnitKind::Chonk);
+
+    issue_attack(&mut world, &[attacker], target);
+
+    let target_initial_hp = world.get::<Health>(target).unwrap().current;
+
+    // Run enough ticks for pathfinding (~33 ticks to travel 5 tiles) + one attack
+    run_ticks(&mut world, &mut schedule, 60);
+
+    let target_hp = world.get::<Health>(target).unwrap().current;
+    assert!(
+        target_hp < target_initial_hp,
+        "Attacker should have pathfound to target and dealt damage"
+    );
+}
+
+#[test]
+fn ranged_unit_spawns_projectile() {
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    // Hisser has range 5, so it should attack from distance
+    let attacker = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Hisser);
+    let target = spawn_combat_unit(&mut world, GridPos::new(8, 5), 1, UnitKind::Nuisance);
+
+    issue_attack(&mut world, &[attacker], target);
+
+    let target_initial_hp = world.get::<Health>(target).unwrap().current;
+
+    // Run enough for projectile to spawn and hit (cooldown 12 + travel time)
+    run_ticks(&mut world, &mut schedule, 30);
+
+    let target_hp = world.get::<Health>(target).unwrap().current;
+    assert!(
+        target_hp < target_initial_hp,
+        "Ranged attack should deal damage via projectile"
+    );
+}
+
+#[test]
+fn hold_position_does_not_chase() {
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let unit = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    let _enemy = spawn_combat_unit(&mut world, GridPos::new(10, 5), 1, UnitKind::Nuisance);
+
+    let start_pos = world.get::<Position>(unit).unwrap().world;
+
+    issue_hold(&mut world, &[unit]);
+    run_ticks(&mut world, &mut schedule, 50);
+
+    let end_pos = world.get::<Position>(unit).unwrap().world;
+    assert_eq!(
+        start_pos, end_pos,
+        "Unit on hold position should not move to chase enemy"
+    );
+}
+
+#[test]
+fn attack_move_engages_enemy() {
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let unit = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    // Enemy placed along the path — use Chonk (300 HP) so it survives
+    let enemy = spawn_combat_unit(&mut world, GridPos::new(8, 5), 1, UnitKind::Chonk);
+
+    let enemy_initial_hp = world.get::<Health>(enemy).unwrap().current;
+
+    issue_attack_move(&mut world, &[unit], GridPos::new(15, 5));
+    run_ticks(&mut world, &mut schedule, 80);
+
+    // Enemy should have taken damage (unit passes within melee range and auto-acquires)
+    let enemy_hp = world.get::<Health>(enemy).unwrap().current;
+    assert!(
+        enemy_hp < enemy_initial_hp,
+        "Attack-moving unit should engage enemy along the path"
+    );
+}
+
+#[test]
+fn combat_with_elevation_bonus() {
+    use cc_core::terrain::TerrainType;
+
+    let mut map = GameMap::new(32, 32);
+    // High ground at (5,5), ramp at (6,5) to allow pathfinding
+    map.get_mut(GridPos::new(5, 5)).unwrap().elevation = 1;
+    map.get_mut(GridPos::new(6, 5)).unwrap().terrain = TerrainType::Ramp;
+    map.get_mut(GridPos::new(6, 5)).unwrap().elevation = 1;
+
+    let (mut world, mut schedule) = make_sim(map);
+    // Attacker on high ground
+    let high_attacker = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Hisser);
+    // Target on low ground, within range 5
+    let low_target = spawn_combat_unit(&mut world, GridPos::new(8, 5), 1, UnitKind::Nuisance);
+
+    issue_attack(&mut world, &[high_attacker], low_target);
+
+    let target_initial_hp = world.get::<Health>(low_target).unwrap().current;
+
+    // Run enough for one ranged attack
+    run_ticks(&mut world, &mut schedule, 20);
+
+    let target_hp = world.get::<Health>(low_target).unwrap().current;
+    let damage_dealt = target_initial_hp - target_hp;
+
+    // Hisser base damage = 14, elevation bonus (+1 level = 1.15×) → ~16.1
+    // Without elevation it would be exactly 14
+    assert!(
+        damage_dealt > Fixed::from_num(14),
+        "High ground should amplify damage: dealt {damage_dealt}"
+    );
+}
+
+#[test]
+fn combat_determinism() {
+    fn run_combat() -> (bool, bool) {
+        let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+        let a = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+        let b = spawn_combat_unit(&mut world, GridPos::new(6, 5), 1, UnitKind::Nuisance);
+
+        run_ticks(&mut world, &mut schedule, 200);
+
+        (world.get_entity(a).is_ok(), world.get_entity(b).is_ok())
+    }
+
+    let r1 = run_combat();
+    let r2 = run_combat();
+    assert_eq!(r1, r2, "Combat must be deterministic");
 }

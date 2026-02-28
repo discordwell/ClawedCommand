@@ -16,7 +16,12 @@ pub fn handle_keyboard(
             .map(|e| EntityId(e.to_bits()))
             .collect();
         if !unit_ids.is_empty() {
-            cmd_queue.push(GameCommand::Stop { unit_ids });
+            // Shift+H = Hold Position (stop + attack in range only)
+            if keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight) {
+                cmd_queue.push(GameCommand::HoldPosition { unit_ids });
+            } else {
+                cmd_queue.push(GameCommand::Stop { unit_ids });
+            }
         }
     }
 

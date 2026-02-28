@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::resources::MapResource;
 use cc_core::components::{MoveTarget, MovementSpeed, Path, Position, Velocity};
 use cc_core::coords::WorldPos;
-use cc_core::math::{Fixed, FIXED_ONE, FIXED_ZERO};
+use cc_core::math::{Fixed, FIXED_ONE, FIXED_ZERO, approx_distance};
 
 /// Check if a unit should snap to its target (within one tick's movement).
 pub fn should_snap_to_target(pos: WorldPos, target: WorldPos, speed: Fixed) -> bool {
@@ -81,17 +81,8 @@ pub fn movement_system(
                 commands.entity(entity).remove::<Path>();
             }
         } else {
-            // Move toward target
-            // Approximate distance for normalization: max(|dx|, |dy|) + 0.4 * min(|dx|, |dy|)
-            // This avoids sqrt while being ~3% accurate
-            let abs_dx = dx.abs();
-            let abs_dy = dy.abs();
-            let (min_d, max_d) = if abs_dx < abs_dy {
-                (abs_dx, abs_dy)
-            } else {
-                (abs_dy, abs_dx)
-            };
-            let approx_dist = max_d + Fixed::from_num(0.4f32) * min_d;
+            // Move toward target using fast approximate distance normalization
+            let approx_dist = approx_distance(dx, dy);
 
             if approx_dist > FIXED_ZERO {
                 vel.dx = dx * effective_speed / approx_dist;

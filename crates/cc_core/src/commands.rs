@@ -21,4 +21,16 @@ pub enum GameCommand {
     Select { unit_ids: Vec<EntityId> },
     /// Deselect all units.
     Deselect,
+    /// Attack a specific enemy entity.
+    Attack {
+        unit_ids: Vec<EntityId>,
+        target: EntityId,
+    },
+    /// Move to a position, engaging enemies along the way.
+    AttackMove {
+        unit_ids: Vec<EntityId>,
+        target: GridPos,
+    },
+    /// Hold position: attack in range only, no chasing.
+    HoldPosition { unit_ids: Vec<EntityId> },
 }

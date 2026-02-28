@@ -1,5 +1,7 @@
 pub mod autotile;
 pub mod camera;
+pub mod death;
+pub mod health_bars;
 pub mod selection;
 pub mod terrain_atlas;
 pub mod tilemap;
@@ -19,6 +21,9 @@ impl Plugin for RenderPlugin {
                     camera::camera_system,
                     units::sync_unit_sprites,
                     selection::render_selection_indicators,
+                    health_bars::spawn_health_bars,
+                    health_bars::update_health_bars,
+                    death::death_fade_system,
                 ),
             );
     }

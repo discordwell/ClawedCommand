@@ -20,6 +20,22 @@ pub fn fixed_to_f32(v: Fixed) -> f32 {
 pub const FIXED_ZERO: Fixed = Fixed::ZERO;
 pub const FIXED_ONE: Fixed = Fixed::ONE;
 
+/// Approximate distance without sqrt: max(|dx|, |dy|) + 0.4 * min(|dx|, |dy|).
+/// ~3% accuracy, deterministic (no float math).
+/// 0.4 in 16.16 fixed-point = 26214 bits.
+const APPROX_FACTOR: Fixed = Fixed::from_bits(26214); // 0.4
+
+pub fn approx_distance(dx: Fixed, dy: Fixed) -> Fixed {
+    let abs_dx = dx.abs();
+    let abs_dy = dy.abs();
+    let (min_d, max_d) = if abs_dx < abs_dy {
+        (abs_dx, abs_dy)
+    } else {
+        (abs_dy, abs_dx)
+    };
+    max_d + APPROX_FACTOR * min_d
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

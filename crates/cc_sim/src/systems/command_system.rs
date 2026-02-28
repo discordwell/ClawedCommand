@@ -4,7 +4,10 @@ use std::collections::VecDeque;
 use crate::pathfinding;
 use crate::resources::{CommandQueue, MapResource};
 use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::{MoveTarget, Owner, Path, Position, Selected};
+use cc_core::components::{
+    AttackMoveTarget, AttackTarget, ChasingTarget, HoldPosition, MoveTarget, Owner, Path,
+    Position, Selected,
+};
 use cc_core::coords::WorldPos;
 use cc_core::terrain::FactionId;
 
@@ -31,6 +34,12 @@ pub fn process_commands(
                     if !unit_ids.contains(&eid) {
                         continue;
                     }
+
+                    // Clear combat state — player move overrides combat
+                    commands.entity(entity).remove::<AttackTarget>();
+                    commands.entity(entity).remove::<ChasingTarget>();
+                    commands.entity(entity).remove::<AttackMoveTarget>();
+                    commands.entity(entity).remove::<HoldPosition>();
 
                     // Determine faction from owner (default to CatGPT for unowned units)
                     let faction = owner
@@ -71,6 +80,11 @@ pub fn process_commands(
                     }
                     commands.entity(entity).remove::<MoveTarget>();
                     commands.entity(entity).remove::<Path>();
+                    // Clear combat state
+                    commands.entity(entity).remove::<AttackTarget>();
+                    commands.entity(entity).remove::<ChasingTarget>();
+                    commands.entity(entity).remove::<AttackMoveTarget>();
+                    commands.entity(entity).remove::<HoldPosition>();
                     // Velocity will be zeroed by movement_system when no MoveTarget
                 }
             }
@@ -85,6 +99,89 @@ pub fn process_commands(
             GameCommand::Deselect => {
                 for (entity, _, _, _, _) in query.iter() {
                     commands.entity(entity).remove::<Selected>();
+                }
+            }
+            GameCommand::Attack {
+                unit_ids,
+                target: attack_target,
+            } => {
+                for (entity, _, _, _, _) in query.iter_mut() {
+                    let eid = EntityId(entity.to_bits());
+                    if !unit_ids.contains(&eid) {
+                        continue;
+                    }
+                    // Can't target self
+                    if attack_target == eid {
+                        continue;
+                    }
+                    // Set attack target, clear movement state
+                    commands.entity(entity).insert(AttackTarget {
+                        target: attack_target,
+                    });
+                    commands.entity(entity).remove::<MoveTarget>();
+                    commands.entity(entity).remove::<Path>();
+                    commands.entity(entity).remove::<ChasingTarget>();
+                    commands.entity(entity).remove::<AttackMoveTarget>();
+                    commands.entity(entity).remove::<HoldPosition>();
+                }
+            }
+            GameCommand::AttackMove { unit_ids, target } => {
+                for (entity, pos, owner, move_target, path) in query.iter_mut() {
+                    let eid = EntityId(entity.to_bits());
+                    if !unit_ids.contains(&eid) {
+                        continue;
+                    }
+
+                    // Clear previous combat state
+                    commands.entity(entity).remove::<AttackTarget>();
+                    commands.entity(entity).remove::<ChasingTarget>();
+                    commands.entity(entity).remove::<HoldPosition>();
+
+                    // Set attack-move marker
+                    commands
+                        .entity(entity)
+                        .insert(AttackMoveTarget { target });
+
+                    // Pathfind toward the destination
+                    let faction = owner
+                        .and_then(|o| FactionId::from_u8(o.player_id))
+                        .unwrap_or(FactionId::CatGPT);
+
+                    let start = pos.world.to_grid();
+                    if let Some(waypoints) =
+                        pathfinding::find_path(&map_res.map, start, target, faction)
+                    {
+                        let first_waypoint = waypoints[0];
+                        let path_component = Path {
+                            waypoints: VecDeque::from(waypoints),
+                        };
+
+                        if let Some(mut existing_path) = path {
+                            *existing_path = path_component;
+                        } else {
+                            commands.entity(entity).insert(path_component);
+                        }
+
+                        let first_wp = WorldPos::from_grid(first_waypoint);
+                        if let Some(mut mt) = move_target {
+                            mt.target = first_wp;
+                        } else {
+                            commands.entity(entity).insert(MoveTarget { target: first_wp });
+                        }
+                    }
+                }
+            }
+            GameCommand::HoldPosition { unit_ids } => {
+                for (entity, _, _, _, _) in query.iter_mut() {
+                    let eid = EntityId(entity.to_bits());
+                    if !unit_ids.contains(&eid) {
+                        continue;
+                    }
+                    commands.entity(entity).insert(HoldPosition);
+                    commands.entity(entity).remove::<MoveTarget>();
+                    commands.entity(entity).remove::<Path>();
+                    commands.entity(entity).remove::<ChasingTarget>();
+                    commands.entity(entity).remove::<AttackMoveTarget>();
                 }
             }
         }

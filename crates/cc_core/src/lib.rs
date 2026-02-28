@@ -6,3 +6,4 @@ pub mod map_format;
 pub mod map_gen;
 pub mod math;
 pub mod terrain;
+pub mod unit_stats;
