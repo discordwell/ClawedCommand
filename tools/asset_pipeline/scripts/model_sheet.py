@@ -143,6 +143,8 @@ def try_load_font(size):
 
 def load_sprite(game_path, max_size=SPRITE_AREA):
     """Load a sprite from its game path, resize to fit display area."""
+    if not game_path:
+        return None
     full_path = PROJECT_ROOT / game_path
     if not full_path.exists():
         return None
@@ -153,7 +155,9 @@ def load_sprite(game_path, max_size=SPRITE_AREA):
     output_w, output_h = img.size
     # Heuristic: if width > 2x height, it's probably a sheet — crop first frame
     if output_w > output_h * 1.5:
-        frame_w = output_w // 4  # assume 4 columns
+        # Estimate columns from aspect ratio rather than hardcoding 4
+        estimated_cols = max(1, round(output_w / output_h))
+        frame_w = output_w // estimated_cols
         img = img.crop((0, 0, frame_w, output_h))
 
     # Fit into max_size square

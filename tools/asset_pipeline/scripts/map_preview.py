@@ -121,9 +121,12 @@ def generate_map_layout(size, available_tiles):
         return layout
 
     # Separate tiles by type for a more natural-looking map
-    passable = [n for n in tile_names if "impassable" not in str(available_tiles[n].get("tags", []))]
-    water_tiles = [n for n in tile_names if "liquid" in str(available_tiles[n].get("tags", []))]
-    land_tiles = [n for n in tile_names if n not in water_tiles]
+    def has_tag(tile_name, tag):
+        tags = available_tiles[tile_name].get("tags", [])
+        return tag in tags if isinstance(tags, list) else False
+
+    water_tiles = [n for n in tile_names if has_tag(n, "liquid")]
+    land_tiles = [n for n in tile_names if not has_tag(n, "liquid")]
 
     if not land_tiles:
         land_tiles = tile_names
@@ -144,8 +147,7 @@ def generate_map_layout(size, available_tiles):
                 tile = random.choice(water_tiles)
             elif dist_from_edge == 1 and len(tile_names) > 2:
                 # Near-edge — transition tiles (sand, shallows)
-                transition = [n for n in tile_names if any(t in str(available_tiles[n].get("tags", []))
-                              for t in ["coastal", "slow"])]
+                transition = [n for n in tile_names if any(has_tag(n, t) for t in ["coastal", "slow"])]
                 tile = random.choice(transition) if transition else random.choice(land_tiles)
             else:
                 # Interior — weighted random from land tiles

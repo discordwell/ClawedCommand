@@ -69,7 +69,20 @@ def load_base_style():
 def assemble_prompt(entry):
     """Build a complete ChatGPT prompt from catalog entry + template + base style."""
     template_name = entry["template"]
-    params = entry.get("params", {})
+    params = dict(entry.get("params", {}))
+
+    # Auto-fill palette_colors for terrain entries from palette.yaml
+    if template_name == "terrain" and "palette_colors" not in params:
+        palette_path = CONFIG_DIR / "palette.yaml"
+        if palette_path.exists():
+            with open(palette_path) as f:
+                palette = yaml.safe_load(f) or {}
+            terrain_colors = palette.get("terrain", {})
+            color_list = [f"{name}: {hex_val}" for name, hex_val in terrain_colors.items()
+                          if isinstance(hex_val, str) and hex_val.startswith("#")]
+            params["palette_colors"] = ", ".join(color_list) if color_list else "natural muted tones"
+        else:
+            params["palette_colors"] = "natural muted tones"
 
     template_text = load_template(template_name)
     base_style = load_base_style()
@@ -346,7 +359,8 @@ def cmd_add(args):
             entry["params"]["faction"] = "generic sci-fi military"
             entry["params"]["footprint"] = "2x2"
         elif template == "terrain":
-            entry["params"]["tile_type"] = name
+            entry["params"]["terrain_type"] = name
+            entry["params"]["palette_colors"] = "See palette.yaml"
         elif template == "projectile":
             entry["params"]["frame_count"] = 1
         elif template == "ui":

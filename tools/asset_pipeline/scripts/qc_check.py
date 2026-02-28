@@ -38,8 +38,11 @@ def load_catalog():
 
 
 def load_palette():
+    if not PALETTE_PATH.exists():
+        return {}
     with open(PALETTE_PATH) as f:
-        return yaml.safe_load(f)
+        data = yaml.safe_load(f)
+        return data if data else {}
 
 
 def hex_to_rgb(hex_str):
@@ -335,7 +338,13 @@ def print_results(results):
     checks = results["checks"]
 
     all_passed = all(c["passed"] for c in checks)
-    status_icon = "\033[32mPASS\033[0m" if all_passed else "\033[33mWARN\033[0m"
+    has_fail = any(c["severity"] == "fail" for c in checks)
+    if all_passed:
+        status_icon = "\033[32mPASS\033[0m"
+    elif has_fail:
+        status_icon = "\033[31mFAIL\033[0m"
+    else:
+        status_icon = "\033[33mWARN\033[0m"
 
     print(f"\n  {name} ({category}) [{status_icon}]")
 
