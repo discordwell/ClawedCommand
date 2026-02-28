@@ -2,6 +2,7 @@
 """Generate TTS training data using macOS 'say' command."""
 
 import argparse
+import shutil
 import subprocess
 import wave
 import struct
@@ -18,7 +19,9 @@ def get_all_words(cfg):
     """Get flat list of all vocabulary words (excluding special)."""
     vocab = cfg["vocabulary"]
     words = []
-    for category in ["commands", "directions", "meta", "units", "buildings"]:
+    for category in vocab:
+        if category == "special":
+            continue
         words.extend(vocab[category])
     return words
 
@@ -119,7 +122,7 @@ def main():
                     aiff_path.unlink(missing_ok=True)
 
     # Cleanup
-    tmp_dir.rmdir()
+    shutil.rmtree(tmp_dir, ignore_errors=True)
     print(f"\nGenerated {generated}/{total} samples in {args.output_dir}")
 
 

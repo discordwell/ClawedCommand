@@ -11,11 +11,12 @@ use cc_core::coords::{GridPos, WorldPos};
 use cc_core::map::GameMap;
 use cc_core::math::Fixed;
 use cc_sim::pathfinding;
-use cc_sim::resources::{CommandQueue, MapResource, SimClock};
+use cc_sim::resources::{CommandQueue, ControlGroups, MapResource, PlayerResources, SimClock};
 use cc_sim::systems::{
     cleanup_system::cleanup_system, combat_system::combat_system,
     command_system::process_commands, grid_sync_system::grid_sync_system,
-    movement_system::movement_system, projectile_system::projectile_system,
+    movement_system::movement_system, production_system::production_system,
+    projectile_system::projectile_system, resource_system::gathering_system,
     target_acquisition_system::target_acquisition_system, tick_system::tick_system,
 };
 
@@ -27,6 +28,8 @@ fn make_sim(map: GameMap) -> (World, Schedule) {
     let mut world = World::new();
     world.insert_resource(CommandQueue::default());
     world.insert_resource(SimClock::default());
+    world.insert_resource(ControlGroups::default());
+    world.insert_resource(PlayerResources::default());
     world.insert_resource(MapResource { map });
 
     // Mirror production pipeline from SimSystemsPlugin, using FixedUpdate label
@@ -35,6 +38,8 @@ fn make_sim(map: GameMap) -> (World, Schedule) {
         (
             tick_system,
             process_commands,
+            production_system,
+            gathering_system,
             target_acquisition_system,
             combat_system,
             projectile_system,

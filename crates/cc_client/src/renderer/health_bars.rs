@@ -1,6 +1,11 @@
 use bevy::prelude::*;
 
+use crate::setup::UnitMesh;
 use cc_core::components::{Dead, Health, UnitType};
+
+/// Marker added to parent unit once health bars have been spawned.
+#[derive(Component)]
+pub struct HasHealthBar;
 
 /// Marker for health bar background sprite.
 #[derive(Component)]
@@ -12,12 +17,12 @@ pub struct HealthBarFg;
 
 const BAR_WIDTH: f32 = 22.0;
 const BAR_HEIGHT: f32 = 3.0;
-const BAR_Y_OFFSET: f32 = 14.0; // Above the unit sprite
+const BAR_Y_OFFSET: f32 = 14.0;
 
 /// Spawn health bar child entities for units that don't have one yet.
 pub fn spawn_health_bars(
     mut commands: Commands,
-    units: Query<Entity, (With<UnitType>, With<Health>, Without<HealthBarBg>)>,
+    units: Query<Entity, (With<UnitMesh>, With<Health>, Without<HasHealthBar>)>,
 ) {
     for entity in units.iter() {
         // Background (dark)
@@ -30,6 +35,7 @@ pub fn spawn_health_bars(
                     ..default()
                 },
                 Transform::from_xyz(0.0, BAR_Y_OFFSET, 0.1),
+                Visibility::Hidden,
             ))
             .id();
 
@@ -38,22 +44,30 @@ pub fn spawn_health_bars(
             .spawn((
                 HealthBarFg,
                 Sprite {
-                    color: Color::srgb(0.2, 0.9, 0.2), // Green
+                    color: Color::srgb(0.2, 0.9, 0.2),
                     custom_size: Some(Vec2::new(BAR_WIDTH, BAR_HEIGHT)),
                     ..default()
                 },
                 Transform::from_xyz(0.0, BAR_Y_OFFSET, 0.2),
+                Visibility::Hidden,
             ))
             .id();
 
-        commands.entity(entity).add_children(&[bg, fg]);
+        commands
+            .entity(entity)
+            .insert(HasHealthBar)
+            .add_children(&[bg, fg]);
     }
 }
 
-/// Update health bar fill width and color based on current HP.
+/// Update health bar fill width, color gradient, and visibility based on current HP.
 pub fn update_health_bars(
     units: Query<(&Health, &Children), (With<UnitType>, Without<Dead>)>,
-    mut bars: Query<(&mut Sprite, &mut Transform), With<HealthBarFg>>,
+    mut bg_bars: Query<&mut Visibility, (With<HealthBarBg>, Without<HealthBarFg>)>,
+    mut fg_bars: Query<
+        (&mut Sprite, &mut Transform, &mut Visibility),
+        (With<HealthBarFg>, Without<HealthBarBg>),
+    >,
 ) {
     for (health, children) in units.iter() {
         let ratio: f32 = if health.max > cc_core::math::FIXED_ZERO {
@@ -62,8 +76,26 @@ pub fn update_health_bars(
             0.0
         };
 
+        let damaged = ratio < 1.0;
+
         for child in children.iter() {
-            if let Ok((mut sprite, mut transform)) = bars.get_mut(child) {
+            // Update BG visibility
+            if let Ok(mut vis) = bg_bars.get_mut(child) {
+                *vis = if damaged {
+                    Visibility::Inherited
+                } else {
+                    Visibility::Hidden
+                };
+            }
+
+            // Update FG bar
+            if let Ok((mut sprite, mut transform, mut vis)) = fg_bars.get_mut(child) {
+                *vis = if damaged {
+                    Visibility::Inherited
+                } else {
+                    Visibility::Hidden
+                };
+
                 let fill_width = BAR_WIDTH * ratio;
                 sprite.custom_size = Some(Vec2::new(fill_width, BAR_HEIGHT));
 
@@ -71,13 +103,13 @@ pub fn update_health_bars(
                 let x_offset = (fill_width - BAR_WIDTH) / 2.0;
                 transform.translation.x = x_offset;
 
-                // Color gradient: green > yellow > red
-                sprite.color = if ratio > 0.6 {
-                    Color::srgb(0.2, 0.9, 0.2) // Green
-                } else if ratio > 0.3 {
-                    Color::srgb(0.9, 0.9, 0.2) // Yellow
+                // Smooth color gradient: green → yellow → red
+                sprite.color = if ratio > 0.5 {
+                    let t = (ratio - 0.5) * 2.0;
+                    Color::srgb(0.2 + 0.7 * (1.0 - t), 0.9, 0.2)
                 } else {
-                    Color::srgb(0.9, 0.2, 0.2) // Red
+                    let t = ratio * 2.0;
+                    Color::srgb(0.9, 0.9 * t, 0.2 * t)
                 };
             }
         }

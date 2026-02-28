@@ -17,23 +17,23 @@ from dataset import compute_mel_spectrogram, _mel_filter_bank
 
 def test_model_output_shape():
     """Random input produces correct output shape."""
-    model = TCResNet8(n_mels=40, num_classes=31, channels=[16, 24, 32, 48])
+    model = TCResNet8(n_mels=40, num_classes=118, channels=[32, 48, 64, 96])
     model.eval()
     x = torch.randn(4, 1, 40, 49)  # batch of 4
     with torch.no_grad():
         out = model(x)
-    assert out.shape == (4, 31), f"Expected (4, 31), got {out.shape}"
+    assert out.shape == (4, 118), f"Expected (4, 118), got {out.shape}"
     print("PASS: model output shape")
 
 
 def test_model_single_sample():
     """Single sample produces valid logits."""
-    model = TCResNet8(n_mels=40, num_classes=31)
+    model = TCResNet8(n_mels=40, num_classes=118)
     model.eval()
     x = torch.randn(1, 1, 40, 49)
     with torch.no_grad():
         out = model(x)
-    assert out.shape == (1, 31)
+    assert out.shape == (1, 118)
     # Logits should be finite
     assert torch.isfinite(out).all(), "Output contains non-finite values"
     print("PASS: single sample logits")
@@ -41,7 +41,7 @@ def test_model_single_sample():
 
 def test_onnx_export_roundtrip():
     """ONNX export produces file that matches PyTorch output."""
-    model = TCResNet8(n_mels=40, num_classes=31, channels=[16, 24, 32, 48])
+    model = TCResNet8(n_mels=40, num_classes=118, channels=[32, 48, 64, 96])
     model.eval()
 
     x = torch.randn(1, 1, 40, 49)
@@ -52,13 +52,13 @@ def test_onnx_export_roundtrip():
     with tempfile.NamedTemporaryFile(suffix=".onnx", delete=False) as f:
         onnx_path = f.name
 
-    export_onnx(model, onnx_path, num_classes=31, n_mels=40, n_frames=49)
+    export_onnx(model, onnx_path, num_classes=118, n_mels=40, n_frames=49)
 
     # Verify file exists and is non-empty
     assert Path(onnx_path).exists()
     size = Path(onnx_path).stat().st_size
     assert size > 0, f"ONNX file is empty"
-    assert size < 500 * 1024, f"ONNX file too large: {size / 1024:.1f}KB (expected <500KB)"
+    assert size < 2000 * 1024, f"ONNX file too large: {size / 1024:.1f}KB (expected <2MB)"
 
     try:
         import onnxruntime as ort
@@ -121,11 +121,11 @@ def test_mel_filter_bank():
 
 
 def test_model_param_count():
-    """Model parameter count is within expected range."""
-    model = TCResNet8(n_mels=40, num_classes=31, channels=[16, 24, 32, 48])
+    """Model parameter count is within expected range for k=2."""
+    model = TCResNet8(n_mels=40, num_classes=118, channels=[32, 48, 64, 96])
     param_count = sum(p.numel() for p in model.parameters())
-    assert 50_000 < param_count < 200_000, (
-        f"Param count {param_count:,} outside expected range 50K-200K"
+    assert 200_000 < param_count < 600_000, (
+        f"Param count {param_count:,} outside expected range 200K-600K"
     )
     print(f"PASS: model has {param_count:,} parameters")
 

@@ -23,7 +23,7 @@ def load_labels(config_path="config.yaml"):
     cfg = load_config(config_path)
     vocab = cfg["vocabulary"]
     labels = []
-    for category in ["commands", "directions", "meta", "units", "buildings", "special"]:
+    for category in vocab:
         labels.extend(vocab[category])
     return labels
 

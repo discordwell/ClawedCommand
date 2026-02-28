@@ -1,3 +1,4 @@
+use crate::components::{BuildingKind, UnitKind};
 use crate::coords::GridPos;
 
 /// Unique identifier for entities in commands.
@@ -33,4 +34,34 @@ pub enum GameCommand {
     },
     /// Hold position: attack in range only, no chasing.
     HoldPosition { unit_ids: Vec<EntityId> },
+    /// Send worker units to gather from a resource deposit.
+    GatherResource {
+        unit_ids: Vec<EntityId>,
+        deposit: EntityId,
+    },
+    /// Place a building at a grid position.
+    Build {
+        builder: EntityId,
+        building_kind: BuildingKind,
+        position: GridPos,
+    },
+    /// Train a unit from a production building.
+    TrainUnit {
+        building: EntityId,
+        unit_kind: UnitKind,
+    },
+    /// Set rally point for a production building.
+    SetRallyPoint {
+        building: EntityId,
+        target: GridPos,
+    },
+    /// Cancel the front item in a building's production queue.
+    CancelQueue { building: EntityId },
+    /// Assign selected units to a control group (0-9).
+    SetControlGroup {
+        group: u8,
+        unit_ids: Vec<EntityId>,
+    },
+    /// Recall (select) units in a control group.
+    RecallControlGroup { group: u8 },
 }

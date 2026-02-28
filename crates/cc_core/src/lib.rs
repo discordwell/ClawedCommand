@@ -1,3 +1,4 @@
+pub mod building_stats;
 pub mod commands;
 pub mod components;
 pub mod coords;

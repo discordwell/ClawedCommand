@@ -11,9 +11,9 @@ audio:
 
 model:
   name: "TC-ResNet8"
-  num_classes: 31
-  k: 1                  # Width multiplier (increase for more capacity)
-  channels: [16, 24, 32, 48]   # k=1 channel widths
+  num_classes: 118
+  k: 2                   # Width multiplier (doubled for 118-class vocab)
+  channels: [32, 48, 64, 96]   # k=2 channel widths (~300K params)
 
 training:
   epochs: 100
@@ -47,41 +47,167 @@ tts:
     - "Fiona"
   speed_variations: [130, 160, 190, 220, 250]  # words per minute
 
+# -----------------------------------------------------------------------
+# Vocabulary — 118 classes
+#
+# Grammar: [agent_command] [unit_selector | group_selector] [conjunction ...]
+# Example: "retreat" → "chonks" → "and" → "hissers"
+# Each word is recognized independently in its own 1-second window.
+# -----------------------------------------------------------------------
 vocabulary:
-  commands:
-    - attack
-    - retreat
-    - move
-    - build
-    - hold
-    - patrol
-    - gather
-    - train
-    - stop
-    - defend
-    - select
-    - group
+  # Agent commands — each invokes a behavioral agent on the target units
+  agents:
+    - attack        # Aggressive engage — focus fire, pursue
+    - retreat       # Disengage — pathfind away from enemies to safety
+    - move          # Pathfind to cursor / indicated position
+    - defend        # Hold area — engage enemies that approach
+    - hold          # Freeze — no movement, attack in range only
+    - patrol        # Waypoint loop — engage on contact
+    - gather        # Workers collect nearest resource
+    - scout         # Explore fog of war, avoid combat
+    - build         # Construct a building (needs building selector)
+    - train         # Produce unit from selected building
+    - stop          # Cancel current action immediately
+    - follow        # Follow another unit, matching its movement
+    - guard         # Protect a specific unit or building
+    - heal          # Support units move to heal injured allies
+    - flank         # Approach target from side / rear
+    - charge        # Rush forward — bonus speed, commit to melee
+    - siege         # Focus-fire buildings and structures
+    - rally         # Regroup at rally point / selected position
+
+  # catGPT unit names (player's faction — cats, fruit bats, ferrets)
+  catgpt:
+    - pawdler       # Worker
+    - pawds         # Abbreviation: pawdler
+    - nuisance      # Light harasser
+    - chonk         # Heavy tank
+    - fox           # Flying Fox — air scout/striker
+    - hisser        # Ranged
+    - yowler        # Support
+    - mouser        # Stealth scout
+    - catnapper     # Siege
+    - napper        # Abbreviation: catnapper
+    - sapper        # Ferret Sapper — demolitions
+    - mech          # Mech Commander — hero
+
+  # The Clawed unit names (mice, shrews, voles, hedgehogs — AI: Geppity)
+  clawed:
+    - nibblet       # Worker
+    - swarmer       # Light infantry
+    - gnawer        # Anti-structure
+    - shrieker      # Ranged harasser
+    - tunneler      # Transport / utility (shared name w/ Seekers)
+    - sparks        # Saboteur
+    - quillback     # Heavy defender
+    - whiskerwitch  # Caster / support
+    - witch         # Abbreviation: whiskerwitch
+    - plaguetail    # Area denial
+    - plague        # Abbreviation: plaguetail
+    - marshal       # Warren Marshal — hero
+
+  # Seekers of the Deep unit names (badgers, moles, wolverines — AI: Deepseek)
+  seekers:
+    - delver        # Worker
+    - ironhide      # Heavy infantry
+    - cragback      # Siege tank
+    - warden        # Defensive support
+    - sapjaw        # Anti-armor
+    - wardenmother  # Hero
+    - embermaw      # Ranged assault
+    - dustclaw      # Skirmisher / scout
+    - gutripper     # Berserker / shock
+
+  # The Murder unit names (crows, magpies, jays, owls — AI: Gemineye)
+  murder:
+    - scrounger     # Worker (shared name w/ LLAMA)
+    - sentinel      # Ranged scout
+    - rookclaw      # Melee dive striker
+    - magpike       # Disruptor / thief
+    - magpyre       # Saboteur
+    - jaycaller     # Support / buffer
+    - jayflicker    # Illusion specialist
+    - dusktalon     # Stealth assassin
+    - hootseer      # Area denial / debuffer
+    - corvus        # Corvus Rex — hero
+
+  # Croak unit names (axolotls, frogs, newts, turtles — AI: Grok)
+  croak:
+    - ponderer      # Worker
+    - regeneron     # Light skirmisher
+    - regen         # Abbreviation: regeneron
+    - broodmother   # Healer / support
+    - brood         # Abbreviation: broodmother
+    - gulper        # Heavy bruiser
+    - eftsaber      # Assassin / flanker
+    - croaker       # Ranged artillery
+    - leapfrog      # Mobile harasser
+    - shellwarden   # Tank / defender
+    - shell         # Abbreviation: shellwarden
+    - bogwhisper    # Support / caster
+    - bog           # Abbreviation: bogwhisper
+    - murk          # Murk Commander — hero
+
+  # LLAMA unit names (raccoons, possums, rats — AI: Llhama)
+  llama:
+    - bandit        # Light skirmisher
+    - titan         # Heap Titan — heavy tank
+    - glitch        # Glitch Rat — saboteur scout
+    - patch         # Patch Possum — field medic
+    - grease        # Grease Monkey — ranged / siege
+    - drop          # Dead Drop — stealth / intel
+    - wrecker       # Anti-armor melee
+    - diver         # Dumpster Diver — specialist
+    - junkyard      # Junkyard King — hero
+
+  # Group / target selectors
+  selectors:
+    - all           # All your units on screen
+    - screen        # All visible units (synonym for all)
+    - selected      # Currently selected units only
+    - group         # Control group prefix ("group one")
+    - army          # All combat units (not workers)
+    - workers       # All worker units
+    - idle          # All idle units
+    - one           # Control group 1
+    - two           # Control group 2
+    - three         # Control group 3
+
+  # Conjunctions — chain multiple selectors
+  conjunctions:
+    - and           # "chonks and hissers"
+    - with          # "attack with mouser"
+    - except        # "all except pawdlers"
+    - not           # "army not chonks"
+
+  # Cardinal directions
   directions:
     - north
     - south
     - east
     - west
-  meta:
-    - base
-    - all
-    - workers
-    - army
-  units:
-    - pawdler
-    - nuisance
-    - chonk
-    - hisser
-    - yowler
-    - mouser
+
+  # Building names (catGPT buildings)
   buildings:
-    - barracks
-    - refinery
-    - tower
+    - barracks      # Cat Tree (trains infantry)
+    - refinery      # Fish Market (food processing)
+    - tower         # Laser Pointer (defense)
+    - box           # The Box (HQ / town center)
+    - tree          # Cat Tree (barracks / military production)
+    - market        # Fish Market (economy)
+    - rack          # Server Rack (GPU / AI)
+    - post          # Scratching Post (research / upgrades)
+
+  # Meta / control words
+  meta:
+    - base          # Camera to base / reference to home base
+    - cancel        # Cancel current command / build / train
+    - help          # Request AI agent assistance
+    - undo          # Undo last command
+    - "yes"         # Confirm (quoted — YAML parses bare yes/no as booleans)
+    - "no"          # Deny / cancel (quoted — YAML parses bare yes/no as booleans)
+
+  # Internal classifier classes (not user-spoken)
   special:
     - unknown
     - silence

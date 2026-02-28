@@ -5,7 +5,7 @@ const ZOOM_SPEED: f32 = 0.1;
 const EDGE_SCROLL_MARGIN: f32 = 20.0;
 const EDGE_SCROLL_SPEED: f32 = 200.0;
 const MIN_ZOOM: f32 = 0.3;
-const MAX_ZOOM: f32 = 3.0;
+const MAX_ZOOM: f32 = 5.0;
 
 pub fn camera_system(
     time: Res<Time>,

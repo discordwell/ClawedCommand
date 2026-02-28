@@ -40,10 +40,10 @@ class TCResNet8(nn.Module):
     Output: [batch, num_classes] logits
     """
 
-    def __init__(self, n_mels=40, num_classes=31, channels=None):
+    def __init__(self, n_mels=40, num_classes=118, channels=None):
         super().__init__()
         if channels is None:
-            channels = [16, 24, 32, 48]
+            channels = [32, 48, 64, 96]  # k=2 for 118-class vocab
 
         # Collapse frequency axis: [B, 1, n_mels, T] -> [B, C0, 1, T]
         self.conv0 = nn.Conv2d(1, channels[0], kernel_size=(n_mels, 1))
@@ -69,7 +69,7 @@ class TCResNet8(nn.Module):
         return self.fc(x)
 
 
-def export_onnx(model, path, num_classes=31, n_mels=40, n_frames=49):
+def export_onnx(model, path, num_classes=118, n_mels=40, n_frames=49):
     """Export model to ONNX format."""
     model.eval()
     dummy = torch.randn(1, 1, n_mels, n_frames)

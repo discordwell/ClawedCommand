@@ -5,6 +5,39 @@ use crate::commands::EntityId;
 use crate::coords::{GridPos, WorldPos};
 use crate::math::Fixed;
 
+// ---------------------------------------------------------------------------
+// Economy / Building enums
+// ---------------------------------------------------------------------------
+
+/// Resource types in the game economy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ResourceType {
+    Food,
+    GpuCores,
+    Nft,
+}
+
+/// Building types for the cat faction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum BuildingKind {
+    /// HQ — pre-built, produces Pawdler, resource drop-off.
+    TheBox,
+    /// Barracks — produces combat units.
+    CatTree,
+    /// Resource drop-off + slight gather bonus.
+    FishMarket,
+    /// Supply depot — increases supply cap.
+    LitterBox,
+}
+
+/// State machine for the Pawdler gather loop.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GatherState {
+    MovingToDeposit,
+    Harvesting { ticks_remaining: u32 },
+    ReturningToBase,
+}
+
 /// World-space position of an entity.
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
@@ -173,3 +206,67 @@ pub struct HoldPosition;
 pub struct AttackMoveTarget {
     pub target: GridPos,
 }
+
+// ---------------------------------------------------------------------------
+// Economy / Building components
+// ---------------------------------------------------------------------------
+
+/// A resource deposit on the map (fish pond, berry bush, GPU deposit, monkey mine).
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct ResourceDeposit {
+    pub resource_type: ResourceType,
+    pub remaining: u32,
+}
+
+/// Marker: this entity is a building.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct Building {
+    pub kind: BuildingKind,
+}
+
+/// Building is under construction. Ticks down each sim tick.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct UnderConstruction {
+    pub remaining_ticks: u32,
+    pub total_ticks: u32,
+}
+
+/// Production queue for a building that can train units.
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct ProductionQueue {
+    pub queue: VecDeque<(UnitKind, u32)>, // (kind, ticks_remaining)
+}
+
+impl Default for ProductionQueue {
+    fn default() -> Self {
+        Self {
+            queue: VecDeque::new(),
+        }
+    }
+}
+
+/// Rally point for a production building — new units move here after spawning.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct RallyPoint {
+    pub target: GridPos,
+}
+
+/// Pawdler is gathering resources — tracks the gather loop state machine.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct Gathering {
+    pub deposit_entity: EntityId,
+    pub carried_type: ResourceType,
+    pub carried_amount: u32,
+    pub state: GatherState,
+}
+
+/// Marker: this building can produce units (has been fully constructed).
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct Producer;

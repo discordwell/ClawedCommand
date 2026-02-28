@@ -22,6 +22,14 @@
 - [ ] Consider splitting GAME_DESIGN.md into per-faction files for navigability (1450+ lines)
 - [ ] Add zodiac/astrology theming to The Murder's unit abilities (user intent noted in factions table but not yet reflected in unit designs)
 
+## From Voice Vocabulary Expansion
+
+- [ ] Extract shared `load_config()` into `training/voice/utils.py` (currently duplicated in generate_tts.py, dataset.py, train.py)
+- [ ] Auto-generate `assets/voice/labels.txt` from `config.yaml` (add `--generate-labels` flag or build step) instead of manual sync
+- [ ] Add pending-state timeout to `voice_intent_system` — if unit filter set but no agent command follows within ~2s, clear it
+- [ ] Clarify building synonyms: barracks/post and refinery/market currently alias to same BuildingKind — split into separate variants if they become distinct buildings
+- [ ] Add `UnitKind` variants for other factions (Clawed, Seekers, Murder, Croak, LLAMA) so voice unit names resolve instead of logging Ignored
+
 ## From Voice Pipeline Implementation
 
 - [ ] Run Python voice training tests after setting up PyTorch environment (`cd training/voice && python test_model.py`)

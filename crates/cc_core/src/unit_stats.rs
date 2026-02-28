@@ -9,6 +9,11 @@ pub struct UnitBaseStats {
     pub range: Fixed,
     pub attack_speed: u32, // ticks between attacks
     pub attack_type: AttackType,
+    // Economy
+    pub food_cost: u32,
+    pub gpu_cost: u32,
+    pub supply_cost: u32,
+    pub train_time: u32, // ticks
 }
 
 /// Return the base stats for a given unit kind.
@@ -22,6 +27,7 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             range: Fixed::from_bits(1 << 16),      // 1
             attack_speed: 15,
             attack_type: AttackType::Melee,
+            food_cost: 50, gpu_cost: 0, supply_cost: 1, train_time: 50,
         },
         UnitKind::Nuisance => UnitBaseStats {
             health: Fixed::from_bits(80 << 16),    // 80
@@ -30,6 +36,7 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             range: Fixed::from_bits(1 << 16),      // 1
             attack_speed: 10,
             attack_type: AttackType::Melee,
+            food_cost: 75, gpu_cost: 0, supply_cost: 1, train_time: 60,
         },
         UnitKind::Chonk => UnitBaseStats {
             health: Fixed::from_bits(300 << 16),   // 300
@@ -38,6 +45,7 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             range: Fixed::from_bits(1 << 16),      // 1
             attack_speed: 20,
             attack_type: AttackType::Melee,
+            food_cost: 150, gpu_cost: 25, supply_cost: 3, train_time: 120,
         },
         UnitKind::FlyingFox => UnitBaseStats {
             health: Fixed::from_bits(50 << 16),    // 50
@@ -46,6 +54,7 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             range: Fixed::from_bits(2 << 16),      // 2
             attack_speed: 12,
             attack_type: AttackType::Ranged,
+            food_cost: 100, gpu_cost: 25, supply_cost: 2, train_time: 80,
         },
         UnitKind::Hisser => UnitBaseStats {
             health: Fixed::from_bits(70 << 16),    // 70
@@ -54,6 +63,7 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             range: Fixed::from_bits(5 << 16),      // 5
             attack_speed: 12,
             attack_type: AttackType::Ranged,
+            food_cost: 100, gpu_cost: 0, supply_cost: 2, train_time: 80,
         },
         UnitKind::Yowler => UnitBaseStats {
             health: Fixed::from_bits(90 << 16),    // 90
@@ -62,6 +72,7 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             range: Fixed::from_bits(4 << 16),      // 4
             attack_speed: 15,
             attack_type: AttackType::Ranged,
+            food_cost: 100, gpu_cost: 50, supply_cost: 2, train_time: 100,
         },
         UnitKind::Mouser => UnitBaseStats {
             health: Fixed::from_bits(55 << 16),    // 55
@@ -70,6 +81,7 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             range: Fixed::from_bits(1 << 16),      // 1
             attack_speed: 8,
             attack_type: AttackType::Melee,
+            food_cost: 75, gpu_cost: 25, supply_cost: 1, train_time: 60,
         },
         UnitKind::Catnapper => UnitBaseStats {
             health: Fixed::from_bits(120 << 16),   // 120
@@ -78,6 +90,7 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             range: Fixed::from_bits(2 << 16),      // 2
             attack_speed: 30,
             attack_type: AttackType::Ranged,
+            food_cost: 200, gpu_cost: 50, supply_cost: 3, train_time: 150,
         },
         UnitKind::FerretSapper => UnitBaseStats {
             health: Fixed::from_bits(65 << 16),    // 65
@@ -86,6 +99,7 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             range: Fixed::from_bits(1 << 16),      // 1
             attack_speed: 25,
             attack_type: AttackType::Melee,
+            food_cost: 125, gpu_cost: 50, supply_cost: 2, train_time: 100,
         },
         UnitKind::MechCommander => UnitBaseStats {
             health: Fixed::from_bits(500 << 16),   // 500
@@ -94,6 +108,7 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             range: Fixed::from_bits(3 << 16),      // 3
             attack_speed: 15,
             attack_type: AttackType::Ranged,
+            food_cost: 400, gpu_cost: 200, supply_cost: 6, train_time: 250,
         },
     }
 }
