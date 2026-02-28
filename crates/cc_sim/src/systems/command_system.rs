@@ -261,6 +261,13 @@ pub fn process_commands(
                 building_kind,
                 position,
             } => {
+                // Validate terrain is passable at build site
+                if let Some(terrain) = map_res.map.terrain_at(position) {
+                    if !cc_core::terrain::is_passable_for_faction(terrain, cc_core::terrain::FactionId::CatGPT) {
+                        continue; // Can't build on impassable terrain
+                    }
+                }
+
                 let builder_entity = Entity::from_bits(builder.0);
                 // Find builder's owner
                 if let Ok((_, _, owner, _, _)) = query.get(builder_entity) {

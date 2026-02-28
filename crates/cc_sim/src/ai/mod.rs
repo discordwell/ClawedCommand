@@ -13,6 +13,7 @@ impl Plugin for AiPlugin {
             .add_systems(
                 FixedUpdate,
                 fsm::ai_decision_system
+                    .after(crate::systems::cleanup_system::cleanup_system)
                     .run_if(|state: Res<GameState>| *state == GameState::Playing),
             );
     }

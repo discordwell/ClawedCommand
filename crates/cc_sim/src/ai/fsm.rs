@@ -78,6 +78,8 @@ pub struct AiState {
     pub personality: BotPersonality,
     /// Enemy player spawn position (target for attacks).
     pub enemy_spawn: Option<GridPos>,
+    /// True if the attack order has already been issued this Attack phase.
+    pub attack_ordered: bool,
 }
 
 impl Default for AiState {
@@ -88,6 +90,7 @@ impl Default for AiState {
             difficulty: AiDifficulty::Medium,
             personality: BotPersonality::Balanced,
             enemy_spawn: None,
+            attack_ordered: false,
         }
     }
 }
@@ -188,11 +191,13 @@ fn run_ai_fsm(
     let mut box_entity = None;
     let mut box_pos: Option<GridPos> = None;
     let mut cat_tree_entity = None;
+    let mut building_count: u32 = 0;
 
     for (entity, building, owner, pos, producer) in buildings.iter() {
         if owner.player_id != ai_player {
             continue;
         }
+        building_count += 1;
         match building.kind {
             BuildingKind::TheBox => {
                 has_box = true;
@@ -258,12 +263,12 @@ fn run_ai_fsm(
         }
 
         AiPhase::BuildUp => {
-            // Build FishMarket if missing
+            // Build FishMarket if missing (use an idle Pawdler as builder)
             if !has_fish_market && pres.food >= 100 && has_box {
-                if let Some(box_e) = box_entity {
-                    let build_pos = find_build_position(units, ai_player);
+                if let Some(builder) = idle_workers.first() {
+                    let build_pos = find_build_position(box_pos, building_count);
                     cmd_queue.push(GameCommand::Build {
-                        builder: EntityId(box_e.to_bits()),
+                        builder: EntityId(builder.to_bits()),
                         building_kind: BuildingKind::FishMarket,
                         position: build_pos,
                     });
@@ -272,10 +277,10 @@ fn run_ai_fsm(
 
             // Build CatTree if missing
             if !has_cat_tree && pres.food >= 150 && has_box {
-                if let Some(box_e) = box_entity {
-                    let build_pos = find_build_position(units, ai_player);
+                if let Some(builder) = idle_workers.first() {
+                    let build_pos = find_build_position(box_pos, building_count + 1);
                     cmd_queue.push(GameCommand::Build {
-                        builder: EntityId(box_e.to_bits()),
+                        builder: EntityId(builder.to_bits()),
                         building_kind: BuildingKind::CatTree,
                         position: build_pos,
                     });
@@ -321,10 +326,10 @@ fn run_ai_fsm(
 
             // Build LitterBox for more supply if needed
             if pres.supply + 2 >= pres.supply_cap && pres.food >= 75 {
-                if let Some(box_e) = box_entity {
-                    let build_pos = find_build_position(units, ai_player);
+                if let Some(builder) = idle_workers.first() {
+                    let build_pos = find_build_position(box_pos, building_count);
                     cmd_queue.push(GameCommand::Build {
-                        builder: EntityId(box_e.to_bits()),
+                        builder: EntityId(builder.to_bits()),
                         building_kind: BuildingKind::LitterBox,
                         position: build_pos,
                     });
@@ -351,17 +356,20 @@ fn run_ai_fsm(
         }
 
         AiPhase::Attack => {
-            // Send army toward enemy spawn
-            if let Some(target) = ai_state.enemy_spawn {
-                if !army_entities.is_empty() {
-                    let ids: Vec<EntityId> = army_entities
-                        .iter()
-                        .map(|e| EntityId(e.to_bits()))
-                        .collect();
-                    cmd_queue.push(GameCommand::AttackMove {
-                        unit_ids: ids,
-                        target,
-                    });
+            // Send army toward enemy spawn (only once per Attack phase)
+            if !ai_state.attack_ordered {
+                if let Some(target) = ai_state.enemy_spawn {
+                    if !army_entities.is_empty() {
+                        let ids: Vec<EntityId> = army_entities
+                            .iter()
+                            .map(|e| EntityId(e.to_bits()))
+                            .collect();
+                        cmd_queue.push(GameCommand::AttackMove {
+                            unit_ids: ids,
+                            target,
+                        });
+                        ai_state.attack_ordered = true;
+                    }
                 }
             }
 
@@ -400,6 +408,10 @@ fn run_ai_fsm(
         }
     };
 
+    // Reset attack flag when leaving Attack phase
+    if new_phase != AiPhase::Attack {
+        ai_state.attack_ordered = false;
+    }
     ai_state.phase = new_phase;
 }
 
@@ -424,34 +436,24 @@ fn find_nearest_deposit(
     best
 }
 
-/// Find a position near the AI's units to place a building.
-fn find_build_position(
-    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>)>,
-    ai_player: u8,
-) -> GridPos {
-    // Find the average position of AI units as base reference
-    let mut sum_x: i64 = 0;
-    let mut sum_y: i64 = 0;
-    let mut count = 0i64;
-
-    for (_, pos, owner, _, _) in units.iter() {
-        if owner.player_id == ai_player {
-            let grid = pos.world.to_grid();
-            sum_x += grid.x as i64;
-            sum_y += grid.y as i64;
-            count += 1;
-        }
-    }
-
-    if count > 0 {
-        // Place building 2 tiles from center of AI units
-        GridPos::new(
-            (sum_x / count) as i32 + 2,
-            (sum_y / count) as i32 + 2,
-        )
-    } else {
-        GridPos::new(55, 55) // Fallback
-    }
+/// Find a position near the base to place a building.
+/// Uses building_count as offset to avoid stacking buildings on the same tile.
+fn find_build_position(box_pos: Option<GridPos>, building_count: u32) -> GridPos {
+    let base = box_pos.unwrap_or(GridPos::new(32, 32));
+    // Spiral placement: offset each new building to a different spot near the base
+    let offsets: [(i32, i32); 8] = [
+        (3, 0),
+        (0, 3),
+        (-3, 0),
+        (0, -3),
+        (3, 3),
+        (-3, 3),
+        (-3, -3),
+        (3, -3),
+    ];
+    let idx = building_count as usize % offsets.len();
+    let (dx, dy) = offsets[idx];
+    GridPos::new(base.x + dx, base.y + dy)
 }
 
 /// Check if enemy units are within 8 tiles of any of the AI's buildings.

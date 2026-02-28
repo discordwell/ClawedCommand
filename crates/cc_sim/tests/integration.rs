@@ -1341,3 +1341,122 @@ fn test_supply_cap_from_buildings() {
         "LitterBox should add 10 supply cap immediately on placement"
     );
 }
+
+#[test]
+fn test_resource_deposit_depletes() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let _box = spawn_the_box(&mut world, GridPos::new(5, 5), 0);
+    let deposit = spawn_deposit(&mut world, GridPos::new(7, 7));
+
+    // Set deposit remaining to a small amount
+    world.get_mut::<ResourceDeposit>(deposit).unwrap().remaining = 20;
+
+    // Spawn a Pawdler already in Harvesting state right at the deposit
+    let pawdler = spawn_combat_unit(&mut world, GridPos::new(7, 7), 0, UnitKind::Pawdler);
+    world.entity_mut(pawdler).insert(Gathering {
+        deposit_entity: EntityId(deposit.to_bits()),
+        carried_type: ResourceType::Food,
+        carried_amount: 0,
+        state: GatherState::Harvesting { ticks_remaining: 1 },
+    });
+
+    run_ticks(&mut world, &mut schedule, 5);
+
+    // Deposit should have been decremented
+    let remaining = world.get::<ResourceDeposit>(deposit).unwrap().remaining;
+    assert!(remaining < 20, "Deposit should deplete during gathering: remaining={remaining}");
+}
+
+#[test]
+fn test_dead_gatherer_stops_gathering() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let _box = spawn_the_box(&mut world, GridPos::new(5, 5), 0);
+    let deposit = spawn_deposit(&mut world, GridPos::new(7, 7));
+
+    let pawdler = spawn_combat_unit(&mut world, GridPos::new(7, 7), 0, UnitKind::Pawdler);
+    world.entity_mut(pawdler).insert(Gathering {
+        deposit_entity: EntityId(deposit.to_bits()),
+        carried_type: ResourceType::Food,
+        carried_amount: 0,
+        state: GatherState::Harvesting { ticks_remaining: 10 },
+    });
+
+    // Mark the gatherer as Dead
+    world.entity_mut(pawdler).insert(Dead);
+
+    let initial_food = world.resource::<PlayerResources>().players[0].food;
+
+    // Run ticks — dead gatherer should not produce resources
+    run_ticks(&mut world, &mut schedule, 20);
+
+    let final_food = world.resource::<PlayerResources>().players[0].food;
+    assert_eq!(
+        initial_food, final_food,
+        "Dead gatherer should not produce resources"
+    );
+}
+
+#[test]
+fn test_build_on_water_rejected() {
+    let mut map = GameMap::new(32, 32);
+    // Set tile at (15, 15) to water
+    if let Some(tile) = map.get_mut(GridPos::new(15, 15)) {
+        tile.terrain = cc_core::terrain::TerrainType::Water;
+    }
+
+    let (mut world, mut schedule) = make_full_sim(map);
+    let builder = spawn_combat_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Pawdler);
+    world.resource_mut::<PlayerResources>().players[0].food = 500;
+
+    let initial_food = world.resource::<PlayerResources>().players[0].food;
+
+    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
+        builder: EntityId(builder.to_bits()),
+        building_kind: BuildingKind::LitterBox,
+        position: GridPos::new(15, 15),
+    });
+
+    run_ticks(&mut world, &mut schedule, 5);
+
+    // Building should NOT have been placed
+    let building_count = world
+        .query_filtered::<&Building, ()>()
+        .iter(&world)
+        .filter(|b| b.kind == BuildingKind::LitterBox)
+        .count();
+
+    assert_eq!(building_count, 0, "Should not build on water");
+
+    // Resources should NOT have been deducted
+    let final_food = world.resource::<PlayerResources>().players[0].food;
+    assert_eq!(initial_food, final_food, "Resources should not be deducted for rejected build");
+}
+
+#[test]
+fn test_victory_with_more_than_two_players() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+
+    // Add a third player to PlayerResources
+    world.resource_mut::<PlayerResources>().players.push(
+        cc_sim::resources::PlayerResourceState::default()
+    );
+
+    // Three players with TheBox
+    spawn_the_box(&mut world, GridPos::new(5, 5), 0);
+    spawn_the_box(&mut world, GridPos::new(20, 20), 1);
+    let box_2 = spawn_the_box(&mut world, GridPos::new(15, 15), 2);
+
+    run_ticks(&mut world, &mut schedule, 1);
+    assert_eq!(*world.resource::<GameState>(), GameState::Playing);
+
+    // Kill player 2's box
+    world.entity_mut(box_2).insert(Dead);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    // Game should still be playing (2 players remain)
+    assert_eq!(
+        *world.resource::<GameState>(),
+        GameState::Playing,
+        "Game should continue with 2 remaining TheBoxes"
+    );
+}

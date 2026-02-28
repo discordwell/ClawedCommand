@@ -2,8 +2,8 @@ use bevy::prelude::*;
 
 use cc_core::building_stats::building_stats;
 use cc_core::components::{
-    AttackStats, AttackTypeMarker, Building, GridCell, Health, MovementSpeed, Owner, Position,
-    Producer, ProductionQueue, RallyPoint, UnderConstruction, UnitType, Velocity,
+    AttackStats, AttackTypeMarker, Building, GridCell, Health, MoveTarget, MovementSpeed, Owner,
+    Position, Producer, ProductionQueue, RallyPoint, UnderConstruction, UnitType, Velocity,
 };
 use cc_core::coords::WorldPos;
 use cc_core::unit_stats::base_stats;
@@ -60,32 +60,39 @@ pub fn production_system(
                     let spawn_grid = pos.world.to_grid();
                     let spawn_world = WorldPos::from_grid(spawn_grid);
 
-                    commands.spawn((
-                        Position { world: spawn_world },
-                        Velocity::zero(),
-                        GridCell { pos: spawn_grid },
-                        Owner {
-                            player_id: owner.player_id,
-                        },
-                        UnitType { kind },
-                        Health {
-                            current: stats.health,
-                            max: stats.health,
-                        },
-                        MovementSpeed { speed: stats.speed },
-                        AttackStats {
-                            damage: stats.damage,
-                            range: stats.range,
-                            attack_speed: stats.attack_speed,
-                            cooldown_remaining: 0,
-                        },
-                        AttackTypeMarker {
-                            attack_type: stats.attack_type,
-                        },
-                    ));
+                    let new_entity = commands
+                        .spawn((
+                            Position { world: spawn_world },
+                            Velocity::zero(),
+                            GridCell { pos: spawn_grid },
+                            Owner {
+                                player_id: owner.player_id,
+                            },
+                            UnitType { kind },
+                            Health {
+                                current: stats.health,
+                                max: stats.health,
+                            },
+                            MovementSpeed { speed: stats.speed },
+                            AttackStats {
+                                damage: stats.damage,
+                                range: stats.range,
+                                attack_speed: stats.attack_speed,
+                                cooldown_remaining: 0,
+                            },
+                            AttackTypeMarker {
+                                attack_type: stats.attack_type,
+                            },
+                        ))
+                        .id();
 
-                    // Note: supply was already deducted in TrainUnit command
-                    let _ = &rally;
+                    // Auto-move to rally point if set
+                    if let Some(rally) = rally {
+                        let rally_world = WorldPos::from_grid(rally.target);
+                        commands
+                            .entity(new_entity)
+                            .insert(MoveTarget { target: rally_world });
+                    }
                 }
             }
         }
