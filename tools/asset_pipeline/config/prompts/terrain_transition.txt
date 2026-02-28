@@ -1,0 +1,15 @@
+Create a sprite sheet of transition overlay pieces for isometric terrain transitions. Art style: Into the Breach meets Redwall — clean, minimal, readable.
+
+Canvas: 512x384 pixels, transparent background.
+Grid: 4 columns x 3 rows (each cell is 128x128).
+
+Terrain type: {terrain_type}
+Transitioning FROM this terrain type TO a lower-priority terrain below.
+
+Row 1 (Edge overlays): N, E, S, W — half-diamond shapes fading to transparent on one side.
+Row 2 (Inner corners): NE, SE, SW, NW — 3/4 diamond wrapping around a corner.
+Row 3 (Outer corners): NE, SE, SW, NW — 1/4 diamond nub at a corner.
+
+Color palette: {palette_colors}
+
+Each piece should blend naturally at terrain boundaries. Use the same color palette and style as the base terrain tile. Pieces should overlay on top of lower-priority terrain sprites.

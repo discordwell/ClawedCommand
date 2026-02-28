@@ -1,0 +1,10 @@
+Create cliff face sprites for isometric elevation transitions. Art style: Into the Breach meets Redwall — clean, minimal, tactical clarity.
+
+Canvas: 128x128 pixels, transparent background.
+
+Cliff type: {cliff_type}
+Description: {description}
+
+Color palette: {palette_colors}
+
+The cliff face should show the vertical wall of an elevated terrain tile as seen from the isometric camera angle. It attaches to the bottom edge (south/east) of tiles at higher elevation. Keep the style clean with flat colors and minimal detail.

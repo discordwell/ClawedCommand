@@ -10,11 +10,12 @@ const MAX_ZOOM: f32 = 3.0;
 pub fn camera_system(
     time: Res<Time>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut scroll_events: EventReader<bevy::input::mouse::MouseWheel>,
-    windows: Query<&Window>,
-    mut camera_q: Query<(&mut Transform, &mut OrthographicProjection), With<Camera2d>>,
+    mut scroll_events: MessageReader<bevy::input::mouse::MouseWheel>,
+    window: Single<&Window>,
+    mut camera: Single<(&mut Transform, &mut Projection), With<Camera2d>>,
 ) {
-    let Ok((mut transform, mut ortho)) = camera_q.get_single_mut() else {
+    let (ref mut transform, ref mut projection) = *camera;
+    let Projection::Orthographic(ref mut ortho) = **projection else {
         return;
     };
     let dt = time.delta_secs();
@@ -39,34 +40,33 @@ pub fn camera_system(
     }
 
     // Edge scrolling
-    if let Ok(window) = windows.get_single() {
-        if let Some(cursor) = window.cursor_position() {
-            let w = window.width();
-            let h = window.height();
-            let mut edge_pan = Vec2::ZERO;
+    if let Some(cursor) = window.cursor_position() {
+        let w = window.width();
+        let h = window.height();
+        let mut edge_pan = Vec2::ZERO;
 
-            if cursor.x < EDGE_SCROLL_MARGIN {
-                edge_pan.x -= 1.0;
-            }
-            if cursor.x > w - EDGE_SCROLL_MARGIN {
-                edge_pan.x += 1.0;
-            }
-            if cursor.y < EDGE_SCROLL_MARGIN {
-                edge_pan.y += 1.0;
-            }
-            if cursor.y > h - EDGE_SCROLL_MARGIN {
-                edge_pan.y -= 1.0;
-            }
+        if cursor.x < EDGE_SCROLL_MARGIN {
+            edge_pan.x -= 1.0;
+        }
+        if cursor.x > w - EDGE_SCROLL_MARGIN {
+            edge_pan.x += 1.0;
+        }
+        if cursor.y < EDGE_SCROLL_MARGIN {
+            edge_pan.y += 1.0;
+        }
+        if cursor.y > h - EDGE_SCROLL_MARGIN {
+            edge_pan.y -= 1.0;
+        }
 
-            if edge_pan != Vec2::ZERO {
-                pan += edge_pan.normalize() * EDGE_SCROLL_SPEED * dt;
-            }
+        if edge_pan != Vec2::ZERO {
+            pan += edge_pan.normalize() * EDGE_SCROLL_SPEED * dt;
         }
     }
 
     // Scale pan speed by zoom level so it feels consistent
-    transform.translation.x += pan.x * ortho.scale;
-    transform.translation.y += pan.y * ortho.scale;
+    let scale = ortho.scale;
+    transform.translation.x += pan.x * scale;
+    transform.translation.y += pan.y * scale;
 
     // Zoom (scroll wheel)
     for event in scroll_events.read() {

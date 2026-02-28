@@ -21,3 +21,13 @@
 - [ ] Rename duplicate ability names across factions: "Rally Cry" (Seekers vs Murder), "Undermine" (Clawed vs Seekers)
 - [ ] Consider splitting GAME_DESIGN.md into per-faction files for navigability (1450+ lines)
 - [ ] Add zodiac/astrology theming to The Murder's unit abilities (user intent noted in factions table but not yet reflected in unit designs)
+
+## From Voice Pipeline Implementation
+
+- [ ] Run Python voice training tests after setting up PyTorch environment (`cd training/voice && python test_model.py`)
+- [ ] Download Silero VAD v5 ONNX model to `assets/voice/silero_vad.onnx`
+- [ ] Generate TTS training data (`cd training/voice && python generate_tts.py`)
+- [ ] Train TC-ResNet8 keyword classifier (`cd training/voice && python train.py --data-dir data/tts`)
+- [ ] Record real voice samples for each vocabulary word (`cd training/voice && python record.py --word <word> --count 20`)
+- [ ] Add `NSMicrophoneUsageDescription` to Info.plist for macOS mic permission
+- [ ] Test end-to-end: run game → hold V → say "stop" → units stop

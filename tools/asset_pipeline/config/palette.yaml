@@ -12,6 +12,15 @@ terrain:
   water_dark: "#2D6BB5"
   sand: "#E8D5A3"
   snow: "#E8EEF2"
+  forest_green: "#4A7A2E"
+  forest_canopy: "#6B9E3D"
+  road_brown: "#9E8A6B"
+  road_edge: "#7A6B52"
+  ruins_gray: "#6E6E7A"
+  ruins_accent: "#3D8B8B"
+  cliff_dark: "#5A5A5A"
+  cliff_light: "#8C8C8C"
+  shallows_light: "#6AB4E8"
 
 buildings:
   metal_light: "#B0BEC5"

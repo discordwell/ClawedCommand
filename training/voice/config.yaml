@@ -1,0 +1,87 @@
+# Voice command keyword spotting configuration
+audio:
+  sample_rate: 16000
+  duration_sec: 1.0
+  n_fft: 512
+  hop_length: 320       # 16000 / 320 = 50 frames per second, 50 frames per 1s
+  n_mels: 40
+  fmin: 60
+  fmax: 7800
+  num_frames: 49         # Slightly under 50, matching 1s window
+
+model:
+  name: "TC-ResNet8"
+  num_classes: 31
+  k: 1                  # Width multiplier (increase for more capacity)
+  channels: [16, 24, 32, 48]   # k=1 channel widths
+
+training:
+  epochs: 100
+  batch_size: 64
+  learning_rate: 0.01
+  weight_decay: 0.001
+  optimizer: "adamw"
+  scheduler: "cosine"
+  warmup_epochs: 5
+  confidence_threshold: 0.7
+  val_split: 0.15
+  seed: 42
+
+augmentation:
+  noise_min_snr: 3.0
+  noise_max_snr: 30.0
+  pitch_shift_semitones: 2.5
+  speed_min: 0.85
+  speed_max: 1.15
+  reverb_room_size: 0.5
+
+tts:
+  voices:
+    - "Daniel"
+    - "Karen"
+    - "Moira"
+    - "Tessa"
+    - "Samantha"
+    - "Alex"
+    - "Tom"
+    - "Fiona"
+  speed_variations: [130, 160, 190, 220, 250]  # words per minute
+
+vocabulary:
+  commands:
+    - attack
+    - retreat
+    - move
+    - build
+    - hold
+    - patrol
+    - gather
+    - train
+    - stop
+    - defend
+    - select
+    - group
+  directions:
+    - north
+    - south
+    - east
+    - west
+  meta:
+    - base
+    - all
+    - workers
+    - army
+  units:
+    - pawdler
+    - nuisance
+    - chonk
+    - hisser
+    - yowler
+    - mouser
+  buildings:
+    - barracks
+    - refinery
+    - tower
+  special:
+    - unknown
+    - silence

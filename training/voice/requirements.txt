@@ -1,0 +1,6 @@
+torch>=2.0
+torchaudio>=2.0
+numpy
+pyyaml
+sounddevice
+audiomentations>=0.35.0

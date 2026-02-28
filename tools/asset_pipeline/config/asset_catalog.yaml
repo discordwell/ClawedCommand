@@ -59,6 +59,146 @@ terrain:
     output:
       type: single
       game_path: assets/sprites/terrain/sand.png
+  grass_base:
+    template: terrain
+    status: planned
+    type: terrain
+    tags: [base, passable, default]
+    params:
+      terrain_type: grass
+      description: Lush pastoral meadow grass. The default tile covering most of the map. Soft green with subtle blade variation.
+      width: 128
+      height: 128
+      extra_notes: "Most common tile. Must tile seamlessly in all directions. Subtle variation to avoid monotony."
+    output:
+      type: single
+      game_path: assets/sprites/terrain/grass_base.png
+  dirt_base:
+    template: terrain
+    status: planned
+    type: terrain
+    tags: [base, passable, path]
+    params:
+      terrain_type: dirt
+      description: Worn dirt ground with subtle paw-print impressions. Cleared earth where animals frequently travel.
+      width: 128
+      height: 128
+      extra_notes: "Passable terrain. Should contrast clearly with grass. Used for paths and clearings."
+    output:
+      type: single
+      game_path: assets/sprites/terrain/dirt_base.png
+  sand_base:
+    template: terrain
+    status: planned
+    type: terrain
+    tags: [base, passable, coastal]
+    params:
+      terrain_type: sand
+      description: Warm sandy ground at coastlines and beaches. Fine-grained with occasional tiny shells.
+      width: 128
+      height: 128
+      extra_notes: "Transition terrain between land and water. Slightly slower movement speed."
+    output:
+      type: single
+      game_path: assets/sprites/terrain/sand_base.png
+  forest_base:
+    template: terrain
+    status: planned
+    type: terrain
+    tags: [base, passable, cover, slow]
+    params:
+      terrain_type: forest
+      description: Dense forest floor with tree canopy overhead. Dappled light filtering through leaves. Visible tree trunks rising from tile edges into the height zone.
+      width: 128
+      height: 128
+      extra_notes: "Passable but slows movement. Provides cover/concealment. Trees extend into the height zone above the diamond."
+    output:
+      type: single
+      game_path: assets/sprites/terrain/forest_base.png
+  water_base:
+    template: terrain
+    status: planned
+    type: terrain
+    tags: [base, impassable, liquid]
+    params:
+      terrain_type: deep water
+      description: Deep water tile with dark blue surface. Subtle wave ripples and occasional fish shadow beneath. Impassable to ground units.
+      width: 128
+      height: 128
+      extra_notes: "Impassable to ground units. Fish shadows hint at Food resources. Slightly reflective surface."
+    output:
+      type: single
+      game_path: assets/sprites/terrain/water_base.png
+  shallows_base:
+    template: terrain
+    status: planned
+    type: terrain
+    tags: [base, passable, liquid, slow]
+    params:
+      terrain_type: shallows
+      description: Shallow water with visible sandy bottom. Ankle-deep, translucent blue-green with gentle ripples. Passable but slow.
+      width: 128
+      height: 128
+      extra_notes: "Passable but significantly slows movement. Lighter color than deep water. Sandy bottom visible through water."
+    output:
+      type: single
+      game_path: assets/sprites/terrain/shallows_base.png
+  rock_base:
+    template: terrain
+    status: planned
+    type: terrain
+    tags: [base, impassable, elevation]
+    params:
+      terrain_type: rock
+      description: Solid rocky outcrop. Heavy gray stone with cracks and lichen. Impassable terrain forming natural barriers and cliff tops.
+      width: 128
+      height: 128
+      extra_notes: "Impassable. Visually heavier and darker than passable tiles. Used for cliffs and natural walls."
+    output:
+      type: single
+      game_path: assets/sprites/terrain/rock_base.png
+  ramp_base:
+    template: terrain
+    status: planned
+    type: terrain
+    tags: [base, passable, elevation, transition]
+    params:
+      terrain_type: ramp
+      description: Sloped terrain connecting two elevation levels. Visible incline with packed earth and small stones. Allows ground units to traverse elevation changes.
+      width: 128
+      height: 128
+      extra_notes: "Connects elevation levels. Should clearly read as a slope from the isometric perspective. Directional — units walk up/down."
+    output:
+      type: single
+      game_path: assets/sprites/terrain/ramp_base.png
+  road_base:
+    template: terrain
+    status: planned
+    type: terrain
+    tags: [base, passable, speed_boost]
+    params:
+      terrain_type: road
+      description: Cobblestone road built by the old world. Worn but functional paving stones in earthy brown tones. Grants movement speed bonus.
+      width: 128
+      height: 128
+      extra_notes: "Passable with speed bonus. Old-world construction, slightly crumbled at edges. Should tile into straight and curved road segments."
+    output:
+      type: single
+      game_path: assets/sprites/terrain/road_base.png
+  tech_ruins_base:
+    template: terrain
+    status: planned
+    type: terrain
+    tags: [base, passable, special, tech]
+    params:
+      terrain_type: tech ruins
+      description: Cracked concrete and exposed circuitry from old-world server farms. Faint blue-green glow from dormant tech beneath rubble. GPU Cores may be scavenged here.
+      width: 128
+      height: 128
+      extra_notes: "Special terrain tied to GPU Core resource deposits. Faint tech glow accents. Post-apocalyptic data center ruins."
+    output:
+      type: single
+      game_path: assets/sprites/terrain/tech_ruins_base.png
 buildings:
   the_box:
     template: building

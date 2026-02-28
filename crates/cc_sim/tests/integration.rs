@@ -33,9 +33,7 @@ fn make_sim(map: GameMap) -> (World, Schedule) {
         (
             tick_system,
             process_commands,
-            apply_deferred,
             movement_system,
-            apply_deferred,
             grid_sync_system,
         )
             .chain(),
@@ -144,7 +142,7 @@ fn unit_pathfinds_around_obstacle() {
     let mut map = GameMap::new(32, 32);
     // Wall from (10,0) to (10,15)
     for y in 0..16 {
-        map.get_mut(GridPos::new(10, y)).unwrap().passable = false;
+        map.get_mut(GridPos::new(10, y)).unwrap().terrain = cc_core::terrain::TerrainType::Rock;
     }
 
     let (mut world, mut schedule) = make_sim(map);
@@ -237,7 +235,7 @@ fn select_and_deselect() {
 #[test]
 fn move_to_impassable_target_does_nothing() {
     let mut map = GameMap::new(32, 32);
-    map.get_mut(GridPos::new(10, 10)).unwrap().passable = false;
+    map.get_mut(GridPos::new(10, 10)).unwrap().terrain = cc_core::terrain::TerrainType::Rock;
 
     let (mut world, mut schedule) = make_sim(map);
     let entity = spawn_unit(&mut world, GridPos::new(5, 5));
@@ -309,7 +307,7 @@ fn pathfinding_stress_64x64() {
     for y in 0..64 {
         for x in 0..64 {
             if lcg_next(&mut seed) % 5 == 0 {
-                map.get_mut(GridPos::new(x, y)).unwrap().passable = false;
+                map.get_mut(GridPos::new(x, y)).unwrap().terrain = cc_core::terrain::TerrainType::Rock;
             }
         }
     }
@@ -330,7 +328,7 @@ fn pathfinding_stress_64x64() {
             continue;
         }
 
-        if let Some(path) = pathfinding::find_path(&map, start, end) {
+        if let Some(path) = pathfinding::find_path(&map, start, end, cc_core::terrain::FactionId::CatGPT) {
             paths_found += 1;
 
             // Every waypoint must be passable

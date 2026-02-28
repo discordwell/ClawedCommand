@@ -1,5 +1,7 @@
+pub mod autotile;
 pub mod camera;
 pub mod selection;
+pub mod terrain_atlas;
 pub mod tilemap;
 pub mod units;
 
@@ -9,7 +11,8 @@ pub struct RenderPlugin;
 
 impl Plugin for RenderPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, tilemap::spawn_tilemap)
+        app.init_resource::<terrain_atlas::TerrainAtlas>()
+            .add_systems(Startup, tilemap::spawn_tilemap)
             .add_systems(
                 Update,
                 (

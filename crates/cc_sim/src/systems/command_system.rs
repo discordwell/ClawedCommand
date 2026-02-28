@@ -4,29 +4,43 @@ use std::collections::VecDeque;
 use crate::pathfinding;
 use crate::resources::{CommandQueue, MapResource};
 use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::{MoveTarget, Path, Position, Selected};
+use cc_core::components::{MoveTarget, Owner, Path, Position, Selected};
 use cc_core::coords::WorldPos;
+use cc_core::terrain::FactionId;
 
 /// Process all queued commands for this tick.
 pub fn process_commands(
     mut cmd_queue: ResMut<CommandQueue>,
     map_res: Res<MapResource>,
     mut commands: Commands,
-    mut query: Query<(Entity, &Position, Option<&mut MoveTarget>, Option<&mut Path>)>,
+    mut query: Query<(
+        Entity,
+        &Position,
+        Option<&Owner>,
+        Option<&mut MoveTarget>,
+        Option<&mut Path>,
+    )>,
 ) {
     let pending = cmd_queue.drain();
 
     for cmd in pending {
         match cmd {
             GameCommand::Move { unit_ids, target } => {
-                for (entity, pos, move_target, path) in query.iter_mut() {
+                for (entity, pos, owner, move_target, path) in query.iter_mut() {
                     let eid = EntityId(entity.to_bits());
                     if !unit_ids.contains(&eid) {
                         continue;
                     }
 
+                    // Determine faction from owner (default to CatGPT for unowned units)
+                    let faction = owner
+                        .and_then(|o| FactionId::from_u8(o.player_id))
+                        .unwrap_or(FactionId::CatGPT);
+
                     let start = pos.world.to_grid();
-                    if let Some(waypoints) = pathfinding::find_path(&map_res.map, start, target) {
+                    if let Some(waypoints) =
+                        pathfinding::find_path(&map_res.map, start, target, faction)
+                    {
                         // Grab first waypoint before moving vec into Path
                         let first_waypoint = waypoints[0];
                         let path_component = Path {
@@ -50,7 +64,7 @@ pub fn process_commands(
                 }
             }
             GameCommand::Stop { unit_ids } => {
-                for (entity, _, _, _) in query.iter_mut() {
+                for (entity, _, _, _, _) in query.iter_mut() {
                     let eid = EntityId(entity.to_bits());
                     if !unit_ids.contains(&eid) {
                         continue;
@@ -61,7 +75,7 @@ pub fn process_commands(
                 }
             }
             GameCommand::Select { unit_ids } => {
-                for (entity, _, _, _) in query.iter() {
+                for (entity, _, _, _, _) in query.iter() {
                     let eid = EntityId(entity.to_bits());
                     if unit_ids.contains(&eid) {
                         commands.entity(entity).insert(Selected);
@@ -69,7 +83,7 @@ pub fn process_commands(
                 }
             }
             GameCommand::Deselect => {
-                for (entity, _, _, _) in query.iter() {
+                for (entity, _, _, _, _) in query.iter() {
                     commands.entity(entity).remove::<Selected>();
                 }
             }

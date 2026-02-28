@@ -8,20 +8,15 @@ use cc_sim::resources::CommandQueue;
 pub fn handle_mouse_click(
     mouse_button: Res<ButtonInput<MouseButton>>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    windows: Query<&Window>,
-    camera_q: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
+    window: Single<&Window>,
+    camera_q: Single<(&Camera, &GlobalTransform), With<Camera2d>>,
     units: Query<(Entity, &Position, Option<&Selected>), With<UnitType>>,
     mut cmd_queue: ResMut<CommandQueue>,
 ) {
-    let Ok(window) = windows.get_single() else {
-        return;
-    };
     let Some(cursor_pos) = window.cursor_position() else {
         return;
     };
-    let Ok((camera, camera_transform)) = camera_q.get_single() else {
-        return;
-    };
+    let (camera, camera_transform) = *camera_q;
 
     // Convert cursor to world coordinates via camera
     let Ok(world_pos) = camera.viewport_to_world_2d(camera_transform, cursor_pos) else {

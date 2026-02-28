@@ -4,6 +4,7 @@ mod setup;
 
 use bevy::prelude::*;
 use cc_sim::SimPlugin;
+use cc_voice::VoicePlugin;
 
 fn main() {
     App::new()
@@ -12,7 +13,7 @@ fn main() {
                 .set(WindowPlugin {
                     primary_window: Some(Window {
                         title: "ClawedCommand".into(),
-                        resolution: (1280., 720.).into(),
+                        resolution: (1280u32, 720u32).into(),
                         ..default()
                     }),
                     ..default()
@@ -22,6 +23,7 @@ fn main() {
         .add_plugins(SimPlugin)
         .add_plugins(renderer::RenderPlugin)
         .add_plugins(input::InputPlugin)
+        .add_plugins(VoicePlugin)
         .add_systems(Startup, setup::setup_game)
         .run();
 }

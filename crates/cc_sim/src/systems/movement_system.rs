@@ -1,8 +1,9 @@
 use bevy::prelude::*;
 
+use crate::resources::MapResource;
 use cc_core::components::{MoveTarget, MovementSpeed, Path, Position, Velocity};
 use cc_core::coords::WorldPos;
-use cc_core::math::{Fixed, FIXED_ZERO};
+use cc_core::math::{Fixed, FIXED_ONE, FIXED_ZERO};
 
 /// Check if a unit should snap to its target (within one tick's movement).
 pub fn should_snap_to_target(pos: WorldPos, target: WorldPos, speed: Fixed) -> bool {
@@ -15,6 +16,7 @@ pub fn should_snap_to_target(pos: WorldPos, target: WorldPos, speed: Fixed) -> b
 
 pub fn movement_system(
     mut commands: Commands,
+    map_res: Res<MapResource>,
     mut query: Query<(
         Entity,
         &mut Position,
@@ -26,18 +28,32 @@ pub fn movement_system(
 ) {
     for (entity, mut pos, mut vel, speed, move_target, path) in query.iter_mut() {
         let Some(target) = move_target else {
-            // No target — zero velocity
+            // No target -- zero velocity
             vel.dx = FIXED_ZERO;
             vel.dy = FIXED_ZERO;
             continue;
+        };
+
+        // Get terrain movement cost at current position
+        let grid_pos = pos.world.to_grid();
+        let terrain_cost = map_res
+            .map
+            .movement_cost(grid_pos)
+            .unwrap_or(FIXED_ONE);
+
+        // Effective speed = base_speed / terrain_movement_cost
+        let effective_speed = if terrain_cost > FIXED_ZERO {
+            speed.speed / terrain_cost
+        } else {
+            speed.speed
         };
 
         let dx = target.target.x - pos.world.x;
         let dy = target.target.y - pos.world.y;
         let dist_sq = dx * dx + dy * dy;
 
-        // Snap when within one tick's movement — prevents oscillation at any speed
-        let threshold_sq = speed.speed * speed.speed;
+        // Snap when within one tick's movement -- prevents oscillation at any speed
+        let threshold_sq = effective_speed * effective_speed;
         if dist_sq <= threshold_sq {
             // Arrived at current waypoint
             pos.world = target.target;
@@ -78,8 +94,8 @@ pub fn movement_system(
             let approx_dist = max_d + Fixed::from_num(0.4f32) * min_d;
 
             if approx_dist > FIXED_ZERO {
-                vel.dx = dx * speed.speed / approx_dist;
-                vel.dy = dy * speed.speed / approx_dist;
+                vel.dx = dx * effective_speed / approx_dist;
+                vel.dy = dy * effective_speed / approx_dist;
             }
 
             // Apply velocity
@@ -99,7 +115,7 @@ mod tests {
         let pos = WorldPos::new(Fixed::from_num(0.0f32), Fixed::from_num(0.0f32));
         let target = WorldPos::new(Fixed::from_num(0.1f32), Fixed::from_num(0.0f32));
         let speed = Fixed::from_num(0.15f32);
-        // Distance 0.1 < speed 0.15 → should snap
+        // Distance 0.1 < speed 0.15 -> should snap
         assert!(should_snap_to_target(pos, target, speed));
     }
 
@@ -117,7 +133,7 @@ mod tests {
         let pos = WorldPos::new(Fixed::from_num(4.9f32), Fixed::from_num(4.9f32));
         let target = WorldPos::new(fixed_from_i32(5), fixed_from_i32(5));
         let speed = Fixed::from_num(5.0f32); // Very fast
-        // Distance ~0.14, speed 5.0 → should snap
+        // Distance ~0.14, speed 5.0 -> should snap
         assert!(should_snap_to_target(pos, target, speed));
     }
 }

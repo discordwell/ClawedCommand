@@ -136,7 +136,19 @@ Priority/conflict resolution: player commands override AI commands for the same 
 
 > Full technical details in **[VOICE.md](./VOICE.md)**.
 
-Players vibecode Lua agent scripts in **construct mode** (an in-game LLM-powered scripting environment) and command them by voice during gameplay. Push-to-talk speech recognition feeds into a tiered intent classifier (keyword match → fuzzy match → Mistral agent), which triggers the matching Lua script. Scripts run in the WASM sandbox with access to the MCP game tools.
+**Two layers — keyword spotting (implemented) and Lua scripting (future):**
+
+**Layer 1 — On-device keyword spotting (`cc_voice` crate, Phase 1 complete):**
+- **Model**: TC-ResNet8 (~80-120K params, <300KB ONNX) classifies 1-second mel spectrograms into 31 keyword classes
+- **VAD gate**: Silero VAD (~1-2MB ONNX) detects speech before running classifier
+- **Audio**: `cpal` → lock-free ring buffer → inference thread → crossbeam channel → Bevy messages. Three-thread architecture: zero frame impact
+- **Training**: TTS synthetic (macOS `say` × 8 voices × 5 speeds) + real recordings + augmentation (noise, pitch, speed, SpecAugment)
+- **Vocabulary**: 12 command verbs, 4 directions, 4 meta, 6 units, 3 buildings + unknown/silence = 31 classes
+- **Latency**: sub-10ms inference, fully offline, PTT on V key
+- **Intent mapping**: `stop`/`hold` → `GameCommand::Stop`; parameterized commands (attack, move, build) stubbed for context resolution
+
+**Layer 2 — Lua construct mode + voice buffs (future, per VOICE.md):**
+Players vibecode Lua agent scripts in **construct mode** (an in-game LLM-powered scripting environment) and command them by voice during gameplay. Matched Lua scripts run in the WASM sandbox with access to the MCP game tools.
 
 **Voice commands are a core game mechanic:** units touched by a voice-triggered script receive a temporary command-specific buff (e.g., attack → damage buff, retreat → speed/armor buff). This incentivizes voice use over clicking and creates strategic depth around cooldown management and script design.
 
@@ -314,14 +326,16 @@ ClawedCommand/
 │   │   │   └── main.rs
 │   │   ├── assets/             # Sprites, tilemaps, audio
 │   │   └── Cargo.toml
-│   ├── cc_voice/               # Voice command system
+│   ├── cc_voice/               # Voice command recognition (on-device CNN)
 │   │   ├── src/
-│   │   │   ├── speech.rs       # Speech-to-text (Web Speech API + Whisper fallback)
-│   │   │   ├── intent.rs       # Tiered intent classification pipeline
-│   │   │   ├── lua_runtime.rs  # Lua script execution in WASM sandbox
-│   │   │   ├── buff.rs         # VoiceCommandBuff component + system
-│   │   │   ├── construct.rs    # Construct mode state + LLM integration
-│   │   │   └── lib.rs
+│   │   │   ├── mel.rs          # Mel spectrogram computation (matches Python pipeline)
+│   │   │   ├── vad.rs          # Silero VAD wrapper (speech detection)
+│   │   │   ├── classifier.rs   # TC-ResNet8 ONNX keyword classifier
+│   │   │   ├── audio.rs        # cpal mic capture → lock-free ring buffer
+│   │   │   ├── pipeline.rs     # Three-thread orchestrator (audio → inference → Bevy)
+│   │   │   ├── intent.rs       # Keyword → GameCommand mapping
+│   │   │   ├── events.rs       # VoiceCommandEvent, VoiceStateChanged messages
+│   │   │   └── lib.rs          # VoicePlugin, VoiceConfig, VoiceState
 │   │   └── Cargo.toml
 │   ├── cc_agent/               # AI agent integration
 │   │   ├── src/
@@ -347,6 +361,15 @@ ClawedCommand/
 │   ├── replay_converter/       # Convert replays to training data
 │   └── asset_pipeline/         # Asset processing scripts
 ├── training/
+│   ├── voice/                  # TC-ResNet8 keyword spotting training pipeline
+│   │   ├── config.yaml         # Audio params, vocabulary, hyperparameters
+│   │   ├── model.py            # TC-ResNet8 PyTorch model + ONNX export
+│   │   ├── generate_tts.py     # macOS TTS synthetic data generator
+│   │   ├── augment.py          # Audio augmentation (noise, pitch, speed, SpecAugment)
+│   │   ├── dataset.py          # PyTorch Dataset (WAV → mel spectrogram)
+│   │   ├── record.py           # CLI recording tool for real samples
+│   │   ├── train.py            # Training loop (AdamW + cosine LR + ONNX export)
+│   │   └── test_model.py       # Model + pipeline tests
 │   ├── data/                   # JSONL training/eval datasets
 │   ├── configs/                # Fine-tuning YAML configs (see MISTRAL.md)
 │   └── scripts/                # Python fine-tuning job scripts
@@ -429,7 +452,8 @@ ClawedCommand/
 | Fine-tuning data quality | Bootstrap with 200-500 hand-authored examples, augment with self-play, enrich with human replays |
 | Competitive play inference costs (~$0.72/player/game) | Monitor token usage, optimize system prompts, consider caching common game state queries |
 | Sandboxed code execution security | WASM sandbox for strategy scripts, strict resource limits |
-| Web Speech API Chromium-only | Whisper.js fallback for non-Chromium browsers and offline/native clients |
+| ONNX Runtime distribution size (~20-50MB dylib) | `load-dynamic` feature loads at runtime; voice feature is optional |
+| Mel spectrogram Rust/Python mismatch | Cross-validated with reference signals in test fixtures |
 | Voice buff balance | Start conservative (low magnitude, short duration), tune via playtesting; cooldown prevents spam |
 | LLM-generated Lua quality | Starter scripts as examples, constrained API surface, sandbox catches runtime errors |
 | Construct mode mid-mission distraction | Game doesn't pause — intentional risk/reward tradeoff for players |
@@ -453,7 +477,8 @@ ClawedCommand/
 | AI Interface | MCP → Mistral function calling (OpenAI-compatible) |
 | Fine-tuning | Unsloth + TRL (Qwen/Devstral/xLAM), Mistral API (Codestral) |
 | Voice Script Language | Lua (via `rlua`/`mlua` in WASM sandbox) |
-| Speech-to-Text | Web Speech API (primary), Whisper.js via Transformers.js (fallback) |
+| Voice Keywords | TC-ResNet8 CNN via ONNX Runtime + Silero VAD (on-device, sub-10ms) |
+| Voice Scripts | Lua construct mode + Mistral agent (future, see VOICE.md) |
 | Sandbox | Wasmtime (WASM runtime for strategy scripts + Lua voice scripts) |
 | Training | Python + Unsloth + TRL + HuggingFace |
 | Asset Authoring | Aseprite (sprites), Tiled (maps) |

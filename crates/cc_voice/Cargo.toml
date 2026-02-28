@@ -1,0 +1,25 @@
+[package]
+name = "cc_voice"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["voice"]
+voice = ["dep:ort", "dep:cpal", "dep:ringbuf", "dep:realfft", "dep:crossbeam-channel"]
+
+[dependencies]
+cc_core = { path = "../cc_core", features = ["bevy"] }
+cc_sim = { path = "../cc_sim" }
+bevy = { workspace = true }
+
+# Voice dependencies (optional — disabled for builds without voice hardware)
+ort = { workspace = true, optional = true }
+cpal = { workspace = true, optional = true }
+ringbuf = { workspace = true, optional = true }
+realfft = { workspace = true, optional = true }
+crossbeam-channel = { workspace = true, optional = true }
+
+log = { workspace = true }
+
+[dev-dependencies]
+approx = "0.5"

@@ -22,9 +22,7 @@ impl Plugin for SimSystemsPlugin {
                 (
                     tick_system::tick_system,
                     command_system::process_commands,
-                    apply_deferred,
                     movement_system::movement_system,
-                    apply_deferred,
                     grid_sync_system::grid_sync_system,
                 )
                     .chain(),

@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use cc_core::coords::{GridPos, WorldPos, world_to_screen, TILE_HALF_HEIGHT, TILE_HALF_WIDTH};
+use cc_core::terrain::TerrainType;
 use cc_sim::resources::MapResource;
 
 /// Marker for tile sprite entities.
@@ -18,16 +19,10 @@ pub fn spawn_tilemap(mut commands: Commands, map_res: Res<MapResource>) {
             let world = WorldPos::from_grid(grid);
             let screen = world_to_screen(world);
 
-            let color = if tile.passable {
-                // Slight variation for visual interest
-                if (x + y) % 2 == 0 {
-                    Color::srgb(0.28, 0.55, 0.25) // Grass green
-                } else {
-                    Color::srgb(0.32, 0.58, 0.28) // Slightly lighter green
-                }
-            } else {
-                Color::srgb(0.35, 0.32, 0.30) // Rock/wall gray
-            };
+            let color = terrain_color(tile.terrain, x, y);
+
+            // Elevation visual offset: higher tiles shift up on screen
+            let elevation_offset = tile.elevation as f32 * 8.0;
 
             commands.spawn((
                 TileSprite,
@@ -42,7 +37,11 @@ pub fn spawn_tilemap(mut commands: Commands, map_res: Res<MapResource>) {
                 },
                 // Note: screen Y is inverted (Bevy Y is up, isometric Y goes down)
                 Transform {
-                    translation: Vec3::new(screen.x, -screen.y, -10.0),
+                    translation: Vec3::new(
+                        screen.x,
+                        -screen.y + elevation_offset,
+                        -10.0,
+                    ),
                     // Rotate 45 degrees to create diamond shape
                     rotation: Quat::from_rotation_z(std::f32::consts::FRAC_PI_4),
                     scale: Vec3::new(0.71, 0.71, 1.0), // sqrt(2)/2 to fit diamond into tile bounds
@@ -50,5 +49,46 @@ pub fn spawn_tilemap(mut commands: Commands, map_res: Res<MapResource>) {
                 },
             ));
         }
+    }
+}
+
+/// Map terrain type to a placeholder color for rendering.
+fn terrain_color(terrain: TerrainType, x: i32, y: i32) -> Color {
+    let checker = (x + y) % 2 == 0;
+    match terrain {
+        TerrainType::Grass => {
+            if checker {
+                Color::srgb(0.28, 0.55, 0.25)
+            } else {
+                Color::srgb(0.32, 0.58, 0.28)
+            }
+        }
+        TerrainType::Dirt => {
+            if checker {
+                Color::srgb(0.55, 0.42, 0.28)
+            } else {
+                Color::srgb(0.58, 0.45, 0.30)
+            }
+        }
+        TerrainType::Sand => Color::srgb(0.85, 0.78, 0.55),
+        TerrainType::Forest => {
+            if checker {
+                Color::srgb(0.18, 0.42, 0.15)
+            } else {
+                Color::srgb(0.22, 0.45, 0.18)
+            }
+        }
+        TerrainType::Water => {
+            if checker {
+                Color::srgb(0.15, 0.35, 0.65)
+            } else {
+                Color::srgb(0.18, 0.38, 0.68)
+            }
+        }
+        TerrainType::Shallows => Color::srgb(0.42, 0.70, 0.90),
+        TerrainType::Rock => Color::srgb(0.35, 0.32, 0.30),
+        TerrainType::Ramp => Color::srgb(0.50, 0.45, 0.38),
+        TerrainType::Road => Color::srgb(0.62, 0.54, 0.42),
+        TerrainType::TechRuins => Color::srgb(0.43, 0.43, 0.48),
     }
 }

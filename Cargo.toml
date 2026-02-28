@@ -1,8 +1,17 @@
 [workspace]
-members = ["crates/cc_core", "crates/cc_sim", "crates/cc_client"]
+members = ["crates/cc_core", "crates/cc_sim", "crates/cc_client", "crates/cc_voice"]
 resolver = "2"
 
 [workspace.dependencies]
-bevy = { version = "0.15", features = ["default"] }
+bevy = { version = "0.18", features = ["default"] }
 serde = { version = "1", features = ["derive"] }
 fixed = "1"
+ron = "0.12"
+noise = "0.9"
+rand = "0.8"
+ort = { version = "2.0.0-rc.11", features = ["load-dynamic"] }
+ringbuf = "0.4"
+realfft = "3.4"
+crossbeam-channel = "0.5"
+cpal = "0.15"
+log = "0.4"

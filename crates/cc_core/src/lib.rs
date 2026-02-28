@@ -2,4 +2,7 @@ pub mod commands;
 pub mod components;
 pub mod coords;
 pub mod map;
+pub mod map_format;
+pub mod map_gen;
 pub mod math;
+pub mod terrain;

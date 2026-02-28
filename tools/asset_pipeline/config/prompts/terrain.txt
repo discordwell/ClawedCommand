@@ -1,11 +1,12 @@
-Create a single isometric terrain tile for a 2D RTS game.
+Create a single isometric tile for a 2D RTS game. Art style: Into the Breach meets Redwall — clean, minimal, readable, cute but tactical. The tile should look like it's viewed from a 2:1 isometric perspective.
 
-Tile type: {tile_type}
+Canvas: 128x128 pixels, transparent background.
+Diamond zone: 128 pixels wide by 64 pixels tall, bottom-aligned (rows 64-128). This is the flat isometric tile surface.
+Height zone: top 64 rows — for features extending above the tile plane (trees, pillars, cliff faces).
+
+Terrain type: {terrain_type}
 Description: {description}
 
-Specifications:
-- Isometric diamond shape, viewed from standard RTS top-down isometric angle (~30 degrees)
-- Tile size: {width}x{height} pixels
-- The tile must tile seamlessly with adjacent terrain
-- Keep detail level appropriate for a tile that will be repeated across a map
-- {extra_notes}
+Color palette: {palette_colors}
+
+The tile should tile seamlessly with adjacent tiles of the same type when placed in an isometric grid. Keep the style clean and vector-like. No heavy texturing — rely on flat colors with subtle gradients.
