@@ -121,9 +121,10 @@ pub fn detect_events(
     }
 
     // Unit died: own unit in previous but dead or missing in current
-    let _current_my_ids: HashSet<EntityId> = current
+    let current_alive_ids: HashSet<EntityId> = current
         .my_units
         .iter()
+        .filter(|u| !u.is_dead)
         .map(|u| u.id)
         .collect();
 
@@ -131,11 +132,7 @@ pub fn detect_events(
         if prev_unit.is_dead {
             continue;
         }
-        let still_alive = current
-            .my_units
-            .iter()
-            .any(|u| u.id == prev_unit.id && !u.is_dead);
-        if !still_alive {
+        if !current_alive_ids.contains(&prev_unit.id) {
             events.push(ScriptEvent::UnitDied {
                 unit_id: prev_unit.id,
             });

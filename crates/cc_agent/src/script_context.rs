@@ -176,15 +176,32 @@ impl<'a> ScriptContext<'a> {
             .collect()
     }
 
-    /// Find nearest enemy to a position.
+    /// Find nearest living enemy to a position.
     pub fn nearest_enemy(&mut self, from: GridPos) -> Option<&UnitSnapshot> {
         if !self.budget.spend(COST_SPATIAL) {
             return None;
         }
         let search_radius = 32; // max search radius in tiles
-        self.enemy_spatial
-            .nearest(from, search_radius, &self.state.enemy_units)
-            .map(|idx| &self.state.enemy_units[idx])
+        let world_from = cc_core::coords::WorldPos::from_grid(from);
+        let max_dist = fixed_from_i32(search_radius);
+        let max_dist_sq = max_dist * max_dist;
+
+        let mut best: Option<(usize, Fixed)> = None;
+        for (idx, unit) in self.state.enemy_units.iter().enumerate() {
+            if unit.is_dead {
+                continue;
+            }
+            let dist_sq = world_from.distance_squared(unit.world_pos);
+            if dist_sq > max_dist_sq {
+                continue;
+            }
+            match &best {
+                Some((_, best_dist)) if dist_sq >= *best_dist => {}
+                _ => best = Some((idx, dist_sq)),
+            }
+        }
+
+        best.map(|(idx, _)| &self.state.enemy_units[idx])
     }
 
     /// Find nearest ally to a position, optionally filtered by kind.

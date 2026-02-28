@@ -1,5 +1,5 @@
 use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::UnitKind;
+use cc_core::components::{BuildingKind, UnitKind};
 use cc_core::coords::GridPos;
 use serde_json::Value;
 
@@ -190,31 +190,86 @@ pub fn execute_tool(
         // -----------------------------------------------------------------
         "move_units" => {
             let unit_ids = parse_entity_ids(args, "unit_ids");
-            let x = args["x"].as_i64().unwrap_or(0) as i32;
-            let y = args["y"].as_i64().unwrap_or(0) as i32;
-            (serde_json::json!({"status": "ok"}), vec![GameCommand::Move { unit_ids, target: GridPos::new(x, y) }])
+            let Some(x) = args["x"].as_i64() else {
+                return (serde_json::json!({"error": "missing required field: x"}), vec![]);
+            };
+            let Some(y) = args["y"].as_i64() else {
+                return (serde_json::json!({"error": "missing required field: y"}), vec![]);
+            };
+            (serde_json::json!({"status": "ok"}), vec![GameCommand::Move { unit_ids, target: GridPos::new(x as i32, y as i32) }])
         }
         "attack_units" => {
             let unit_ids = parse_entity_ids(args, "unit_ids");
-            let target_id = args["target_id"].as_u64().unwrap_or(0);
+            let Some(target_id) = args["target_id"].as_u64() else {
+                return (serde_json::json!({"error": "missing required field: target_id"}), vec![]);
+            };
             (serde_json::json!({"status": "ok"}), vec![GameCommand::Attack { unit_ids, target: EntityId(target_id) }])
+        }
+        "build" => {
+            let Some(builder_id) = args["builder_id"].as_u64() else {
+                return (serde_json::json!({"error": "missing required field: builder_id"}), vec![]);
+            };
+            let Some(building_type) = args["building_type"].as_str() else {
+                return (serde_json::json!({"error": "missing required field: building_type"}), vec![]);
+            };
+            let Some(kind) = parse_building_kind_str(building_type) else {
+                return (serde_json::json!({"error": format!("unknown building type: {building_type}")}), vec![]);
+            };
+            let Some(x) = args["x"].as_i64() else {
+                return (serde_json::json!({"error": "missing required field: x"}), vec![]);
+            };
+            let Some(y) = args["y"].as_i64() else {
+                return (serde_json::json!({"error": "missing required field: y"}), vec![]);
+            };
+            (serde_json::json!({"status": "ok"}), vec![GameCommand::Build {
+                builder: EntityId(builder_id),
+                building_kind: kind,
+                position: GridPos::new(x as i32, y as i32),
+            }])
+        }
+        "train_unit" => {
+            let Some(building_id) = args["building_id"].as_u64() else {
+                return (serde_json::json!({"error": "missing required field: building_id"}), vec![]);
+            };
+            let Some(unit_type) = args["unit_type"].as_str() else {
+                return (serde_json::json!({"error": "missing required field: unit_type"}), vec![]);
+            };
+            let Some(kind) = parse_unit_kind_str(unit_type) else {
+                return (serde_json::json!({"error": format!("unknown unit type: {unit_type}")}), vec![]);
+            };
+            (serde_json::json!({"status": "ok"}), vec![GameCommand::TrainUnit {
+                building: EntityId(building_id),
+                unit_kind: kind,
+            }])
         }
         "gather_resource" => {
             let unit_ids = parse_entity_ids(args, "unit_ids");
-            let deposit_id = args["deposit_id"].as_u64().unwrap_or(0);
+            let Some(deposit_id) = args["deposit_id"].as_u64() else {
+                return (serde_json::json!({"error": "missing required field: deposit_id"}), vec![]);
+            };
             (serde_json::json!({"status": "ok"}), vec![GameCommand::GatherResource { unit_ids, deposit: EntityId(deposit_id) }])
         }
         "patrol" => {
             let unit_ids = parse_entity_ids(args, "unit_ids");
-            let x = args["x"].as_i64().unwrap_or(0) as i32;
-            let y = args["y"].as_i64().unwrap_or(0) as i32;
-            (serde_json::json!({"status": "ok"}), vec![GameCommand::AttackMove { unit_ids, target: GridPos::new(x, y) }])
+            let Some(x) = args["x"].as_i64() else {
+                return (serde_json::json!({"error": "missing required field: x"}), vec![]);
+            };
+            let Some(y) = args["y"].as_i64() else {
+                return (serde_json::json!({"error": "missing required field: y"}), vec![]);
+            };
+            (serde_json::json!({"status": "ok"}), vec![GameCommand::AttackMove { unit_ids, target: GridPos::new(x as i32, y as i32) }])
         }
         "set_rally_point" => {
-            let building_id = args["building_id"].as_u64().unwrap_or(0);
-            let x = args["x"].as_i64().unwrap_or(0) as i32;
-            let y = args["y"].as_i64().unwrap_or(0) as i32;
-            (serde_json::json!({"status": "ok"}), vec![GameCommand::SetRallyPoint { building: EntityId(building_id), target: GridPos::new(x, y) }])
+            let Some(building_id) = args["building_id"].as_u64() else {
+                return (serde_json::json!({"error": "missing required field: building_id"}), vec![]);
+            };
+            let Some(x) = args["x"].as_i64() else {
+                return (serde_json::json!({"error": "missing required field: x"}), vec![]);
+            };
+            let Some(y) = args["y"].as_i64() else {
+                return (serde_json::json!({"error": "missing required field: y"}), vec![]);
+            };
+            (serde_json::json!({"status": "ok"}), vec![GameCommand::SetRallyPoint { building: EntityId(building_id), target: GridPos::new(x as i32, y as i32) }])
         }
         "execute_strategy" => {
             let strategy = args["strategy"].as_str().unwrap_or("");
@@ -252,6 +307,16 @@ fn unit_to_json(unit: &crate::snapshot::UnitSnapshot) -> Value {
         "attacking": unit.is_attacking,
         "idle": unit.is_idle,
     })
+}
+
+fn parse_building_kind_str(s: &str) -> Option<BuildingKind> {
+    match s {
+        "TheBox" => Some(BuildingKind::TheBox),
+        "CatTree" => Some(BuildingKind::CatTree),
+        "FishMarket" => Some(BuildingKind::FishMarket),
+        "LitterBox" => Some(BuildingKind::LitterBox),
+        _ => None,
+    }
 }
 
 fn parse_unit_kind_str(s: &str) -> Option<UnitKind> {

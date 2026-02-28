@@ -29,10 +29,10 @@ impl ScriptRegistry {
     }
 }
 
-/// Resource: previous tick's snapshot for event diffing.
+/// Resource: previous tick's snapshot for event diffing, keyed by player_id.
 #[derive(Resource, Default)]
-pub struct PreviousSnapshot {
-    pub snapshot: Option<GameStateSnapshot>,
+pub struct PreviousSnapshots {
+    pub snapshots: std::collections::HashMap<u8, GameStateSnapshot>,
 }
 
 /// Bevy system: runs registered scripts in response to detected events.
@@ -43,7 +43,7 @@ pub fn script_runner_system(
     player_resources: Res<PlayerResources>,
     mut cmd_queue: ResMut<CommandQueue>,
     mut registry: ResMut<ScriptRegistry>,
-    mut prev_snapshot: ResMut<PreviousSnapshot>,
+    mut prev_snapshots: ResMut<PreviousSnapshots>,
     units: Query<
         (
             Entity,
@@ -120,10 +120,10 @@ pub fn script_runner_system(
             &deposit_data,
         );
 
-        // Detect events by diffing with previous snapshot
+        // Detect events by diffing with this player's previous snapshot
         let fired_events = events::detect_events(
             &current_snapshot,
-            prev_snapshot.snapshot.as_ref(),
+            prev_snapshots.snapshots.get(&player_id),
         );
 
         let faction = FactionId::from_u8(player_id).unwrap_or(FactionId::CatGPT);
@@ -180,10 +180,8 @@ pub fn script_runner_system(
             }
         }
 
-        // Store snapshot for next tick's diffing
-        // (Only store the last player's snapshot — for multi-player diffing
-        // we'd need per-player previous snapshots, but for now single player is fine)
-        prev_snapshot.snapshot = Some(current_snapshot);
+        // Store snapshot for next tick's diffing (per-player)
+        prev_snapshots.snapshots.insert(player_id, current_snapshot);
     }
 }
 
@@ -195,7 +193,7 @@ pub struct ScriptRunnerPlugin;
 impl Plugin for ScriptRunnerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ScriptRegistry>()
-            .init_resource::<PreviousSnapshot>()
+            .init_resource::<PreviousSnapshots>()
             .add_systems(FixedUpdate, script_runner_system);
     }
 }
