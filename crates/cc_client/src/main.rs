@@ -1,9 +1,10 @@
 mod input;
 mod renderer;
 mod setup;
-// mod ui; // TODO: re-enable once bevy_egui context init panic is fixed
+mod ui;
 
 use bevy::prelude::*;
+use cc_agent::AgentPlugin;
 use cc_sim::SimPlugin;
 use cc_voice::VoicePlugin;
 
@@ -23,9 +24,10 @@ fn main() {
         )
         .insert_resource(ClearColor(Color::srgb(0.06, 0.06, 0.10)))
         .add_plugins(SimPlugin)
+        .add_plugins(AgentPlugin)
         .add_plugins(renderer::RenderPlugin)
         .add_plugins(input::InputPlugin)
-        // .add_plugins(ui::UiPlugin) // TODO: bevy_egui panics on available_rect() before Context::run()
+        .add_plugins(ui::UiPlugin)
         .add_plugins(VoicePlugin)
         .add_systems(PreStartup, setup::setup_game)
         .run();

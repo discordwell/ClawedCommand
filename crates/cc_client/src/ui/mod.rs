@@ -7,7 +7,7 @@ pub mod resource_bar;
 pub mod unit_info;
 
 use bevy::prelude::*;
-use bevy_egui::EguiPlugin;
+use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
 /// Shared UI state — notifications, etc.
 #[derive(Resource, Default)]
@@ -22,14 +22,14 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(EguiPlugin::default())
             .init_resource::<UiState>()
+            .add_systems(Update, construct_mode::construct_mode_toggle)
             .add_systems(
-                Update,
+                EguiPrimaryContextPass,
                 (
                     resource_bar::resource_bar_system,
                     unit_info::unit_info_system,
                     command_card::command_card_system,
                     notifications::notification_system,
-                    construct_mode::construct_mode_toggle,
                     construct_mode::construct_mode_system,
                     agent_chat::agent_chat_system,
                     game_over::game_over_system,
