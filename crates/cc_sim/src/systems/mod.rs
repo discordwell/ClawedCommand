@@ -53,7 +53,8 @@ impl Plugin for SimSystemsPlugin {
             )
             .add_systems(
                 FixedUpdate,
-                victory_system::victory_system,
+                victory_system::victory_system
+                    .after(cleanup_system::cleanup_system),
             );
     }
 }

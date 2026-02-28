@@ -81,7 +81,7 @@ impl Default for PlayerResourceState {
             gpu_cores: 50,
             nfts: 0,
             supply: 0,
-            supply_cap: 10,
+            supply_cap: 0, // All supply comes from buildings (TheBox provides 10)
         }
     }
 }

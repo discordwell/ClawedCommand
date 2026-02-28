@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy_egui::EguiContexts;
 
 use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::{Building, Owner, Position, ResourceDeposit, Selected, UnitType};
@@ -27,15 +26,7 @@ pub fn handle_mouse_input(
     mut drag_state: ResMut<DragSelectState>,
     mut input_mode: ResMut<InputMode>,
     mut placement_preview: ResMut<PlacementPreview>,
-    mut egui_contexts: EguiContexts,
 ) {
-    // Don't process game mouse input when egui wants pointer focus
-    if egui_contexts
-        .ctx_mut()
-        .is_ok_and(|ctx| ctx.wants_pointer_input())
-    {
-        return;
-    }
     let Some(cursor_pos) = window.cursor_position() else {
         return;
     };

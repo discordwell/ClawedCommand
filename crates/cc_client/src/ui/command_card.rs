@@ -120,14 +120,5 @@ pub fn command_card_system(
 }
 
 fn trainable_units(kind: BuildingKind) -> &'static [UnitKind] {
-    match kind {
-        BuildingKind::TheBox => &[UnitKind::Pawdler],
-        BuildingKind::CatTree => &[
-            UnitKind::Nuisance,
-            UnitKind::Hisser,
-            UnitKind::Chonk,
-            UnitKind::Yowler,
-        ],
-        _ => &[],
-    }
+    building_stats(kind).can_produce
 }

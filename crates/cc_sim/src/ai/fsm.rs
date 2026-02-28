@@ -100,7 +100,7 @@ pub fn ai_decision_system(
     mut cmd_queue: ResMut<CommandQueue>,
     player_resources: Res<PlayerResources>,
     units: Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>)>,
-    buildings: Query<(Entity, &Building, &Owner, Option<&Producer>)>,
+    buildings: Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
     deposits: Query<(Entity, &Position), With<ResourceDeposit>>,
 ) {
     run_ai_fsm(
@@ -122,7 +122,7 @@ pub fn multi_ai_decision_system(
     mut cmd_queue: ResMut<CommandQueue>,
     player_resources: Res<PlayerResources>,
     units: Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>)>,
-    buildings: Query<(Entity, &Building, &Owner, Option<&Producer>)>,
+    buildings: Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
     deposits: Query<(Entity, &Position), With<ResourceDeposit>>,
 ) {
     for ai_state in multi_ai.players.iter_mut() {
@@ -145,7 +145,7 @@ fn run_ai_fsm(
     cmd_queue: &mut CommandQueue,
     player_resources: &PlayerResources,
     units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>)>,
-    buildings: &Query<(Entity, &Building, &Owner, Option<&Producer>)>,
+    buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
     deposits: &Query<(Entity, &Position), With<ResourceDeposit>>,
 ) {
     let interval = ai_state.difficulty.eval_interval();
@@ -186,15 +186,17 @@ fn run_ai_fsm(
     let mut has_cat_tree = false;
     let mut has_fish_market = false;
     let mut box_entity = None;
+    let mut box_pos: Option<GridPos> = None;
     let mut cat_tree_entity = None;
 
-    for (entity, building, owner, producer) in buildings.iter() {
+    for (entity, building, owner, pos, producer) in buildings.iter() {
         if owner.player_id != ai_player {
             continue;
         }
         match building.kind {
             BuildingKind::TheBox => {
                 has_box = true;
+                box_pos = Some(pos.world.to_grid());
                 if producer.is_some() {
                     box_entity = Some(entity);
                 }
@@ -282,7 +284,8 @@ fn run_ai_fsm(
 
             // Train army from CatTree
             if let Some(ct_e) = cat_tree_entity {
-                if pres.food >= 75 && pres.supply < pres.supply_cap {
+                let nuisance_cost = cc_core::unit_stats::base_stats(UnitKind::Nuisance).food_cost;
+                if pres.food >= nuisance_cost && pres.supply < pres.supply_cap {
                     cmd_queue.push(GameCommand::TrainUnit {
                         building: EntityId(ct_e.to_bits()),
                         unit_kind: UnitKind::Nuisance,
@@ -362,8 +365,8 @@ fn run_ai_fsm(
                 }
             }
 
-            // Check if base is under attack (enemy units near our box)
-            let base_threatened = is_base_threatened(units, ai_player, buildings);
+            // Check if base is under attack (enemy units near our buildings)
+            let base_threatened = is_base_threatened(ai_player, units, buildings);
             if base_threatened {
                 AiPhase::Defend
             } else if army_count < 4 {
@@ -375,31 +378,20 @@ fn run_ai_fsm(
         }
 
         AiPhase::Defend => {
-            // Rally army back to base
-            if let Some(box_e) = box_entity {
-                if let Ok((_, _, _, _)) = buildings.get(box_e) {
-                    let box_pos = units
-                        .iter()
-                        .find(|(e, _, _, _, _)| *e == box_e)
-                        .map(|(_, p, _, _, _)| p.world.to_grid());
-
-                    // Fall back to a default base pos
-                    let rally_pos = box_pos.unwrap_or(GridPos::new(55, 55));
-
-                    if !army_entities.is_empty() {
-                        let ids: Vec<EntityId> = army_entities
-                            .iter()
-                            .map(|e| EntityId(e.to_bits()))
-                            .collect();
-                        cmd_queue.push(GameCommand::AttackMove {
-                            unit_ids: ids,
-                            target: rally_pos,
-                        });
-                    }
-                }
+            // Rally army back to base (use actual building position)
+            let rally_pos = box_pos.unwrap_or(GridPos::new(55, 55));
+            if !army_entities.is_empty() {
+                let ids: Vec<EntityId> = army_entities
+                    .iter()
+                    .map(|e| EntityId(e.to_bits()))
+                    .collect();
+                cmd_queue.push(GameCommand::AttackMove {
+                    unit_ids: ids,
+                    target: rally_pos,
+                });
             }
 
-            let base_threatened = is_base_threatened(units, ai_player, buildings);
+            let base_threatened = is_base_threatened(ai_player, units, buildings);
             if !base_threatened {
                 AiPhase::MidGame
             } else {
@@ -464,23 +456,16 @@ fn find_build_position(
 
 /// Check if enemy units are within 8 tiles of any of the AI's buildings.
 fn is_base_threatened(
-    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>)>,
     ai_player: u8,
-    _buildings: &Query<(Entity, &Building, &Owner, Option<&Producer>)>,
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>)>,
+    buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
 ) -> bool {
-    // Collect AI unit positions as proxy for base location (buildings lack Position in this query)
-    // Use workers as base indicator since they stay near base
+    // Collect AI building positions as the actual base locations
     let mut base_positions: Vec<GridPos> = Vec::new();
-    let mut enemy_positions: Vec<GridPos> = Vec::new();
 
-    for (_, pos, owner, unit_type, _) in units.iter() {
-        let grid = pos.world.to_grid();
+    for (_, _, owner, pos, _) in buildings.iter() {
         if owner.player_id == ai_player {
-            if unit_type.kind == UnitKind::Pawdler {
-                base_positions.push(grid);
-            }
-        } else {
-            enemy_positions.push(grid);
+            base_positions.push(pos.world.to_grid());
         }
     }
 
@@ -488,16 +473,18 @@ fn is_base_threatened(
         return false;
     }
 
-    // Average worker position as base center
-    let avg_x: i32 = base_positions.iter().map(|p| p.x).sum::<i32>() / base_positions.len() as i32;
-    let avg_y: i32 = base_positions.iter().map(|p| p.y).sum::<i32>() / base_positions.len() as i32;
-
-    // Check if any enemy is within 8 tiles of base center
-    for ep in &enemy_positions {
-        let dx = (ep.x - avg_x).abs();
-        let dy = (ep.y - avg_y).abs();
-        if dx <= 8 && dy <= 8 {
-            return true;
+    // Check if any enemy unit is within 8 tiles of any of our buildings
+    for (_, pos, owner, _, _) in units.iter() {
+        if owner.player_id == ai_player {
+            continue;
+        }
+        let enemy_grid = pos.world.to_grid();
+        for bp in &base_positions {
+            let dx = (bp.x - enemy_grid.x).abs();
+            let dy = (bp.y - enemy_grid.y).abs();
+            if dx <= 8 && dy <= 8 {
+                return true;
+            }
         }
     }
 

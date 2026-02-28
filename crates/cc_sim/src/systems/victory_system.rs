@@ -22,7 +22,10 @@ pub fn victory_system(
     }
 
     // If player 0's box is gone, player 1 wins (and vice versa)
-    if !has_box[0] && has_box[1] {
+    // If both are gone simultaneously, player 0 wins (attacker advantage tiebreak)
+    if !has_box[0] && !has_box[1] {
+        *game_state = GameState::Victory { winner: 0 };
+    } else if !has_box[0] && has_box[1] {
         *game_state = GameState::Victory { winner: 1 };
     } else if has_box[0] && !has_box[1] {
         *game_state = GameState::Victory { winner: 0 };
