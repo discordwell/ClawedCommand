@@ -935,6 +935,64 @@ fn combat_with_elevation_bonus() {
 }
 
 #[test]
+fn combat_with_forest_cover_reduces_damage() {
+    use cc_core::terrain::TerrainType;
+
+    let mut map = GameMap::new(32, 32);
+    // Place forest at the defender's position
+    map.get_mut(GridPos::new(8, 5)).unwrap().terrain = TerrainType::Forest;
+
+    let (mut world, mut schedule) = make_sim(map);
+    let attacker = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Hisser);
+    let target = spawn_combat_unit(&mut world, GridPos::new(8, 5), 1, UnitKind::Nuisance);
+
+    issue_attack(&mut world, &[attacker], target);
+
+    let target_initial_hp = world.get::<Health>(target).unwrap().current;
+
+    // 10 ticks: first shot fires on tick 1, projectile arrives ~tick 7 (one hit only)
+    run_ticks(&mut world, &mut schedule, 10);
+
+    let target_hp = world.get::<Health>(target).unwrap().current;
+    let damage_dealt = target_initial_hp - target_hp;
+
+    // Hisser base damage = 14, forest cover (-15%) → ~11.9
+    assert!(
+        damage_dealt > Fixed::ZERO && damage_dealt < Fixed::from_num(12),
+        "Forest cover should reduce damage below 12: dealt {damage_dealt}"
+    );
+}
+
+#[test]
+fn combat_with_heavy_cover_reduces_damage() {
+    use cc_core::terrain::TerrainType;
+
+    let mut map = GameMap::new(32, 32);
+    // Place TechRuins at the defender's position
+    map.get_mut(GridPos::new(8, 5)).unwrap().terrain = TerrainType::TechRuins;
+
+    let (mut world, mut schedule) = make_sim(map);
+    let attacker = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Hisser);
+    let target = spawn_combat_unit(&mut world, GridPos::new(8, 5), 1, UnitKind::Nuisance);
+
+    issue_attack(&mut world, &[attacker], target);
+
+    let target_initial_hp = world.get::<Health>(target).unwrap().current;
+
+    // 10 ticks: first shot fires on tick 1, projectile arrives ~tick 7 (one hit only)
+    run_ticks(&mut world, &mut schedule, 10);
+
+    let target_hp = world.get::<Health>(target).unwrap().current;
+    let damage_dealt = target_initial_hp - target_hp;
+
+    // Hisser base damage = 14, heavy cover (-30%) → ~9.8
+    assert!(
+        damage_dealt > Fixed::ZERO && damage_dealt < Fixed::from_num(12),
+        "Heavy cover should reduce damage below 12: dealt {damage_dealt}"
+    );
+}
+
+#[test]
 fn combat_determinism() {
     fn run_combat() -> (bool, bool) {
         let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
