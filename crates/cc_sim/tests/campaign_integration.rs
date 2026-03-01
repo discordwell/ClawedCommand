@@ -11,6 +11,7 @@ use cc_core::map::GameMap;
 use cc_core::mission::*;
 use cc_core::unit_stats::base_stats;
 use cc_sim::campaign::state::{CampaignPhase, CampaignState, MissionFailedEvent, MissionVictoryEvent};
+use cc_sim::campaign::wave_spawner::{WaveTracker, MissionStarted, wave_spawner_system, wave_tracking_system};
 use cc_sim::campaign::triggers::{
     trigger_check_system, DialogueEvent, ObjectiveCompleteEvent, TriggerFiredEvent,
 };
@@ -197,6 +198,8 @@ fn test_mission() -> MissionDefinition {
         }],
         briefing_text: "Test briefing".into(),
         debrief_text: "Test debrief".into(),
+        ai_tool_tier: None,
+        next_mission: NextMission::None,
     }
 }
 
@@ -1053,4 +1056,338 @@ fn ai_fsm_refactored_behavior_unchanged() {
     assert_eq!(state.phase, AiPhase::EarlyGame);
     assert_eq!(state.profile.target_workers, 4);
     assert_eq!(state.profile.attack_threshold, 8);
+}
+
+
+// ---------------------------------------------------------------------------
+// Wave Spawner + Tracking Tests
+// ---------------------------------------------------------------------------
+
+/// Build a sim world with the full wave spawner chain included.
+fn make_wave_sim(map: GameMap) -> (World, Schedule) {
+    let mut world = World::new();
+    world.insert_resource(CommandQueue::default());
+    world.insert_resource(SimClock::default());
+    world.insert_resource(ControlGroups::default());
+    world.insert_resource(PlayerResources::default());
+    world.insert_resource(SimRng::default());
+    world.insert_resource(MapResource { map });
+    world.init_resource::<CampaignState>();
+    world.init_resource::<WaveTracker>();
+    world.init_resource::<MissionStarted>();
+
+    world.init_resource::<Messages<DialogueEvent>>();
+    world.init_resource::<Messages<TriggerFiredEvent>>();
+    world.init_resource::<Messages<ObjectiveCompleteEvent>>();
+    world.init_resource::<Messages<MissionFailedEvent>>();
+    world.init_resource::<Messages<MissionVictoryEvent>>();
+
+    let mut schedule = Schedule::new(FixedUpdate);
+    schedule.add_systems(
+        (
+            tick_system,
+            wave_tracking_system,
+            trigger_check_system,
+            wave_spawner_system,
+            cc_sim::campaign::state::mission_objective_system,
+        )
+            .chain(),
+    );
+
+    (world, schedule)
+}
+
+fn wave_test_mission() -> MissionDefinition {
+    MissionDefinition {
+        id: "wave_test".into(),
+        name: "Wave Test".into(),
+        act: 0,
+        mission_index: 0,
+        map: MissionMap::Generated { seed: 42, width: 16, height: 16 },
+        player_setup: PlayerSetup {
+            heroes: vec![HeroSpawn {
+                hero_id: HeroId::Kelpie,
+                position: GridPos::new(0, 0),
+                mission_critical: true,
+            }],
+            units: vec![],
+            buildings: vec![],
+            starting_food: 0,
+            starting_gpu: 0,
+            starting_nfts: 0,
+        },
+        enemy_waves: vec![
+            EnemyWave {
+                wave_id: "imm_wave".into(),
+                trigger: WaveTrigger::Immediate,
+                units: vec![
+                    UnitSpawn { kind: UnitKind::Nuisance, position: GridPos::new(10, 10), player_id: 1 },
+                    UnitSpawn { kind: UnitKind::Nuisance, position: GridPos::new(11, 10), player_id: 1 },
+                ],
+                ai_behavior: WaveAiBehavior::Idle,
+            },
+            EnemyWave {
+                wave_id: "tick_wave".into(),
+                trigger: WaveTrigger::AtTick(5),
+                units: vec![
+                    UnitSpawn { kind: UnitKind::Hisser, position: GridPos::new(12, 12), player_id: 1 },
+                ],
+                ai_behavior: WaveAiBehavior::Defend,
+            },
+            EnemyWave {
+                wave_id: "trigger_wave".into(),
+                trigger: WaveTrigger::OnTrigger("spawn_reinforcements".into()),
+                units: vec![
+                    UnitSpawn { kind: UnitKind::Chonk, position: GridPos::new(14, 14), player_id: 1 },
+                ],
+                ai_behavior: WaveAiBehavior::Idle,
+            },
+        ],
+        objectives: vec![MissionObjective {
+            id: "win".into(),
+            description: "Win".into(),
+            primary: true,
+            condition: ObjectiveCondition::Manual,
+        }],
+        triggers: vec![ScriptedTrigger {
+            id: "spawn_reinforcements".into(),
+            condition: TriggerCondition::FlagSet("call_backup".into()),
+            actions: vec![TriggerAction::SpawnWave("trigger_wave".into())],
+            once: true,
+        }],
+        dialogue: vec![],
+        briefing_text: "Test".into(),
+        debrief_text: "Test".into(),
+        ai_tool_tier: None,
+        next_mission: NextMission::None,
+    }
+}
+
+#[test]
+fn wave_spawner_spawns_immediate_waves() {
+    let (mut world, mut schedule) = make_wave_sim(GameMap::new(16, 16));
+    {
+        let mut campaign = world.resource_mut::<CampaignState>();
+        campaign.load_mission(wave_test_mission());
+        campaign.phase = CampaignPhase::InMission;
+    }
+
+    // Run one tick to trigger wave spawning
+    schedule.run(&mut world);
+
+    // Immediate wave should be spawned — check for WaveMember entities
+    let mut wave_count = 0u32;
+    for wm in world.query::<&WaveMember>().iter(&world) {
+        if wm.wave_id == "imm_wave" {
+            wave_count += 1;
+        }
+    }
+    assert_eq!(wave_count, 2, "Immediate wave should spawn 2 units");
+
+    // WaveTracker should track the wave
+    let tracker = world.resource::<WaveTracker>();
+    let (total, alive) = tracker.waves.get("imm_wave").expect("imm_wave tracked");
+    assert_eq!(*total, 2);
+    assert_eq!(*alive, 2);
+}
+
+#[test]
+fn wave_spawner_spawns_at_tick_waves() {
+    let (mut world, mut schedule) = make_wave_sim(GameMap::new(16, 16));
+    {
+        let mut campaign = world.resource_mut::<CampaignState>();
+        campaign.load_mission(wave_test_mission());
+        campaign.phase = CampaignPhase::InMission;
+    }
+
+    // Run 4 ticks — tick_wave triggers at tick 5
+    for _ in 0..4 {
+        schedule.run(&mut world);
+    }
+
+    // tick_wave should NOT be spawned yet
+    let tracker = world.resource::<WaveTracker>();
+    assert!(!tracker.waves.contains_key("tick_wave"), "tick_wave should not spawn before tick 5");
+
+    // Run tick 5
+    schedule.run(&mut world);
+
+    let tracker = world.resource::<WaveTracker>();
+    assert!(tracker.waves.contains_key("tick_wave"), "tick_wave should spawn at tick 5");
+    let (total, alive) = tracker.waves.get("tick_wave").unwrap();
+    assert_eq!(*total, 1);
+    assert_eq!(*alive, 1);
+}
+
+#[test]
+fn wave_spawner_spawns_on_trigger() {
+    let (mut world, mut schedule) = make_wave_sim(GameMap::new(16, 16));
+    {
+        let mut campaign = world.resource_mut::<CampaignState>();
+        campaign.load_mission(wave_test_mission());
+        campaign.phase = CampaignPhase::InMission;
+    }
+
+    // Run one tick — trigger_wave should NOT spawn
+    schedule.run(&mut world);
+    let tracker = world.resource::<WaveTracker>();
+    assert!(!tracker.waves.contains_key("trigger_wave"));
+
+    // Set the flag that triggers the spawn
+    {
+        let mut campaign = world.resource_mut::<CampaignState>();
+        campaign.flags.insert("call_backup".into());
+    }
+
+    // Run another tick — trigger should fire and wave should spawn
+    schedule.run(&mut world);
+    schedule.run(&mut world);  // may need extra tick for command application
+
+    let tracker = world.resource::<WaveTracker>();
+    assert!(tracker.waves.contains_key("trigger_wave"), "trigger_wave should spawn after flag set");
+}
+
+#[test]
+fn wave_tracking_decrements_on_death() {
+    let (mut world, mut schedule) = make_wave_sim(GameMap::new(16, 16));
+    {
+        let mut campaign = world.resource_mut::<CampaignState>();
+        campaign.load_mission(wave_test_mission());
+        campaign.phase = CampaignPhase::InMission;
+    }
+
+    // Spawn waves
+    schedule.run(&mut world);
+
+    // Find a wave member entity and mark it Dead
+    let mut target_entity = None;
+    for (entity, wm) in world.query::<(Entity, &WaveMember)>().iter(&world) {
+        if wm.wave_id == "imm_wave" {
+            target_entity = Some(entity);
+            break;
+        }
+    }
+    let entity = target_entity.expect("Should have wave member entity");
+    world.entity_mut(entity).insert(Dead);
+
+    // Run tick to process the death
+    schedule.run(&mut world);
+
+    let tracker = world.resource::<WaveTracker>();
+    let (_total, alive) = tracker.waves.get("imm_wave").expect("imm_wave tracked");
+    assert_eq!(*alive, 1, "One unit killed, one should remain alive");
+
+    // Kill count should increment
+    let campaign = world.resource::<CampaignState>();
+    assert!(campaign.enemy_kill_count >= 1, "Kill count should increment");
+}
+
+#[test]
+fn wave_eliminated_fires_when_all_dead() {
+    let (mut world, mut schedule) = make_wave_sim(GameMap::new(16, 16));
+
+    // Create a mission with a WaveEliminated trigger
+    let mut mission = wave_test_mission();
+    mission.triggers.push(ScriptedTrigger {
+        id: "wave_cleared".into(),
+        condition: TriggerCondition::WaveEliminated("imm_wave".into()),
+        actions: vec![TriggerAction::SetFlag("wave_done".into())],
+        once: true,
+    });
+    {
+        let mut campaign = world.resource_mut::<CampaignState>();
+        campaign.load_mission(mission);
+        campaign.phase = CampaignPhase::InMission;
+    }
+
+    // Spawn waves
+    schedule.run(&mut world);
+
+    // Kill all imm_wave members
+    let mut wave_entities: Vec<Entity> = Vec::new();
+    for (entity, wm) in world.query::<(Entity, &WaveMember)>().iter(&world) {
+        if wm.wave_id == "imm_wave" {
+            wave_entities.push(entity);
+        }
+    }
+    for entity in &wave_entities {
+        world.entity_mut(*entity).insert(Dead);
+    }
+
+    // Run ticks to process deaths and evaluate triggers
+    schedule.run(&mut world);
+    schedule.run(&mut world);
+
+    let campaign = world.resource::<CampaignState>();
+    assert!(campaign.flags.contains("wave_done"), "WaveEliminated trigger should fire");
+}
+
+#[test]
+fn kill_count_increments_from_tracking() {
+    let (mut world, mut schedule) = make_wave_sim(GameMap::new(16, 16));
+    {
+        let mut campaign = world.resource_mut::<CampaignState>();
+        campaign.load_mission(wave_test_mission());
+        campaign.phase = CampaignPhase::InMission;
+    }
+
+    schedule.run(&mut world);
+
+    // Kill both imm_wave members
+    let mut entities: Vec<Entity> = Vec::new();
+    for (entity, wm) in world.query::<(Entity, &WaveMember)>().iter(&world) {
+        if wm.wave_id == "imm_wave" {
+            entities.push(entity);
+        }
+    }
+    for entity in &entities {
+        world.entity_mut(*entity).insert(Dead);
+    }
+
+    schedule.run(&mut world);
+
+    let campaign = world.resource::<CampaignState>();
+    assert_eq!(campaign.enemy_kill_count, 2, "Both kills should be counted");
+}
+
+#[test]
+fn persistent_state_survives_mission_load_integration() {
+    let (mut world, _) = make_wave_sim(GameMap::new(16, 16));
+
+    {
+        let mut campaign = world.resource_mut::<CampaignState>();
+        campaign.persistent.set_flag("helped_rex".into());
+        campaign.persistent.murder_alliance = true;
+        campaign.completed_missions.insert("prologue".into());
+        campaign.load_mission(wave_test_mission());
+    }
+
+    let campaign = world.resource::<CampaignState>();
+    assert!(campaign.persistent.has_flag("helped_rex"));
+    assert!(campaign.persistent.murder_alliance);
+    assert!(campaign.completed_missions.contains("prologue"));
+    assert_eq!(campaign.enemy_kill_count, 0);
+}
+
+#[test]
+fn all_act1_missions_parse_and_validate() {
+    let campaign_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent().unwrap()
+        .parent().unwrap()
+        .join("assets/campaign");
+
+    let expected_files = ["prologue.ron", "act1_m1_pond_defense.ron", "act1_m2_dead_drop.ron",
+                          "act1_m3_counter_raid.ron", "act1_m4_envoy.ron"];
+
+    for filename in &expected_files {
+        let path = campaign_dir.join(filename);
+        assert!(path.exists(), "Mission file {} should exist", filename);
+        let content = std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("Failed to read {}: {}", filename, e));
+        let mission: MissionDefinition = ron::from_str(&content)
+            .unwrap_or_else(|e| panic!("Failed to parse {}: {}", filename, e));
+        if let Err(errors) = mission.validate() {
+            panic!("Validation failed for {}: {:?}", filename, errors);
+        }
+    }
 }
