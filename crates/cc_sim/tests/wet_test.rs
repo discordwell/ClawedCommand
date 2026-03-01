@@ -520,6 +520,8 @@ mod wet {
             "Construction observed",
             "Combat occurred",
             "Reached BuildUp",
+            "Research completed",
+            "Advanced unit trained",
         ];
 
         println!("\n=== CRITICAL MILESTONE SUMMARY ===");
