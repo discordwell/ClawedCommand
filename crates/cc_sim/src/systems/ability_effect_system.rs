@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use cc_core::abilities::AbilityId;
 use cc_core::commands::EntityId;
 use cc_core::components::{AbilitySlots, Dead, DreamSiegeTimer, Health, Owner};
-use cc_core::status_effects::{StatusEffectId, StatusEffects, StatusInstance};
+use cc_core::status_effects::{StatusEffectId, StatusEffects};
 use cc_core::tuning::POWER_NAP_GPU_INTERVAL;
 
 use crate::resources::PlayerResources;
@@ -38,45 +38,43 @@ pub fn ability_effect_system(
             }
         }
 
+        let source = EntityId(entity.to_bits());
+
         for slot in &slots.slots {
             match slot.id {
                 AbilityId::Zoomies => {
                     if slot.active {
-                        ensure_effect(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::Zoomies,
                             slot.duration_remaining.max(1),
-                            entity,
+                            source,
                         );
                     }
                 }
                 AbilityId::LoafMode => {
                     if slot.active {
-                        ensure_effect(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::LoafModeActive,
                             2,
-                            entity,
+                            source,
                         );
                     }
                 }
                 AbilityId::SpiteCarry => {
                     if slot.active {
-                        ensure_effect(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::SpiteCarryBuff,
                             slot.duration_remaining.max(1),
-                            entity,
+                            source,
                         );
                     }
                 }
                 AbilityId::PowerNap => {
                     if slot.active {
-                        ensure_effect(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::PowerNapping,
                             slot.duration_remaining.max(1),
-                            entity,
+                            source,
                         );
                         // Generate GPU: 1 GPU every POWER_NAP_GPU_INTERVAL ticks
                         if slot.duration_remaining > 0
@@ -98,51 +96,47 @@ pub fn ability_effect_system(
                 AbilityId::ChewThrough => {
                     // Toggle: building damage bonus (using DamageBuff)
                     if slot.active {
-                        ensure_effect(&mut effects, StatusEffectId::DamageBuff, 2, entity);
+                        effects.refresh_or_insert(StatusEffectId::DamageBuff, 2, source);
                     }
                 }
                 AbilityId::SpineWall => {
                     // Toggle: damage reduction (using ArmorBuff)
                     if slot.active {
-                        ensure_effect(&mut effects, StatusEffectId::ArmorBuff, 2, entity);
+                        effects.refresh_or_insert(StatusEffectId::ArmorBuff, 2, source);
                     }
                 }
                 AbilityId::PileOn => {
                     // Activated: damage boost for duration
                     if slot.active {
-                        ensure_effect(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::DamageBuff,
                             slot.duration_remaining.max(1),
-                            entity,
+                            source,
                         );
                     }
                 }
                 AbilityId::Scatter => {
                     // Activated: speed boost for duration
                     if slot.active {
-                        ensure_effect(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::SpeedBuff,
                             slot.duration_remaining.max(1),
-                            entity,
+                            source,
                         );
                     }
                 }
                 AbilityId::StubbornAdvance => {
                     // Activated: damage boost + armor for duration
                     if slot.active {
-                        ensure_effect(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::DamageBuff,
                             slot.duration_remaining.max(1),
-                            entity,
+                            source,
                         );
-                        ensure_effect(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::ArmorBuff,
                             slot.duration_remaining.max(1),
-                            entity,
+                            source,
                         );
                     }
                 }
@@ -153,34 +147,31 @@ pub fn ability_effect_system(
                 AbilityId::Entrench => {
                     // Toggle: immobile + damage reduction + damage boost
                     if slot.active {
-                        ensure_effect(&mut effects, StatusEffectId::Entrenched, 2, entity);
+                        effects.refresh_or_insert(StatusEffectId::Entrenched, 2, source);
                     }
                 }
                 AbilityId::ShieldWall => {
                     // Activated: damage reduction for duration
                     if slot.active {
-                        ensure_effect(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::ArmorBuff,
                             slot.duration_remaining.max(1),
-                            entity,
+                            source,
                         );
                     }
                 }
                 AbilityId::GrudgeCharge | AbilityId::RecklessLunge => {
                     // Activated: speed + damage boost for charge
                     if slot.active {
-                        ensure_effect(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::SpeedBuff,
                             slot.duration_remaining.max(1),
-                            entity,
+                            source,
                         );
-                        ensure_effect(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::DamageBuff,
                             slot.duration_remaining.max(1),
-                            entity,
+                            source,
                         );
                     }
                 }
@@ -191,7 +182,7 @@ pub fn ability_effect_system(
                 AbilityId::Overwatch => {
                     // Toggle: increased attack range (using ArmorBuff as proxy)
                     if slot.active {
-                        ensure_effect(&mut effects, StatusEffectId::ArmorBuff, 2, entity);
+                        effects.refresh_or_insert(StatusEffectId::ArmorBuff, 2, source);
                     }
                 }
 
@@ -201,33 +192,30 @@ pub fn ability_effect_system(
                 AbilityId::Getaway => {
                     // Activated: speed boost to escape
                     if slot.active {
-                        ensure_effect(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::SpeedBuff,
                             slot.duration_remaining.max(1),
-                            entity,
+                            source,
                         );
                     }
                 }
                 AbilityId::PlayDead => {
                     // Activated: invulnerable + immobile (playing dead)
                     if slot.active {
-                        ensure_effect(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::PlayingDead,
                             slot.duration_remaining.max(1),
-                            entity,
+                            source,
                         );
                     }
                 }
                 AbilityId::Scavenge => {
                     // Activated: gather speed boost
                     if slot.active {
-                        ensure_effect(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::SpiteCarryBuff,
                             slot.duration_remaining.max(1),
-                            entity,
+                            source,
                         );
                     }
                 }
@@ -238,28 +226,26 @@ pub fn ability_effect_system(
                 AbilityId::HunkerAbility => {
                     // Toggle: immobile + damage reduction (like LoafMode)
                     if slot.active {
-                        ensure_effect(&mut effects, StatusEffectId::Entrenched, 2, entity);
+                        effects.refresh_or_insert(StatusEffectId::Entrenched, 2, source);
                     }
                 }
                 AbilityId::Inflate => {
                     // Activated: armor buff for duration
                     if slot.active {
-                        ensure_effect(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::ArmorBuff,
                             slot.duration_remaining.max(1),
-                            entity,
+                            source,
                         );
                     }
                 }
                 AbilityId::Hop => {
                     // Activated: speed burst
                     if slot.active {
-                        ensure_effect(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::SpeedBuff,
                             slot.duration_remaining.max(1),
-                            entity,
+                            source,
                         );
                     }
                 }
@@ -267,18 +253,5 @@ pub fn ability_effect_system(
                 _ => {}
             }
         }
-    }
-}
-
-fn ensure_effect(effects: &mut StatusEffects, id: StatusEffectId, duration: u32, entity: Entity) {
-    if let Some(existing) = effects.effects.iter_mut().find(|e| e.effect == id) {
-        existing.remaining_ticks = existing.remaining_ticks.max(duration);
-    } else {
-        effects.effects.push(StatusInstance {
-            effect: id,
-            remaining_ticks: duration,
-            stacks: 1,
-            source: EntityId(entity.to_bits()),
-        });
     }
 }

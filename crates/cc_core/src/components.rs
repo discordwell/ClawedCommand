@@ -187,6 +187,66 @@ impl BuildingKind {
                 | BuildingKind::TheDumpster
         )
     }
+
+    /// Returns a human-readable display name for this building kind.
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            // catGPT (Cats)
+            BuildingKind::TheBox => "The Box",
+            BuildingKind::CatTree => "Cat Tree",
+            BuildingKind::FishMarket => "Fish Market",
+            BuildingKind::LitterBox => "Litter Box",
+            BuildingKind::ServerRack => "Server Rack",
+            BuildingKind::ScratchingPost => "Scratching Post",
+            BuildingKind::CatFlap => "Cat Flap",
+            BuildingKind::LaserPointer => "Laser Pointer",
+            // The Murder (Corvids)
+            BuildingKind::TheParliament => "The Parliament",
+            BuildingKind::Rookery => "Rookery",
+            BuildingKind::CarrionCache => "Carrion Cache",
+            BuildingKind::AntennaArray => "Antenna Array",
+            BuildingKind::Panopticon => "Panopticon",
+            BuildingKind::NestBox => "Nest Box",
+            BuildingKind::ThornHedge => "Thorn Hedge",
+            BuildingKind::Watchtower => "Watchtower",
+            // The Clawed (Mice)
+            BuildingKind::TheBurrow => "The Burrow",
+            BuildingKind::NestingBox => "Nesting Box",
+            BuildingKind::SeedVault => "Seed Vault",
+            BuildingKind::JunkTransmitter => "Junk Transmitter",
+            BuildingKind::GnawLab => "Gnaw Lab",
+            BuildingKind::WarrenExpansion => "Warren Expansion",
+            BuildingKind::Mousehole => "Mousehole",
+            BuildingKind::SqueakTower => "Squeak Tower",
+            // Seekers of the Deep (Badgers)
+            BuildingKind::TheSett => "The Sett",
+            BuildingKind::WarHollow => "War Hollow",
+            BuildingKind::BurrowDepot => "Burrow Depot",
+            BuildingKind::CoreTap => "Core Tap",
+            BuildingKind::ClawMarks => "Claw Marks",
+            BuildingKind::DeepWarren => "Deep Warren",
+            BuildingKind::BulwarkGate => "Bulwark Gate",
+            BuildingKind::SlagThrower => "Slag Thrower",
+            // Croak (Axolotls)
+            BuildingKind::TheGrotto => "The Grotto",
+            BuildingKind::SpawningPools => "Spawning Pools",
+            BuildingKind::LilyMarket => "Lily Market",
+            BuildingKind::SunkenServer => "Sunken Server",
+            BuildingKind::FossilStones => "Fossil Stones",
+            BuildingKind::ReedBed => "Reed Bed",
+            BuildingKind::TidalGate => "Tidal Gate",
+            BuildingKind::SporeTower => "Spore Tower",
+            // LLAMA (Raccoons)
+            BuildingKind::TheDumpster => "The Dumpster",
+            BuildingKind::ScrapHeap => "Scrap Heap",
+            BuildingKind::ChopShop => "Chop Shop",
+            BuildingKind::JunkServer => "Junk Server",
+            BuildingKind::TinkerBench => "Tinker Bench",
+            BuildingKind::TrashPile => "Trash Pile",
+            BuildingKind::DumpsterRelay => "Dumpster Relay",
+            BuildingKind::TetanusTower => "Tetanus Tower",
+        }
+    }
 }
 
 impl std::fmt::Display for BuildingKind {
@@ -615,6 +675,19 @@ pub struct Building {
 pub struct UnderConstruction {
     pub remaining_ticks: u32,
     pub total_ticks: u32,
+}
+
+impl UnderConstruction {
+    /// Returns construction progress as a float in `0.0..=1.0`.
+    ///
+    /// Returns `1.0` when `total_ticks` is zero (instant build).
+    pub fn progress_f32(&self) -> f32 {
+        if self.total_ticks == 0 {
+            1.0
+        } else {
+            1.0 - (self.remaining_ticks as f32 / self.total_ticks as f32)
+        }
+    }
 }
 
 /// Production queue for a building that can train units.
@@ -1457,6 +1530,52 @@ mod tests {
         let stacks = FrenzyStacks::default();
         assert_eq!(stacks.current_stacks, 0);
         assert_eq!(stacks.frozen_until_tick, 0);
+    }
+
+    #[test]
+    fn under_construction_progress_f32_zero_total() {
+        let uc = UnderConstruction { remaining_ticks: 0, total_ticks: 0 };
+        assert_eq!(uc.progress_f32(), 1.0);
+    }
+
+    #[test]
+    fn under_construction_progress_f32_midway() {
+        let uc = UnderConstruction { remaining_ticks: 50, total_ticks: 100 };
+        assert!((uc.progress_f32() - 0.5).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn under_construction_progress_f32_complete() {
+        let uc = UnderConstruction { remaining_ticks: 0, total_ticks: 100 };
+        assert_eq!(uc.progress_f32(), 1.0);
+    }
+
+    #[test]
+    fn under_construction_progress_f32_not_started() {
+        let uc = UnderConstruction { remaining_ticks: 100, total_ticks: 100 };
+        assert_eq!(uc.progress_f32(), 0.0);
+    }
+
+    #[test]
+    fn building_kind_display_name_covers_all_factions() {
+        // Spot-check a representative from each faction
+        assert_eq!(BuildingKind::TheBox.display_name(), "The Box");
+        assert_eq!(BuildingKind::CatTree.display_name(), "Cat Tree");
+        assert_eq!(BuildingKind::TheParliament.display_name(), "The Parliament");
+        assert_eq!(BuildingKind::TheBurrow.display_name(), "The Burrow");
+        assert_eq!(BuildingKind::TheSett.display_name(), "The Sett");
+        assert_eq!(BuildingKind::TheGrotto.display_name(), "The Grotto");
+        assert_eq!(BuildingKind::TheDumpster.display_name(), "The Dumpster");
+    }
+
+    #[test]
+    fn building_kind_display_name_all_catgpt() {
+        assert_eq!(BuildingKind::FishMarket.display_name(), "Fish Market");
+        assert_eq!(BuildingKind::LitterBox.display_name(), "Litter Box");
+        assert_eq!(BuildingKind::ServerRack.display_name(), "Server Rack");
+        assert_eq!(BuildingKind::ScratchingPost.display_name(), "Scratching Post");
+        assert_eq!(BuildingKind::CatFlap.display_name(), "Cat Flap");
+        assert_eq!(BuildingKind::LaserPointer.display_name(), "Laser Pointer");
     }
 }
 

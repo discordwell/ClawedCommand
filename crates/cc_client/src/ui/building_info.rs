@@ -80,7 +80,7 @@ pub fn update_building_info(
         return;
     };
 
-    let name = building_display_name(building.kind);
+    let name = building.kind.display_name();
     let bstats = building_stats(building.kind);
     let pres = player_resources.players.get(owner.player_id as usize);
 
@@ -88,11 +88,7 @@ pub fn update_building_info(
 
     // Under construction
     if let Some(uc) = uc {
-        let progress = if uc.total_ticks > 0 {
-            ((uc.total_ticks - uc.remaining_ticks) as f32 / uc.total_ticks as f32 * 100.0) as u32
-        } else {
-            100
-        };
+        let progress = (uc.progress_f32() * 100.0) as u32;
         let filled = (progress as usize) / 10;
         let bar: String = "\u{2588}".repeat(filled)
             + &"\u{2591}".repeat(10 - filled);
@@ -158,24 +154,3 @@ pub fn update_building_info(
     text.0 = lines.join("\n");
 }
 
-fn building_display_name(kind: BuildingKind) -> &'static str {
-    match kind {
-        BuildingKind::TheBox => "The Box",
-        BuildingKind::CatTree => "Cat Tree",
-        BuildingKind::FishMarket => "Fish Market",
-        BuildingKind::LitterBox => "Litter Box",
-        BuildingKind::ServerRack => "Server Rack",
-        BuildingKind::ScratchingPost => "Scratching Post",
-        BuildingKind::CatFlap => "Cat Flap",
-        BuildingKind::LaserPointer => "Laser Pointer",
-        BuildingKind::TheBurrow => "The Burrow",
-        BuildingKind::NestingBox => "Nesting Box",
-        BuildingKind::SeedVault => "Seed Vault",
-        BuildingKind::JunkTransmitter => "Junk Transmitter",
-        BuildingKind::GnawLab => "Gnaw Lab",
-        BuildingKind::WarrenExpansion => "Warren Expansion",
-        BuildingKind::Mousehole => "Mousehole",
-        BuildingKind::SqueakTower => "Squeak Tower",
-        _ => "Building",
-    }
-}

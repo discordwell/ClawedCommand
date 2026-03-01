@@ -125,6 +125,29 @@ impl StatusEffects {
     pub fn is_cc_immune(&self) -> bool {
         self.cc_immunity_remaining > 0
     }
+
+    /// Refresh an existing status effect's duration, or insert a new one-stack instance.
+    ///
+    /// If the effect already exists, its `remaining_ticks` is set to the max of
+    /// the current value and `duration`. Otherwise a new `StatusInstance` with
+    /// `stacks: 1` is appended.
+    pub fn refresh_or_insert(
+        &mut self,
+        id: StatusEffectId,
+        duration: u32,
+        source: EntityId,
+    ) {
+        if let Some(existing) = self.effects.iter_mut().find(|e| e.effect == id) {
+            existing.remaining_ticks = existing.remaining_ticks.max(duration);
+        } else {
+            self.effects.push(StatusInstance {
+                effect: id,
+                remaining_ticks: duration,
+                stacks: 1,
+                source,
+            });
+        }
+    }
 }
 
 #[cfg(test)]
@@ -215,5 +238,37 @@ mod tests {
         assert!(!se.is_cc_immune());
         se.cc_immunity_remaining = 10;
         assert!(se.is_cc_immune());
+    }
+
+    #[test]
+    fn refresh_or_insert_adds_new_effect() {
+        let mut se = StatusEffects::default();
+        se.refresh_or_insert(StatusEffectId::Zoomies, 30, EntityId(42));
+        assert_eq!(se.effects.len(), 1);
+        assert_eq!(se.effects[0].effect, StatusEffectId::Zoomies);
+        assert_eq!(se.effects[0].remaining_ticks, 30);
+        assert_eq!(se.effects[0].stacks, 1);
+        assert_eq!(se.effects[0].source, EntityId(42));
+    }
+
+    #[test]
+    fn refresh_or_insert_refreshes_existing_with_longer_duration() {
+        let mut se = StatusEffects::default();
+        se.refresh_or_insert(StatusEffectId::HarmonicBuff, 5, EntityId(1));
+        assert_eq!(se.effects[0].remaining_ticks, 5);
+        // Refresh with longer duration
+        se.refresh_or_insert(StatusEffectId::HarmonicBuff, 10, EntityId(2));
+        assert_eq!(se.effects.len(), 1, "should not duplicate");
+        assert_eq!(se.effects[0].remaining_ticks, 10);
+    }
+
+    #[test]
+    fn refresh_or_insert_keeps_longer_existing_duration() {
+        let mut se = StatusEffects::default();
+        se.refresh_or_insert(StatusEffectId::LullabyDebuff, 20, EntityId(1));
+        // Try to refresh with shorter duration
+        se.refresh_or_insert(StatusEffectId::LullabyDebuff, 5, EntityId(2));
+        assert_eq!(se.effects.len(), 1);
+        assert_eq!(se.effects[0].remaining_ticks, 20);
     }
 }

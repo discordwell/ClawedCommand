@@ -22,15 +22,15 @@ pub struct BuildMenuEntry {
 #[derive(Component)]
 pub struct PlacementHint;
 
-/// Build menu entries: (key label, BuildingKind, display name)
-const MENU_ENTRIES: &[(& str, BuildingKind, &str)] = &[
-    ("T", BuildingKind::CatTree, "Cat Tree"),
-    ("F", BuildingKind::FishMarket, "Fish Market"),
-    ("L", BuildingKind::LitterBox, "Litter Box"),
-    ("S", BuildingKind::ServerRack, "Server Rack"),
-    ("P", BuildingKind::ScratchingPost, "Scratch Post"),
-    ("C", BuildingKind::CatFlap, "Cat Flap"),
-    ("R", BuildingKind::LaserPointer, "Laser Pointer"),
+/// Build menu entries: (key label, BuildingKind)
+const MENU_ENTRIES: &[(&str, BuildingKind)] = &[
+    ("T", BuildingKind::CatTree),
+    ("F", BuildingKind::FishMarket),
+    ("L", BuildingKind::LitterBox),
+    ("S", BuildingKind::ServerRack),
+    ("P", BuildingKind::ScratchingPost),
+    ("C", BuildingKind::CatFlap),
+    ("R", BuildingKind::LaserPointer),
 ];
 
 fn cost_string(kind: BuildingKind) -> String {
@@ -92,7 +92,8 @@ pub fn spawn_build_menu(mut commands: Commands) {
             ));
 
             // Entries
-            for &(key, kind, name) in MENU_ENTRIES {
+            for &(key, kind) in MENU_ENTRIES {
+                let name = kind.display_name();
                 let cost = cost_string(kind);
                 let desc = building_description(kind);
                 parent.spawn((

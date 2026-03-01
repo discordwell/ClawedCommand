@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::setup::{BuildingMesh, UnitMesh};
 use cc_core::components::{Building, BuildingKind, Dead, Health, Owner, UnitKind, UnitType};
+use cc_core::tuning::BUILDING_SPRITE_SIZE;
 
 /// Local player ID for showing enemy health bars.
 const LOCAL_PLAYER: u8 = 0;
@@ -45,7 +46,7 @@ fn bar_width_for_kind(kind: UnitKind) -> f32 {
 fn bar_width_for_building(kind: BuildingKind) -> f32 {
     match kind {
         BuildingKind::TheBox => 30.0,
-        BuildingKind::CatTree | BuildingKind::ServerRack => 28.0,
+        BuildingKind::CatTree | BuildingKind::ServerRack => BUILDING_SPRITE_SIZE,
         BuildingKind::FishMarket | BuildingKind::ScratchingPost | BuildingKind::CatFlap => 24.0,
         BuildingKind::LitterBox | BuildingKind::LaserPointer => 20.0,
         _ => 24.0,

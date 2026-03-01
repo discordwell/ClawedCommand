@@ -95,11 +95,7 @@ pub fn update_unit_info(
             let mut parts = vec![format!("{:?}  |  HP: {:.0}/{:.0}", building.kind, hp_cur, hp_max)];
 
             if let Some(uc) = uc {
-                let progress = if uc.total_ticks > 0 {
-                    1.0 - (uc.remaining_ticks as f32 / uc.total_ticks as f32)
-                } else {
-                    1.0
-                };
+                let progress = uc.progress_f32();
                 parts.push(format!("Building... {:.0}%", progress * 100.0));
             } else if let Some(queue) = queue {
                 if let Some((kind, ticks_remaining)) = queue.queue.front() {
