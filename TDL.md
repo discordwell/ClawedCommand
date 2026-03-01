@@ -133,8 +133,8 @@
 - [ ] Separate Strategic and Advanced tier match arms in `issue_attack_commands` (currently conflated; Advanced should add adaptive positioning per enum doc)
 - [ ] Rename `BuildingCensus` fields from catGPT names to role names (`has_hq`, `barracks_entity`, `tech_queue_len`, etc.) for consistency with FactionMap
 - [ ] Simplify `take_building_census` to compare against `fmap` fields instead of enumerating all faction building variants (~200 lines → ~30 lines)
-- [ ] Consolidate duplicate `BotConfig` structs (cc_sim::harness + cc_agent::arena) into `cc_sim::ai`
-- [ ] Consolidate duplicate helper functions between harness and arena (`spawn_starting_entities`, `spawn_combat_unit`, `headless_despawn_system`, etc.)
+- [x] Consolidate duplicate `BotConfig` structs (cc_sim::harness + cc_agent::arena) into `cc_sim::ai`
+- [x] Consolidate duplicate helper functions between harness and arena (`spawn_starting_entities`, `spawn_combat_unit`, `headless_despawn_system`, etc.)
 
 ## From AI Training Pipeline Iterations
 
@@ -143,12 +143,12 @@
 
 ## From Arena Module Code Review
 
-- [ ] Make `cc_sim::harness` helpers `pub` and reuse in `cc_agent::arena` instead of duplicating: `spawn_starting_entities`, `spawn_combat_unit`, `headless_despawn_system`, `count_living_entities`, `check_elimination`, `determine_leader`, `BotConfig`
-- [ ] Extract shared `make_headless_world()` from `make_harness_sim` and `make_arena_sim` (resource initialization is ~80% identical)
+- [x] Make `cc_sim::harness` helpers `pub` and reuse in `cc_agent::arena` instead of duplicating: `spawn_starting_entities`, `spawn_combat_unit`, `headless_despawn_system`, `count_living_entities`, `check_elimination`, `determine_leader`, `BotConfig`
+- [x] Extract shared `make_headless_world()` from `make_harness_sim` and `make_arena_sim` (resource initialization is ~80% identical)
 - [ ] Populate `damage_dealt`/`damage_taken` fields in `PlayerArenaStats` (currently always 0.0)
 - [ ] Add bounds checking in `spawn_starting_entities` for Pawdler spawn offsets near map edge
 - [ ] Count `MatchOutcome::Error` outcomes in arena CLI summary statistics
-- [ ] Extract `extract_panic_message()` helper from duplicated `catch_unwind` downcast patterns
+- [x] Extract `extract_panic_message()` helper from duplicated `catch_unwind` downcast patterns
 
 ## From LLM Runner + Construct Mode Code Review
 

@@ -21,7 +21,10 @@ use cc_core::map::GameMap;
 use cc_core::map_gen::{self, MapGenParams};
 use cc_core::unit_stats::base_stats;
 
-use crate::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState, BotConfig};
+// Re-export BotConfig so `use cc_sim::harness::*` brings it into scope
+// (used by wet_test.rs and harness consumers).
+pub use crate::ai::fsm::BotConfig;
+use crate::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState};
 use crate::ai::MultiAiState;
 use crate::resources::{
     CombatStats, CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock,
@@ -288,13 +291,7 @@ pub fn run_match(config: &HarnessConfig) -> MatchResult {
         let tick_after = world.resource::<SimClock>().tick;
 
         if let Err(panic_info) = tick_result {
-            let msg = if let Some(s) = panic_info.downcast_ref::<&str>() {
-                s.to_string()
-            } else if let Some(s) = panic_info.downcast_ref::<String>() {
-                s.clone()
-            } else {
-                "unknown panic".to_string()
-            };
+            let msg = extract_panic_message(panic_info);
             checker.record_panic(tick_after, &msg);
             outcome = MatchOutcome::Error {
                 tick: tick_after,
@@ -348,8 +345,8 @@ pub fn run_match(config: &HarnessConfig) -> MatchResult {
             break;
         }
 
-        // Broader elimination check
-        if let Some(winner) = check_elimination(&mut world) {
+        // Broader elimination check (attacker advantage on mutual elimination)
+        if let Some(winner) = check_elimination(&mut world, Some(0)) {
             outcome = MatchOutcome::Victory {
                 winner,
                 tick: tick_after,
@@ -383,14 +380,33 @@ pub fn run_match(config: &HarnessConfig) -> MatchResult {
 }
 
 // ---------------------------------------------------------------------------
-// Setup helpers
+// Setup helpers (pub for reuse by cc_agent::arena)
 // ---------------------------------------------------------------------------
 
-fn make_harness_sim(
+/// Extract a panic message from a `catch_unwind` payload.
+///
+/// Handles the common `&str` and `String` downcast cases, falling back
+/// to `"unknown panic"` for other payload types.
+pub fn extract_panic_message(payload: Box<dyn std::any::Any + Send>) -> String {
+    if let Some(s) = payload.downcast_ref::<&str>() {
+        s.to_string()
+    } else if let Some(s) = payload.downcast_ref::<String>() {
+        s.clone()
+    } else {
+        "unknown panic".to_string()
+    }
+}
+
+/// Create a headless Bevy `World` with the standard simulation resources
+/// (CommandQueue, SimClock, GameState, PlayerResources, etc.) and the
+/// spawn positions extracted from the map definition.
+///
+/// Returns `(world, spawn_positions)` so callers can further customize
+/// the `MultiAiState`, schedule, and additional resources before running.
+pub fn make_headless_world(
     map: GameMap,
-    config: &HarnessConfig,
     map_def: &cc_core::map_format::MapDefinition,
-) -> (World, Schedule) {
+) -> (World, Vec<(u8, GridPos)>) {
     let mut world = World::new();
     world.insert_resource(CommandQueue::default());
     world.insert_resource(SimClock::default());
@@ -404,6 +420,27 @@ fn make_harness_sim(
     }
     world.insert_resource(player_res);
     world.insert_resource(MapResource { map });
+
+    let spawn_positions: Vec<(u8, GridPos)> = map_def
+        .spawn_points
+        .iter()
+        .map(|sp| (sp.player, GridPos::new(sp.pos.0, sp.pos.1)))
+        .collect();
+    world.insert_resource(SpawnPositions {
+        positions: spawn_positions.clone(),
+    });
+
+    world.insert_resource(AiState::default());
+
+    (world, spawn_positions)
+}
+
+fn make_harness_sim(
+    map: GameMap,
+    config: &HarnessConfig,
+    map_def: &cc_core::map_format::MapDefinition,
+) -> (World, Schedule) {
+    let (mut world, spawn_positions) = make_headless_world(map, map_def);
 
     let multi_ai = MultiAiState {
         players: config
@@ -423,16 +460,6 @@ fn make_harness_sim(
             .collect(),
     };
     world.insert_resource(multi_ai);
-    world.insert_resource(AiState::default());
-
-    let spawn_positions: Vec<(u8, GridPos)> = map_def
-        .spawn_points
-        .iter()
-        .map(|sp| (sp.player, GridPos::new(sp.pos.0, sp.pos.1)))
-        .collect();
-    world.insert_resource(SpawnPositions {
-        positions: spawn_positions.clone(),
-    });
 
     let mut schedule = Schedule::new(FixedUpdate);
     schedule.add_systems(
@@ -470,7 +497,8 @@ fn make_harness_sim(
     (world, schedule)
 }
 
-fn spawn_starting_entities(
+/// Spawn the HQ building, starting workers, and resource deposits for a player.
+pub fn spawn_starting_entities(
     world: &mut World,
     player_id: u8,
     spawn_pos: GridPos,
@@ -543,7 +571,8 @@ fn spawn_starting_entities(
     }
 }
 
-fn spawn_combat_unit(world: &mut World, grid: GridPos, player_id: u8, kind: UnitKind) -> Entity {
+/// Spawn a single combat unit with base stats at the given grid position.
+pub fn spawn_combat_unit(world: &mut World, grid: GridPos, player_id: u8, kind: UnitKind) -> Entity {
     let stats = base_stats(kind);
     world
         .spawn((
@@ -574,14 +603,14 @@ fn spawn_combat_unit(world: &mut World, grid: GridPos, player_id: u8, kind: Unit
 
 /// Headless despawn: in the harness there's no client death_fade_system,
 /// so we despawn Dead entities immediately after cleanup marks them.
-fn headless_despawn_system(mut commands: Commands, dead: Query<Entity, With<Dead>>) {
+pub fn headless_despawn_system(mut commands: Commands, dead: Query<Entity, With<Dead>>) {
     for entity in dead.iter() {
         commands.entity(entity).despawn();
     }
 }
 
 /// Count living (non-Dead) entities per player.
-fn count_living_entities(world: &mut World) -> [u32; 2] {
+pub fn count_living_entities(world: &mut World) -> [u32; 2] {
     let mut counts = [0u32; 2];
     for (owner,) in world
         .query_filtered::<(&Owner,), Without<Dead>>()
@@ -594,17 +623,23 @@ fn count_living_entities(world: &mut World) -> [u32; 2] {
     counts
 }
 
-fn check_elimination(world: &mut World) -> Option<u8> {
+/// Check if either player has been eliminated.
+///
+/// `mutual_elimination_winner` controls the result when both players have
+/// zero entities: `Some(id)` gives victory to that player (attacker advantage),
+/// `None` signals a draw.
+pub fn check_elimination(world: &mut World, mutual_elimination_winner: Option<u8>) -> Option<u8> {
     let counts = count_living_entities(world);
     match (counts[0] > 0, counts[1] > 0) {
-        (false, false) => Some(0), // mutual elimination — attacker advantage
+        (false, false) => mutual_elimination_winner,
         (false, true) => Some(1),
         (true, false) => Some(0),
         (true, true) => None,
     }
 }
 
-fn determine_leader(world: &mut World) -> Option<u8> {
+/// Determine which player is leading based on living entity count.
+pub fn determine_leader(world: &mut World) -> Option<u8> {
     let counts = count_living_entities(world);
     match counts[0].cmp(&counts[1]) {
         std::cmp::Ordering::Greater => Some(0),
@@ -616,4 +651,233 @@ fn determine_leader(world: &mut World) -> Option<u8> {
 /// Generate a MatchReport from a MatchResult.
 pub fn generate_report(result: &MatchResult, config: &HarnessConfig) -> report::MatchReport {
     report::MatchReport::from_result(result, config)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Helper: create a minimal World with PlayerResources for 2 players.
+    fn test_world() -> World {
+        let mut world = World::new();
+        let mut player_res = PlayerResources::default();
+        while player_res.players.len() < 2 {
+            player_res.players.push(Default::default());
+        }
+        world.insert_resource(player_res);
+        world
+    }
+
+    #[test]
+    fn extract_panic_message_from_str() {
+        let payload: Box<dyn std::any::Any + Send> = Box::new("test panic");
+        assert_eq!(extract_panic_message(payload), "test panic");
+    }
+
+    #[test]
+    fn extract_panic_message_from_string() {
+        let payload: Box<dyn std::any::Any + Send> =
+            Box::new(String::from("string panic"));
+        assert_eq!(extract_panic_message(payload), "string panic");
+    }
+
+    #[test]
+    fn extract_panic_message_from_unknown() {
+        let payload: Box<dyn std::any::Any + Send> = Box::new(42u32);
+        assert_eq!(extract_panic_message(payload), "unknown panic");
+    }
+
+    #[test]
+    fn make_headless_world_inserts_core_resources() {
+        let params = cc_core::map_gen::MapGenParams {
+            width: 16,
+            height: 16,
+            seed: 1,
+            ..Default::default()
+        };
+        let map_def = cc_core::map_gen::generate_map(&params);
+        let game_map = map_def.to_game_map();
+
+        let (world, spawn_positions) = make_headless_world(game_map, &map_def);
+
+        // Core resources should exist
+        assert!(world.get_resource::<CommandQueue>().is_some());
+        assert!(world.get_resource::<SimClock>().is_some());
+        assert!(world.get_resource::<GameState>().is_some());
+        assert!(world.get_resource::<PlayerResources>().is_some());
+        assert!(world.get_resource::<MapResource>().is_some());
+        assert!(world.get_resource::<SpawnPositions>().is_some());
+        assert!(world.get_resource::<CombatStats>().is_some());
+        assert!(world.get_resource::<ControlGroups>().is_some());
+
+        // Spawn positions should be extracted
+        assert!(!spawn_positions.is_empty());
+    }
+
+    #[test]
+    fn spawn_combat_unit_creates_entity_with_stats() {
+        let mut world = test_world();
+        let grid = GridPos::new(5, 5);
+        let entity = spawn_combat_unit(&mut world, grid, 0, UnitKind::Chonk);
+
+        let owner = world.get::<Owner>(entity).unwrap();
+        assert_eq!(owner.player_id, 0);
+
+        let unit_type = world.get::<UnitType>(entity).unwrap();
+        assert_eq!(unit_type.kind, UnitKind::Chonk);
+
+        let health = world.get::<Health>(entity).unwrap();
+        let expected = base_stats(UnitKind::Chonk);
+        assert_eq!(health.max, expected.health);
+        assert_eq!(health.current, expected.health);
+
+        let attack = world.get::<AttackStats>(entity).unwrap();
+        assert_eq!(attack.damage, expected.damage);
+        assert_eq!(attack.range, expected.range);
+    }
+
+    #[test]
+    fn count_living_entities_ignores_dead() {
+        let mut world = test_world();
+        let grid = GridPos::new(5, 5);
+
+        // Spawn 2 for player 0, 1 for player 1
+        spawn_combat_unit(&mut world, grid, 0, UnitKind::Chonk);
+        let dead_entity = spawn_combat_unit(&mut world, GridPos::new(6, 5), 0, UnitKind::Nuisance);
+        spawn_combat_unit(&mut world, GridPos::new(7, 5), 1, UnitKind::Hisser);
+
+        // Mark one as dead
+        world.entity_mut(dead_entity).insert(Dead);
+
+        let counts = count_living_entities(&mut world);
+        assert_eq!(counts[0], 1); // 2 spawned, 1 dead
+        assert_eq!(counts[1], 1);
+    }
+
+    #[test]
+    fn check_elimination_p0_eliminated() {
+        let mut world = test_world();
+        // Only player 1 has entities
+        spawn_combat_unit(&mut world, GridPos::new(5, 5), 1, UnitKind::Chonk);
+
+        assert_eq!(check_elimination(&mut world, Some(0)), Some(1));
+        assert_eq!(check_elimination(&mut world, None), Some(1));
+    }
+
+    #[test]
+    fn check_elimination_p1_eliminated() {
+        let mut world = test_world();
+        // Only player 0 has entities
+        spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Chonk);
+
+        assert_eq!(check_elimination(&mut world, Some(0)), Some(0));
+        assert_eq!(check_elimination(&mut world, None), Some(0));
+    }
+
+    #[test]
+    fn check_elimination_mutual_with_attacker_advantage() {
+        let mut world = test_world();
+        // No entities at all
+        assert_eq!(check_elimination(&mut world, Some(0)), Some(0));
+    }
+
+    #[test]
+    fn check_elimination_mutual_draw() {
+        let mut world = test_world();
+        // No entities at all
+        assert_eq!(check_elimination(&mut world, None), None);
+    }
+
+    #[test]
+    fn check_elimination_both_alive() {
+        let mut world = test_world();
+        spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Chonk);
+        spawn_combat_unit(&mut world, GridPos::new(10, 10), 1, UnitKind::Hisser);
+
+        assert_eq!(check_elimination(&mut world, Some(0)), None);
+        assert_eq!(check_elimination(&mut world, None), None);
+    }
+
+    #[test]
+    fn determine_leader_p0_leads() {
+        let mut world = test_world();
+        spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Chonk);
+        spawn_combat_unit(&mut world, GridPos::new(6, 5), 0, UnitKind::Nuisance);
+        spawn_combat_unit(&mut world, GridPos::new(10, 10), 1, UnitKind::Hisser);
+
+        assert_eq!(determine_leader(&mut world), Some(0));
+    }
+
+    #[test]
+    fn determine_leader_p1_leads() {
+        let mut world = test_world();
+        spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Chonk);
+        spawn_combat_unit(&mut world, GridPos::new(10, 10), 1, UnitKind::Hisser);
+        spawn_combat_unit(&mut world, GridPos::new(11, 10), 1, UnitKind::Nuisance);
+
+        assert_eq!(determine_leader(&mut world), Some(1));
+    }
+
+    #[test]
+    fn determine_leader_tie() {
+        let mut world = test_world();
+        spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Chonk);
+        spawn_combat_unit(&mut world, GridPos::new(10, 10), 1, UnitKind::Hisser);
+
+        assert_eq!(determine_leader(&mut world), None);
+    }
+
+    #[test]
+    fn spawn_starting_entities_creates_hq_and_workers() {
+        let params = cc_core::map_gen::MapGenParams {
+            width: 16,
+            height: 16,
+            seed: 1,
+            ..Default::default()
+        };
+        let map_def = cc_core::map_gen::generate_map(&params);
+        let game_map = map_def.to_game_map();
+
+        let (mut world, spawn_positions) = make_headless_world(game_map, &map_def);
+
+        if let Some(&(player_id, spawn_pos)) = spawn_positions.first() {
+            spawn_starting_entities(
+                &mut world,
+                player_id,
+                spawn_pos,
+                Faction::CatGpt,
+                &map_def,
+            );
+
+            // Should have 1 building (HQ) and 2 workers for this player
+            let mut building_count = 0u32;
+            let mut unit_count = 0u32;
+            for (owner,) in world
+                .query_filtered::<(&Owner,), With<Building>>()
+                .iter(&world)
+            {
+                if owner.player_id == player_id {
+                    building_count += 1;
+                }
+            }
+            for (owner,) in world
+                .query_filtered::<(&Owner,), With<UnitType>>()
+                .iter(&world)
+            {
+                if owner.player_id == player_id {
+                    unit_count += 1;
+                }
+            }
+            assert_eq!(building_count, 1, "should have 1 HQ building");
+            assert_eq!(unit_count, 2, "should have 2 starting workers");
+
+            // Check resources were granted
+            let player_res = world.resource::<PlayerResources>();
+            if let Some(pres) = player_res.players.get(player_id as usize) {
+                assert!(pres.supply_cap > 0, "supply_cap should be > 0 from HQ");
+                assert_eq!(pres.food, 200, "starting food should be 200");
+                assert!(pres.supply > 0, "supply used should be > 0 from workers");
+            }
+        }
+    }
 }
