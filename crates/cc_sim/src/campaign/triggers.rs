@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use cc_core::components::{Dead, Health, HeroIdentity, Owner, Position, WaveMember};
+use cc_core::components::{Dead, Health, HeroIdentity, Owner, Position};
 use cc_core::mission::{DialogueLine, TriggerAction, TriggerCondition};
 
 use crate::resources::SimClock;
@@ -36,7 +36,6 @@ pub fn trigger_check_system(
     mut objective_writer: MessageWriter<ObjectiveCompleteEvent>,
     heroes: Query<(&HeroIdentity, &Position, &Owner, &Health, Has<Dead>)>,
     enemies: Query<(&Owner, Has<Dead>)>,
-    wave_members: Query<(&WaveMember, Has<Dead>)>,
     wave_tracker: Res<WaveTracker>,
 ) {
     if campaign.phase != CampaignPhase::InMission {
@@ -71,7 +70,6 @@ pub fn trigger_check_system(
             &campaign,
             &heroes,
             living_enemies,
-            &wave_members,
             &wave_tracker,
         ) {
             triggers_to_fire.push(trigger.id.clone());
@@ -134,7 +132,6 @@ fn evaluate_condition(
     campaign: &CampaignState,
     heroes: &Query<(&HeroIdentity, &Position, &Owner, &Health, Has<Dead>)>,
     living_enemies: u32,
-    wave_members: &Query<(&WaveMember, Has<Dead>)>,
     wave_tracker: &WaveTracker,
 ) -> bool {
     match condition {
@@ -175,11 +172,11 @@ fn evaluate_condition(
 
         TriggerCondition::All(conditions) => conditions
             .iter()
-            .all(|c| evaluate_condition(c, tick, campaign, heroes, living_enemies, wave_members, wave_tracker)),
+            .all(|c| evaluate_condition(c, tick, campaign, heroes, living_enemies, wave_tracker)),
 
         TriggerCondition::Any(conditions) => conditions
             .iter()
-            .any(|c| evaluate_condition(c, tick, campaign, heroes, living_enemies, wave_members, wave_tracker)),
+            .any(|c| evaluate_condition(c, tick, campaign, heroes, living_enemies, wave_tracker)),
 
         TriggerCondition::HeroHpBelow { hero, percentage } => {
             for (identity, _pos, _owner, health, _is_dead) in heroes.iter() {

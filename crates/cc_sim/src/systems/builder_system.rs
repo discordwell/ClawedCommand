@@ -7,10 +7,11 @@ use cc_core::components::{
     UnderConstruction, Velocity,
 };
 use cc_core::coords::WorldPos;
+use cc_core::tuning::BUILDER_PROXIMITY;
 
 /// Checks each builder with a `BuildOrder` for adjacency to the build site.
-/// When the builder arrives (Chebyshev distance <= 1), spawns the building and
-/// removes the `BuildOrder`.
+/// When the builder arrives (Chebyshev distance <= BUILDER_PROXIMITY), spawns
+/// the building and removes the `BuildOrder`.
 ///
 /// Uses Position (world coords) converted to grid, since GridCell may not yet be
 /// synced after movement_system runs this tick.
@@ -23,7 +24,7 @@ pub fn builder_system(
         let builder_grid = pos.world.to_grid();
         let dx = (builder_grid.x - build_order.position.x).abs();
         let dy = (builder_grid.y - build_order.position.y).abs();
-        if dx <= 1 && dy <= 1 {
+        if dx <= BUILDER_PROXIMITY && dy <= BUILDER_PROXIMITY {
             let bstats = building_stats(build_order.building_kind);
             let world = WorldPos::from_grid(build_order.position);
 

@@ -2293,3 +2293,231 @@ fn test_move_cancels_build_order() {
     let food_after = world.resource::<PlayerResources>().players[0].food;
     assert_eq!(food_after, 300, "Move should refund CatTree's 150 food cost, got {food_after}");
 }
+
+// ---------------------------------------------------------------------------
+// Phase 5: Builder / Training flow tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_build_deducts_resources_immediately() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let builder = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
+    world.resource_mut::<PlayerResources>().players[0].food = 300;
+    let initial_food = world.resource::<PlayerResources>().players[0].food;
+
+    // Build CatTree (costs 150 food) far away so builder hasn't arrived after 1 tick
+    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
+        builder: EntityId(builder.to_bits()),
+        building_kind: BuildingKind::CatTree,
+        position: GridPos::new(15, 5),
+    });
+
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let food_after = world.resource::<PlayerResources>().players[0].food;
+    assert_eq!(
+        food_after,
+        initial_food - 150,
+        "Resources should be deducted immediately on Build command"
+    );
+
+    // Building should NOT exist yet (builder still walking)
+    let building_count = world
+        .query_filtered::<&Building, ()>()
+        .iter(&world)
+        .filter(|b| b.kind == BuildingKind::CatTree)
+        .count();
+    assert_eq!(building_count, 0, "Building should not exist yet while builder walks");
+}
+
+#[test]
+fn test_stop_builder_refunds_resources() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let builder = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
+    world.resource_mut::<PlayerResources>().players[0].food = 300;
+    let initial_food = world.resource::<PlayerResources>().players[0].food;
+
+    // Build CatTree far away (costs 150 food)
+    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
+        builder: EntityId(builder.to_bits()),
+        building_kind: BuildingKind::CatTree,
+        position: GridPos::new(15, 5),
+    });
+
+    run_ticks(&mut world, &mut schedule, 1);
+
+    // Resources should be deducted
+    let food_after_build = world.resource::<PlayerResources>().players[0].food;
+    assert_eq!(food_after_build, initial_food - 150);
+    assert!(world.get::<BuildOrder>(builder).is_some());
+
+    // Stop the builder — should refund
+    issue_stop(&mut world, &[builder]);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let food_after_stop = world.resource::<PlayerResources>().players[0].food;
+    assert_eq!(
+        food_after_stop, initial_food,
+        "Stop should refund building cost: expected {initial_food}, got {food_after_stop}"
+    );
+    assert!(world.get::<BuildOrder>(builder).is_none());
+}
+
+#[test]
+fn test_end_to_end_gather_build_train_rally() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+
+    // Setup: TheBox at (10,10), deposit at (12,10), Pawdler at (11,10)
+    spawn_the_box(&mut world, GridPos::new(10, 10), 0);
+    let deposit = spawn_deposit(&mut world, GridPos::new(12, 10));
+    let worker = spawn_combat_unit(&mut world, GridPos::new(11, 10), 0, UnitKind::Pawdler);
+
+    // Start with modest resources (just below CatTree cost)
+    world.resource_mut::<PlayerResources>().players[0].food = 100;
+    world.resource_mut::<PlayerResources>().players[0].supply = 1;
+
+    // Gather resources until we have enough for CatTree (150 food)
+    world.resource_mut::<CommandQueue>().push(GameCommand::GatherResource {
+        unit_ids: vec![EntityId(worker.to_bits())],
+        deposit: EntityId(deposit.to_bits()),
+    });
+    run_ticks(&mut world, &mut schedule, 300);
+
+    let food = world.resource::<PlayerResources>().players[0].food;
+    assert!(food >= 150, "Should have gathered enough food for CatTree, got {food}");
+
+    // Stop gathering and build a CatTree
+    issue_stop(&mut world, &[worker]);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
+        builder: EntityId(worker.to_bits()),
+        building_kind: BuildingKind::CatTree,
+        position: GridPos::new(14, 10),
+    });
+
+    // Wait for walk (~30 ticks) + construction (150 ticks) + buffer
+    run_ticks(&mut world, &mut schedule, 200);
+
+    // CatTree should be built
+    let cat_tree = world
+        .query_filtered::<(Entity, &Building, &Producer), Without<UnderConstruction>>()
+        .iter(&world)
+        .find(|(_, b, _)| b.kind == BuildingKind::CatTree)
+        .map(|(e, _, _)| e);
+    assert!(cat_tree.is_some(), "CatTree should be fully built");
+    let cat_tree = cat_tree.unwrap();
+
+    // Set rally point
+    let rally_pos = GridPos::new(16, 10);
+    world.resource_mut::<CommandQueue>().push(GameCommand::SetRallyPoint {
+        building: EntityId(cat_tree.to_bits()),
+        target: rally_pos,
+    });
+
+    // Ensure enough resources to train a Nuisance (75 food, 1 supply)
+    world.resource_mut::<PlayerResources>().players[0].food += 100;
+
+    // Train a Nuisance
+    world.resource_mut::<CommandQueue>().push(GameCommand::TrainUnit {
+        building: EntityId(cat_tree.to_bits()),
+        unit_kind: UnitKind::Nuisance,
+    });
+
+    // Wait for training (60 ticks) + movement to rally
+    run_ticks(&mut world, &mut schedule, 80);
+
+    let nuisance_count = world
+        .query_filtered::<&UnitType, ()>()
+        .iter(&world)
+        .filter(|ut| ut.kind == UnitKind::Nuisance)
+        .count();
+    assert!(nuisance_count >= 1, "Nuisance should have spawned from CatTree");
+}
+
+#[test]
+fn test_production_queue_multiple_units() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+
+    // Spawn a pre-built CatTree
+    let bstats = cc_core::building_stats::building_stats(BuildingKind::CatTree);
+    let cat_tree = world
+        .spawn((
+            Position { world: WorldPos::from_grid(GridPos::new(10, 10)) },
+            Velocity::zero(),
+            GridCell { pos: GridPos::new(10, 10) },
+            Owner { player_id: 0 },
+            Building { kind: BuildingKind::CatTree },
+            Health { current: bstats.health, max: bstats.health },
+            Producer,
+            ProductionQueue::default(),
+        ))
+        .id();
+
+    world.resource_mut::<PlayerResources>().players[0].food = 1000;
+    world.resource_mut::<PlayerResources>().players[0].supply = 0;
+    world.resource_mut::<PlayerResources>().players[0].supply_cap = 30;
+
+    // Queue 3 Nuisances
+    for _ in 0..3 {
+        world.resource_mut::<CommandQueue>().push(GameCommand::TrainUnit {
+            building: EntityId(cat_tree.to_bits()),
+            unit_kind: UnitKind::Nuisance,
+        });
+    }
+
+    run_ticks(&mut world, &mut schedule, 1);
+
+    // Check queue depth
+    let queue = world.get::<ProductionQueue>(cat_tree).unwrap();
+    assert_eq!(queue.queue.len(), 3, "All 3 Nuisances should be queued");
+
+    // Run enough for all 3 to train (60 ticks each = 180 + buffer)
+    run_ticks(&mut world, &mut schedule, 200);
+
+    let nuisance_count = world
+        .query_filtered::<&UnitType, ()>()
+        .iter(&world)
+        .filter(|ut| ut.kind == UnitKind::Nuisance)
+        .count();
+    assert_eq!(nuisance_count, 3, "All 3 Nuisances should have spawned");
+}
+
+#[test]
+fn test_duplicate_build_at_same_location() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+
+    let builder1 = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
+    let builder2 = spawn_combat_unit(&mut world, GridPos::new(5, 6), 0, UnitKind::Pawdler);
+    world.resource_mut::<PlayerResources>().players[0].food = 600;
+
+    let build_pos = GridPos::new(8, 5);
+
+    // Issue two build commands at the same position
+    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
+        builder: EntityId(builder1.to_bits()),
+        building_kind: BuildingKind::CatTree,
+        position: build_pos,
+    });
+    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
+        builder: EntityId(builder2.to_bits()),
+        building_kind: BuildingKind::CatTree,
+        position: build_pos,
+    });
+
+    // Wait for both to arrive and build
+    run_ticks(&mut world, &mut schedule, 60);
+
+    // Both builders arrive, both place buildings — 2 CatTrees at same position
+    // (game allows this; placement validation is a client-side concern)
+    let cat_tree_count = world
+        .query_filtered::<&Building, ()>()
+        .iter(&world)
+        .filter(|b| b.kind == BuildingKind::CatTree)
+        .count();
+
+    // Each builder independently places a building. 300 food was deducted (150 * 2).
+    assert_eq!(cat_tree_count, 2, "Both builders should place buildings (sim doesn't block overlap)");
+    let food = world.resource::<PlayerResources>().players[0].food;
+    assert_eq!(food, 600 - 150 - 150, "Both builds should deduct resources");
+}

@@ -1,3 +1,5 @@
+pub mod resource_hud;
+
 #[cfg(feature = "native")]
 pub mod ability_bar;
 #[cfg(feature = "native")]
@@ -36,7 +38,9 @@ pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<UiState>();
+        app.init_resource::<UiState>()
+            .add_systems(Startup, resource_hud::spawn_resource_hud)
+            .add_systems(Update, resource_hud::update_resource_hud);
 
         #[cfg(feature = "native")]
         {

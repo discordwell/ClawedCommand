@@ -1,18 +1,51 @@
 use bevy::prelude::*;
 
+use cc_core::building_stats::building_stats;
 use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::{Selected, UnitType};
+use cc_core::components::{Building, BuildingKind, Owner, Producer, Selected, UnitType};
 use cc_sim::resources::CommandQueue;
 
 use super::{DoubleClickState, InputMode};
 
+/// Local player ID (TODO: make configurable for multiplayer)
+const LOCAL_PLAYER: u8 = 0;
+
 pub fn handle_keyboard(
     keyboard: Res<ButtonInput<KeyCode>>,
     selected_units: Query<Entity, (With<UnitType>, With<Selected>)>,
+    selected_buildings: Query<(Entity, &Building, &Owner), (With<Producer>, With<Selected>)>,
     mut cmd_queue: ResMut<CommandQueue>,
     mut input_mode: ResMut<InputMode>,
     mut dbl_click: ResMut<DoubleClickState>,
 ) {
+    // --- Build menu sub-key handling ---
+    if *input_mode == InputMode::BuildMenu {
+        let building = if keyboard.just_pressed(KeyCode::KeyT) {
+            Some(BuildingKind::CatTree)
+        } else if keyboard.just_pressed(KeyCode::KeyF) {
+            Some(BuildingKind::FishMarket)
+        } else if keyboard.just_pressed(KeyCode::KeyL) {
+            Some(BuildingKind::LitterBox)
+        } else if keyboard.just_pressed(KeyCode::KeyS) {
+            Some(BuildingKind::ServerRack)
+        } else if keyboard.just_pressed(KeyCode::KeyP) {
+            Some(BuildingKind::ScratchingPost)
+        } else if keyboard.just_pressed(KeyCode::KeyC) {
+            Some(BuildingKind::CatFlap)
+        } else if keyboard.just_pressed(KeyCode::KeyR) {
+            Some(BuildingKind::LaserPointer)
+        } else {
+            None
+        };
+
+        if let Some(kind) = building {
+            *input_mode = InputMode::BuildPlacement { kind };
+        } else if keyboard.just_pressed(KeyCode::Escape) {
+            *input_mode = InputMode::Normal;
+        }
+        return;
+    }
+
     // H — Halt/stop selected units (S is used for camera pan)
     if keyboard.just_pressed(KeyCode::KeyH) {
         let unit_ids: Vec<EntityId> = selected_units
@@ -32,6 +65,53 @@ pub fn handle_keyboard(
     // A — Enter attack-move mode
     if keyboard.just_pressed(KeyCode::KeyA) {
         *input_mode = InputMode::AttackMove;
+    }
+
+    // B — Enter build menu (when a unit is selected)
+    if keyboard.just_pressed(KeyCode::KeyB) {
+        if selected_units.iter().count() > 0 {
+            *input_mode = InputMode::BuildMenu;
+        }
+    }
+
+    // Q/W/E/R — Train units from selected producer building
+    // X — Cancel front of production queue
+    let train_key = if keyboard.just_pressed(KeyCode::KeyQ) {
+        Some(0usize)
+    } else if keyboard.just_pressed(KeyCode::KeyW) {
+        Some(1)
+    } else if keyboard.just_pressed(KeyCode::KeyE) {
+        Some(2)
+    } else if keyboard.just_pressed(KeyCode::KeyR) {
+        Some(3)
+    } else {
+        None
+    };
+
+    if let Some(slot) = train_key {
+        for (entity, bld, owner) in selected_buildings.iter() {
+            if owner.player_id != LOCAL_PLAYER {
+                continue;
+            }
+            let bstats = building_stats(bld.kind);
+            if let Some(&unit_kind) = bstats.can_produce.get(slot) {
+                cmd_queue.push(GameCommand::TrainUnit {
+                    building: EntityId(entity.to_bits()),
+                    unit_kind,
+                });
+            }
+        }
+    }
+
+    if keyboard.just_pressed(KeyCode::KeyX) {
+        for (entity, _, owner) in selected_buildings.iter() {
+            if owner.player_id != LOCAL_PLAYER {
+                continue;
+            }
+            cmd_queue.push(GameCommand::CancelQueue {
+                building: EntityId(entity.to_bits()),
+            });
+        }
     }
 
     // Escape — Cancel special modes or deselect all

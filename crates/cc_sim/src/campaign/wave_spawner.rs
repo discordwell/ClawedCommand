@@ -21,9 +21,13 @@ pub struct WaveTracker {
     pub processed: HashSet<String>,
 }
 
-/// Whether this is the first tick of InMission (for spawning Immediate waves and player setup).
+/// Tracks whether the current mission has been initialized (player setup spawned, immediate waves fired).
+/// Resets automatically when a new mission is loaded (detected by mission ID change).
 #[derive(Resource, Default)]
-pub struct MissionStarted(pub bool);
+pub struct MissionStarted {
+    pub started: bool,
+    pub mission_id: Option<String>,
+}
 
 /// System: spawn entities from wave definitions.
 ///
@@ -44,9 +48,18 @@ pub fn wave_spawner_system(
         return;
     };
 
+    // Detect mission change and reset state for the new mission
+    let current_id = mission.id.clone();
+    if mission_started.mission_id.as_ref() != Some(&current_id) {
+        mission_started.started = false;
+        mission_started.mission_id = Some(current_id);
+        wave_tracker.waves.clear();
+        wave_tracker.processed.clear();
+    }
+
     // First tick of InMission: spawn player setup + Immediate waves
-    if !mission_started.0 {
-        mission_started.0 = true;
+    if !mission_started.started {
+        mission_started.started = true;
 
         // Spawn player heroes
         for hero_spawn in &mission.player_setup.heroes {
