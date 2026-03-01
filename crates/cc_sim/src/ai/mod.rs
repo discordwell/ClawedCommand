@@ -12,7 +12,12 @@ impl Plugin for AiPlugin {
             .init_resource::<MultiAiState>()
             .add_systems(
                 FixedUpdate,
-                fsm::ai_decision_system
+                (
+                    fsm::ai_decision_system
+                        .run_if(|multi: Res<MultiAiState>| multi.players.is_empty()),
+                    fsm::multi_ai_decision_system
+                        .run_if(|multi: Res<MultiAiState>| !multi.players.is_empty()),
+                )
                     .after(crate::systems::cleanup_system::cleanup_system)
                     .run_if(|state: Res<GameState>| *state == GameState::Playing),
             );

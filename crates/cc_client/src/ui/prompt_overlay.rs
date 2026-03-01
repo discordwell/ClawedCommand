@@ -1,4 +1,4 @@
-//! Prompt overlay UI — opened with `/` key, sends prompts to Claude Code CLI.
+//! Prompt overlay UI — opened with `/` key, sends prompts to the LLM backend.
 //!
 //! Shares state with ConstructModeState so Tab and `/` views show the same
 //! script/chat data.
@@ -198,7 +198,7 @@ pub fn prompt_text_input(
                     player_id: local_player.0,
                     prompt,
                     tier: ToolTier::Basic,
-                    source: AgentSource::Prompt,
+                    source: AgentSource::ConstructMode,
                     chat_history: Some(construct_state.chat_history.clone()),
                     snapshot: None, // Snapshot will be built by the runner if needed
                 };

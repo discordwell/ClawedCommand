@@ -18,3 +18,6 @@ training/outputs/**/optimizer.*
 training/outputs/**/pytorch_model.*
 training/outputs/**/model*.safetensors
 training/outputs/**/checkpoint-*/
+training/lora_checkpoints/
+training/mlx_adapter/
+training/mlx_adapter_notrans/

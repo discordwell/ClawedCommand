@@ -138,6 +138,25 @@ pub fn handle_mouse_input(
             state.drag_state.start = None;
             return;
         }
+
+        // In Move mode, left-click issues explicit move and reverts
+        if *state.input_mode == InputMode::Move {
+            let selected_ids: Vec<EntityId> = units
+                .iter()
+                .filter(|(_, _, _, sel, _)| sel.is_some())
+                .map(|(entity, _, _, _, _)| EntityId(entity.to_bits()))
+                .collect();
+            if !selected_ids.is_empty() {
+                let target = iso_world.to_grid();
+                state.cmd_queue.push(GameCommand::Move {
+                    unit_ids: selected_ids,
+                    target,
+                });
+            }
+            *state.input_mode = InputMode::Normal;
+            state.drag_state.start = None;
+            return;
+        }
     }
 
     // --- Left click held: check drag threshold ---

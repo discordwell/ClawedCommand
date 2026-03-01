@@ -25,6 +25,9 @@ fi
 
 export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
 
+# Use python3 explicitly (Ubuntu doesn't alias python→python3)
+PYTHON="${PYTHON:-python3}"
+
 cd "$SCRIPT_DIR"
 
 SKIP_TTS=false
@@ -50,18 +53,18 @@ if [ "$DISTILL_ONLY" = false ]; then
     # Download Speech Commands
     echo ""
     echo "--- 1a: Download Speech Commands v2 ---"
-    python data_pipeline.py --stage download --output-dir "$DATA_DIR"
+    $PYTHON data_pipeline.py --stage download --output-dir "$DATA_DIR"
 
     # Prepare pretrain dataset
     echo ""
     echo "--- 1b: Prepare pretrain dataset ---"
-    python data_pipeline.py --stage pretrain --output-dir "$DATA_DIR"
+    $PYTHON data_pipeline.py --stage pretrain --output-dir "$DATA_DIR"
 
     # GPU TTS generation
     if [ "$SKIP_TTS" = false ]; then
         echo ""
         echo "--- 1c: GPU TTS Generation (this takes a while) ---"
-        python data_pipeline.py --stage tts --output-dir "$DATA_DIR"
+        $PYTHON data_pipeline.py --stage tts --output-dir "$DATA_DIR"
     else
         echo ""
         echo "--- 1c: Skipping TTS generation (--skip-tts) ---"
@@ -70,7 +73,7 @@ if [ "$DISTILL_ONLY" = false ]; then
     # Build unified dataset
     echo ""
     echo "--- 1d: Build unified dataset ---"
-    python data_pipeline.py --stage unify --output-dir "$DATA_DIR"
+    $PYTHON data_pipeline.py --stage unify --output-dir "$DATA_DIR"
 
     # ============================================================
     # Step 2: Pretrain Teacher on Speech Commands
@@ -79,7 +82,7 @@ if [ "$DISTILL_ONLY" = false ]; then
     echo "=========================================="
     echo "  Step 2: Pretrain Teacher (~30 min)"
     echo "=========================================="
-    python train_teacher.py --phase pretrain \
+    $PYTHON train_teacher.py --phase pretrain \
         --data-dir "$DATA_DIR/speech_commands_pretrain" \
         --output-dir "$CKPT_DIR" \
         --device cuda
@@ -91,7 +94,7 @@ if [ "$DISTILL_ONLY" = false ]; then
     echo "=========================================="
     echo "  Step 3: Fine-tune Teacher (~45 min)"
     echo "=========================================="
-    python train_teacher.py --phase finetune \
+    $PYTHON train_teacher.py --phase finetune \
         --data-dir "$DATA_DIR/unified/train" \
         --val-dir "$DATA_DIR/unified/val" \
         --pretrained "$CKPT_DIR/teacher_pretrain_best.pt" \
@@ -106,7 +109,7 @@ echo ""
 echo "=========================================="
 echo "  Step 4: Knowledge Distillation (~60 min)"
 echo "=========================================="
-python distill.py \
+$PYTHON distill.py \
     --data-dir "$DATA_DIR/unified/train" \
     --val-dir "$DATA_DIR/unified/val" \
     --teacher "$CKPT_DIR/teacher_finetune_best.pt" \
@@ -120,7 +123,7 @@ echo ""
 echo "=========================================="
 echo "  Step 5: Student Fine-Tune (~15 min)"
 echo "=========================================="
-python train.py \
+$PYTHON train.py \
     --data-dir "$DATA_DIR/unified/train" \
     --pretrained "$CKPT_DIR/distilled_student_best.pt" \
     --output "$FINAL_ONNX" \
@@ -134,7 +137,7 @@ echo ""
 echo "=========================================="
 echo "  Step 6: Evaluation"
 echo "=========================================="
-python evaluate.py \
+$PYTHON evaluate.py \
     --model "$FINAL_ONNX" \
     --test-dir "$DATA_DIR/unified/test" \
     --output-dir "$EVAL_DIR"

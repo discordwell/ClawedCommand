@@ -186,11 +186,11 @@ def phase_pretrain(args):
 
     train_loader = DataLoader(
         train_dataset, batch_size=phase_cfg["batch_size"],
-        shuffle=True, num_workers=2, pin_memory=True,
+        shuffle=True, num_workers=0, pin_memory=True,
     )
     val_loader = DataLoader(
         val_no_aug, batch_size=phase_cfg["batch_size"],
-        shuffle=False, num_workers=2, pin_memory=True,
+        shuffle=False, num_workers=0, pin_memory=True,
     )
 
     print(f"Train: {len(train_dataset)}, Val: {len(val_dataset)}")
@@ -301,11 +301,11 @@ def phase_finetune(args):
 
     train_loader = DataLoader(
         train_dataset, batch_size=phase_cfg["batch_size"],
-        shuffle=True, num_workers=2, pin_memory=True,
+        shuffle=True, num_workers=0, pin_memory=True,
     )
     val_loader = DataLoader(
         val_dataset, batch_size=phase_cfg["batch_size"],
-        shuffle=False, num_workers=2, pin_memory=True,
+        shuffle=False, num_workers=0, pin_memory=True,
     )
 
     print(f"Train: {len(train_dataset)}, Val: {len(val_dataset)}")

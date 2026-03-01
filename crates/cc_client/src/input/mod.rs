@@ -10,6 +10,8 @@ pub enum InputMode {
     #[default]
     Normal,
     AttackMove,
+    /// M-click explicit move mode.
+    Move,
     /// Waiting for a sub-key to select a building type.
     BuildMenu,
     BuildPlacement { kind: BuildingKind },

@@ -86,9 +86,14 @@ pub fn handle_keyboard(
         }
     }
 
-    // A — Enter attack-move mode
-    if keyboard.just_pressed(KeyCode::KeyA) {
+    // G — Enter attack-move mode (A conflicts with WASD camera pan)
+    if keyboard.just_pressed(KeyCode::KeyG) {
         *input_mode = InputMode::AttackMove;
+    }
+
+    // M — Enter explicit move mode
+    if keyboard.just_pressed(KeyCode::KeyM) {
+        *input_mode = InputMode::Move;
     }
 
     // B — Enter build menu (when a unit is selected)

@@ -2,9 +2,9 @@
 -- @events: on_tick
 -- @interval: 3
 
--- Cat formation AI: tanks screen, ranged stay behind, melee flank.
--- Incorporates Gen 26 proven patterns: group focus fire, conditional kite,
--- retreat wounded, aggressive push.
+-- Cat formation AI: tanks in a front screen line, ranged spread behind,
+-- melee split into two flank wings. Each unit gets its OWN position.
+-- Gen 26 patterns: group focus fire, conditional kite, retreat wounded, push.
 
 local my_units = ctx:my_units()
 if not my_units then return end
@@ -68,7 +68,7 @@ if enemies and enemy_count > 0 then
     enemy_cy = enemy_cy / enemy_count
 end
 
--- Direction vector from army to enemies (normalized-ish)
+-- Direction toward enemies (normalized)
 local dir_x = enemy_cx - army_cx
 local dir_y = enemy_cy - army_cy
 local dir_len = math.sqrt(dir_x * dir_x + dir_y * dir_y)
@@ -76,6 +76,10 @@ if dir_len > 0.01 then
     dir_x = dir_x / dir_len
     dir_y = dir_y / dir_len
 end
+
+-- Perpendicular vector (for spreading units in a line)
+local perp_x = -dir_y
+local perp_y = dir_x
 
 -- === RALLY POINT (nearest own building) ===
 local my_buildings = ctx:my_buildings()
@@ -94,6 +98,12 @@ if my_buildings and #my_buildings > 0 then
     end
 end
 
+-- Helper: clamp to map bounds
+local function clamp_pos(x, y)
+    return math.max(0, math.min(map_w - 1, math.floor(x))),
+           math.max(0, math.min(map_h - 1, math.floor(y)))
+end
+
 -- === RETREAT WOUNDED (<30% HP when outnumbered) ===
 local retreat_ids = {}
 for _, u in ipairs(all_combat) do
@@ -103,58 +113,74 @@ for _, u in ipairs(all_combat) do
     end
 end
 if #retreat_ids > 0 then
-    ctx:move_units(retreat_ids, math.floor(rally_x), math.floor(rally_y))
+    local rx, ry = clamp_pos(rally_x, rally_y)
+    ctx:move_units(retreat_ids, rx, ry)
 end
 
 -- === FORMATION POSITIONING ===
--- Reposition units not yet in combat (idle or moving) into formation.
--- Units actively attacking stay on their targets.
+-- Each unit gets its OWN position — spread along the perpendicular axis.
+-- Front line (tanks): 7 tiles ahead, spaced 3 apart
+-- Back line (ranged): 3 tiles behind centroid, spaced 3 apart
+-- Flanks (melee): split into two wings, 5 tiles out on each side
 if enemies and enemy_count > 0 then
-    -- Tanks: advance toward enemy cluster as frontline screen
-    local tank_ids = {}
-    for _, u in ipairs(tanks) do
-        if not u.attacking then
-            table.insert(tank_ids, u.id)
+
+    -- --- TANK LINE (front screen) ---
+    for i, u in ipairs(tanks) do
+        if not u.in_combat then
+            -- Center the line: offset = (i - 1 - (count-1)/2) * spacing
+            local lateral = (i - 1 - (#tanks - 1) / 2) * 3
+            local tx = army_cx + dir_x * 7 + perp_x * lateral
+            local ty = army_cy + dir_y * 7 + perp_y * lateral
+            local cx, cy = clamp_pos(tx, ty)
+            ctx:attack_move({u.id}, cx, cy)
         end
-    end
-    if #tank_ids > 0 then
-        -- Tanks move toward enemies
-        local tx = math.floor(army_cx + dir_x * 4)
-        local ty = math.floor(army_cy + dir_y * 4)
-        tx = math.max(0, math.min(map_w - 1, tx))
-        ty = math.max(0, math.min(map_h - 1, ty))
-        ctx:attack_move(tank_ids, tx, ty)
     end
 
-    -- Ranged: stay 3-4 tiles behind the tank line
-    local ranged_move_ids = {}
-    for _, u in ipairs(ranged) do
-        if not u.attacking then
-            table.insert(ranged_move_ids, u.id)
+    -- --- RANGED LINE (behind tanks, spread out) ---
+    for i, u in ipairs(ranged) do
+        if not u.in_combat then
+            local lateral = (i - 1 - (#ranged - 1) / 2) * 3
+            local rx = army_cx - dir_x * 3 + perp_x * lateral
+            local ry = army_cy - dir_y * 3 + perp_y * lateral
+            local cx, cy = clamp_pos(rx, ry)
+            ctx:attack_move({u.id}, cx, cy)
         end
-    end
-    if #ranged_move_ids > 0 then
-        local rx = math.floor(army_cx - dir_x * 1)
-        local ry = math.floor(army_cy - dir_y * 1)
-        rx = math.max(0, math.min(map_w - 1, rx))
-        ry = math.max(0, math.min(map_h - 1, ry))
-        ctx:attack_move(ranged_move_ids, rx, ry)
     end
 
-    -- Melee DPS: flank from the side, attack-move toward enemies
-    local melee_move_ids = {}
-    for _, u in ipairs(melee) do
-        if not u.attacking then
-            table.insert(melee_move_ids, u.id)
+    -- --- MELEE FLANKS (two wings) ---
+    -- Split melee into left and right groups
+    local left_wing = {}
+    local right_wing = {}
+    for i, u in ipairs(melee) do
+        if i % 2 == 1 then
+            table.insert(left_wing, u)
+        else
+            table.insert(right_wing, u)
         end
     end
-    if #melee_move_ids > 0 then
-        -- Perpendicular flank offset
-        local flank_x = math.floor(army_cx + dir_x * 3 + dir_y * 3)
-        local flank_y = math.floor(army_cy + dir_y * 3 - dir_x * 3)
-        flank_x = math.max(0, math.min(map_w - 1, flank_x))
-        flank_y = math.max(0, math.min(map_h - 1, flank_y))
-        ctx:attack_move(melee_move_ids, flank_x, flank_y)
+
+    -- Left wing: forward + left
+    for i, u in ipairs(left_wing) do
+        if not u.in_combat then
+            local forward = 5
+            local lateral = -4 - (i - 1) * 2  -- spread further left
+            local fx = army_cx + dir_x * forward + perp_x * lateral
+            local fy = army_cy + dir_y * forward + perp_y * lateral
+            local cx, cy = clamp_pos(fx, fy)
+            ctx:attack_move({u.id}, cx, cy)
+        end
+    end
+
+    -- Right wing: forward + right
+    for i, u in ipairs(right_wing) do
+        if not u.in_combat then
+            local forward = 5
+            local lateral = 4 + (i - 1) * 2  -- spread further right
+            local fx = army_cx + dir_x * forward + perp_x * lateral
+            local fy = army_cy + dir_y * forward + perp_y * lateral
+            local cx, cy = clamp_pos(fx, fy)
+            ctx:attack_move({u.id}, cx, cy)
+        end
     end
 end
 
@@ -201,12 +227,11 @@ if outnumbered and enemies then
                     closest_ey = e.y
                 end
             end
-            if closest_dist < 9 then -- 3 tiles squared
+            if closest_dist < 9 then
                 local flee_x = r.x - (closest_ex - r.x)
                 local flee_y = r.y - (closest_ey - r.y)
-                flee_x = math.max(0, math.min(map_w - 1, flee_x))
-                flee_y = math.max(0, math.min(map_h - 1, flee_y))
-                ctx:move_units({r.id}, flee_x, flee_y)
+                local fx, fy = clamp_pos(flee_x, flee_y)
+                ctx:move_units({r.id}, fx, fy)
             end
         end
     end
@@ -228,9 +253,7 @@ if should_push then
         }
 
         for _, b in ipairs(enemy_buildings) do
-            if HQ_KINDS[b.kind] then
-                hq = b
-            end
+            if HQ_KINDS[b.kind] then hq = b end
             local dx = b.x - army_cx
             local dy = b.y - army_cy
             local d = dx * dx + dy * dy

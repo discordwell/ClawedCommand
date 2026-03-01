@@ -18,7 +18,7 @@ distillation:
   temp_end: 2.0
 
 training:
-  epochs: 100
+  epochs: 60                  # Reduced from 200 (plateaus by ~50)
   batch_size: 128
   learning_rate: 0.01
   weight_decay: 0.001
@@ -40,7 +40,7 @@ student:
 
 # Teacher training phases
 teacher_pretrain:
-  epochs: 80
+  epochs: 40                 # Reduced from 80 (95%+ by epoch 30)
   batch_size: 128
   learning_rate: 0.003
   weight_decay: 0.001
@@ -48,7 +48,7 @@ teacher_pretrain:
   num_classes: 35            # Google Speech Commands v2
 
 teacher_finetune:
-  epochs: 120
+  epochs: 60                 # Reduced from 120 (98%+ by epoch 40)
   batch_size: 128
   learning_rate: 0.001
   weight_decay: 0.001
@@ -61,7 +61,7 @@ teacher_finetune:
 
 # Post-distillation student fine-tuning
 student_finetune:
-  epochs: 30
+  epochs: 15                 # Reduced from 30 (confidence sharpening is quick)
   batch_size: 64
   learning_rate: 0.001
   weight_decay: 0.001

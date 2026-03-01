@@ -316,7 +316,7 @@ if enemies and enemy_count > 0 then
     -- Quillbacks: advance as frontline
     local tank_ids = {}
     for _, u in ipairs(tanks) do
-        if not u.attacking and not ability_used[u.id] then
+        if not u.in_combat and not ability_used[u.id] then
             table.insert(tank_ids, u.id)
         end
     end
@@ -331,7 +331,7 @@ if enemies and enemy_count > 0 then
     -- Ranged: stay behind
     local ranged_move_ids = {}
     for _, u in ipairs(ranged) do
-        if not u.attacking and not ability_used[u.id] then
+        if not u.in_combat and not ability_used[u.id] then
             table.insert(ranged_move_ids, u.id)
         end
     end
@@ -347,7 +347,7 @@ if enemies and enemy_count > 0 then
     if #swarm > 0 then
         local swarm_move_ids = {}
         for _, u in ipairs(swarm) do
-            if not u.attacking and not ability_used[u.id] then
+            if not u.in_combat and not ability_used[u.id] then
                 table.insert(swarm_move_ids, u.id)
             end
         end
@@ -363,7 +363,7 @@ if enemies and enemy_count > 0 then
     -- Gnawer: follows main army
     local siege_move_ids = {}
     for _, u in ipairs(siege) do
-        if not u.attacking and not ability_used[u.id] then
+        if not u.in_combat and not ability_used[u.id] then
             table.insert(siege_move_ids, u.id)
         end
     end

@@ -1,0 +1,164 @@
+{
+  "devstral-small-2": [
+    {
+      "category": "standard",
+      "prompt": "Send idle workers to gather food",
+      "response": "```lua\n-- Intent: gather food\n-- Description: Send idle workers to nearest food deposit\n\nlocal workers = ctx:idle_units(\"Pawdler\")\nif not workers or #workers == 0 then return end\n\nfor _, worker in ipairs(workers) do\n    local deposit = ctx:nearest_deposit(worker.x, worker.y, \"Food\")\n    if deposit then\n        ctx:gather({worker.id}, deposit.id)\n    end\nend\n```",
+      "elapsed": 20.890470027923584,
+      "scores": {
+        "has_intent_header": true,
+        "has_description_header": true,
+        "uses_ctx_api": true,
+        "has_nil_check": true,
+        "valid_lua_syntax": true,
+        "no_hallucinated_api": true,
+        "total": 6,
+        "max": 6
+      }
+    },
+    {
+      "category": "standard",
+      "prompt": "Attack! Send all combat units at the enemy",
+      "response": "```lua\n-- Intent: attack\n-- Description: Send all combat units to attack the nearest enemy\n\nlocal combat_units = ctx:my_units()\nlocal enemy = ctx:nearest_enemy(0, 0) -- Start from origin if no specific target\n\nif not enemy then return end\n\n-- Filter out non-combat units (workers, etc.)\nlocal attackers = {}\nfor _, unit in ipairs(combat_units) do\n    if unit.kind ~= \"Pawdler\" then\n        table.insert(attackers, unit.id)\n    end\nend\n\nif #attackers == 0 then return end\n\nctx:attack_units(attackers, enemy.id)\n```",
+      "elapsed": 6.119112968444824,
+      "scores": {
+        "has_intent_header": true,
+        "has_description_header": true,
+        "uses_ctx_api": true,
+        "has_nil_check": true,
+        "valid_lua_syntax": true,
+        "no_hallucinated_api": true,
+        "total": 6,
+        "max": 6
+      }
+    },
+    {
+      "category": "standard",
+      "prompt": "Make my Hissers kite away from melee enemies",
+      "response": "```lua\n-- Intent: kite\n-- Description: Make Hissers kite away from melee enemies\n\nlocal hissers = ctx:my_units(\"Hisser\")\nif not hissers or #hissers == 0 then return end\n\nfor _, hisser in ipairs(hissers) do\n    local nearest_enemy = ctx:nearest_enemy(hisser.x, hisser.y)\n    if nearest_enemy and nearest_enemy.attack_type == \"Melee\" then\n        local safe_pos = ctx:position_at_range(hisser.x, hisser.y, nearest_enemy.x, nearest_enemy.y, nearest_enemy.range + 1)\n        if safe_pos then\n            ctx:move_units({hisser.id}, safe_pos.x, safe_pos.y)\n        end\n    end\nend\n```",
+      "elapsed": 7.365484714508057,
+      "scores": {
+        "has_intent_header": true,
+        "has_description_header": true,
+        "uses_ctx_api": true,
+        "has_nil_check": true,
+        "valid_lua_syntax": true,
+        "no_hallucinated_api": true,
+        "total": 6,
+        "max": 6
+      }
+    },
+    {
+      "category": "standard",
+      "prompt": "Focus fire the weakest enemy near my army",
+      "response": "```lua\n-- Intent: focus fire\n-- Description: Focus fire the weakest enemy near my army\n\nlocal army = ctx:my_units()\nif #army == 0 then return end\n\n-- Find the weakest enemy near the army\nlocal weakest = nil\nlocal weakest_hp = math.huge\nfor _, unit in ipairs(army) do\n    local enemy = ctx:weakest_enemy_in_range(unit.x, unit.y, unit.range)\n    if enemy and enemy.hp < weakest_hp then\n        weakest = enemy\n        weakest_hp = enemy.hp\n    end\nend\n\n-- Focus fire if a weak enemy is found\nif weakest then\n    local attacker_ids = {}\n    for _, unit in ipairs(army) do\n        if ctx:distance_squared_to_nearest_enemy(unit.id) <= unit.range * unit.range then\n            table.insert(attacker_ids, unit.id)\n        end\n    end\n    if #attacker_ids > 0 then\n        ctx:attack_units(attacker_ids, weakest.id)\n    end\nend\n```",
+      "elapsed": 10.061236143112183,
+      "scores": {
+        "has_intent_header": true,
+        "has_description_header": true,
+        "uses_ctx_api": true,
+        "has_nil_check": true,
+        "valid_lua_syntax": true,
+        "no_hallucinated_api": true,
+        "total": 6,
+        "max": 6
+      }
+    },
+    {
+      "category": "standard",
+      "prompt": "Retreat! Fall back to base",
+      "response": "```lua\n-- Intent: retreat\n-- Description: Retreat all units to base location\n\n-- Find base location (TheBox)\nlocal base = ctx:my_buildings(\"TheBox\")[1]\nif not base then return end\n\n-- Retreat all units to base\nlocal all_units = ctx:my_units()\nif #all_units == 0 then return end\n\nlocal unit_ids = {}\nfor _, u in ipairs(all_units) do\n    table.insert(unit_ids, u.id)\nend\n\nctx:move_units(unit_ids, base.x, base.y)\n```",
+      "elapsed": 5.20799994468689,
+      "scores": {
+        "has_intent_header": true,
+        "has_description_header": true,
+        "uses_ctx_api": true,
+        "has_nil_check": true,
+        "valid_lua_syntax": true,
+        "no_hallucinated_api": true,
+        "total": 6,
+        "max": 6
+      }
+    },
+    {
+      "category": "novel",
+      "prompt": "Set up a flanking maneuver with Nuisances from the east while Chonks push center",
+      "response": "```lua\n-- Intent: flanking maneuver\n-- Description: Send Nuisances to attack from the east while Chonks push from the center\n\n-- Get all Nuisances and Chonks\nlocal nuisances = ctx:my_units(\"Nuisance\")\nlocal chonks = ctx:my_units(\"Chonk\")\n\n-- Find enemy positions to determine attack points\nlocal enemies = ctx:enemy_units()\nif #enemies == 0 then return end\n\n-- Calculate average enemy position for center push\nlocal avg_x, avg_y = 0, 0\nfor _, e in ipairs(enemies) do\n    avg_x = avg_x + e.x\n    avg_y = avg_y + e.y\nend\navg_x = avg_x / #enemies\navg_y = avg_y / #enemies\n\n-- East flank position (relative to enemy center)\nlocal east_x = avg_x + 15\nlocal east_y = avg_y\n\n-- Center push position\nlocal center_x = avg_x\nlocal center_y = avg_y + 5\n\n-- Execute flanking maneuver\nif #nuisances > 0 then\n    ctx:attack_move({nuisances[1].id}, east_x, east_y)\nend\n\nif #chonks > 0 then\n    ctx:attack_move({chonks[1].id}, center_x, center_y)\nend\n```",
+      "elapsed": 12.282023906707764,
+      "scores": {
+        "has_intent_header": true,
+        "has_description_header": true,
+        "uses_ctx_api": true,
+        "has_nil_check": true,
+        "valid_lua_syntax": true,
+        "no_hallucinated_api": true,
+        "total": 6,
+        "max": 6
+      }
+    },
+    {
+      "category": "novel",
+      "prompt": "If I have more than 200 food, train a Catnapper, otherwise train Pawdlers",
+      "response": "```lua\n-- Intent: train units based on food\n-- Description: Train Catnappers if food > 200, otherwise train Pawdlers\n\nlocal resources = ctx:get_resources()\nlocal catTree = ctx:my_buildings(\"CatTree\")[1] -- Get first CatTree\n\nif not catTree then return end -- No CatTree found\n\nif resources.food > 200 then\n    ctx:train(catTree.id, \"Catnapper\")\nelse\n    ctx:train(catTree.id, \"Pawdler\")\nend\n```",
+      "elapsed": 5.6447670459747314,
+      "scores": {
+        "has_intent_header": true,
+        "has_description_header": true,
+        "uses_ctx_api": true,
+        "has_nil_check": false,
+        "valid_lua_syntax": true,
+        "no_hallucinated_api": true,
+        "total": 5,
+        "max": 6
+      }
+    },
+    {
+      "category": "novel",
+      "prompt": "Create a patrol route between my two Fish Markets",
+      "response": "```lua\n-- Intent: patrol\n-- Description: Patrol between two Fish Markets with idle units\n\nlocal markets = ctx:my_buildings(\"FishMarket\")\nif #markets < 2 then return end\n\nlocal unit = ctx:idle_units()\nif #unit == 0 then return end\n\nlocal waypoints = {\n    {x = markets[1].x, y = markets[1].y},\n    {x = markets[2].x, y = markets[2].y}\n}\n\nctx.behaviors:scout_pattern(unit[1].id, waypoints)\n```",
+      "elapsed": 5.802610874176025,
+      "scores": {
+        "has_intent_header": true,
+        "has_description_header": true,
+        "uses_ctx_api": true,
+        "has_nil_check": true,
+        "valid_lua_syntax": true,
+        "no_hallucinated_api": true,
+        "total": 6,
+        "max": 6
+      }
+    },
+    {
+      "category": "novel",
+      "prompt": "Kite with Hissers but only if there are more than 3 melee enemies nearby",
+      "response": "```lua\n-- Intent: kite with Hissers\n-- Description: Kite with Hissers only if there are more than 3 melee enemies nearby\n\nlocal hissers = ctx:my_units(\"Hisser\")\nif #hissers == 0 then return end\n\nlocal melee_enemies = {}\nfor _, enemy in ipairs(ctx:enemy_units()) do\n    if enemy.attack_type == \"Melee\" then\n        table.insert(melee_enemies, enemy)\n    end\nend\n\nif #melee_enemies > 3 then\n    ctx.behaviors:kite_squad({hissers})\nend\n```",
+      "elapsed": 6.74503493309021,
+      "scores": {
+        "has_intent_header": true,
+        "has_description_header": true,
+        "uses_ctx_api": true,
+        "has_nil_check": true,
+        "valid_lua_syntax": true,
+        "no_hallucinated_api": true,
+        "total": 6,
+        "max": 6
+      }
+    },
+    {
+      "category": "novel",
+      "prompt": "Emergency macro: build 2 Litter Boxes, train 5 Chonks, and rally to map center",
+      "response": "```lua\n-- Intent: emergency macro\n-- Description: Build 2 Litter Boxes, train 5 Chonks, and rally to map center\n\n-- Get resources and map center\nlocal res = ctx:get_resources()\nlocal map = ctx:map_size()\nlocal center_x, center_y = math.floor(map.width / 2), math.floor(map.height / 2)\n\n-- Find idle Pawdlers for building\nlocal workers = ctx:idle_units(\"Pawdler\")\nif #workers == 0 then return end\n\n-- Build 2 Litter Boxes if we have enough food\nif res.food >= 200 then\n    for i = 1, 2 do\n        ctx:build({workers[i].id}, \"LitterBox\", center_x + i * 2, center_y + i * 2)\n    end\nend\n\n-- Find CatTree for training\nlocal cattree = ctx:my_buildings(\"CatTree\")[1]\nif cattree then\n    -- Train 5 Chonks if we have enough food\n    if res.food >= 300 then\n        for i = 1, 5 do\n            ctx:train(cattree.id, \"Chonk\")\n        end\n    end\n\n    -- Set rally point to map center\n    ctx:rally(cattree.id, center_x, center_y)\nend\n```",
+      "elapsed": 15.037781953811646,
+      "scores": {
+        "has_intent_header": true,
+        "has_description_header": true,
+        "uses_ctx_api": true,
+        "has_nil_check": true,
+        "valid_lua_syntax": true,
+        "no_hallucinated_api": true,
+        "total": 6,
+        "max": 6
+      }
+    }
+  ]
+}
