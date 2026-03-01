@@ -1,18 +1,19 @@
 {
-  "current_generation": 1,
-  "best_win_rate": 0.0,
-  "best_generation": 0,
+  "current_generation": 2,
+  "best_win_rate": 0.2,
+  "best_generation": 1,
   "generations": [
     {
       "generation": -1,
       "timestamp": "2026-03-01T06:49:45.199116+00:00",
       "scripts": [],
-      "notes": "FSM-only baseline",
-      "win_rate_vs_fsm": 0.0,
-      "p0_wins": 0,
-      "p1_wins": 2,
-      "timeouts": 8,
-      "seeds": "1,2,3,4,5,6,7,8,9,10"
+      "notes": "FSM-only baseline. 3k ticks: P0 0, P1 2, 8 timeouts. 6k ticks: P0 1, P1 7, 2 timeouts.",
+      "win_rate_vs_fsm": 0.1,
+      "p0_wins": 1,
+      "p1_wins": 7,
+      "timeouts": 2,
+      "seeds": "1,2,3,4,5,6,7,8,9,10",
+      "max_ticks": 6000
     },
     {
       "generation": 0,
@@ -22,12 +23,47 @@
         "kite_ranged.lua",
         "retreat_wounded.lua"
       ],
-      "notes": "Combat-only focus fire + kite + retreat. Reduced P1 victories from 2 to 1.",
+      "notes": "Combat-only focus fire + kite + retreat (3k ticks only). Reduced P1 victories from 2 to 1. Kiting hurt when too aggressive. Not tested at 6k ticks.",
       "win_rate_vs_fsm": 0.0,
       "p0_wins": 0,
       "p1_wins": 1,
       "timeouts": 9,
-      "seeds": "1,2,3,4,5,6,7,8,9,10"
+      "seeds": "1,2,3,4,5,6,7,8,9,10",
+      "max_ticks": 3000
+    },
+    {
+      "generation": 1,
+      "timestamp": "2026-03-01T07:30:00.000000+00:00",
+      "scripts": [
+        "priority_focus.lua",
+        "push_buildings.lua",
+        "smart_retreat.lua"
+      ],
+      "notes": "BEST. Priority targeting (Hissers first), building push for idle units, 10% HP retreat. P0 2 wins (seeds 2,9). Key: push_buildings converts kill advantages into base destruction. All 3 scripts synergize — each alone only gets 1 win.",
+      "win_rate_vs_fsm": 0.2,
+      "p0_wins": 2,
+      "p1_wins": 8,
+      "timeouts": 0,
+      "seeds": "1,2,3,4,5,6,7,8,9,10",
+      "max_ticks": 6000
+    },
+    {
+      "generation": 2,
+      "timestamp": "2026-03-01T07:45:00.000000+00:00",
+      "scripts": [
+        "priority_focus.lua",
+        "push_buildings.lua",
+        "smart_retreat.lua",
+        "keep_producing.lua",
+        "gather_idle.lua"
+      ],
+      "notes": "Gen 1 + macro scripts (production boosting, idle worker gathering). Zero improvement — FSM already handles economy well. Macro scripts had no measurable impact.",
+      "win_rate_vs_fsm": 0.2,
+      "p0_wins": 2,
+      "p1_wins": 8,
+      "timeouts": 0,
+      "seeds": "1,2,3,4,5,6,7,8,9,10",
+      "max_ticks": 6000
     }
   ]
 }

@@ -224,3 +224,22 @@ The FSM handles economy, but scripts can optimize:
 - **Ignoring budget**: Running out of budget mid-tick means losing the rest of your queries.
 - **Too many pathfinding calls**: `can_reach`/`path_length` cost 10 each. Use sparingly.
 - **Not checking nil returns**: `nearest_enemy`, `weakest_enemy_in_range` return nil when no enemies visible.
+
+## Lessons from Training Iterations
+
+### What Works
+1. **Focus fire with priority targeting**: Kill high-DPS squishy targets (Hissers, Mousers) first. This is the single highest-impact script. Only redirect units already `is_attacking` to avoid breaking FSM attack-move orders.
+2. **Building push**: Redirect idle units to attack enemy buildings. The FSM does attack-move toward the enemy base, but units get stuck fighting and never reach it. Explicit building targeting converts kill advantages into base destruction.
+3. **Conservative retreat**: Only retreat units at very low HP (10%). Higher thresholds (15-25%) reduce army DPS too much. Never retreat the whole army — that gives enemies free damage.
+
+### What Hurts
+1. **Kiting scripts**: Moving ranged units cancels their attacks, reducing DPS. Only kite when the unit is about to die (HP < 15%).
+2. **Formation scripts**: Pre-positioning melee/ranged before combat interrupts the FSM's attack-move, causing units to stall and take free damage.
+3. **Aggressive army-wide retreat**: Full army retreat when outnumbered sounds logical but in practice the disengaging army takes free damage without dealing any.
+4. **Macro scripts (production/gathering)**: The FSM already handles economy well. Scripts that queue extra training or reassign workers provide zero measurable improvement.
+
+### Key Insights
+- **Only focus fire is safe micro.** It changes targets without moving units or canceling attacks.
+- **Don't redirect units near enemy base.** If units are within 6 tiles of enemy buildings, let them hit buildings instead of chasing units.
+- **P1 has a structural map advantage** on most seeds (7-8/10 wins regardless of scripts). This is a map generation issue, not a script issue.
+- **20% win rate** is the current ceiling with scripts alone (baseline: 10%). Further improvement requires FSM modifications or map symmetry fixes.
