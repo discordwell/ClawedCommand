@@ -201,8 +201,6 @@ fn evaluate_condition(
             }
             false
         }
-
-        TriggerCondition::PersistentFlag(flag) => campaign.flags.contains(flag),
     }
 }
 
