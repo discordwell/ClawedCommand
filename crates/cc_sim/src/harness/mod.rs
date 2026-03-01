@@ -19,7 +19,7 @@ use cc_core::components::*;
 use cc_core::coords::{GridPos, WorldPos};
 use cc_core::map::GameMap;
 use cc_core::map_gen::{self, MapGenParams};
-use cc_core::unit_stats::base_stats;
+use cc_core::unit_stats::{base_stats, spawn_base_unit};
 
 use crate::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState, BotConfig};
 use crate::ai::MultiAiState;
@@ -544,32 +544,7 @@ fn spawn_starting_entities(
 }
 
 fn spawn_combat_unit(world: &mut World, grid: GridPos, player_id: u8, kind: UnitKind) -> Entity {
-    let stats = base_stats(kind);
-    world
-        .spawn((
-            Position {
-                world: WorldPos::from_grid(grid),
-            },
-            Velocity::zero(),
-            GridCell { pos: grid },
-            Owner { player_id },
-            UnitType { kind },
-            Health {
-                current: stats.health,
-                max: stats.health,
-            },
-            MovementSpeed { speed: stats.speed },
-            AttackStats {
-                damage: stats.damage,
-                range: stats.range,
-                attack_speed: stats.attack_speed,
-                cooldown_remaining: 0,
-            },
-            AttackTypeMarker {
-                attack_type: stats.attack_type,
-            },
-        ))
-        .id()
+    spawn_base_unit(world, kind, grid, player_id)
 }
 
 /// Headless despawn: in the harness there's no client death_fade_system,
