@@ -1366,9 +1366,31 @@ fn unit_to_lua_table(lua: &Lua, unit: &UnitSnapshot) -> LuaResult<LuaTable> {
     tbl.set("atk_type", unit.attack_type.to_string())?;
     tbl.set("moving", unit.is_moving)?;
     tbl.set("attacking", unit.is_attacking)?;
+    tbl.set("in_combat", unit.in_combat)?;
     tbl.set("idle", unit.is_idle)?;
     tbl.set("gathering", unit.is_gathering)?;
     tbl.set("owner", unit.owner)?;
+    // Phase B enrichment: status effects
+    let se_tbl = lua.create_table()?;
+    for (i, se) in unit.status_effects.iter().enumerate() {
+        let entry = lua.create_table()?;
+        entry.set("effect_type", se.effect_type.clone())?;
+        entry.set("remaining_ticks", se.remaining_ticks)?;
+        entry.set("stacks", se.stacks)?;
+        se_tbl.set(i + 1, entry)?;
+    }
+    tbl.set("status_effects", se_tbl)?;
+    // Phase B enrichment: abilities
+    let ab_tbl = lua.create_table()?;
+    for (i, ab) in unit.abilities.iter().enumerate() {
+        let entry = lua.create_table()?;
+        entry.set("slot", ab.slot)?;
+        entry.set("id", ab.id.clone())?;
+        entry.set("cooldown_remaining", ab.cooldown_remaining)?;
+        entry.set("ready", ab.ready)?;
+        ab_tbl.set(i + 1, entry)?;
+    }
+    tbl.set("abilities", ab_tbl)?;
     Ok(tbl)
 }
 
@@ -1387,6 +1409,12 @@ fn building_to_lua_table(
     tbl.set("construction_progress", building.construction_progress)?;
     tbl.set("producing", !building.production_queue.is_empty())?;
     tbl.set("owner", building.owner)?;
+    // Phase B enrichment: research queue
+    let rq_tbl = lua.create_table()?;
+    for (i, rq) in building.research_queue.iter().enumerate() {
+        rq_tbl.set(i + 1, rq.clone())?;
+    }
+    tbl.set("research_queue", rq_tbl)?;
     Ok(tbl)
 }
 

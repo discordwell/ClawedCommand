@@ -47,6 +47,7 @@ pub struct UnitSnapshot {
     pub attack_type: AttackType,
     pub is_moving: bool,
     pub is_attacking: bool,
+    pub in_combat: bool,
     pub is_idle: bool,
     pub is_dead: bool,
     pub is_gathering: bool,
@@ -141,6 +142,7 @@ pub fn build_snapshot(
     {
         let is_moving = move_target.is_some() || path.is_some() || chasing.is_some();
         let is_attacking = attack_target.is_some() || attack_move.is_some();
+        let in_combat = attack_target.is_some();
         let is_dead = dead.is_some();
         let is_idle = !is_moving && !is_attacking && !is_dead && gathering.is_none();
 
@@ -205,6 +207,7 @@ pub fn build_snapshot(
             attack_type: atk_type,
             is_moving,
             is_attacking,
+            in_combat,
             is_idle,
             is_dead,
             is_gathering: gathering.is_some(),

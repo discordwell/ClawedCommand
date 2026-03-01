@@ -541,6 +541,7 @@ impl HarnessServer {
                 "hp": b.health_current.to_num::<f64>(),
                 "under_construction": b.under_construction,
                 "queue": b.production_queue.iter().map(|k| format!("{k:?}")).collect::<Vec<_>>(),
+                "research_queue": b.research_queue.clone(),
             })
         }).collect::<Vec<_>>()).unwrap_or_default();
         Ok(CallToolResult::success(vec![Content::text(json)]))

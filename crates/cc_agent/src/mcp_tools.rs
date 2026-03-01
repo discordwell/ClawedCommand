@@ -403,6 +403,18 @@ fn unit_to_json(unit: &crate::snapshot::UnitSnapshot) -> Value {
         "atk_speed": unit.attack_speed,
         "moving": unit.is_moving,
         "attacking": unit.is_attacking,
+        "in_combat": unit.in_combat,
         "idle": unit.is_idle,
+        "status_effects": unit.status_effects.iter().map(|se| serde_json::json!({
+            "effect_type": se.effect_type,
+            "remaining_ticks": se.remaining_ticks,
+            "stacks": se.stacks,
+        })).collect::<Vec<_>>(),
+        "abilities": unit.abilities.iter().map(|ab| serde_json::json!({
+            "slot": ab.slot,
+            "id": ab.id,
+            "cooldown_remaining": ab.cooldown_remaining,
+            "ready": ab.ready,
+        })).collect::<Vec<_>>(),
     })
 }

@@ -46,6 +46,7 @@
 
 - [ ] Extract `run_behavior` helper in `cc_harness/src/server.rs` to de-duplicate ~18 behavior tools (~200 lines of boilerplate: lock sim, snapshot, create ScriptContext, take commands, inject, return result)
 - [ ] Extract `run_query` helper in `cc_harness/src/server.rs` to de-duplicate ~11 query tools (lock sim, snapshot, create ScriptContext, return JSON)
+- [ ] Deduplicate `HeadlessSim::snapshot()` in `cc_harness/src/headless.rs` with `build_snapshot()` in `cc_agent/src/snapshot.rs` (~180 lines of identical logic — delegate to build_snapshot instead)
 
 
 ## From Code Review (Agent Harness + Gameplay Fixes)
