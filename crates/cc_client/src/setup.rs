@@ -36,11 +36,13 @@ pub struct TeamMaterials {
 }
 
 /// Team color tints for sprite-based units.
+/// Values are close to white with a color bias so dark sprites stay visible
+/// (Bevy's Sprite.color is multiplicative — strong tints crush dark pixels).
 pub fn team_color(player_id: u8) -> Color {
     if player_id == 0 {
-        Color::srgb(0.4, 0.6, 1.0) // Blue tint
+        Color::srgb(0.7, 0.8, 1.0) // Soft blue tint
     } else {
-        Color::srgb(1.0, 0.4, 0.4) // Red tint
+        Color::srgb(1.0, 0.7, 0.7) // Soft red tint
     }
 }
 
