@@ -17,6 +17,8 @@ pub mod unit_info;
 pub mod agent_chat;
 #[cfg(any(feature = "native", feature = "wasm-agent"))]
 pub mod construct_mode;
+#[cfg(feature = "wasm-agent")]
+pub mod provider_select;
 
 use bevy::prelude::*;
 
@@ -93,6 +95,22 @@ impl Plugin for UiPlugin {
                     construct_mode::construct_mode_keys,
                 ),
             );
+        }
+
+        // WASM-only: provider selection overlay
+        #[cfg(feature = "wasm-agent")]
+        {
+            app.init_resource::<provider_select::ProviderOverlayActive>()
+                .add_systems(Startup, provider_select::spawn_provider_select)
+                .add_systems(
+                    Update,
+                    (
+                        provider_select::toggle_provider_overlay,
+                        provider_select::update_provider_options,
+                        provider_select::update_provider_status,
+                        provider_select::provider_select_input,
+                    ),
+                );
         }
     }
 }

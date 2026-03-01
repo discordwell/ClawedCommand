@@ -14,7 +14,14 @@ pub fn camera_system(
     mut scroll_events: MessageReader<bevy::input::mouse::MouseWheel>,
     window: Single<&Window>,
     mut camera: Single<(&mut Transform, &mut Projection), With<Camera2d>>,
+    #[cfg(feature = "wasm-agent")] overlay: Option<Res<crate::ui::provider_select::ProviderOverlayActive>>,
 ) {
+    // Block camera input while provider selection overlay is active
+    #[cfg(feature = "wasm-agent")]
+    if overlay.is_some_and(|o| o.0) {
+        return;
+    }
+
     let (ref mut transform, ref mut projection) = *camera;
     let Projection::Orthographic(ref mut ortho) = **projection else {
         return;

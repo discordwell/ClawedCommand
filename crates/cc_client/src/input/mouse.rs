@@ -32,7 +32,14 @@ pub fn handle_mouse_input(
     mut input_mode: ResMut<InputMode>,
     mut placement_preview: ResMut<PlacementPreview>,
     mut dbl_click: ResMut<DoubleClickState>,
+    #[cfg(feature = "wasm-agent")] overlay: Option<Res<crate::ui::provider_select::ProviderOverlayActive>>,
 ) {
+    // Block game input while provider selection overlay is active
+    #[cfg(feature = "wasm-agent")]
+    if overlay.is_some_and(|o| o.0) {
+        return;
+    }
+
     let Some(cursor_pos) = window.cursor_position() else {
         return;
     };

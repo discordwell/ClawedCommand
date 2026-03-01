@@ -37,7 +37,7 @@ jobs:
 
       - name: Build WASM (release)
         working-directory: crates/cc_client
-        run: trunk build --release
+        run: trunk build --release --cargo-profile wasm-release
 
       - name: Deploy to OVH2
         env:

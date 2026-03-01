@@ -59,8 +59,15 @@ impl Plugin for AgentPlugin {
         #[cfg(not(target_arch = "wasm32"))]
         app.add_plugins(runner::ScriptRunnerPlugin);
 
-        // WASM: spawn async agent loop on browser event loop
+        // WASM: deferred agent init triggered by provider selection UI
         #[cfg(target_arch = "wasm32")]
-        app.add_systems(Startup, wasm_runner::init_wasm_agent);
+        app.add_systems(
+            Update,
+            (
+                wasm_runner::deferred_init_wasm_agent
+                    .run_if(resource_added::<wasm_runner::ProviderSelection>),
+                wasm_runner::poll_download_progress,
+            ),
+        );
     }
 }

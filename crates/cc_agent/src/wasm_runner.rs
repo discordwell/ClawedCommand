@@ -18,6 +18,12 @@ use crate::webllm_client::WebLlmClient;
 /// Maximum tool-call rounds per request to prevent runaway loops.
 const MAX_TOOL_ROUNDS: usize = 5;
 
+/// Marker resource inserted by the provider selection UI to trigger agent initialization.
+#[derive(Resource, Debug, Clone)]
+pub struct ProviderSelection {
+    pub backend: LlmBackend,
+}
+
 /// System prompt for game-loop AI decisions (same as native llm_runner).
 const GAME_LOOP_SYSTEM_PROMPT: &str = r#"You are Minstral, an AI commander for the catGPT faction in the RTS game ClawedCommand. You control an army of cats in a post-singularity world.
 
@@ -29,9 +35,10 @@ Analyze the game state and issue tool calls to manage your army effectively. Pri
 
 Be efficient — issue only necessary commands. You have limited GPU budget per decision cycle."#;
 
-/// Bevy startup system: creates the AgentBridge with proper channels
-/// and spawns the async agent loop on the browser event loop.
-pub fn init_wasm_agent(mut commands: Commands, config: Option<Res<LlmConfig>>) {
+/// Bevy system: creates the AgentBridge with proper channels and spawns the
+/// async agent loop on the browser event loop.  Runs once when
+/// `ProviderSelection` is inserted (gated by `resource_added` in plugin).
+pub fn deferred_init_wasm_agent(mut commands: Commands, config: Option<Res<LlmConfig>>) {
     let config = config.map(|c| c.clone()).unwrap_or_default();
 
     let (bridge, channels) = AgentBridge::new();
@@ -41,6 +48,30 @@ pub fn init_wasm_agent(mut commands: Commands, config: Option<Res<LlmConfig>>) {
     spawn_local(async move {
         run_agent_loop(config, channels).await;
     });
+}
+
+/// Polls WebLLM download progress each frame and updates `AgentStatus`.
+/// Early-returns for non-WebLlm backends.
+pub fn poll_download_progress(
+    config: Option<Res<LlmConfig>>,
+    mut status: ResMut<AgentStatus>,
+) {
+    let Some(config) = config else { return };
+    if config.backend != LlmBackend::WebLlm {
+        return;
+    }
+
+    // Only poll while initializing
+    if !matches!(*status, AgentStatus::Initializing(_)) {
+        return;
+    }
+
+    let pct = crate::webllm_client::download_progress();
+    if pct >= 1.0 {
+        *status = AgentStatus::Ready;
+    } else {
+        *status = AgentStatus::Initializing(pct);
+    }
 }
 
 /// Build the appropriate LLM client from config.

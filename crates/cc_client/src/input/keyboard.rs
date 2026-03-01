@@ -17,7 +17,14 @@ pub fn handle_keyboard(
     mut cmd_queue: ResMut<CommandQueue>,
     mut input_mode: ResMut<InputMode>,
     mut dbl_click: ResMut<DoubleClickState>,
+    #[cfg(feature = "wasm-agent")] overlay: Option<Res<crate::ui::provider_select::ProviderOverlayActive>>,
 ) {
+    // Block game input while provider selection overlay is active
+    #[cfg(feature = "wasm-agent")]
+    if overlay.is_some_and(|o| o.0) {
+        return;
+    }
+
     // --- Build menu sub-key handling ---
     if *input_mode == InputMode::BuildMenu {
         let building = if keyboard.just_pressed(KeyCode::KeyT) {
