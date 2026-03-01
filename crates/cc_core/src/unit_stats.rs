@@ -451,32 +451,7 @@ pub fn spawn_base_unit(
     pos: GridPos,
     player_id: u8,
 ) -> bevy_ecs::entity::Entity {
-    let stats = base_stats(kind);
-    world
-        .spawn((
-            Position {
-                world: WorldPos::from_grid(pos),
-            },
-            Velocity::zero(),
-            GridCell { pos },
-            Owner { player_id },
-            UnitType { kind },
-            Health {
-                current: stats.health,
-                max: stats.health,
-            },
-            MovementSpeed { speed: stats.speed },
-            AttackStats {
-                damage: stats.damage,
-                range: stats.range,
-                attack_speed: stats.attack_speed,
-                cooldown_remaining: 0,
-            },
-            AttackTypeMarker {
-                attack_type: stats.attack_type,
-            },
-        ))
-        .id()
+    world.spawn(unit_bundle(kind, pos, player_id)).id()
 }
 
 /// Returns the standard component bundle for a combat unit, for use with

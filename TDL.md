@@ -93,13 +93,13 @@
 
 ## Post-Merge Cleanup (from code review)
 
-- [ ] `spawn_base_unit` should delegate to `unit_bundle` internally (30 lines of duplicated component assembly)
-- [ ] Remove trivial `spawn_combat_unit` wrappers in integration.rs, campaign_integration.rs (just call `spawn_base_unit` directly)
-- [ ] Reduce `count_living_entities` visibility from `pub` to `pub(crate)` in harness/mod.rs
-- [ ] Remove dead `CommandQueue::drain()` method (only `drain_interleaved` is used)
-- [ ] Remove stub `GameCommand::player_hint()` that always returns None (or implement it)
-- [ ] Rename `pending_litter_boxes` parameter to `pending_supply_count` in `maybe_build_supply`
-- [ ] LLAMA TinkerBench producible units unreachable via AI FSM (only `barracks` role produces units)
+- [x] `spawn_base_unit` should delegate to `unit_bundle` internally (30 lines of duplicated component assembly)
+- [x] Remove trivial `spawn_combat_unit` wrappers in integration.rs, campaign_integration.rs (just call `spawn_base_unit` directly)
+- [x] Reduce `count_living_entities` visibility from `pub` to `pub(crate)` in harness/mod.rs
+- [x] Remove dead `CommandQueue::drain()` method (only `drain_interleaved` is used)
+- [x] Remove stub `GameCommand::player_hint()` that always returns None (or implement it)
+- [x] Rename `pending_litter_boxes` parameter to `pending_supply_count` in `maybe_build_supply`
+- [x] LLAMA TinkerBench producible units unreachable via AI FSM (only `barracks` role produces units)
 
 ## Campaign Missions (Remaining RON Files)
 
@@ -124,7 +124,7 @@
 
 ## From Unit Training Flow Code Review
 
-- [ ] **HIGH**: Q/W training hotkeys conflict with WASD camera pan — pressing W to train slot 1 also pans camera upward. Need to suppress camera pan when a producer building is selected and Q/W/E/R are pressed, or use different training hotkeys
+- [x] **HIGH**: Q/W training hotkeys conflict with WASD camera pan — pressing W to train slot 1 also pans camera upward. Need to suppress camera pan when a producer building is selected and Q/W/E/R are pressed, or use different training hotkeys
 - [ ] Consolidate `LOCAL_PLAYER` constant (duplicated 10x across cc_client with inconsistent types: u8 vs usize)
 - [ ] Gate `resource_hud` behind `#[cfg(not(feature = "native"))]` to prevent duplicate display with egui `resource_bar` when native feature is active
 - [x] Supply cap is granted at building spawn (builder arrival), not construction completion — consider deferring to `construction_system` completion

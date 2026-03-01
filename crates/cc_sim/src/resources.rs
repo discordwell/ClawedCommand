@@ -67,9 +67,6 @@ impl CommandQueue {
         result
     }
 
-    pub fn drain(&mut self) -> Vec<GameCommand> {
-        std::mem::take(&mut self.commands).into_iter().map(|(_, cmd)| cmd).collect()
-    }
 }
 
 /// The current simulation tick count.

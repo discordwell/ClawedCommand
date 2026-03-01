@@ -525,6 +525,7 @@ struct BuildingCensus {
     hq_queue_len: usize,
     barracks_queue_len: usize,
     tech_queue_len: usize,
+    research_queue_len: usize,
     pending_supply_count: u32,
     /// Total number of tech buildings (for tier computation).
     tech_count: u32,
@@ -594,6 +595,7 @@ fn take_building_census(
         hq_queue_len: 0,
         barracks_queue_len: 0,
         tech_queue_len: 0,
+        research_queue_len: 0,
         pending_supply_count: 0,
         tech_count: 0,
     };
@@ -622,7 +624,8 @@ fn take_building_census(
             if producer.is_some() { census.tech_entity = Some(entity); }
         } else if kind == fmap.research {
             census.has_research = true;
-            census.research_entity = Some(entity);
+            census.research_queue_len = queue_len;
+            if producer.is_some() { census.research_entity = Some(entity); }
         } else if kind == fmap.defense_tower {
             census.has_defense_tower = true;
         }
@@ -657,10 +660,11 @@ fn map_center(map: &GameMap) -> GridPos {
     GridPos::new(map.width as i32 / 2, map.height as i32 / 2)
 }
 
-/// Set rally points for barracks and tech buildings to the given position.
+/// Set rally points for barracks, tech, and research buildings to the given position.
 fn set_rally_points(
     barracks_entity: Option<Entity>,
     tech_entity: Option<Entity>,
+    research_entity: Option<Entity>,
     target: GridPos,
     cmd_queue: &mut CommandQueue,
 ) {
@@ -673,6 +677,12 @@ fn set_rally_points(
     if let Some(sr_e) = tech_entity {
         cmd_queue.push(GameCommand::SetRallyPoint {
             building: EntityId(sr_e.to_bits()),
+            target,
+        });
+    }
+    if let Some(re) = research_entity {
+        cmd_queue.push(GameCommand::SetRallyPoint {
+            building: EntityId(re.to_bits()),
             target,
         });
     }
@@ -730,6 +740,7 @@ fn try_train_unit(
         return;
     }
     let producible = cc_core::building_stats::building_stats(building_kind).can_produce;
+    if producible.is_empty() { return; }
     let kind = pick_unit_kind(profile, army_count, tick, producible);
     let stats = cc_core::unit_stats::base_stats(kind);
     if pres.food < stats.food_cost + reserve {
@@ -925,7 +936,7 @@ fn run_ai_fsm(
                 }
             }
 
-            set_rally_points(bc.barracks_entity, None, defense_rally_pos(bc.hq_pos, map), cmd_queue);
+            set_rally_points(bc.barracks_entity, None, None, defense_rally_pos(bc.hq_pos, map), cmd_queue);
 
             if uc.army_count >= 4 { AiPhase::MidGame } else { AiPhase::BuildUp }
         }
@@ -953,6 +964,7 @@ fn run_ai_fsm(
             }
 
             try_train_unit(bc.tech_entity, bc.tech_queue_len, &ai_state.profile, uc.army_count, tick, fmap.tech, pres, reserve, cmd_queue, true);
+            try_train_unit(bc.research_entity, bc.research_queue_len, &ai_state.profile, uc.army_count, tick, fmap.research, pres, reserve, cmd_queue, true);
             try_train_unit(bc.barracks_entity, bc.barracks_queue_len, &ai_state.profile, uc.army_count, tick, barracks_kind, pres, reserve, cmd_queue, false);
 
             if builder_used.is_none() {
@@ -975,7 +987,7 @@ fn run_ai_fsm(
                 }
             }
 
-            set_rally_points(bc.barracks_entity, bc.tech_entity, defense_rally_pos(bc.hq_pos, map), cmd_queue);
+            set_rally_points(bc.barracks_entity, bc.tech_entity, bc.research_entity, defense_rally_pos(bc.hq_pos, map), cmd_queue);
 
             let enemy_defenseless = uc.enemy_army_count == 0 && uc.army_count >= 2;
             if uc.army_count >= attack_threshold || enemy_defenseless {
@@ -1002,6 +1014,8 @@ fn run_ai_fsm(
                 }
             }
 
+            try_train_unit(bc.tech_entity, bc.tech_queue_len, &ai_state.profile, uc.army_count, tick, fmap.tech, pres, 0, cmd_queue, true);
+            try_train_unit(bc.research_entity, bc.research_queue_len, &ai_state.profile, uc.army_count, tick, fmap.research, pres, 0, cmd_queue, true);
             try_train_unit(bc.barracks_entity, bc.barracks_queue_len, &ai_state.profile, uc.army_count, tick, barracks_kind, pres, 0, cmd_queue, false);
 
             if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.hq_pos, map, &bc.building_positions, cmd_queue, bc.pending_supply_count, supply_kind) {
@@ -1009,7 +1023,7 @@ fn run_ai_fsm(
             }
 
             if let Some(enemy_pos) = ai_state.enemy_spawn {
-                set_rally_points(bc.barracks_entity, bc.tech_entity, enemy_pos, cmd_queue);
+                set_rally_points(bc.barracks_entity, bc.tech_entity, bc.research_entity, enemy_pos, cmd_queue);
             }
 
             let base_threatened = is_base_threatened(ai_player, units, buildings);
@@ -1031,13 +1045,15 @@ fn run_ai_fsm(
                 );
             }
 
+            try_train_unit(bc.tech_entity, bc.tech_queue_len, &ai_state.profile, uc.army_count, tick, fmap.tech, pres, 0, cmd_queue, true);
+            try_train_unit(bc.research_entity, bc.research_queue_len, &ai_state.profile, uc.army_count, tick, fmap.research, pres, 0, cmd_queue, true);
             try_train_unit(bc.barracks_entity, bc.barracks_queue_len, &ai_state.profile, uc.army_count, tick, barracks_kind, pres, 0, cmd_queue, false);
 
             if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.hq_pos, map, &bc.building_positions, cmd_queue, bc.pending_supply_count, supply_kind) {
                 builder_used = Some(b);
             }
 
-            set_rally_points(bc.barracks_entity, bc.tech_entity, defense_rally_pos(bc.hq_pos, map), cmd_queue);
+            set_rally_points(bc.barracks_entity, bc.tech_entity, bc.research_entity, defense_rally_pos(bc.hq_pos, map), cmd_queue);
 
             let base_threatened = is_base_threatened(ai_player, units, buildings);
             if !base_threatened { AiPhase::MidGame } else { AiPhase::Defend }
@@ -1145,10 +1161,10 @@ fn maybe_build_supply(
     map: &GameMap,
     building_positions: &[(GridPos, BuildingKind)],
     cmd_queue: &mut CommandQueue,
-    pending_litter_boxes: u32,
+    pending_supply: u32,
     supply_kind: BuildingKind,
 ) -> Option<Entity> {
-    if pending_litter_boxes > 0 {
+    if pending_supply > 0 {
         return None;
     }
     let supply_cost = cc_core::building_stats::building_stats(supply_kind).food_cost;
@@ -1874,7 +1890,7 @@ mod tests {
         let target = GridPos::new(10, 10);
         let mut cmd_queue = CommandQueue::default();
 
-        set_rally_points(Some(e1), Some(e2), target, &mut cmd_queue);
+        set_rally_points(Some(e1), Some(e2), None, target, &mut cmd_queue);
         assert_eq!(cmd_queue.commands.len(), 2);
 
         // Verify both are SetRallyPoint commands
@@ -1894,10 +1910,10 @@ mod tests {
         let target = GridPos::new(10, 10);
         let mut cmd_queue = CommandQueue::default();
 
-        set_rally_points(Some(e1), None, target, &mut cmd_queue);
+        set_rally_points(Some(e1), None, None, target, &mut cmd_queue);
         assert_eq!(cmd_queue.commands.len(), 1);
 
-        set_rally_points(None, None, target, &mut cmd_queue);
+        set_rally_points(None, None, None, target, &mut cmd_queue);
         assert_eq!(cmd_queue.commands.len(), 1); // no new commands
     }
 
@@ -1939,6 +1955,7 @@ mod tests {
             hq_queue_len: 0,
             barracks_queue_len: 0,
             tech_queue_len: 0,
+            research_queue_len: 0,
             pending_supply_count: 0,
             tech_count: 0,
         };
@@ -1989,6 +2006,7 @@ mod tests {
             hq_queue_len: 0,
             barracks_queue_len: 0,
             tech_queue_len: 0,
+            research_queue_len: 0,
             pending_supply_count: 0,
             tech_count: 0,
         };
@@ -2046,6 +2064,7 @@ mod tests {
             hq_queue_len: 0,
             barracks_queue_len: 0,
             tech_queue_len: 0,
+            research_queue_len: 0,
             pending_supply_count: 0,
             tech_count: 0,
         };
@@ -2094,6 +2113,7 @@ mod tests {
             hq_queue_len: 0,
             barracks_queue_len: 0,
             tech_queue_len: 0,
+            research_queue_len: 0,
             pending_supply_count: 0,
             tech_count: 0,
         };
@@ -2214,5 +2234,52 @@ mod tests {
         try_train_unit(Some(prod_e), 0, &profile, 0, 10, BuildingKind::CatTree, &pres, 0, &mut cmd_queue, true);
         // Nuisance/Hisser/Chonk all cost 0 GPU, so this should succeed
         assert_eq!(cmd_queue.commands.len(), 1);
+    }
+
+    #[test]
+    fn try_train_unit_works_for_research_building() {
+        // TinkerBench (LLAMA research building) produces DeadDropUnit, DumpsterDiver, JunkyardKing
+        let pres = crate::resources::PlayerResourceState {
+            food: 1000,
+            gpu_cores: 200,
+            supply: 5,
+            supply_cap: 20,
+            ..Default::default()
+        };
+        let prod_e = Entity::from_bits((1u64 << 32) | 1);
+        let profile = AiPersonalityProfile::balanced();
+        let mut cmd_queue = CommandQueue::default();
+
+        try_train_unit(Some(prod_e), 0, &profile, 0, 10, BuildingKind::TinkerBench, &pres, 0, &mut cmd_queue, true);
+        assert_eq!(cmd_queue.commands.len(), 1, "Research building should produce a unit");
+        match &cmd_queue.commands[0].1 {
+            GameCommand::TrainUnit { building, unit_kind } => {
+                assert_eq!(building.0, prod_e.to_bits());
+                let valid_kinds = [UnitKind::DeadDropUnit, UnitKind::DumpsterDiver, UnitKind::JunkyardKing];
+                assert!(valid_kinds.contains(unit_kind), "Trained unit should be a TinkerBench-producible kind");
+            }
+            _ => panic!("Expected TrainUnit command"),
+        }
+    }
+
+    #[test]
+    fn set_rally_points_includes_research_entity() {
+        let e1 = Entity::from_bits((1u64 << 32) | 1);
+        let e2 = Entity::from_bits((1u64 << 32) | 2);
+        let e3 = Entity::from_bits((1u64 << 32) | 3);
+        let target = GridPos::new(10, 10);
+        let mut cmd_queue = CommandQueue::default();
+
+        set_rally_points(Some(e1), Some(e2), Some(e3), target, &mut cmd_queue);
+        assert_eq!(cmd_queue.commands.len(), 3, "Should set rally for barracks, tech, and research");
+
+        for (_, cmd) in &cmd_queue.commands {
+            match cmd {
+                GameCommand::SetRallyPoint { target: t, .. } => {
+                    assert_eq!(*t, target);
+                }
+                _ => panic!("Expected SetRallyPoint command"),
+            }
+        }
     }
 }

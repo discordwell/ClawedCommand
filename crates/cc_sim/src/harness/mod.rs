@@ -585,7 +585,7 @@ pub fn headless_despawn_system(mut commands: Commands, dead: Query<Entity, With<
 }
 
 /// Count living (non-Dead) entities per player.
-pub fn count_living_entities(world: &mut World) -> [u32; 2] {
+pub(crate) fn count_living_entities(world: &mut World) -> [u32; 2] {
     let mut counts = [0u32; 2];
     for (owner,) in world
         .query_filtered::<(&Owner,), Without<Dead>>()

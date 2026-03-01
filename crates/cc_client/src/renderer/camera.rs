@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+use cc_core::components::{Owner, Producer, Selected};
+
 const PAN_SPEED: f32 = 300.0;
 const ZOOM_SPEED: f32 = 0.1;
 const KEY_ZOOM_SPEED: f32 = 1.0;
@@ -14,6 +16,7 @@ pub fn camera_system(
     mut scroll_events: MessageReader<bevy::input::mouse::MouseWheel>,
     window: Single<&Window>,
     mut camera: Single<(&mut Transform, &mut Projection), With<Camera2d>>,
+    selected_producers: Query<&Owner, (With<Producer>, With<Selected>)>,
     #[cfg(feature = "wasm-agent")] overlay: Option<Res<crate::ui::provider_select::ProviderOverlayActive>>,
 ) {
     // Block camera input while provider selection overlay is active
@@ -29,8 +32,12 @@ pub fn camera_system(
     let dt = time.delta_secs();
     let mut pan = Vec2::ZERO;
 
+    // When a producer building is selected, suppress W from camera panning
+    // so it only triggers training (Q/W/E/R hotkeys in keyboard.rs).
+    let producer_selected = selected_producers.iter().any(|o| o.player_id == 0);
+
     // Keyboard panning (WASD + arrows)
-    if keyboard.pressed(KeyCode::KeyW) || keyboard.pressed(KeyCode::ArrowUp) {
+    if keyboard.pressed(KeyCode::ArrowUp) || (!producer_selected && keyboard.pressed(KeyCode::KeyW)) {
         pan.y += 1.0;
     }
     if keyboard.pressed(KeyCode::KeyS) || keyboard.pressed(KeyCode::ArrowDown) {
