@@ -7,9 +7,6 @@ use cc_core::components::{
 use cc_core::unit_stats::base_stats;
 use cc_sim::resources::PlayerResources;
 
-/// Local player ID (TODO: make configurable for multiplayer)
-const LOCAL_PLAYER: usize = 0;
-
 /// Marker for the building info panel root node.
 #[derive(Component)]
 pub struct BuildingInfoRoot;

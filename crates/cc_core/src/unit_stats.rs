@@ -110,6 +110,7 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             attack_type: AttackType::Ranged,
             food_cost: 400, gpu_cost: 200, supply_cost: 6, train_time: 250,
         },
+        other => unimplemented!("base_stats not yet defined for {other:?}"),
     }
 }
 

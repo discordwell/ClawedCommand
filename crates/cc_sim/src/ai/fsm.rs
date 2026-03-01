@@ -842,13 +842,12 @@ fn run_ai_fsm(
             if should_reissue {
                 if let Some(target) = ai_state.enemy_spawn {
                     if !uc.army_entities.is_empty() {
-                        let ids: Vec<EntityId> = uc.army_entities
-                            .iter()
-                            .map(|e| EntityId(e.to_bits()))
-                            .collect();
-                        cmd_queue.push(GameCommand::AttackMove { unit_ids: ids, target });
-                        ai_state.attack_ordered = true;
-                        ai_state.last_attack_tick = tick;
+                        issue_attack_commands(
+                            tier, tick, ai_state, &uc.army_entities,
+                            ai_player, retreat_threshold,
+                            units, health_query, cmd_queue,
+                            bc.box_pos, target,
+                        );
                     }
                 }
             }
@@ -898,11 +897,10 @@ fn run_ai_fsm(
         AiPhase::Defend => {
             let rally_pos = bc.box_pos.unwrap_or(GridPos::new(55, 55));
             if !uc.army_entities.is_empty() {
-                let ids: Vec<EntityId> = uc.army_entities
-                    .iter()
-                    .map(|e| EntityId(e.to_bits()))
-                    .collect();
-                cmd_queue.push(GameCommand::AttackMove { unit_ids: ids, target: rally_pos });
+                issue_defend_commands(
+                    tier, &uc.army_entities, rally_pos,
+                    units, cmd_queue,
+                );
             }
 
             if let Some(ct_e) = bc.cat_tree_entity {
@@ -1178,6 +1176,9 @@ fn find_weakest_enemy_near(
 
 /// Split army entities into main force (70%) and flank group (30%).
 fn split_army_for_assault(army: &[Entity]) -> (Vec<Entity>, Vec<Entity>) {
+    if army.is_empty() {
+        return (Vec::new(), Vec::new());
+    }
     let split_point = (army.len() * 7) / 10;
     let main_force = army[..split_point.max(1)].to_vec();
     let flank = army[split_point.max(1)..].to_vec();
@@ -1346,7 +1347,7 @@ fn issue_attack_commands(
                         target: flank_target,
                     });
                 }
-            } else {
+            } else if !healthy.is_empty() {
                 // Too few healthy units for split — use Tactical behavior
                 if let Some((weak_entity, _)) = find_weakest_enemy_near(
                     army_centroid(&healthy, units).unwrap_or(target), 15, ai_player, units, health_query,

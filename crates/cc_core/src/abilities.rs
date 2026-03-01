@@ -284,6 +284,7 @@ pub fn unit_abilities(kind: UnitKind) -> [AbilityId; 3] {
             AbilityId::Override,
             AbilityId::GeppityUplink,
         ],
+        other => unimplemented!("unit_abilities not yet defined for {other:?}"),
     }
 }
 

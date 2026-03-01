@@ -1,4 +1,6 @@
 pub mod agent_bridge;
+#[cfg(feature = "harness")]
+pub mod arena;
 pub mod behaviors;
 pub mod construct_mode;
 pub mod events;

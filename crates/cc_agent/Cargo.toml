@@ -3,6 +3,10 @@ name = "cc_agent"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+harness = ["cc_sim/harness", "dep:clap", "dep:image"]
+
 [dependencies]
 cc_core = { path = "../cc_core", features = ["bevy"] }
 cc_sim = { path = "../cc_sim" }
@@ -16,3 +20,15 @@ async-trait = "0.1"
 crossbeam-channel = { workspace = true }
 log = { workspace = true }
 thiserror = "2"
+
+# Harness-only deps (optional)
+clap = { version = "4", features = ["derive"], optional = true }
+image = { version = "0.25", optional = true, default-features = false, features = ["png"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[[bin]]
+name = "arena"
+path = "src/bin/arena.rs"
+required-features = ["harness"]

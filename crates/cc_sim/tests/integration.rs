@@ -2483,3 +2483,146 @@ fn test_ai_builds_on_valid_terrain() {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Economy bug-fix integration tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn supply_reclaimed_on_unit_death() {
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+
+    // Give player 0 some supply cap and initial supply
+    {
+        let mut pres = world.resource_mut::<PlayerResources>();
+        if let Some(p) = pres.players.get_mut(0) {
+            p.supply_cap = 20;
+            p.supply = 3; // e.g. 3 supply used by existing units
+        }
+    }
+
+    // Spawn a Nuisance (supply_cost = 1) with zero HP so cleanup marks it Dead
+    let unit = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    world.entity_mut(unit).insert(Health {
+        current: Fixed::ZERO,
+        max: Fixed::from_num(80),
+    });
+
+    // Run one tick so cleanup_system processes it
+    run_ticks(&mut world, &mut schedule, 1);
+
+    // Unit should be Dead
+    assert!(
+        world.get::<Dead>(unit).is_some(),
+        "Unit with zero HP should be marked Dead"
+    );
+
+    // Supply should be decremented
+    let pres = world.resource::<PlayerResources>();
+    let p = pres.players.get(0).unwrap();
+    assert_eq!(p.supply, 2, "Supply should decrease by 1 (Nuisance costs 1 supply)");
+}
+
+#[test]
+fn supply_cap_reduced_on_building_death() {
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+
+    // Set up player resources
+    {
+        let mut pres = world.resource_mut::<PlayerResources>();
+        if let Some(p) = pres.players.get_mut(0) {
+            p.supply_cap = 20;
+            p.supply = 15;
+        }
+    }
+
+    // Spawn a LitterBox (supply_provided = 10) with zero HP
+    let bld = spawn_building(&mut world, BuildingKind::LitterBox, GridPos::new(5, 5), 0);
+    // Manually add supply_cap for this building (spawn_building only does it for TheBox)
+    {
+        let mut pres = world.resource_mut::<PlayerResources>();
+        if let Some(p) = pres.players.get_mut(0) {
+            p.supply_cap += 10; // now 30
+        }
+    }
+    // Set HP to zero
+    world.entity_mut(bld).insert(Health {
+        current: Fixed::ZERO,
+        max: Fixed::from_num(100),
+    });
+
+    run_ticks(&mut world, &mut schedule, 1);
+
+    assert!(
+        world.get::<Dead>(bld).is_some(),
+        "Building with zero HP should be marked Dead"
+    );
+
+    let pres = world.resource::<PlayerResources>();
+    let p = pres.players.get(0).unwrap();
+    assert_eq!(
+        p.supply_cap, 20,
+        "Supply cap should decrease by 10 (LitterBox provides 10)"
+    );
+    // Supply should be clamped to new cap
+    assert!(
+        p.supply <= p.supply_cap,
+        "Supply should be clamped to supply_cap"
+    );
+}
+
+#[test]
+fn construction_health_scales_during_build() {
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+
+    // Spawn a building under construction
+    let bstats = cc_core::building_stats::building_stats(BuildingKind::CatTree);
+    let max_hp = bstats.health;
+    let starting_hp = max_hp * Fixed::from_num(0.1f32);
+
+    let entity = world
+        .spawn((
+            Position { world: WorldPos::from_grid(GridPos::new(5, 5)) },
+            Velocity::zero(),
+            GridCell { pos: GridPos::new(5, 5) },
+            Owner { player_id: 0 },
+            Building { kind: BuildingKind::CatTree },
+            Health { current: starting_hp, max: max_hp },
+            UnderConstruction {
+                remaining_ticks: 150, // CatTree build time
+                total_ticks: 150,
+            },
+        ))
+        .id();
+
+    // Record initial HP
+    let initial_hp = world.get::<Health>(entity).unwrap().current;
+
+    // Run half the construction time
+    run_ticks(&mut world, &mut schedule, 75);
+
+    let mid_hp = world.get::<Health>(entity).unwrap().current;
+    assert!(
+        mid_hp > initial_hp,
+        "HP should increase during construction (mid={mid_hp:?} > initial={initial_hp:?})"
+    );
+    assert!(
+        mid_hp < max_hp,
+        "HP should not be at max during construction (mid={mid_hp:?} < max={max_hp:?})"
+    );
+
+    // Run remaining ticks to complete construction
+    run_ticks(&mut world, &mut schedule, 75);
+
+    let final_hp = world.get::<Health>(entity).unwrap().current;
+    assert_eq!(
+        final_hp, max_hp,
+        "HP should be at max after construction completes"
+    );
+
+    // UnderConstruction should be removed
+    assert!(
+        world.get::<UnderConstruction>(entity).is_none(),
+        "UnderConstruction component should be removed after completion"
+    );
+}

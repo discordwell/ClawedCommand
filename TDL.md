@@ -121,6 +121,18 @@
 - [ ] No server-side guard against `GameCommand::Build { building_kind: TheBox }` — only protected by client hotkey menu omission
 - [ ] Add visual indicator for BuildMenu mode (show available sub-keys on screen)
 
+## From AI FSM Code Review
+
+- [ ] Extract `try_build()` helper to de-duplicate 5 identical building construction blocks in BuildUp/MidGame phases (~50 lines saved)
+- [ ] Extract `try_train_unit()` helper to de-duplicate 7 identical train-unit-if-affordable blocks (~40 lines saved)
+- [ ] Extract `to_entity_ids(entities: &[Entity]) -> Vec<EntityId>` — repeated 12× across issue_attack/defend_commands
+- [ ] Extract `set_rally_points()` and `defense_rally_pos()` helpers — rally point logic repeated 3× across phases
+- [ ] Extract phase arms from `run_ai_fsm()` (~400 lines) into individual `phase_early_game()`, `phase_build_up()`, etc. functions for testability
+- [ ] Replace hardcoded building costs (100 food for FishMarket, 150 for CatTree, etc.) with references to `building_stats()` data to prevent silent desync
+- [ ] Extract magic numbers: `4` (BuildUp→MidGame threshold), `6` (max MidGame workers), `15` (focus-fire search radius), `5` (flank offset tiles), `2` (melee forward offset), `3` (defense rally offset from box)
+- [ ] Separate Strategic and Advanced tier match arms in `issue_attack_commands` (currently conflated; Advanced should add adaptive positioning per enum doc)
+- [ ] Consider replacing `BuildingCensus` per-kind booleans/entities with `HashMap<BuildingKind, BuildingInfo>` for extensibility
+
 ## From Voice Pipeline Implementation
 
 - [ ] Run Python voice training tests after setting up PyTorch environment (`cd training/voice && python test_model.py`)
