@@ -270,6 +270,10 @@ pub struct LlmConfig {
     pub api_key: String,
     pub model: String,
     pub temperature: f32,
+    /// When true, the model is a fine-tuned Lua generator that outputs raw Lua
+    /// (no tool calls, no fenced blocks). Skips tool injection and uses the
+    /// training system prompt for ConstructMode.
+    pub finetuned_lua: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -290,6 +294,7 @@ impl Default for LlmConfig {
             api_key: String::new(),
             model: "devstral-small-2-2512".into(),
             temperature: 0.2,
+            finetuned_lua: false,
         }
     }
 }
@@ -302,6 +307,7 @@ impl LlmConfig {
     /// - `CLAWED_API_KEY`: API key (default: empty)
     /// - `CLAWED_LLM_MODEL`: model ID (default: "devstral-small-2-2512")
     /// - `CLAWED_LLM_TEMP`: temperature (default: 0.2)
+    /// - `CLAWED_LLM_FINETUNED`: "1" or "true" to enable fine-tuned Lua mode
     pub fn from_env() -> Self {
         let mut config = Self::default();
 
@@ -330,6 +336,10 @@ impl LlmConfig {
             if let Ok(t) = temp.parse::<f32>() {
                 config.temperature = t;
             }
+        }
+
+        if let Ok(ft) = std::env::var("CLAWED_LLM_FINETUNED") {
+            config.finetuned_lua = matches!(ft.as_str(), "1" | "true" | "yes");
         }
 
         config
@@ -365,6 +375,7 @@ mod tests {
             std::env::remove_var("CLAWED_API_KEY");
             std::env::remove_var("CLAWED_LLM_MODEL");
             std::env::remove_var("CLAWED_LLM_TEMP");
+            std::env::remove_var("CLAWED_LLM_FINETUNED");
         }
 
         let config = LlmConfig::from_env();
@@ -372,6 +383,7 @@ mod tests {
         assert_eq!(config.base_url, "http://localhost:11434");
         assert_eq!(config.model, "devstral-small-2-2512");
         assert!((config.temperature - 0.2).abs() < f32::EPSILON);
+        assert!(!config.finetuned_lua);
     }
 
     #[test]
@@ -384,6 +396,28 @@ mod tests {
         assert_eq!(config.backend, LlmBackend::OpenAiCompatible);
         unsafe {
             std::env::remove_var("CLAWED_LLM_BACKEND");
+        }
+    }
+
+    #[test]
+    fn from_env_reads_finetuned() {
+        unsafe {
+            std::env::set_var("CLAWED_LLM_FINETUNED", "1");
+        }
+        let config = LlmConfig::from_env();
+        assert!(config.finetuned_lua);
+        unsafe {
+            std::env::set_var("CLAWED_LLM_FINETUNED", "true");
+        }
+        let config2 = LlmConfig::from_env();
+        assert!(config2.finetuned_lua);
+        unsafe {
+            std::env::set_var("CLAWED_LLM_FINETUNED", "0");
+        }
+        let config3 = LlmConfig::from_env();
+        assert!(!config3.finetuned_lua);
+        unsafe {
+            std::env::remove_var("CLAWED_LLM_FINETUNED");
         }
     }
 }

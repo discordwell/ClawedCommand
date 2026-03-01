@@ -168,8 +168,19 @@ pub fn poll_agent_responses(
     }
 }
 
-/// Extract a Lua script from an LLM response containing ```lua code blocks.
+/// Extract a Lua script from an LLM response.
+/// Tries fenced ```lua blocks first (base/API model), then raw Lua (fine-tuned model).
 pub fn extract_lua_script(content: &str) -> Option<LuaScript> {
+    // Prefer fenced code blocks (backward compatible with base model output)
+    if let Some(script) = extract_fenced_lua_script(content) {
+        return Some(script);
+    }
+    // Fall back to raw Lua detection (fine-tuned model outputs Lua directly)
+    extract_raw_lua_script(content)
+}
+
+/// Extract Lua from a ```lua fenced code block.
+fn extract_fenced_lua_script(content: &str) -> Option<LuaScript> {
     let start_marker = "```lua";
     let end_marker = "```";
 
@@ -195,11 +206,70 @@ pub fn extract_lua_script(content: &str) -> Option<LuaScript> {
     })
 }
 
-/// Parse `-- Intents: gather, harvest` from Lua source.
+/// Detect and extract raw Lua output (no fenced block).
+/// The fine-tuned model outputs Lua directly, typically starting with `-- Intent:` headers.
+fn extract_raw_lua_script(content: &str) -> Option<LuaScript> {
+    let trimmed = content.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    // Heuristic: raw Lua starts with a comment or `local`, and contains ctx API calls
+    let first_line = trimmed.lines().next().unwrap_or("");
+    let starts_like_lua = first_line.starts_with("--") || first_line.starts_with("local ");
+    let has_lua_markers = trimmed.contains("ctx:") || trimmed.contains("ctx.behaviors:");
+
+    if !starts_like_lua || !has_lua_markers {
+        return None;
+    }
+
+    // Check there's no prose preamble (sentences before the Lua code)
+    // Prose lines don't start with --, local, if, for, end, return, or be blank
+    for line in trimmed.lines() {
+        let l = line.trim();
+        if l.is_empty() {
+            continue;
+        }
+        if l.starts_with("--")
+            || l.starts_with("local ")
+            || l.starts_with("if ")
+            || l.starts_with("for ")
+            || l.starts_with("while ")
+            || l.starts_with("return")
+            || l.starts_with("end")
+            || l.starts_with("else")
+            || l.starts_with("ctx")
+            || l.starts_with("table.")
+            || l.starts_with("math.")
+        {
+            // Looks like Lua — keep going
+            continue;
+        }
+        // Non-Lua line found → probably prose mixed in, not raw Lua
+        return None;
+    }
+
+    let source = trimmed.to_string();
+    let intents = extract_intents_from_source(&source);
+    let name = extract_name_from_source(&source).unwrap_or_else(|| "untitled_script".to_string());
+
+    Some(LuaScript {
+        name,
+        source,
+        intents,
+        description: String::new(),
+    })
+}
+
+/// Parse `-- Intents: gather, harvest` or `-- Intent: gather` from Lua source.
 pub fn extract_intents_from_source(source: &str) -> Vec<String> {
     for line in source.lines() {
         let trimmed = line.trim();
-        if let Some(rest) = trimmed.strip_prefix("-- Intents:") {
+        // Handle both plural (base model) and singular (fine-tuned model)
+        let rest = trimmed
+            .strip_prefix("-- Intents:")
+            .or_else(|| trimmed.strip_prefix("-- Intent:"));
+        if let Some(rest) = rest {
             return rest
                 .split(',')
                 .map(|s| s.trim().to_string())
@@ -211,12 +281,20 @@ pub fn extract_intents_from_source(source: &str) -> Vec<String> {
 }
 
 /// Parse `-- script_name` or `-- script_name: description` from first comment.
+/// Falls back to deriving a name from `-- Description:` if no explicit name is found.
 pub fn extract_name_from_source(source: &str) -> Option<String> {
+    let mut description_text = None;
+
     for line in source.lines() {
         let trimmed = line.trim();
         if let Some(rest) = trimmed.strip_prefix("-- ") {
-            // Skip lines that look like intents or other metadata
-            if rest.starts_with("Intents:") || rest.starts_with("Description:") {
+            // Skip intent metadata
+            if rest.starts_with("Intents:") || rest.starts_with("Intent:") {
+                continue;
+            }
+            // Capture description for fallback name derivation
+            if let Some(desc) = rest.strip_prefix("Description:") {
+                description_text = Some(desc.trim().to_string());
                 continue;
             }
             let name = if let Some((name, _)) = rest.split_once(':') {
@@ -232,6 +310,28 @@ pub fn extract_name_from_source(source: &str) -> Option<String> {
             }
         }
     }
+
+    // Fallback: derive snake_case name from description (fine-tuned model format)
+    if let Some(desc) = description_text {
+        let words: Vec<&str> = desc.split_whitespace().take(4).collect();
+        if !words.is_empty() {
+            let name = words
+                .iter()
+                .map(|w| {
+                    w.chars()
+                        .filter(|c| c.is_alphanumeric())
+                        .collect::<String>()
+                        .to_lowercase()
+                })
+                .filter(|s| !s.is_empty())
+                .collect::<Vec<_>>()
+                .join("_");
+            if !name.is_empty() {
+                return Some(name);
+            }
+        }
+    }
+
     None
 }
 
@@ -353,6 +453,55 @@ This script implements focus fire on the closest enemy to your army's center of 
         assert!(script.source.contains("ctx:my_units"));
         assert!(script.source.contains("ctx:attack"));
         assert!(script.description.contains("kiting script"));
+    }
+
+    #[test]
+    fn extract_lua_script_raw_output() {
+        // Fine-tuned model outputs raw Lua with -- Intent: headers (no fenced block)
+        let raw_lua = r#"-- Intent: gather
+-- Description: Send idle workers to nearest fish pond
+
+local workers = ctx:idle_units("Pawdler")
+if #workers == 0 then return end
+
+for _, w in ipairs(workers) do
+    local deposit = ctx:nearest_deposit(w.x, w.y, "Food")
+    if deposit then
+        ctx:gather({w.id}, deposit.id)
+    end
+end"#;
+
+        let script = extract_lua_script(raw_lua).unwrap();
+        assert_eq!(script.name, "send_idle_workers_to"); // Derived from Description (first 4 words)
+        assert_eq!(script.intents, vec!["gather"]);
+        assert!(script.source.contains("ctx:idle_units"));
+        assert!(script.source.contains("ctx:gather"));
+        assert!(script.description.is_empty()); // No prose preamble for raw output
+    }
+
+    #[test]
+    fn extract_singular_intent() {
+        let source = "-- Intent: attack, defend\nlocal x = ctx:my_units()";
+        let intents = extract_intents_from_source(source);
+        assert_eq!(intents, vec!["attack", "defend"]);
+    }
+
+    #[test]
+    fn extract_lua_script_fenced_preferred_over_raw() {
+        // When content has BOTH a fenced block AND raw Lua markers, prefer fenced
+        let content = r#"Here's a script:
+
+```lua
+-- fenced_script
+-- Intents: build
+local b = ctx:my_buildings()
+```
+
+That should work."#;
+
+        let script = extract_lua_script(content).unwrap();
+        assert_eq!(script.name, "fenced_script");
+        assert_eq!(script.intents, vec!["build"]);
     }
 
     #[test]

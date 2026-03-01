@@ -1,0 +1,32 @@
+# Ollama Modelfile for ClawedCommand fine-tuned Lua generator
+#
+# Usage:
+#   1. Convert merged model to GGUF Q4_K_M (see merge_and_export.py --gguf-instructions)
+#   2. Update the FROM path below to point to your GGUF file
+#   3. ollama create clawed-lua -f Modelfile.clawed-lua
+#   4. ollama run clawed-lua "send idle workers to gather food"
+#
+# Game connection:
+#   CLAWED_LLM_BACKEND=openai CLAWED_LLM_URL=http://localhost:11434 \
+#   CLAWED_LLM_MODEL=clawed-lua CLAWED_LLM_FINETUNED=1 cargo run -p cc_client
+
+FROM ./clawed-lua-24b-Q4_K_M.gguf
+
+# Mistral instruct chat template
+TEMPLATE """[SYSTEM_PROMPT]{{ .System }}[/SYSTEM_PROMPT][INST] {{ .Prompt }} [/INST]"""
+
+SYSTEM """You are an expert Lua script generator for ClawedCommand, a real-time strategy game. Given a player's natural language request, you generate a Lua script that uses the game's `ctx` API to control units, buildings, and resources.
+
+Your output must be a valid Lua script that:
+1. Starts with comment headers: `-- Intent:` and `-- Description:`
+2. Uses only the `ctx` API methods
+3. Handles edge cases (empty unit lists, missing buildings, insufficient resources)
+4. Is concise and efficient"""
+
+# Low temperature for deterministic code generation
+PARAMETER temperature 0.2
+PARAMETER top_p 0.9
+PARAMETER stop [/INST]
+PARAMETER stop </s>
+PARAMETER num_predict 512
+PARAMETER num_ctx 2048

@@ -22,6 +22,12 @@ pub struct LlmRunnerChannels(pub Option<AgentChannels>);
 /// Maximum tool-call rounds per request to prevent runaway loops.
 const MAX_TOOL_ROUNDS: usize = 5;
 
+/// System prompt from training data — used when `finetuned_lua` is enabled
+/// and the request is from ConstructMode. The fine-tuned model generates raw
+/// Lua directly (no tool calls, no fenced blocks).
+const FINETUNE_CONSTRUCT_SYSTEM_PROMPT: &str =
+    include_str!("../../../training/data/system_prompt.txt");
+
 /// System prompt for `/` key prompt overlay — sent to Claude Code CLI.
 pub const PROMPT_OVERLAY_SYSTEM_PROMPT: &str = r#"You are Minstral, an AI assistant in the RTS game ClawedCommand. The player is asking you to create a Lua script for army automation.
 
@@ -103,6 +109,7 @@ fn build_client(config: &LlmConfig) -> Box<dyn LlmClient> {
 async fn process_request(
     client: &dyn LlmClient,
     request: &AgentRequest,
+    config: &LlmConfig,
 ) -> AgentResponse {
     // Prompt source: use Claude Code CLI instead of the LLM API
     if request.source == AgentSource::Prompt {
@@ -141,6 +148,24 @@ async fn process_request(
 
     match request.source {
         AgentSource::ConstructMode => {
+            // For fine-tuned models, prepend the training system prompt
+            if config.finetuned_lua {
+                let has_finetune_prompt = request
+                    .chat_history
+                    .as_ref()
+                    .is_some_and(|h| {
+                        h.iter().any(|m| {
+                            m.role == "system"
+                                && m.content == FINETUNE_CONSTRUCT_SYSTEM_PROMPT
+                        })
+                    });
+                if !has_finetune_prompt {
+                    messages.push(ChatMessage {
+                        role: "system".to_string(),
+                        content: FINETUNE_CONSTRUCT_SYSTEM_PROMPT.to_string(),
+                    });
+                }
+            }
             // Use the full chat history from the request
             if let Some(history) = &request.chat_history {
                 messages.extend(history.iter().cloned());
@@ -171,8 +196,15 @@ async fn process_request(
         }
     }
 
+    // Fine-tuned models generate Lua directly — no tool calls needed
+    let use_tools = !(config.finetuned_lua && request.source == AgentSource::ConstructMode);
+
     // Get tool definitions for this tier
-    let tool_defs = mcp_tools::tool_definitions(request.tier);
+    let tool_defs = if use_tools {
+        mcp_tools::tool_definitions(request.tier)
+    } else {
+        vec![]
+    };
     let tools = if tool_defs.is_empty() {
         None
     } else {
@@ -272,7 +304,7 @@ pub fn spawn_llm_runner(
                     Err(_) => break, // Channel closed
                 };
 
-                let response = process_request(client.as_ref(), &request).await;
+                let response = process_request(client.as_ref(), &request, &config).await;
 
                 if response_tx.send(response).is_err() {
                     break; // Response channel closed
@@ -350,6 +382,7 @@ mod tests {
             tool_calls: vec![],
         }]);
 
+        let config = LlmConfig::default();
         let request = AgentRequest {
             player_id: 0,
             prompt: "What should I do?".into(),
@@ -359,11 +392,69 @@ mod tests {
             snapshot: None,
         };
 
-        let response = process_request(&client, &request).await;
+        let response = process_request(&client, &request, &config).await;
         assert_eq!(response.content, "Standing by.");
         assert!(response.error.is_none());
         assert!(response.commands.is_empty());
         assert_eq!(response.source, AgentSource::GameLoop);
+    }
+
+    #[tokio::test]
+    async fn process_request_finetuned_construct_injects_system_prompt() {
+        use std::sync::Mutex;
+
+        // Capture the messages sent to the mock client
+        struct CaptureMockClient {
+            captured: Mutex<Vec<Vec<ChatMessage>>>,
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        #[async_trait::async_trait]
+        impl LlmClient for CaptureMockClient {
+            async fn complete(
+                &self,
+                messages: &[ChatMessage],
+                _tools: Option<&[crate::llm_client::ToolDef]>,
+            ) -> Result<LlmResponse, crate::llm_client::LlmError> {
+                self.captured.lock().unwrap().push(messages.to_vec());
+                Ok(LlmResponse {
+                    content: "-- Intent: gather\nlocal w = ctx:idle_units()\n".to_string(),
+                    tool_calls: vec![],
+                })
+            }
+            fn model_name(&self) -> &str {
+                "capture-mock"
+            }
+        }
+
+        let client = CaptureMockClient {
+            captured: Mutex::new(vec![]),
+        };
+
+        let mut config = LlmConfig::default();
+        config.finetuned_lua = true;
+
+        let request = AgentRequest {
+            player_id: 0,
+            prompt: "send workers to gather".into(),
+            tier: ToolTier::Basic,
+            source: AgentSource::ConstructMode,
+            chat_history: Some(vec![ChatMessage {
+                role: "user".to_string(),
+                content: "send workers to gather".to_string(),
+            }]),
+            snapshot: None,
+        };
+
+        let response = process_request(&client, &request, &config).await;
+        assert!(response.error.is_none());
+
+        let captured = client.captured.lock().unwrap();
+        assert!(!captured.is_empty());
+        let messages = &captured[0];
+        // First message should be the system prompt
+        assert_eq!(messages[0].role, "system");
+        assert!(messages[0].content.contains("ctx API"));
     }
 
     #[test]
