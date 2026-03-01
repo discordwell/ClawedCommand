@@ -1,0 +1,2758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClawedCommand Mission Editor</title>
+<style>
+:root {
+  --bg-primary: #0f0f1a;
+  --bg-secondary: #1a1a2e;
+  --bg-tertiary: #252540;
+  --accent: #ff8844;
+  --accent-hover: #ffaa66;
+  --text-primary: #e0e0e0;
+  --text-secondary: #999;
+  --border: #333355;
+  --error: #ff4444;
+  --success: #44ff88;
+  --panel-width: 320px;
+  --toolbar-width: 60px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+}
+#app {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+/* Toolbar */
+#toolbar {
+  width: var(--toolbar-width);
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.tool-btn {
+  width: 52px; height: 44px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: background 0.15s;
+}
+.tool-btn:hover { background: #333355; }
+.tool-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+.tool-btn .icon { font-size: 18px; line-height: 1; }
+.tool-sep { height: 1px; background: var(--border); margin: 4px 0; }
+/* Canvas area */
+#canvas-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #0a0a14;
+}
+#canvas-wrap canvas {
+  display: block;
+  position: absolute;
+  top: 0; left: 0;
+}
+/* Property panel */
+#panel {
+  width: var(--panel-width);
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  flex-shrink: 0;
+  padding: 8px;
+}
+#panel h3 {
+  font-size: 13px;
+  color: var(--accent);
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+#panel label {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 11px;
+  margin-top: 6px;
+  margin-bottom: 2px;
+}
+#panel input, #panel select, #panel textarea {
+  width: 100%;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 4px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: inherit;
+}
+#panel textarea { resize: vertical; min-height: 50px; }
+#panel input:focus, #panel select:focus, #panel textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+#panel input[type="number"] { width: 70px; }
+#panel input[type="checkbox"] { width: auto; }
+.panel-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.panel-row label { margin-top: 0; }
+.btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 4px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.btn:hover { background: #333355; }
+.btn-accent { background: var(--accent); color: #000; border-color: var(--accent); }
+.btn-accent:hover { background: var(--accent-hover); }
+.btn-danger { background: var(--error); color: #fff; border-color: var(--error); }
+/* Terrain palette */
+.terrain-palette {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 3px;
+  margin: 4px 0;
+}
+.terrain-swatch {
+  height: 28px;
+  border-radius: 3px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  text-shadow: 0 0 3px #000, 0 0 3px #000;
+}
+.terrain-swatch.active { border-color: var(--accent); }
+/* Status bar */
+#status {
+  height: 24px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 20px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+#status span { white-space: nowrap; }
+/* Accordion */
+.accordion { margin-top: 8px; }
+.accordion-header {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 5px 8px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+.accordion-header:hover { background: #333355; }
+.accordion-body { padding: 4px 0; display: none; }
+.accordion-body.open { display: block; }
+/* List items */
+.list-item {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 8px;
+  margin-bottom: 3px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  cursor: pointer;
+}
+.list-item:hover { border-color: var(--accent); }
+.list-item.selected { border-color: var(--accent); background: #2a2a44; }
+.list-item .del-btn {
+  color: var(--error);
+  cursor: pointer;
+  font-weight: bold;
+  margin-left: 4px;
+}
+/* Entity markers on canvas - rendered via canvas API */
+/* Brush size indicator */
+.brush-row { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+.brush-row input[type="range"] { flex: 1; }
+/* Minimap */
+#minimap {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  border: 1px solid var(--border);
+  background: #0a0a14;
+  cursor: pointer;
+}
+/* Scrollbar styling */
+#panel::-webkit-scrollbar { width: 6px; }
+#panel::-webkit-scrollbar-track { background: var(--bg-secondary); }
+#panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+/* Dialog overlay */
+.dialog-overlay {
+  position: fixed; top:0; left:0; right:0; bottom:0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.dialog {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  min-width: 300px;
+}
+.dialog h3 { margin-bottom: 10px; }
+.dialog .btn { margin-top: 10px; margin-right: 6px; }
+/* Unit/building list in placement panel */
+.entity-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 4px 0;
+}
+.entity-item {
+  padding: 3px 6px;
+  cursor: pointer;
+  border-radius: 2px;
+  font-size: 11px;
+}
+.entity-item:hover { background: var(--bg-tertiary); }
+.entity-item.active { background: var(--accent); color: #000; }
+/* Condition builder */
+.condition-block {
+  border-left: 2px solid var(--accent);
+  padding-left: 8px;
+  margin: 4px 0;
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="toolbar"></div>
+  <div id="canvas-wrap">
+    <canvas id="map-canvas"></canvas>
+    <canvas id="minimap"></canvas>
+  </div>
+  <div id="panel"></div>
+</div>
+<div id="status">
+  <span id="st-pos">--</span>
+  <span id="st-terrain">--</span>
+  <span id="st-elev">--</span>
+  <span id="st-zoom">1.00x</span>
+  <span id="st-tool">--</span>
+</div>
+<input type="file" id="file-input" accept=".ron" style="display:none">
+
+<script>
+// ===========================================================================
+// CONSTANTS
+// ===========================================================================
+const TILE_WIDTH = 64, TILE_HEIGHT = 32;
+const TILE_HW = 32, TILE_HH = 16;
+const ELEV_PX = 8;
+
+const TERRAIN_TYPES = [
+  'Grass','Dirt','Sand','Forest','Water','Shallows','Rock','Ramp','Road','TechRuins'
+];
+
+// sRGB checkerboard colors [colorA, colorB] per terrain
+const TERRAIN_COLORS = {
+  Grass:     [[ 71, 140, 64],[ 82, 148, 71]],
+  Dirt:      [[140, 107, 71],[148, 115, 77]],
+  Sand:      [[212, 194,135],[217, 199,140]],
+  Forest:    [[ 46, 107, 38],[ 56, 115, 46]],
+  Water:     [[ 38,  89,166],[ 46,  97,173]],
+  Shallows:  [[102, 173,224],[107, 179,230]],
+  Rock:      [[ 84,  77, 71],[ 89,  82, 77]],
+  Ramp:      [[122, 110, 92],[128, 115, 97]],
+  Road:      [[153, 133,102],[158, 138,107]],
+  TechRuins: [[105, 105,117],[110, 110,122]],
+};
+
+// Elevation brightness multipliers
+const ELEV_BRIGHT = [0.82, 1.0, 1.15];
+
+const FACTIONS = [
+  {id:'catGPT', name:'catGPT (Cats)', color:'#44aaff'},
+  {id:'theClawed', name:'The Clawed (Mice)', color:'#88cc44'},
+  {id:'seekers', name:'Seekers of the Deep (Badgers)', color:'#cc8844'},
+  {id:'murder', name:'The Murder (Corvids)', color:'#aa44cc'},
+  {id:'llama', name:'LLAMA (Raccoons)', color:'#cc4444'},
+  {id:'croak', name:'Croak (Axolotls)', color:'#44ccaa'},
+];
+
+// Unit kinds grouped by faction
+const UNIT_KINDS = {
+  catGPT: ['Pawdler','Nuisance','Chonk','FlyingFox','Hisser','Yowler','Mouser','Catnapper','FerretSapper','MechCommander'],
+  murder: ['MurderScrounger','Sentinel','Rookclaw','Magpike','Magpyre','Jaycaller','Jayflicker','Dusktalon','Hootseer','CorvusRex'],
+  seekers: ['Delver','Ironhide','Cragback','Warden','Sapjaw','Wardenmother','SeekerTunneler','Embermaw','Dustclaw','Gutripper'],
+  theClawed: ['Nibblet','Swarmer','Gnawer','Shrieker','Tunneler','Sparks','Quillback','Whiskerwitch','Plaguetail','WarrenMarshal'],
+  croak: ['Ponderer','Regeneron','Broodmother','Gulper','Eftsaber','Croaker','Leapfrog','Shellwarden','Bogwhisper','MurkCommander'],
+  llama: ['Scrounger','Bandit','HeapTitan','GlitchRat','PatchPossum','GreaseMonkey','DeadDropUnit','Wrecker','DumpsterDiver','JunkyardKing'],
+};
+const ALL_UNIT_KINDS = Object.values(UNIT_KINDS).flat();
+
+const BUILDING_KINDS = {
+  catGPT: ['TheBox','CatTree','FishMarket','LitterBox','ServerRack','ScratchingPost','CatFlap','LaserPointer'],
+  murder: ['TheParliament','Rookery','CarrionCache','AntennaArray','Panopticon','NestBox','ThornHedge','Watchtower'],
+  theClawed: ['TheBurrow','NestingBox','SeedVault','JunkTransmitter','GnawLab','WarrenExpansion','Mousehole','SqueakTower'],
+  seekers: ['TheSett','WarHollow','BurrowDepot','CoreTap','ClawMarks','DeepWarren','BulwarkGate','SlagThrower'],
+  croak: ['TheGrotto','SpawningPools','LilyMarket','SunkenServer','FossilStones','ReedBed','TidalGate','SporeTower'],
+  llama: ['TheDumpster','ScrapHeap','ChopShop','JunkServer','TinkerBench','TrashPile','DumpsterRelay','TetanusTower'],
+};
+const ALL_BUILDING_KINDS = Object.values(BUILDING_KINDS).flat();
+
+const HERO_IDS = ['Kelpie','FelixNine','Thimble','MotherGranite','RexSolstice','KingRingtail','TheEternal','Patches'];
+
+const VOICE_STYLES = ['Normal','AiVoice','Whisper','Shout'];
+
+const WAVE_TRIGGER_TYPES = ['Immediate','AtTick','OnTrigger'];
+const WAVE_AI_BEHAVIORS = ['AttackMove','Patrol','Defend','Idle'];
+
+const OBJECTIVE_CONDITIONS = ['EliminateWave','EliminateAll','KillCount','HeroReachesPos','Survive','HeroDied','Manual'];
+
+const TRIGGER_CONDITIONS = ['AtTick','HeroAtPos','EnemyKillCount','AllEnemiesDead','WaveEliminated',
+  'FlagSet','TriggerFired','All','Any','HeroHpBelow','PersistentFlag','HazardLevel','Periodic'];
+
+const TRIGGER_ACTIONS = ['ShowDialogue','SpawnWave','SetFlag','CompleteObjective','PanCamera',
+  'SetPersistentFlag','ToggleMutator','SetTerrain','AreaDamage'];
+
+const MUTATOR_TYPES = ['LavaRise','WindStorm','ToxicTide','Tremors','Flooding','DenseFog',
+  'DamageZone','VoiceOnlyControl','NoAiControl','NoBuildMode','AiOnlyControl','RestrictedUnits',
+  'TimeLimit','ResourceScarcity','DamageMultiplier','SpeedMultiplier'];
+
+const PLAYER_COLORS = ['#44aaff','#ff4444','#44ff88','#ffaa44','#aa44ff','#ff44aa'];
+
+// Faction index to unit-list key
+function factionKeyForPlayer(pid) {
+  return ['catGPT','theClawed','seekers','murder','llama','croak'][pid] || 'catGPT';
+}
+
+// ===========================================================================
+// MISSION STATE
+// ===========================================================================
+class MissionState {
+  constructor(w = 64, h = 64) {
+    this.id = 'untitled';
+    this.name = 'New Mission';
+    this.act = 0;
+    this.mission_index = 0;
+    this.width = w;
+    this.height = h;
+    this.tiles = new Array(w * h).fill(0); // terrain index
+    this.elevation = new Uint8Array(w * h);
+    this.units = []; // {kind, x, y, player_id}
+    this.buildings = []; // {kind, x, y, player_id, pre_built}
+    this.heroes = []; // {hero_id, x, y, mission_critical, player_id}
+    this.enemy_waves = [];
+    this.objectives = [];
+    this.triggers = [];
+    this.dialogue = [];
+    this.briefing_text = '';
+    this.debrief_text = '';
+    this.ai_tool_tier = null;
+    this.next_mission = {type:'None'};
+    this.mutators = [];
+    this.starting_food = 0;
+    this.starting_gpu = 0;
+    this.starting_nfts = 0;
+  }
+
+  tileIndex(x, y) { return y * this.width + x; }
+  getTerrain(x, y) {
+    if (x < 0 || y < 0 || x >= this.width || y >= this.height) return -1;
+    return this.tiles[this.tileIndex(x, y)];
+  }
+  setTerrain(x, y, t) {
+    if (x < 0 || y < 0 || x >= this.width || y >= this.height) return;
+    this.tiles[this.tileIndex(x, y)] = t;
+  }
+  getElev(x, y) {
+    if (x < 0 || y < 0 || x >= this.width || y >= this.height) return 0;
+    return this.elevation[this.tileIndex(x, y)];
+  }
+  setElev(x, y, e) {
+    if (x < 0 || y < 0 || x >= this.width || y >= this.height) return;
+    this.elevation[this.tileIndex(x, y)] = e;
+  }
+  resize(nw, nh) {
+    const nt = new Array(nw * nh).fill(0);
+    const ne = new Uint8Array(nw * nh);
+    for (let y = 0; y < Math.min(this.height, nh); y++) {
+      for (let x = 0; x < Math.min(this.width, nw); x++) {
+        nt[y * nw + x] = this.tiles[y * this.width + x];
+        ne[y * nw + x] = this.elevation[y * this.width + x];
+      }
+    }
+    this.tiles = nt;
+    this.elevation = ne;
+    this.width = nw;
+    this.height = nh;
+  }
+  entitiesAt(x, y) {
+    const r = [];
+    this.units.forEach((u, i) => { if (u.x === x && u.y === y) r.push({type:'unit', idx:i, data:u}); });
+    this.buildings.forEach((b, i) => { if (b.x === x && b.y === y) r.push({type:'building', idx:i, data:b}); });
+    this.heroes.forEach((h, i) => { if (h.x === x && h.y === y) r.push({type:'hero', idx:i, data:h}); });
+    return r;
+  }
+  removeEntity(type, idx) {
+    if (type === 'unit') this.units.splice(idx, 1);
+    else if (type === 'building') this.buildings.splice(idx, 1);
+    else if (type === 'hero') this.heroes.splice(idx, 1);
+  }
+}
+
+// ===========================================================================
+// UNDO / REDO
+// ===========================================================================
+class UndoManager {
+  constructor(maxSize = 100) {
+    this.stack = [];
+    this.idx = -1;
+    this.maxSize = maxSize;
+  }
+  snapshot(state) {
+    const snap = {
+      tiles: state.tiles.slice(),
+      elevation: state.elevation.slice(),
+      units: JSON.parse(JSON.stringify(state.units)),
+      buildings: JSON.parse(JSON.stringify(state.buildings)),
+      heroes: JSON.parse(JSON.stringify(state.heroes)),
+    };
+    this.stack.splice(this.idx + 1);
+    this.stack.push(snap);
+    if (this.stack.length > this.maxSize) this.stack.shift();
+    this.idx = this.stack.length - 1;
+  }
+  undo(state) {
+    if (this.idx <= 0) return false;
+    this.idx--;
+    this._apply(state, this.stack[this.idx]);
+    return true;
+  }
+  redo(state) {
+    if (this.idx >= this.stack.length - 1) return false;
+    this.idx++;
+    this._apply(state, this.stack[this.idx]);
+    return true;
+  }
+  _apply(state, snap) {
+    state.tiles = snap.tiles.slice();
+    state.elevation = snap.elevation.slice();
+    state.units = JSON.parse(JSON.stringify(snap.units));
+    state.buildings = JSON.parse(JSON.stringify(snap.buildings));
+    state.heroes = JSON.parse(JSON.stringify(snap.heroes));
+  }
+}
+
+// ===========================================================================
+// ISOMETRIC RENDERER
+// ===========================================================================
+class IsoRenderer {
+  constructor(canvas, miniCanvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.miniCanvas = miniCanvas;
+    this.miniCtx = miniCanvas.getContext('2d');
+    this.camX = 0;
+    this.camY = 0;
+    this.zoom = 1.2;
+    this.minZoom = 0.3;
+    this.maxZoom = 4.0;
+  }
+
+  resize(w, h) {
+    this.canvas.width = w;
+    this.canvas.height = h;
+  }
+
+  gridToScreen(gx, gy) {
+    return {
+      x: (gx - gy) * TILE_HW,
+      y: (gx + gy) * TILE_HH
+    };
+  }
+
+  screenToGrid(sx, sy) {
+    // Invert the isometric projection
+    const wx = sx / TILE_HW;
+    const wy = sy / TILE_HH;
+    return {
+      x: Math.floor((wx + wy) / 2),
+      y: Math.floor((wy - wx) / 2)
+    };
+  }
+
+  canvasToWorld(cx, cy) {
+    // Canvas pixel → world (un-zoomed, un-panned)
+    return {
+      x: (cx - this.canvas.width / 2) / this.zoom + this.camX,
+      y: (cy - this.canvas.height / 2) / this.zoom + this.camY
+    };
+  }
+
+  canvasToGrid(cx, cy) {
+    const w = this.canvasToWorld(cx, cy);
+    return this.screenToGrid(w.x, w.y);
+  }
+
+  worldToCanvas(wx, wy) {
+    return {
+      x: (wx - this.camX) * this.zoom + this.canvas.width / 2,
+      y: (wy - this.camY) * this.zoom + this.canvas.height / 2
+    };
+  }
+
+  _tileColor(terrainIdx, x, y, elev) {
+    const tName = TERRAIN_TYPES[terrainIdx];
+    const cols = TERRAIN_COLORS[tName];
+    const checker = (x + y) % 2 === 0 ? 0 : 1;
+    const [r, g, b] = cols[checker];
+    const br = ELEV_BRIGHT[Math.min(elev, 2)];
+    return `rgb(${Math.min(255, Math.round(r * br))},${Math.min(255, Math.round(g * br))},${Math.min(255, Math.round(b * br))})`;
+  }
+
+  render(state, app) {
+    const ctx = this.ctx;
+    const W = this.canvas.width, H = this.canvas.height;
+    ctx.fillStyle = '#0a0a14';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(this.zoom, this.zoom);
+    ctx.translate(-this.camX, -this.camY);
+
+    // Viewport culling bounds (in world coords)
+    const margin = TILE_WIDTH * 2;
+    const vl = this.camX - W / 2 / this.zoom - margin;
+    const vr = this.camX + W / 2 / this.zoom + margin;
+    const vt = this.camY - H / 2 / this.zoom - margin;
+    const vb = this.camY + H / 2 / this.zoom + margin;
+
+    // Draw tiles
+    for (let y = 0; y < state.height; y++) {
+      for (let x = 0; x < state.width; x++) {
+        const s = this.gridToScreen(x, y);
+        const elev = state.getElev(x, y);
+        const ey = s.y - elev * ELEV_PX;
+
+        if (s.x < vl || s.x > vr || ey < vt || ey > vb) continue;
+
+        const ti = state.getTerrain(x, y);
+        ctx.fillStyle = this._tileColor(ti, x, y, elev);
+        this._drawDiamond(ctx, s.x, ey, TILE_HW, TILE_HH);
+
+        // Grid overlay (subtle)
+        if (app && app.showGrid) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+          ctx.lineWidth = 0.5;
+          this._strokeDiamond(ctx, s.x, ey, TILE_HW, TILE_HH);
+        }
+
+        // Cliff shadow on neighbors below
+        if (elev > 0) {
+          for (const [dx, dy] of [[0,1],[1,0]]) {
+            const nx = x + dx, ny = y + dy;
+            if (nx >= 0 && ny >= 0 && nx < state.width && ny < state.height) {
+              const ne = state.getElev(nx, ny);
+              if (ne < elev) {
+                const ns = this.gridToScreen(nx, ny);
+                const ney = ns.y - ne * ELEV_PX;
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                this._drawDiamond(ctx, ns.x, ney, TILE_HW, TILE_HH);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Draw entities
+    this._drawEntities(ctx, state, vl, vr, vt, vb);
+
+    // Draw cursor/brush preview
+    if (app && app.hoverGrid) {
+      const hx = app.hoverGrid.x, hy = app.hoverGrid.y;
+      const brushSize = app.brushSize || 1;
+      const half = Math.floor(brushSize / 2);
+      for (let dy = -half; dy <= half; dy++) {
+        for (let dx = -half; dx <= half; dx++) {
+          const bx = hx + dx, by = hy + dy;
+          if (bx >= 0 && by >= 0 && bx < state.width && by < state.height) {
+            const bs = this.gridToScreen(bx, by);
+            const be = state.getElev(bx, by);
+            const bey = bs.y - be * ELEV_PX;
+            ctx.strokeStyle = 'rgba(255,136,68,0.7)';
+            ctx.lineWidth = 1.5;
+            this._strokeDiamond(ctx, bs.x, bey, TILE_HW, TILE_HH);
+          }
+        }
+      }
+    }
+
+    ctx.restore();
+
+    // Minimap
+    this._renderMinimap(state);
+  }
+
+  _drawDiamond(ctx, cx, cy, hw, hh) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - hh);
+    ctx.lineTo(cx + hw, cy);
+    ctx.lineTo(cx, cy + hh);
+    ctx.lineTo(cx - hw, cy);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  _strokeDiamond(ctx, cx, cy, hw, hh) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - hh);
+    ctx.lineTo(cx + hw, cy);
+    ctx.lineTo(cx, cy + hh);
+    ctx.lineTo(cx - hw, cy);
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  _drawEntities(ctx, state, vl, vr, vt, vb) {
+    const drawMarker = (x, y, color, label, shape) => {
+      const s = this.gridToScreen(x, y);
+      const elev = state.getElev(x, y);
+      const ey = s.y - elev * ELEV_PX;
+      if (s.x < vl || s.x > vr || ey < vt || ey > vb) return;
+      ctx.save();
+      ctx.translate(s.x, ey);
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.85;
+      if (shape === 'square') {
+        ctx.fillRect(-6, -10, 12, 12);
+      } else if (shape === 'star') {
+        this._drawStar(ctx, 0, -4, 5, 8, 5);
+      } else {
+        ctx.beginPath();
+        ctx.arc(0, -4, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#fff';
+      ctx.font = '7px sans-serif';
+      ctx.textAlign = 'center';
+      const short = label.length > 6 ? label.slice(0, 5) + '..' : label;
+      ctx.fillText(short, 0, -12);
+      ctx.restore();
+    };
+
+    state.buildings.forEach(b => drawMarker(b.x, b.y, PLAYER_COLORS[b.player_id] || '#888', b.kind, 'square'));
+    state.units.forEach(u => drawMarker(u.x, u.y, PLAYER_COLORS[u.player_id] || '#888', u.kind, 'circle'));
+    state.heroes.forEach(h => drawMarker(h.x, h.y, '#ffdd44', h.hero_id, 'star'));
+
+    // Wave units (dimmer)
+    state.enemy_waves.forEach(w => {
+      w.units.forEach(u => {
+        const s = this.gridToScreen(u.position.x, u.position.y);
+        const elev = state.getElev(u.position.x, u.position.y);
+        const ey = s.y - elev * ELEV_PX;
+        if (s.x < vl || s.x > vr || ey < vt || ey > vb) return;
+        ctx.save();
+        ctx.translate(s.x, ey);
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = PLAYER_COLORS[u.player_id] || '#888';
+        ctx.beginPath();
+        ctx.arc(0, -4, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = '#fff';
+        ctx.font = '6px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(u.kind.slice(0, 4), 0, -11);
+        ctx.restore();
+      });
+    });
+  }
+
+  _drawStar(ctx, cx, cy, spikes, outerR, innerR) {
+    let rot = Math.PI / 2 * 3;
+    const step = Math.PI / spikes;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - outerR);
+    for (let i = 0; i < spikes; i++) {
+      ctx.lineTo(cx + Math.cos(rot) * outerR, cy + Math.sin(rot) * outerR);
+      rot += step;
+      ctx.lineTo(cx + Math.cos(rot) * innerR, cy + Math.sin(rot) * innerR);
+      rot += step;
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  _renderMinimap(state) {
+    const scale = Math.min(180 / state.width, 120 / state.height, 3);
+    const mw = Math.ceil(state.width * scale);
+    const mh = Math.ceil(state.height * scale);
+    this.miniCanvas.width = mw;
+    this.miniCanvas.height = mh;
+    const mctx = this.miniCtx;
+    mctx.fillStyle = '#0a0a14';
+    mctx.fillRect(0, 0, mw, mh);
+
+    for (let y = 0; y < state.height; y++) {
+      for (let x = 0; x < state.width; x++) {
+        const ti = state.getTerrain(x, y);
+        const tName = TERRAIN_TYPES[ti];
+        const [r, g, b] = TERRAIN_COLORS[tName][0];
+        mctx.fillStyle = `rgb(${r},${g},${b})`;
+        mctx.fillRect(x * scale, y * scale, Math.max(1, scale), Math.max(1, scale));
+      }
+    }
+
+    // Camera viewport indicator
+    const tl = this.canvasToGrid(0, 0);
+    const br = this.canvasToGrid(this.canvas.width, this.canvas.height);
+    mctx.strokeStyle = '#ff8844';
+    mctx.lineWidth = 1;
+    const rx = Math.max(0, tl.x) * scale;
+    const ry = Math.max(0, tl.y) * scale;
+    const rw = (Math.min(state.width, br.x) - Math.max(0, tl.x)) * scale;
+    const rh = (Math.min(state.height, br.y) - Math.max(0, tl.y)) * scale;
+    mctx.strokeRect(rx, ry, rw, rh);
+  }
+
+  centerOnMap(state) {
+    const center = this.gridToScreen(state.width / 2, state.height / 2);
+    this.camX = center.x;
+    this.camY = center.y;
+  }
+}
+
+// ===========================================================================
+// RON PARSER
+// ===========================================================================
+class RonParser {
+  constructor(input) {
+    this.input = input;
+    this.pos = 0;
+  }
+
+  parse() {
+    this._skipWS();
+    const result = this._parseValue();
+    this._skipWS();
+    return result;
+  }
+
+  _parseValue() {
+    this._skipWS();
+    const ch = this.input[this.pos];
+    if (ch === '(') return this._parseStruct();
+    if (ch === '[') return this._parseArray();
+    if (ch === '"') return this._parseString();
+    if (ch === '-' || (ch >= '0' && ch <= '9')) return this._parseNumber();
+    if (ch === 't' && this.input.substr(this.pos, 4) === 'true') { this.pos += 4; return true; }
+    if (ch === 'f' && this.input.substr(this.pos, 5) === 'false') { this.pos += 5; return false; }
+    // Enum variant or identifier
+    const result = this._parseEnumOrIdent();
+    // Unwrap Some(value) → value, None → null
+    if (result && typeof result === 'object' && result._type === 'Some') return result['0'];
+    if (result === 'None') return null;
+    if (result === 'Some') return null; // bare Some without parens shouldn't happen but guard
+    return result;
+  }
+
+  _parseStruct() {
+    this._expect('(');
+    this._skipWS();
+    if (this.input[this.pos] === ')') { this.pos++; return {}; }
+
+    // Detect named vs positional: look ahead for `ident:`
+    const saved = this.pos;
+    let isNamed = false;
+    if (/[a-zA-Z_]/.test(this.input[this.pos])) {
+      let probe = this.pos;
+      while (probe < this.input.length && /[a-zA-Z0-9_]/.test(this.input[probe])) probe++;
+      while (probe < this.input.length && (this.input[probe] === ' ' || this.input[probe] === '\t' || this.input[probe] === '\n' || this.input[probe] === '\r')) probe++;
+      if (this.input[probe] === ':') isNamed = true;
+    }
+
+    if (isNamed) {
+      const obj = {};
+      while (this.pos < this.input.length && this.input[this.pos] !== ')') {
+        this._skipWS();
+        if (this.input[this.pos] === ')') break;
+        const key = this._parseIdent();
+        this._skipWS();
+        this._expect(':');
+        this._skipWS();
+        obj[key] = this._parseValue();
+        this._skipWS();
+        if (this.input[this.pos] === ',') this.pos++;
+        this._skipWS();
+      }
+      this._expect(')');
+      return obj;
+    } else {
+      // Positional tuple: parse values as indexed keys "0", "1", ...
+      const obj = {};
+      let idx = 0;
+      while (this.pos < this.input.length && this.input[this.pos] !== ')') {
+        this._skipWS();
+        if (this.input[this.pos] === ')') break;
+        obj[String(idx)] = this._parseValue();
+        idx++;
+        this._skipWS();
+        if (this.input[this.pos] === ',') this.pos++;
+        this._skipWS();
+      }
+      this._expect(')');
+      return obj;
+    }
+  }
+
+  _parseArray() {
+    this._expect('[');
+    this._skipWS();
+    const arr = [];
+    while (this.pos < this.input.length && this.input[this.pos] !== ']') {
+      this._skipWS();
+      if (this.input[this.pos] === ']') break;
+      arr.push(this._parseValue());
+      this._skipWS();
+      if (this.input[this.pos] === ',') this.pos++;
+      this._skipWS();
+    }
+    this._expect(']');
+    return arr;
+  }
+
+  _parseString() {
+    this._expect('"');
+    let s = '';
+    while (this.pos < this.input.length && this.input[this.pos] !== '"') {
+      if (this.input[this.pos] === '\\') {
+        this.pos++;
+        const esc = this.input[this.pos];
+        if (esc === 'n') s += '\n';
+        else if (esc === 't') s += '\t';
+        else if (esc === '\\') s += '\\';
+        else if (esc === '"') s += '"';
+        else s += esc;
+      } else {
+        s += this.input[this.pos];
+      }
+      this.pos++;
+    }
+    this._expect('"');
+    return s;
+  }
+
+  _parseNumber() {
+    let s = '';
+    if (this.input[this.pos] === '-') { s += '-'; this.pos++; }
+    while (this.pos < this.input.length && ((this.input[this.pos] >= '0' && this.input[this.pos] <= '9') || this.input[this.pos] === '.')) {
+      s += this.input[this.pos++];
+    }
+    return s.includes('.') ? parseFloat(s) : parseInt(s, 10);
+  }
+
+  _parseEnumOrIdent() {
+    const ident = this._parseIdent();
+    this._skipWS();
+    if (this.input[this.pos] === '(') {
+      // Enum variant with data
+      const data = this._parseStruct();
+      return { _type: ident, ...data };
+    } else if (this.input[this.pos] === '[') {
+      // Shouldn't happen in our format
+      return { _type: ident };
+    }
+    // Bare enum variant or value (like terrain names)
+    return ident;
+  }
+
+  _parseIdent() {
+    let s = '';
+    while (this.pos < this.input.length && /[a-zA-Z0-9_]/.test(this.input[this.pos])) {
+      s += this.input[this.pos++];
+    }
+    if (!s) throw new Error(`Expected identifier at pos ${this.pos}: "${this.input.substr(this.pos, 20)}"`);
+    return s;
+  }
+
+  _expect(ch) {
+    if (this.input[this.pos] !== ch) {
+      throw new Error(`Expected '${ch}' at pos ${this.pos}, got '${this.input[this.pos]}': context "${this.input.substr(Math.max(0, this.pos - 10), 30)}"`);
+    }
+    this.pos++;
+  }
+
+  _skipWS() {
+    while (this.pos < this.input.length) {
+      const ch = this.input[this.pos];
+      if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') {
+        this.pos++;
+      } else if (ch === '/' && this.input[this.pos + 1] === '/') {
+        // Line comment
+        while (this.pos < this.input.length && this.input[this.pos] !== '\n') this.pos++;
+      } else if (ch === '#' && this.input[this.pos + 1] === '!') {
+        // RON directive (e.g. #![enable(implicit_some)])
+        while (this.pos < this.input.length && this.input[this.pos] !== '\n') this.pos++;
+      } else {
+        break;
+      }
+    }
+  }
+}
+
+// ===========================================================================
+// RON SERIALIZER
+// ===========================================================================
+function serializeRon(state) {
+  const lines = [];
+  const ind = (n) => '    '.repeat(n);
+
+  lines.push('(');
+  lines.push(`${ind(1)}id: "${esc(state.id)}",`);
+  lines.push(`${ind(1)}name: "${esc(state.name)}",`);
+  lines.push(`${ind(1)}act: ${state.act},`);
+  lines.push(`${ind(1)}mission_index: ${state.mission_index},`);
+
+  // Map
+  lines.push(`${ind(1)}map: Inline(`);
+  lines.push(`${ind(2)}width: ${state.width},`);
+  lines.push(`${ind(2)}height: ${state.height},`);
+  // Tiles on one line
+  const tileStrs = state.tiles.map(t => TERRAIN_TYPES[t]);
+  lines.push(`${ind(2)}tiles: [${tileStrs.join(', ')}],`);
+  const elevStrs = Array.from(state.elevation);
+  lines.push(`${ind(2)}elevation: [${elevStrs.join(', ')}],`);
+  lines.push(`${ind(1)}),`);
+
+  // Player setup
+  lines.push(`${ind(1)}player_setup: (`);
+  // Heroes
+  lines.push(`${ind(2)}heroes: [`);
+  state.heroes.forEach(h => {
+    lines.push(`${ind(3)}(hero_id: ${h.hero_id}, position: (x: ${h.x}, y: ${h.y}), mission_critical: ${h.mission_critical}, player_id: ${h.player_id}),`);
+  });
+  lines.push(`${ind(2)}],`);
+  // Units
+  lines.push(`${ind(2)}units: [`);
+  state.units.forEach(u => {
+    lines.push(`${ind(3)}(kind: ${u.kind}, position: (x: ${u.x}, y: ${u.y}), player_id: ${u.player_id}),`);
+  });
+  lines.push(`${ind(2)}],`);
+  // Buildings
+  lines.push(`${ind(2)}buildings: [`);
+  state.buildings.forEach(b => {
+    lines.push(`${ind(3)}(kind: ${b.kind}, position: (x: ${b.x}, y: ${b.y}), player_id: ${b.player_id}, pre_built: ${b.pre_built}),`);
+  });
+  lines.push(`${ind(2)}],`);
+  lines.push(`${ind(2)}starting_food: ${state.starting_food},`);
+  lines.push(`${ind(2)}starting_gpu: ${state.starting_gpu},`);
+  lines.push(`${ind(2)}starting_nfts: ${state.starting_nfts},`);
+  lines.push(`${ind(1)}),`);
+
+  // Enemy waves
+  lines.push(`${ind(1)}enemy_waves: [`);
+  state.enemy_waves.forEach(w => {
+    lines.push(`${ind(2)}(`);
+    lines.push(`${ind(3)}wave_id: "${esc(w.wave_id)}",`);
+    lines.push(`${ind(3)}trigger: ${serializeTriggerType(w.trigger)},`);
+    lines.push(`${ind(3)}units: [`);
+    w.units.forEach(u => {
+      lines.push(`${ind(4)}(kind: ${u.kind}, position: (x: ${u.position.x}, y: ${u.position.y}), player_id: ${u.player_id}),`);
+    });
+    lines.push(`${ind(3)}],`);
+    lines.push(`${ind(3)}ai_behavior: ${serializeAiBehavior(w.ai_behavior)},`);
+    lines.push(`${ind(2)}),`);
+  });
+  lines.push(`${ind(1)}],`);
+
+  // Objectives
+  lines.push(`${ind(1)}objectives: [`);
+  state.objectives.forEach(o => {
+    lines.push(`${ind(2)}(`);
+    lines.push(`${ind(3)}id: "${esc(o.id)}",`);
+    lines.push(`${ind(3)}description: "${esc(o.description)}",`);
+    lines.push(`${ind(3)}primary: ${o.primary},`);
+    lines.push(`${ind(3)}condition: ${serializeObjCondition(o.condition)},`);
+    lines.push(`${ind(2)}),`);
+  });
+  lines.push(`${ind(1)}],`);
+
+  // Triggers
+  lines.push(`${ind(1)}triggers: [`);
+  state.triggers.forEach(t => {
+    lines.push(`${ind(2)}(`);
+    lines.push(`${ind(3)}id: "${esc(t.id)}",`);
+    lines.push(`${ind(3)}condition: ${serializeTriggerCond(t.condition)},`);
+    lines.push(`${ind(3)}actions: [${t.actions.map(a => serializeTriggerAction(a)).join(', ')}],`);
+    lines.push(`${ind(3)}once: ${t.once},`);
+    lines.push(`${ind(2)}),`);
+  });
+  lines.push(`${ind(1)}],`);
+
+  // Dialogue
+  lines.push(`${ind(1)}dialogue: [`);
+  state.dialogue.forEach(d => {
+    lines.push(`${ind(2)}(speaker: "${esc(d.speaker)}", text: "${esc(d.text)}", voice_style: ${d.voice_style}, portrait: "${esc(d.portrait)}"),`);
+  });
+  lines.push(`${ind(1)}],`);
+
+  lines.push(`${ind(1)}briefing_text: "${esc(state.briefing_text)}",`);
+  lines.push(`${ind(1)}debrief_text: "${esc(state.debrief_text)}",`);
+
+  if (state.ai_tool_tier !== null && state.ai_tool_tier !== undefined) {
+    lines.push(`${ind(1)}ai_tool_tier: Some(${state.ai_tool_tier}),`);
+  }
+
+  lines.push(`${ind(1)}next_mission: ${serializeNextMission(state.next_mission)},`);
+
+  if (state.mutators.length > 0) {
+    lines.push(`${ind(1)}mutators: [`);
+    state.mutators.forEach(m => {
+      lines.push(`${ind(2)}${serializeMutator(m)},`);
+    });
+    lines.push(`${ind(1)}],`);
+  }
+
+  lines.push(')');
+  return lines.join('\n');
+}
+
+function esc(s) { return (s || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n'); }
+
+function serializeTriggerType(t) {
+  if (!t || t.type === 'Immediate' || t === 'Immediate') return 'Immediate';
+  if (t.type === 'AtTick') return `AtTick(${t.tick})`;
+  if (t.type === 'OnTrigger') return `OnTrigger("${esc(t.trigger_id)}")`;
+  if (typeof t === 'string') return t;
+  if (t._type === 'AtTick') return `AtTick(${t['0'] || t.tick || 0})`;
+  if (t._type === 'OnTrigger') return `OnTrigger("${esc(t['0'] || t.trigger_id || '')}")`;
+  if (t._type === 'Immediate') return 'Immediate';
+  if (t._type) return t._type;
+  return 'Immediate';
+}
+
+function serializeAiBehavior(b) {
+  if (!b) return 'Idle';
+  if (typeof b === 'string') return b;
+  if (b.type === 'AttackMove') return `AttackMove((x: ${b.x}, y: ${b.y}))`;
+  if (b.type === 'Patrol') {
+    const pts = b.waypoints.map(p => `(x: ${p.x}, y: ${p.y})`).join(', ');
+    return `Patrol([${pts}])`;
+  }
+  if (b.type === 'Defend') return 'Defend';
+  if (b.type === 'Idle') return 'Idle';
+  if (b._type === 'AttackMove') return `AttackMove((x: ${b.x}, y: ${b.y}))`;
+  if (b._type) return b._type;
+  return 'Idle';
+}
+
+function serializeObjCondition(c) {
+  if (!c) return 'EliminateAll';
+  if (typeof c === 'string') return c;
+  switch (c.type) {
+    case 'EliminateWave': return `EliminateWave("${esc(c.wave_id)}")`;
+    case 'EliminateAll': return 'EliminateAll';
+    case 'KillCount': return `KillCount(${c.count})`;
+    case 'HeroReachesPos': return `HeroReachesPos(hero: ${c.hero}, position: (x: ${c.x}, y: ${c.y}), radius: ${c.radius})`;
+    case 'Survive': return `Survive(${c.ticks})`;
+    case 'HeroDied': return `HeroDied(${c.hero})`;
+    case 'Manual': return 'Manual';
+    default: return c.type || 'EliminateAll';
+  }
+}
+
+function serializeTriggerCond(c) {
+  if (!c) return 'AllEnemiesDead';
+  if (typeof c === 'string') return c;
+  switch (c.type) {
+    case 'AtTick': return `AtTick(${c.tick})`;
+    case 'HeroAtPos': return `HeroAtPos(hero: ${c.hero}, position: (x: ${c.x}, y: ${c.y}), radius: ${c.radius})`;
+    case 'EnemyKillCount': return `EnemyKillCount(${c.count})`;
+    case 'AllEnemiesDead': return 'AllEnemiesDead';
+    case 'WaveEliminated': return `WaveEliminated("${esc(c.wave_id)}")`;
+    case 'FlagSet': return `FlagSet("${esc(c.flag)}")`;
+    case 'TriggerFired': return `TriggerFired("${esc(c.trigger_id)}")`;
+    case 'All': return `All([${(c.conditions||[]).map(serializeTriggerCond).join(', ')}])`;
+    case 'Any': return `Any([${(c.conditions||[]).map(serializeTriggerCond).join(', ')}])`;
+    case 'HeroHpBelow': return `HeroHpBelow(hero: ${c.hero}, percentage: ${c.percentage})`;
+    case 'PersistentFlag': return `PersistentFlag("${esc(c.flag)}")`;
+    case 'HazardLevel': return `HazardLevel(hazard_type: "${esc(c.hazard_type)}", level: ${c.level})`;
+    case 'Periodic': return `Periodic(interval_ticks: ${c.interval_ticks}, offset_ticks: ${c.offset_ticks})`;
+    default: return c.type || 'AllEnemiesDead';
+  }
+}
+
+function serializeTriggerAction(a) {
+  if (!a) return 'SetFlag("unknown")';
+  switch (a.type) {
+    case 'ShowDialogue': return `ShowDialogue([${(a.indices||[]).join(', ')}])`;
+    case 'SpawnWave': return `SpawnWave("${esc(a.wave_id)}")`;
+    case 'SetFlag': return `SetFlag("${esc(a.flag)}")`;
+    case 'CompleteObjective': return `CompleteObjective("${esc(a.objective_id)}")`;
+    case 'PanCamera': return `PanCamera((x: ${a.x}, y: ${a.y}))`;
+    case 'SetPersistentFlag': return `SetPersistentFlag("${esc(a.flag)}")`;
+    case 'ToggleMutator': return `ToggleMutator(mutator_index: ${a.mutator_index}, active: ${a.active})`;
+    case 'SetTerrain': return `SetTerrain(positions: [${(a.positions||[]).map(p=>`(x: ${p.x}, y: ${p.y})`).join(', ')}], terrain: ${a.terrain})`;
+    case 'AreaDamage': return `AreaDamage(center: (x: ${a.x}, y: ${a.y}), radius: ${a.radius}, damage: ${a.damage})`;
+    default: return `SetFlag("${a.type || 'unknown'}")`;
+  }
+}
+
+function serializeNextMission(nm) {
+  if (!nm || nm.type === 'None') return 'None';
+  if (nm.type === 'Fixed') return `Fixed("${esc(nm.id)}")`;
+  if (nm.type === 'Branching') return `Branching(flag: "${esc(nm.flag)}", on_true: "${esc(nm.on_true)}", on_false: "${esc(nm.on_false)}")`;
+  return 'None';
+}
+
+// Convert float to Fixed bits (FixedI32<U16>: multiply by 65536)
+function floatToFixed(f) { return Math.round((f || 1.0) * 65536); }
+// Convert Fixed bits to float
+function fixedToFloat(bits) { return typeof bits === 'number' ? bits / 65536 : 1.0; }
+
+function serializeMutator(m) {
+  if (!m || !m.type) return 'NoBuildMode';
+  switch (m.type) {
+    case 'NoBuildMode': return 'NoBuildMode';
+    case 'NoAiControl': return 'NoAiControl';
+    case 'TimeLimit': return `TimeLimit(max_ticks: ${m.max_ticks}, warning_at: ${m.warning_at})`;
+    case 'AiOnlyControl': return `AiOnlyControl(tool_tier: ${m.tool_tier})`;
+    case 'VoiceOnlyControl': return `VoiceOnlyControl(ai_enabled: ${m.ai_enabled}, enemy_difficulty_multiplier: ${floatToFixed(m.enemy_difficulty_multiplier)})`;
+    case 'RestrictedUnits': {
+      const kinds = (m.allowed_kinds||[]).map(u=>u).join(', ');
+      const maxCount = m.max_unit_count != null ? `max_unit_count: Some(${m.max_unit_count})` : 'max_unit_count: None';
+      return `RestrictedUnits(allowed_kinds: [${kinds}], ${maxCount})`;
+    }
+    case 'ResourceScarcity': return `ResourceScarcity(food_multiplier: ${floatToFixed(m.food_multiplier)}, gpu_multiplier: ${floatToFixed(m.gpu_multiplier)})`;
+    case 'DamageMultiplier': return `DamageMultiplier(player_multiplier: ${floatToFixed(m.player_multiplier)}, enemy_multiplier: ${floatToFixed(m.enemy_multiplier)})`;
+    case 'SpeedMultiplier': return `SpeedMultiplier(player_multiplier: ${floatToFixed(m.player_multiplier)}, enemy_multiplier: ${floatToFixed(m.enemy_multiplier)})`;
+    case 'LavaRise': return `LavaRise(interval_ticks: ${m.interval_ticks||100}, damage_per_tick: ${m.damage_per_tick||10}, direction: ${m.direction||'South'}, rows_per_wave: ${m.rows_per_wave||1}, initial_delay_ticks: ${m.initial_delay_ticks||0})`;
+    case 'WindStorm': return `WindStorm(interval_ticks: ${m.interval_ticks||50}, duration_ticks: ${m.duration_ticks||10}, direction: ${m.direction||'North'}, force: ${m.force||1}, can_push_off_map: ${m.can_push_off_map||false}, initial_delay_ticks: ${m.initial_delay_ticks||0})`;
+    case 'ToxicTide': return `ToxicTide(interval_ticks: ${m.interval_ticks||40}, damage_per_tick: ${m.damage_per_tick||5}, rows_per_wave: ${m.rows_per_wave||1}, initial_delay_ticks: ${m.initial_delay_ticks||0}, safe_zone_center: None, min_safe_radius: ${m.min_safe_radius||8})`;
+    case 'Tremors': return `Tremors(interval_ticks: ${m.interval_ticks||100}, building_damage: ${m.building_damage||25}, terrain_change_chance: ${m.terrain_change_chance||10}, epicenter_radius: ${m.epicenter_radius||5}, initial_delay_ticks: ${m.initial_delay_ticks||0})`;
+    case 'Flooding': return `Flooding(interval_ticks: ${m.interval_ticks||60}, initial_water_level: ${m.initial_water_level||0}, max_water_level: ${m.max_water_level||3}, initial_delay_ticks: ${m.initial_delay_ticks||0})`;
+    case 'DenseFog': return `DenseFog(vision_reduction: ${m.vision_reduction||2}, periodic_clearing: None)`;
+    case 'DamageZone': {
+      const tiles = (m.tiles||[]).map(t => `(x: ${t.x}, y: ${t.y})`).join(', ');
+      return `DamageZone(tiles: [${tiles}], damage_per_tick: ${m.damage_per_tick||1}, active_from_start: ${m.active_from_start!==false}, toggle_flag: None)`;
+    }
+    default: return m.type;
+  }
+}
+
+// ===========================================================================
+// RON IMPORT (parse RON → MissionState)
+// ===========================================================================
+function importRon(text) {
+  const parser = new RonParser(text);
+  const data = parser.parse();
+  const state = new MissionState(1, 1);
+
+  state.id = data.id || 'untitled';
+  state.name = data.name || 'Unnamed';
+  state.act = data.act || 0;
+  state.mission_index = data.mission_index || 0;
+  state.briefing_text = data.briefing_text || '';
+  state.debrief_text = data.debrief_text || '';
+  state.ai_tool_tier = data.ai_tool_tier != null ? data.ai_tool_tier : null;
+
+  // Map
+  const map = data.map;
+  if (map) {
+    if (map._type === 'Inline' || map.width != null) {
+      state.width = map.width;
+      state.height = map.height;
+      if (map.tiles) {
+        state.tiles = map.tiles.map(t => {
+          if (typeof t === 'string') return Math.max(0, TERRAIN_TYPES.indexOf(t));
+          return t;
+        });
+      }
+      if (map.elevation) {
+        state.elevation = new Uint8Array(map.elevation);
+      }
+    } else if (map._type === 'Generated') {
+      state.width = map.width || 64;
+      state.height = map.height || 64;
+      state.tiles = new Array(state.width * state.height).fill(0);
+      state.elevation = new Uint8Array(state.width * state.height);
+    }
+  }
+
+  // Player setup
+  const ps = data.player_setup;
+  if (ps) {
+    state.starting_food = ps.starting_food || 0;
+    state.starting_gpu = ps.starting_gpu || 0;
+    state.starting_nfts = ps.starting_nfts || 0;
+    if (ps.heroes) {
+      state.heroes = ps.heroes.map(h => ({
+        hero_id: h.hero_id,
+        x: h.position ? h.position.x : 0,
+        y: h.position ? h.position.y : 0,
+        mission_critical: h.mission_critical || false,
+        player_id: h.player_id || 0,
+      }));
+    }
+    if (ps.units) {
+      state.units = ps.units.map(u => ({
+        kind: u.kind,
+        x: u.position ? u.position.x : 0,
+        y: u.position ? u.position.y : 0,
+        player_id: u.player_id || 0,
+      }));
+    }
+    if (ps.buildings) {
+      state.buildings = ps.buildings.map(b => ({
+        kind: b.kind,
+        x: b.position ? b.position.x : 0,
+        y: b.position ? b.position.y : 0,
+        player_id: b.player_id || 0,
+        pre_built: b.pre_built !== false,
+      }));
+    }
+  }
+
+  // Enemy waves
+  if (data.enemy_waves) {
+    state.enemy_waves = data.enemy_waves.map(w => ({
+      wave_id: w.wave_id || '',
+      trigger: parseWaveTrigger(w.trigger),
+      units: (w.units || []).map(u => ({
+        kind: u.kind,
+        position: u.position || {x: 0, y: 0},
+        player_id: u.player_id || 0,
+      })),
+      ai_behavior: parseAiBehavior(w.ai_behavior),
+    }));
+  }
+
+  // Objectives
+  if (data.objectives) {
+    state.objectives = data.objectives.map(o => ({
+      id: o.id || '',
+      description: o.description || '',
+      primary: o.primary !== false,
+      condition: parseObjCondition(o.condition),
+    }));
+  }
+
+  // Triggers
+  if (data.triggers) {
+    state.triggers = data.triggers.map(t => ({
+      id: t.id || '',
+      condition: parseTriggerCond(t.condition),
+      actions: (t.actions || []).map(parseTriggerAction),
+      once: t.once !== false,
+    }));
+  }
+
+  // Dialogue
+  if (data.dialogue) {
+    state.dialogue = data.dialogue.map(d => ({
+      speaker: d.speaker || '',
+      text: d.text || '',
+      voice_style: d.voice_style || 'Normal',
+      portrait: d.portrait || '',
+    }));
+  }
+
+  // Next mission
+  state.next_mission = parseNextMission(data.next_mission);
+
+  // Mutators
+  if (data.mutators) {
+    state.mutators = data.mutators.map(parseMutator);
+  }
+
+  return state;
+}
+
+function parseWaveTrigger(t) {
+  if (!t) return {type: 'Immediate'};
+  if (typeof t === 'string') return {type: t};
+  if (t._type === 'Immediate') return {type: 'Immediate'};
+  if (t._type === 'AtTick') return {type: 'AtTick', tick: t['0'] || 0};
+  if (t._type === 'OnTrigger') return {type: 'OnTrigger', trigger_id: t['0'] || ''};
+  return {type: 'Immediate'};
+}
+
+function parseAiBehavior(b) {
+  if (!b) return {type: 'Idle'};
+  if (typeof b === 'string') return {type: b};
+  if (b._type === 'AttackMove') {
+    // Positional: AttackMove((x: 70, y: 38)) → {"0": {x:70,y:38}}
+    const inner = b['0'] || b;
+    return {type: 'AttackMove', x: inner.x || 0, y: inner.y || 0};
+  }
+  if (b._type === 'Patrol') {
+    const inner = b['0'] || [];
+    return {type: 'Patrol', waypoints: Array.isArray(inner) ? inner : []};
+  }
+  if (b._type === 'Defend') return {type: 'Defend'};
+  if (b._type === 'Idle') return {type: 'Idle'};
+  return {type: 'Idle'};
+}
+
+function parseObjCondition(c) {
+  if (!c) return {type: 'EliminateAll'};
+  if (typeof c === 'string') return {type: c};
+  if (c._type === 'EliminateWave') return {type: 'EliminateWave', wave_id: c['0'] || ''};
+  if (c._type === 'KillCount') return {type: 'KillCount', count: c['0'] || 0};
+  if (c._type === 'HeroReachesPos') return {type: 'HeroReachesPos', hero: c.hero, x: c.position?.x || 0, y: c.position?.y || 0, radius: c.radius || 0};
+  if (c._type === 'Survive') return {type: 'Survive', ticks: c['0'] || 0};
+  if (c._type === 'HeroDied') return {type: 'HeroDied', hero: c['0'] || ''};
+  if (c._type) return {type: c._type};
+  return {type: 'EliminateAll'};
+}
+
+function parseTriggerCond(c) {
+  if (!c) return {type: 'AllEnemiesDead'};
+  if (typeof c === 'string') return {type: c};
+  if (c._type === 'AtTick') return {type: 'AtTick', tick: c['0'] || 0};
+  if (c._type === 'HeroAtPos') return {type: 'HeroAtPos', hero: c.hero, x: c.position?.x || 0, y: c.position?.y || 0, radius: c.radius || 0};
+  if (c._type === 'EnemyKillCount') return {type: 'EnemyKillCount', count: c['0'] || 0};
+  if (c._type === 'WaveEliminated') return {type: 'WaveEliminated', wave_id: c['0'] || ''};
+  if (c._type === 'FlagSet') return {type: 'FlagSet', flag: c['0'] || ''};
+  if (c._type === 'TriggerFired') return {type: 'TriggerFired', trigger_id: c['0'] || ''};
+  if (c._type === 'All') return {type: 'All', conditions: (c['0'] || []).map(parseTriggerCond)};
+  if (c._type === 'Any') return {type: 'Any', conditions: (c['0'] || []).map(parseTriggerCond)};
+  if (c._type === 'HeroHpBelow') return {type: 'HeroHpBelow', hero: c.hero, percentage: c.percentage || 0};
+  if (c._type === 'PersistentFlag') return {type: 'PersistentFlag', flag: c['0'] || ''};
+  if (c._type === 'HazardLevel') return {type: 'HazardLevel', hazard_type: c.hazard_type || '', level: c.level || 0};
+  if (c._type === 'Periodic') return {type: 'Periodic', interval_ticks: c.interval_ticks || 100, offset_ticks: c.offset_ticks || 0};
+  if (c._type) return {type: c._type};
+  return {type: 'AllEnemiesDead'};
+}
+
+function parseTriggerAction(a) {
+  if (!a) return {type: 'SetFlag', flag: 'unknown'};
+  if (typeof a === 'string') return {type: a};
+  if (a._type === 'ShowDialogue') return {type: 'ShowDialogue', indices: a['0'] || []};
+  if (a._type === 'SpawnWave') return {type: 'SpawnWave', wave_id: a['0'] || ''};
+  if (a._type === 'SetFlag') return {type: 'SetFlag', flag: a['0'] || ''};
+  if (a._type === 'CompleteObjective') return {type: 'CompleteObjective', objective_id: a['0'] || ''};
+  if (a._type === 'PanCamera') { const inner = a['0'] || a; return {type: 'PanCamera', x: inner.x || 0, y: inner.y || 0}; }
+  if (a._type === 'SetPersistentFlag') return {type: 'SetPersistentFlag', flag: a['0'] || ''};
+  if (a._type === 'ToggleMutator') return {type: 'ToggleMutator', mutator_index: a.mutator_index || 0, active: a.active !== false};
+  if (a._type === 'SetTerrain') return {type: 'SetTerrain', positions: a.positions || [], terrain: a.terrain || 'Grass'};
+  if (a._type === 'AreaDamage') return {type: 'AreaDamage', x: a.center?.x || 0, y: a.center?.y || 0, radius: a.radius || 0, damage: a.damage || 0};
+  if (a._type) return {type: a._type};
+  return {type: 'SetFlag', flag: 'unknown'};
+}
+
+function parseNextMission(nm) {
+  if (!nm || nm === 'None') return {type: 'None'};
+  if (typeof nm === 'string') return {type: nm};
+  if (nm._type === 'Fixed') return {type: 'Fixed', id: nm['0'] || ''};
+  if (nm._type === 'Branching') return {type: 'Branching', flag: nm.flag || '', on_true: nm.on_true || '', on_false: nm.on_false || ''};
+  if (nm._type === 'None') return {type: 'None'};
+  if (nm._type) return {type: nm._type};
+  return {type: 'None'};
+}
+
+function parseMutator(m) {
+  if (!m) return {type: 'NoBuildMode'};
+  if (typeof m === 'string') return {type: m};
+  const t = m._type || m.type || 'NoBuildMode';
+  const result = {type: t};
+  // Copy all properties except _type, converting Fixed bits to floats for multiplier fields
+  const fixedFields = new Set(['food_multiplier','gpu_multiplier','player_multiplier','enemy_multiplier','enemy_difficulty_multiplier']);
+  for (const k of Object.keys(m)) {
+    if (k === '_type') continue;
+    if (fixedFields.has(k) && typeof m[k] === 'number' && m[k] > 100) {
+      // Likely Fixed bits, convert to float
+      result[k] = m[k] / 65536;
+    } else {
+      result[k] = m[k];
+    }
+  }
+  return result;
+}
+
+// ===========================================================================
+// APP
+// ===========================================================================
+class App {
+  constructor() {
+    this.state = new MissionState(64, 64);
+    this.renderer = new IsoRenderer(
+      document.getElementById('map-canvas'),
+      document.getElementById('minimap')
+    );
+    this.undo = new UndoManager();
+    this.tool = 'terrain'; // terrain, elevation, unit, building, hero, select, eraser, mission
+    this.terrainBrush = 0;
+    this.elevBrush = 1;
+    this.brushSize = 1;
+    this.showGrid = true;
+    this.hoverGrid = null;
+    this.isPanning = false;
+    this.isPainting = false;
+    this.panStart = null;
+    this.selectedEntity = null;
+    this.placeFaction = 0;
+    this.placeKind = '';
+    this.placePlayerId = 0;
+    this.placePreBuilt = true;
+    this.placeHeroId = HERO_IDS[0];
+    this.placeMissionCritical = false;
+    this.spaceDown = false;
+
+    this._setupCanvas();
+    this._setupToolbar();
+    this._setupInput();
+    this._setupFileInput();
+    this._setupDragDrop();
+    this.undo.snapshot(this.state);
+    this.renderer.centerOnMap(this.state);
+    this._updatePanel();
+    this._render();
+    this._autoLoad();
+  }
+
+  _setupCanvas() {
+    const wrap = document.getElementById('canvas-wrap');
+    const resize = () => {
+      this.renderer.resize(wrap.clientWidth, wrap.clientHeight);
+      this._render();
+    };
+    window.addEventListener('resize', resize);
+    resize();
+  }
+
+  _setupToolbar() {
+    const tb = document.getElementById('toolbar');
+    const tools = [
+      {id:'terrain', icon:'&#9632;', label:'Terrain', key:'T'},
+      {id:'elevation', icon:'&#9650;', label:'Elevate', key:'E'},
+      {id:'unit', icon:'&#9679;', label:'Units', key:'U'},
+      {id:'building', icon:'&#9632;', label:'Build', key:'B'},
+      {id:'hero', icon:'&#9733;', label:'Heroes', key:'R'},
+      {id:'select', icon:'&#9758;', label:'Select', key:'S'},
+      {id:'eraser', icon:'&#9747;', label:'Eraser', key:'X'},
+      {id:'mission', icon:'&#9881;', label:'Mission', key:'M'},
+    ];
+    const actions = [
+      {id:'new', icon:'+', label:'New', key:'N'},
+      {id:'import', icon:'&#8681;', label:'Import', key:'I'},
+      {id:'export', icon:'&#8679;', label:'Export', key:'O'},
+    ];
+
+    tools.forEach(t => {
+      const btn = document.createElement('button');
+      btn.className = 'tool-btn' + (t.id === this.tool ? ' active' : '');
+      btn.innerHTML = `<span class="icon">${t.icon}</span><span>${t.label}</span>`;
+      btn.dataset.tool = t.id;
+      btn.title = `${t.label} (${t.key})`;
+      btn.onclick = () => this.setTool(t.id);
+      tb.appendChild(btn);
+    });
+
+    const sep = document.createElement('div');
+    sep.className = 'tool-sep';
+    tb.appendChild(sep);
+
+    actions.forEach(a => {
+      const btn = document.createElement('button');
+      btn.className = 'tool-btn';
+      btn.innerHTML = `<span class="icon">${a.icon}</span><span>${a.label}</span>`;
+      btn.title = `${a.label} (Ctrl+${a.key})`;
+      btn.onclick = () => this._toolAction(a.id);
+      tb.appendChild(btn);
+    });
+
+    // Grid toggle
+    const gridBtn = document.createElement('button');
+    gridBtn.className = 'tool-btn' + (this.showGrid ? ' active' : '');
+    gridBtn.innerHTML = `<span class="icon">#</span><span>Grid</span>`;
+    gridBtn.title = 'Toggle Grid (G)';
+    gridBtn.onclick = () => { this.showGrid = !this.showGrid; gridBtn.classList.toggle('active'); this._render(); };
+    tb.appendChild(gridBtn);
+    this._gridBtn = gridBtn;
+  }
+
+  setTool(id) {
+    this.tool = id;
+    this.selectedEntity = null;
+    document.querySelectorAll('#toolbar .tool-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.tool === id);
+    });
+    this._updatePanel();
+    this._updateStatus();
+    this._render();
+  }
+
+  _toolAction(id) {
+    if (id === 'new') this._newMap();
+    else if (id === 'import') document.getElementById('file-input').click();
+    else if (id === 'export') this._exportRon();
+  }
+
+  _setupInput() {
+    const canvas = this.renderer.canvas;
+
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const cx = e.clientX - rect.left;
+      const cy = e.clientY - rect.top;
+
+      if (this.isPanning) {
+        const dx = (e.clientX - this.panStart.x) / this.renderer.zoom;
+        const dy = (e.clientY - this.panStart.y) / this.renderer.zoom;
+        this.renderer.camX -= dx;
+        this.renderer.camY -= dy;
+        this.panStart = {x: e.clientX, y: e.clientY};
+        this._render();
+        return;
+      }
+
+      this.hoverGrid = this.renderer.canvasToGrid(cx, cy);
+      this._updateStatus();
+
+      if (this.isPainting) {
+        this._paint(this.hoverGrid.x, this.hoverGrid.y);
+      }
+      this._render();
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 1 || (e.button === 0 && this.spaceDown)) {
+        this.isPanning = true;
+        this.panStart = {x: e.clientX, y: e.clientY};
+        e.preventDefault();
+        return;
+      }
+      if (e.button === 0) {
+        const rect = canvas.getBoundingClientRect();
+        const cx = e.clientX - rect.left;
+        const cy = e.clientY - rect.top;
+        const g = this.renderer.canvasToGrid(cx, cy);
+
+        if (this.tool === 'select') {
+          this._selectAt(g.x, g.y);
+        } else if (this.tool === 'eraser') {
+          this._eraseAt(g.x, g.y);
+        } else if (this.tool === 'unit' || this.tool === 'building' || this.tool === 'hero') {
+          this._placeEntity(g.x, g.y);
+        } else {
+          this.undo.snapshot(this.state);
+          this.isPainting = true;
+          this._paint(g.x, g.y);
+        }
+        this._render();
+      }
+    });
+
+    canvas.addEventListener('mouseup', (e) => {
+      if (this.isPanning) { this.isPanning = false; return; }
+      this.isPainting = false;
+    });
+
+    // Document-level mouseup prevents stuck painting when mouse leaves canvas while held
+    document.addEventListener('mouseup', () => {
+      this.isPanning = false;
+      this.isPainting = false;
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      this.hoverGrid = null;
+      this._render();
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      this.renderer.zoom = Math.max(this.renderer.minZoom, Math.min(this.renderer.maxZoom, this.renderer.zoom * zoomFactor));
+      this._updateStatus();
+      this._render();
+    }, {passive: false});
+
+    // Prevent context menu
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+    // Minimap click
+    this.renderer.miniCanvas.addEventListener('click', (e) => {
+      const rect = this.renderer.miniCanvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const scale = Math.min(180 / this.state.width, 120 / this.state.height, 3);
+      const gx = mx / scale;
+      const gy = my / scale;
+      const s = this.renderer.gridToScreen(gx, gy);
+      this.renderer.camX = s.x;
+      this.renderer.camY = s.y;
+      this._render();
+    });
+
+    // Keyboard
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+      if (e.key === ' ') { this.spaceDown = true; e.preventDefault(); return; }
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); if (this.undo.undo(this.state)) { this.selectedEntity = null; this._updatePanel(); this._render(); } return; }
+        if ((e.key === 'z' && e.shiftKey) || e.key === 'y') { e.preventDefault(); if (this.undo.redo(this.state)) { this.selectedEntity = null; this._updatePanel(); this._render(); } return; }
+        if (e.key === 'n') { e.preventDefault(); this._newMap(); return; }
+        if (e.key === 'o' || e.key === 'i') { e.preventDefault(); document.getElementById('file-input').click(); return; }
+        if (e.key === 's') { e.preventDefault(); this._exportRon(); return; }
+        return;
+      }
+
+      const keyMap = {t:'terrain', e:'elevation', u:'unit', b:'building', r:'hero', s:'select', x:'eraser', m:'mission', g:'grid'};
+      const k = e.key.toLowerCase();
+      if (keyMap[k]) {
+        if (k === 'g') { this.showGrid = !this.showGrid; this._gridBtn?.classList.toggle('active'); this._render(); }
+        else this.setTool(keyMap[k]);
+        return;
+      }
+
+      // Number keys for terrain
+      if (k >= '1' && k <= '9') {
+        const idx = parseInt(k) - 1;
+        if (idx < TERRAIN_TYPES.length) { this.terrainBrush = idx; this._updatePanel(); }
+        return;
+      }
+      if (k === '0') { this.terrainBrush = 9; this._updatePanel(); return; }
+
+      // Bracket keys for brush size
+      if (k === '[') { this.brushSize = Math.max(1, this.brushSize - 1); this._updatePanel(); return; }
+      if (k === ']') { this.brushSize = Math.min(5, this.brushSize + 1); this._updatePanel(); return; }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (e.key === ' ') this.spaceDown = false;
+    });
+  }
+
+  _paint(gx, gy) {
+    const half = Math.floor(this.brushSize / 2);
+    for (let dy = -half; dy <= half; dy++) {
+      for (let dx = -half; dx <= half; dx++) {
+        const px = gx + dx, py = gy + dy;
+        if (px < 0 || py < 0 || px >= this.state.width || py >= this.state.height) continue;
+        if (this.tool === 'terrain') {
+          this.state.setTerrain(px, py, this.terrainBrush);
+        } else if (this.tool === 'elevation') {
+          this.state.setElev(px, py, this.elevBrush);
+        }
+      }
+    }
+    this._autoSave();
+  }
+
+  _selectAt(gx, gy) {
+    const entities = this.state.entitiesAt(gx, gy);
+    if (entities.length > 0) {
+      this.selectedEntity = entities[0];
+      this._updatePanel();
+    } else {
+      this.selectedEntity = null;
+      this._updatePanel();
+    }
+  }
+
+  _eraseAt(gx, gy) {
+    const entities = this.state.entitiesAt(gx, gy);
+    if (entities.length > 0) {
+      this.undo.snapshot(this.state);
+      // Remove last entity at this position
+      const e = entities[entities.length - 1];
+      this.state.removeEntity(e.type, e.idx);
+      this._render();
+      this._autoSave();
+    }
+  }
+
+  _placeEntity(gx, gy) {
+    if (gx < 0 || gy < 0 || gx >= this.state.width || gy >= this.state.height) return;
+    if (this.tool === 'unit') {
+      if (!this.placeKind) return;
+      this.undo.snapshot(this.state);
+      this.state.units.push({kind: this.placeKind, x: gx, y: gy, player_id: this.placePlayerId});
+    } else if (this.tool === 'building') {
+      if (!this.placeKind) return;
+      this.undo.snapshot(this.state);
+      this.state.buildings.push({kind: this.placeKind, x: gx, y: gy, player_id: this.placePlayerId, pre_built: this.placePreBuilt});
+    } else if (this.tool === 'hero') {
+      this.undo.snapshot(this.state);
+      this.state.heroes.push({hero_id: this.placeHeroId, x: gx, y: gy, mission_critical: this.placeMissionCritical, player_id: this.placePlayerId});
+    }
+    this._autoSave();
+  }
+
+  _loadFile(file) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        this.state = importRon(ev.target.result);
+        this.undo = new UndoManager();
+        this.undo.snapshot(this.state);
+        this.renderer.centerOnMap(this.state);
+        this._updatePanel();
+        this._render();
+        this._statusMsg('Imported: ' + file.name);
+      } catch (err) {
+        alert('RON parse error: ' + err.message);
+        console.error(err);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  _setupFileInput() {
+    document.getElementById('file-input').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      this._loadFile(file);
+      e.target.value = '';
+    });
+  }
+
+  _setupDragDrop() {
+    const wrap = document.getElementById('canvas-wrap');
+    wrap.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+    wrap.addEventListener('drop', e => {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file && file.name.endsWith('.ron')) this._loadFile(file);
+    });
+  }
+
+  _exportRon() {
+    try {
+      const ron = serializeRon(this.state);
+      const blob = new Blob([ron], {type: 'text/plain'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = (this.state.id || 'mission') + '.ron';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      this._statusMsg('Exported: ' + a.download);
+    } catch (err) {
+      alert('Export error: ' + err.message);
+    }
+  }
+
+  _newMap() {
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+    overlay.innerHTML = `
+      <div class="dialog">
+        <h3>New Map</h3>
+        <label>Width:</label><input type="number" id="dlg-w" value="64" min="8" max="256">
+        <label>Height:</label><input type="number" id="dlg-h" value="64" min="8" max="256">
+        <div>
+          <button class="btn btn-accent" id="dlg-ok">Create</button>
+          <button class="btn" id="dlg-cancel">Cancel</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#dlg-ok').onclick = () => {
+      const w = parseInt(overlay.querySelector('#dlg-w').value) || 64;
+      const h = parseInt(overlay.querySelector('#dlg-h').value) || 64;
+      this.state = new MissionState(Math.max(8, Math.min(256, w)), Math.max(8, Math.min(256, h)));
+      this.undo = new UndoManager();
+      this.undo.snapshot(this.state);
+      this.renderer.centerOnMap(this.state);
+      this._updatePanel();
+      this._render();
+      document.body.removeChild(overlay);
+    };
+    overlay.querySelector('#dlg-cancel').onclick = () => document.body.removeChild(overlay);
+  }
+
+  // ===========================================================================
+  // PANEL RENDERING
+  // ===========================================================================
+  _updatePanel() {
+    const panel = document.getElementById('panel');
+    if (this.tool === 'terrain') {
+      panel.innerHTML = this._terrainPanel();
+    } else if (this.tool === 'elevation') {
+      panel.innerHTML = this._elevationPanel();
+    } else if (this.tool === 'unit') {
+      panel.innerHTML = this._unitPanel();
+    } else if (this.tool === 'building') {
+      panel.innerHTML = this._buildingPanel();
+    } else if (this.tool === 'hero') {
+      panel.innerHTML = this._heroPanel();
+    } else if (this.tool === 'select') {
+      panel.innerHTML = this._selectPanel();
+    } else if (this.tool === 'eraser') {
+      panel.innerHTML = '<h3>Eraser</h3><p style="color:var(--text-secondary)">Click on entities to remove them.</p>';
+    } else if (this.tool === 'mission') {
+      panel.innerHTML = this._missionPanel();
+    }
+    this._bindPanelEvents();
+  }
+
+  _terrainPanel() {
+    let swatches = '';
+    TERRAIN_TYPES.forEach((t, i) => {
+      const [r, g, b] = TERRAIN_COLORS[t][0];
+      swatches += `<div class="terrain-swatch${i === this.terrainBrush ? ' active' : ''}"
+        style="background:rgb(${r},${g},${b})" data-tidx="${i}" title="${t} (${i+1})">${t.slice(0,4)}</div>`;
+    });
+    return `<h3>Terrain Paint</h3>
+      <div class="terrain-palette">${swatches}</div>
+      <div class="brush-row">
+        <label>Brush: ${this.brushSize}</label>
+        <input type="range" min="1" max="5" value="${this.brushSize}" data-action="brush-size">
+      </div>
+      <p style="color:var(--text-secondary);font-size:10px;margin-top:8px">Keys: 1-0 terrain, [ ] brush size</p>`;
+  }
+
+  _elevationPanel() {
+    const btns = [0, 1, 2].map(e =>
+      `<button class="btn${e === this.elevBrush ? ' btn-accent' : ''}" data-elev="${e}">Level ${e}</button>`
+    ).join(' ');
+    return `<h3>Elevation Paint</h3>
+      <div class="panel-row" style="margin-bottom:8px">${btns}</div>
+      <div class="brush-row">
+        <label>Brush: ${this.brushSize}</label>
+        <input type="range" min="1" max="5" value="${this.brushSize}" data-action="brush-size">
+      </div>
+      <p style="color:var(--text-secondary);font-size:10px;margin-top:8px">Brightness: 0=dark, 1=normal, 2=bright</p>`;
+  }
+
+  _unitPanel() {
+    const factionSel = FACTIONS.map((f, i) =>
+      `<option value="${i}"${i === this.placeFaction ? ' selected' : ''}>${f.name}</option>`
+    ).join('');
+    const fKey = factionKeyForPlayer(this.placeFaction);
+    const units = UNIT_KINDS[fKey] || [];
+    const unitList = units.map(u =>
+      `<div class="entity-item${u === this.placeKind ? ' active' : ''}" data-kind="${u}">${u}</div>`
+    ).join('');
+    return `<h3>Place Units</h3>
+      <label>Faction:</label>
+      <select data-action="place-faction">${factionSel}</select>
+      <label>Player ID:</label>
+      <input type="number" value="${this.placePlayerId}" min="0" max="5" data-action="place-pid" style="width:60px">
+      <label>Unit Kind:</label>
+      <div class="entity-list">${unitList}</div>
+      <p style="color:var(--text-secondary);font-size:10px;margin-top:8px">Click map to place selected unit</p>`;
+  }
+
+  _buildingPanel() {
+    const factionSel = FACTIONS.map((f, i) =>
+      `<option value="${i}"${i === this.placeFaction ? ' selected' : ''}>${f.name}</option>`
+    ).join('');
+    const fKey = factionKeyForPlayer(this.placeFaction);
+    const buildings = BUILDING_KINDS[fKey] || [];
+    const bList = buildings.map(b =>
+      `<div class="entity-item${b === this.placeKind ? ' active' : ''}" data-kind="${b}">${b}</div>`
+    ).join('');
+    return `<h3>Place Buildings</h3>
+      <label>Faction:</label>
+      <select data-action="place-faction">${factionSel}</select>
+      <label>Player ID:</label>
+      <input type="number" value="${this.placePlayerId}" min="0" max="5" data-action="place-pid" style="width:60px">
+      <label>Pre-built:</label>
+      <input type="checkbox" ${this.placePreBuilt ? 'checked' : ''} data-action="place-prebuilt">
+      <label>Building Kind:</label>
+      <div class="entity-list">${bList}</div>`;
+  }
+
+  _heroPanel() {
+    const heroSel = HERO_IDS.map(h =>
+      `<div class="entity-item${h === this.placeHeroId ? ' active' : ''}" data-hero="${h}">${h}</div>`
+    ).join('');
+    return `<h3>Place Heroes</h3>
+      <label>Player ID:</label>
+      <input type="number" value="${this.placePlayerId}" min="0" max="5" data-action="place-pid" style="width:60px">
+      <label>Mission Critical:</label>
+      <input type="checkbox" ${this.placeMissionCritical ? 'checked' : ''} data-action="place-mc">
+      <label>Hero:</label>
+      <div class="entity-list">${heroSel}</div>`;
+  }
+
+  _selectPanel() {
+    if (!this.selectedEntity) {
+      return '<h3>Select</h3><p style="color:var(--text-secondary)">Click an entity on the map to select it.</p>';
+    }
+    const e = this.selectedEntity;
+    const d = e.data;
+    let html = `<h3>Selected: ${e.type}</h3>`;
+    if (e.type === 'unit') {
+      html += `<label>Kind:</label><input value="${d.kind}" disabled>
+        <label>Position:</label><div class="panel-row">
+          <input type="number" value="${d.x}" data-action="sel-x" style="width:60px">
+          <input type="number" value="${d.y}" data-action="sel-y" style="width:60px">
+        </div>
+        <label>Player ID:</label><input type="number" value="${d.player_id}" data-action="sel-pid" style="width:60px">`;
+    } else if (e.type === 'building') {
+      html += `<label>Kind:</label><input value="${d.kind}" disabled>
+        <label>Position:</label><div class="panel-row">
+          <input type="number" value="${d.x}" data-action="sel-x" style="width:60px">
+          <input type="number" value="${d.y}" data-action="sel-y" style="width:60px">
+        </div>
+        <label>Player ID:</label><input type="number" value="${d.player_id}" data-action="sel-pid" style="width:60px">
+        <label>Pre-built:</label><input type="checkbox" ${d.pre_built ? 'checked' : ''} data-action="sel-prebuilt">`;
+    } else if (e.type === 'hero') {
+      html += `<label>Hero:</label><input value="${d.hero_id}" disabled>
+        <label>Position:</label><div class="panel-row">
+          <input type="number" value="${d.x}" data-action="sel-x" style="width:60px">
+          <input type="number" value="${d.y}" data-action="sel-y" style="width:60px">
+        </div>
+        <label>Player ID:</label><input type="number" value="${d.player_id}" data-action="sel-pid" style="width:60px">
+        <label>Mission Critical:</label><input type="checkbox" ${d.mission_critical ? 'checked' : ''} data-action="sel-mc">`;
+    }
+    html += `<br><button class="btn btn-danger" data-action="sel-delete">Delete</button>`;
+    return html;
+  }
+
+  _missionPanel() {
+    const s = this.state;
+    let html = '';
+
+    // Mission Properties
+    html += this._accordion('Mission Properties', `
+      <label>ID:</label><input value="${esc(s.id)}" data-action="m-id">
+      <label>Name:</label><input value="${esc(s.name)}" data-action="m-name">
+      <label>Act:</label><input type="number" value="${s.act}" data-action="m-act" style="width:60px">
+      <label>Mission Index:</label><input type="number" value="${s.mission_index}" data-action="m-idx" style="width:60px">
+      <label>Map Size:</label>
+      <div class="panel-row">
+        <input type="number" value="${s.width}" data-action="m-width" style="width:60px" title="Width">
+        <span>x</span>
+        <input type="number" value="${s.height}" data-action="m-height" style="width:60px" title="Height">
+        <button class="btn" data-action="m-resize">Resize</button>
+      </div>
+      <label>Briefing:</label><textarea data-action="m-briefing">${esc(s.briefing_text)}</textarea>
+      <label>Debrief:</label><textarea data-action="m-debrief">${esc(s.debrief_text)}</textarea>
+      <label>Starting Resources:</label>
+      <div class="panel-row">
+        <label>Food:</label><input type="number" value="${s.starting_food}" data-action="m-food" style="width:60px">
+        <label>GPU:</label><input type="number" value="${s.starting_gpu}" data-action="m-gpu" style="width:60px">
+        <label>NFTs:</label><input type="number" value="${s.starting_nfts}" data-action="m-nfts" style="width:60px">
+      </div>
+      <label>AI Tool Tier:</label>
+      <select data-action="m-tier">
+        <option value=""${s.ai_tool_tier == null ? ' selected' : ''}>Default</option>
+        <option value="0"${s.ai_tool_tier === 0 ? ' selected' : ''}>0</option>
+        <option value="1"${s.ai_tool_tier === 1 ? ' selected' : ''}>1</option>
+        <option value="2"${s.ai_tool_tier === 2 ? ' selected' : ''}>2</option>
+      </select>
+      <label>Next Mission:</label>
+      <select data-action="m-next-type">
+        <option value="None"${s.next_mission.type === 'None' ? ' selected' : ''}>None</option>
+        <option value="Fixed"${s.next_mission.type === 'Fixed' ? ' selected' : ''}>Fixed</option>
+        <option value="Branching"${s.next_mission.type === 'Branching' ? ' selected' : ''}>Branching</option>
+      </select>
+      ${s.next_mission.type === 'Fixed' ? `<input value="${esc(s.next_mission.id || '')}" data-action="m-next-id" placeholder="mission_id">` : ''}
+      ${s.next_mission.type === 'Branching' ? `
+        <input value="${esc(s.next_mission.flag || '')}" data-action="m-next-flag" placeholder="flag">
+        <input value="${esc(s.next_mission.on_true || '')}" data-action="m-next-true" placeholder="on_true mission">
+        <input value="${esc(s.next_mission.on_false || '')}" data-action="m-next-false" placeholder="on_false mission">
+      ` : ''}
+    `, true);
+
+    // Waves
+    html += this._accordion('Enemy Waves (' + s.enemy_waves.length + ')', `
+      ${s.enemy_waves.map((w, i) => `
+        <div class="list-item" data-action="edit-wave" data-idx="${i}">
+          <span>${w.wave_id || 'wave_' + i} (${w.units.length} units)</span>
+          <span class="del-btn" data-action="del-wave" data-idx="${i}">x</span>
+        </div>
+      `).join('')}
+      <button class="btn" data-action="add-wave">+ Add Wave</button>
+    `);
+
+    // Objectives
+    html += this._accordion('Objectives (' + s.objectives.length + ')', `
+      ${s.objectives.map((o, i) => `
+        <div class="list-item" data-action="edit-obj" data-idx="${i}">
+          <span>${o.primary ? '[P]' : '[S]'} ${o.id}</span>
+          <span class="del-btn" data-action="del-obj" data-idx="${i}">x</span>
+        </div>
+      `).join('')}
+      <button class="btn" data-action="add-obj">+ Add Objective</button>
+    `);
+
+    // Triggers
+    html += this._accordion('Triggers (' + s.triggers.length + ')', `
+      ${s.triggers.map((t, i) => `
+        <div class="list-item" data-action="edit-trigger" data-idx="${i}">
+          <span>${t.id} (${t.once ? 'once' : 'repeat'})</span>
+          <span class="del-btn" data-action="del-trigger" data-idx="${i}">x</span>
+        </div>
+      `).join('')}
+      <button class="btn" data-action="add-trigger">+ Add Trigger</button>
+    `);
+
+    // Dialogue
+    html += this._accordion('Dialogue (' + s.dialogue.length + ')', `
+      ${s.dialogue.map((d, i) => `
+        <div class="list-item" data-action="edit-dialogue" data-idx="${i}">
+          <span>[${i}] ${d.speaker}: ${(d.text || '').slice(0, 30)}...</span>
+          <span class="del-btn" data-action="del-dialogue" data-idx="${i}">x</span>
+        </div>
+      `).join('')}
+      <button class="btn" data-action="add-dialogue">+ Add Line</button>
+    `);
+
+    // Mutators
+    html += this._accordion('Mutators (' + s.mutators.length + ')', `
+      ${s.mutators.map((m, i) => `
+        <div class="list-item" data-action="edit-mutator" data-idx="${i}">
+          <span>${m.type}</span>
+          <span class="del-btn" data-action="del-mutator" data-idx="${i}">x</span>
+        </div>
+      `).join('')}
+      <button class="btn" data-action="add-mutator">+ Add Mutator</button>
+    `);
+
+    return html;
+  }
+
+  _accordion(title, content, startOpen = false) {
+    const id = 'acc-' + title.replace(/[^a-zA-Z]/g, '');
+    return `<div class="accordion">
+      <div class="accordion-header" data-toggle="${id}">${title} <span>&#9660;</span></div>
+      <div class="accordion-body${startOpen ? ' open' : ''}" id="${id}">${content}</div>
+    </div>`;
+  }
+
+  _bindPanelEvents() {
+    const panel = document.getElementById('panel');
+
+    // Accordion toggles
+    panel.querySelectorAll('.accordion-header').forEach(h => {
+      h.onclick = () => {
+        const body = document.getElementById(h.dataset.toggle);
+        if (body) body.classList.toggle('open');
+      };
+    });
+
+    // Terrain swatches
+    panel.querySelectorAll('.terrain-swatch').forEach(s => {
+      s.onclick = () => {
+        this.terrainBrush = parseInt(s.dataset.tidx);
+        this._updatePanel();
+      };
+    });
+
+    // Elevation buttons
+    panel.querySelectorAll('[data-elev]').forEach(b => {
+      b.onclick = () => {
+        this.elevBrush = parseInt(b.dataset.elev);
+        this._updatePanel();
+      };
+    });
+
+    // Brush size
+    const brushInput = panel.querySelector('[data-action="brush-size"]');
+    if (brushInput) {
+      brushInput.oninput = () => {
+        this.brushSize = parseInt(brushInput.value);
+        panel.querySelector('.brush-row label').textContent = 'Brush: ' + this.brushSize;
+      };
+    }
+
+    // Faction selector
+    const facSel = panel.querySelector('[data-action="place-faction"]');
+    if (facSel) {
+      facSel.onchange = () => {
+        this.placeFaction = parseInt(facSel.value);
+        this.placePlayerId = this.placeFaction;
+        this.placeKind = '';
+        this._updatePanel();
+      };
+    }
+
+    // Player ID
+    const pidInput = panel.querySelector('[data-action="place-pid"]');
+    if (pidInput) {
+      pidInput.onchange = () => { this.placePlayerId = parseInt(pidInput.value) || 0; };
+    }
+
+    // Pre-built toggle
+    const pbInput = panel.querySelector('[data-action="place-prebuilt"]');
+    if (pbInput) {
+      pbInput.onchange = () => { this.placePreBuilt = pbInput.checked; };
+    }
+
+    // Mission critical
+    const mcInput = panel.querySelector('[data-action="place-mc"]');
+    if (mcInput) {
+      mcInput.onchange = () => { this.placeMissionCritical = mcInput.checked; };
+    }
+
+    // Entity kind selection
+    panel.querySelectorAll('.entity-item[data-kind]').forEach(el => {
+      el.onclick = () => {
+        this.placeKind = el.dataset.kind;
+        panel.querySelectorAll('.entity-item[data-kind]').forEach(e => e.classList.remove('active'));
+        el.classList.add('active');
+      };
+    });
+
+    // Hero selection
+    panel.querySelectorAll('.entity-item[data-hero]').forEach(el => {
+      el.onclick = () => {
+        this.placeHeroId = el.dataset.hero;
+        panel.querySelectorAll('.entity-item[data-hero]').forEach(e => e.classList.remove('active'));
+        el.classList.add('active');
+      };
+    });
+
+    // Select tool entity editing
+    const selX = panel.querySelector('[data-action="sel-x"]');
+    const selY = panel.querySelector('[data-action="sel-y"]');
+    const selPid = panel.querySelector('[data-action="sel-pid"]');
+    const selPb = panel.querySelector('[data-action="sel-prebuilt"]');
+    const selMc = panel.querySelector('[data-action="sel-mc"]');
+    const selDel = panel.querySelector('[data-action="sel-delete"]');
+
+    if (selX && this.selectedEntity) {
+      selX.onchange = () => { this.selectedEntity.data.x = parseInt(selX.value) || 0; this._render(); };
+    }
+    if (selY && this.selectedEntity) {
+      selY.onchange = () => { this.selectedEntity.data.y = parseInt(selY.value) || 0; this._render(); };
+    }
+    if (selPid && this.selectedEntity) {
+      selPid.onchange = () => { this.selectedEntity.data.player_id = parseInt(selPid.value) || 0; this._render(); };
+    }
+    if (selPb && this.selectedEntity) {
+      selPb.onchange = () => { this.selectedEntity.data.pre_built = selPb.checked; };
+    }
+    if (selMc && this.selectedEntity) {
+      selMc.onchange = () => { this.selectedEntity.data.mission_critical = selMc.checked; };
+    }
+    if (selDel && this.selectedEntity) {
+      selDel.onclick = () => {
+        this.undo.snapshot(this.state);
+        this.state.removeEntity(this.selectedEntity.type, this.selectedEntity.idx);
+        this.selectedEntity = null;
+        this._updatePanel();
+        this._render();
+      };
+    }
+
+    // Mission panel events
+    this._bindMissionEvents(panel);
+  }
+
+  _bindMissionEvents(panel) {
+    const s = this.state;
+    const bind = (action, handler) => {
+      const el = panel.querySelector(`[data-action="${action}"]`);
+      if (el) {
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+          el.onchange = () => handler(el);
+        } else {
+          el.onclick = () => handler(el);
+        }
+      }
+    };
+
+    bind('m-id', el => { s.id = el.value; });
+    bind('m-name', el => { s.name = el.value; });
+    bind('m-act', el => { s.act = parseInt(el.value) || 0; });
+    bind('m-idx', el => { s.mission_index = parseInt(el.value) || 0; });
+    bind('m-briefing', el => { s.briefing_text = el.value; });
+    bind('m-debrief', el => { s.debrief_text = el.value; });
+    bind('m-food', el => { s.starting_food = parseInt(el.value) || 0; });
+    bind('m-gpu', el => { s.starting_gpu = parseInt(el.value) || 0; });
+    bind('m-nfts', el => { s.starting_nfts = parseInt(el.value) || 0; });
+    bind('m-tier', el => { s.ai_tool_tier = el.value === '' ? null : parseInt(el.value); });
+    bind('m-next-type', el => {
+      s.next_mission = {type: el.value};
+      this._updatePanel();
+    });
+    bind('m-next-id', el => { s.next_mission.id = el.value; });
+    bind('m-next-flag', el => { s.next_mission.flag = el.value; });
+    bind('m-next-true', el => { s.next_mission.on_true = el.value; });
+    bind('m-next-false', el => { s.next_mission.on_false = el.value; });
+    bind('m-resize', () => {
+      const w = parseInt(panel.querySelector('[data-action="m-width"]').value) || s.width;
+      const h = parseInt(panel.querySelector('[data-action="m-height"]').value) || s.height;
+      this.undo.snapshot(s);
+      s.resize(Math.max(8, Math.min(256, w)), Math.max(8, Math.min(256, h)));
+      this.renderer.centerOnMap(s);
+      this._render();
+    });
+
+    // Wave CRUD
+    bind('add-wave', () => {
+      s.enemy_waves.push({wave_id: 'wave_' + s.enemy_waves.length, trigger: {type: 'Immediate'}, units: [], ai_behavior: {type: 'Idle'}});
+      this._updatePanel();
+    });
+    panel.querySelectorAll('[data-action="del-wave"]').forEach(el => {
+      el.onclick = (e) => { e.stopPropagation(); s.enemy_waves.splice(parseInt(el.dataset.idx), 1); this._updatePanel(); };
+    });
+    panel.querySelectorAll('[data-action="edit-wave"]').forEach(el => {
+      el.onclick = () => this._editWave(parseInt(el.dataset.idx));
+    });
+
+    // Objective CRUD
+    bind('add-obj', () => {
+      s.objectives.push({id: 'obj_' + s.objectives.length, description: 'New objective', primary: true, condition: {type: 'EliminateAll'}});
+      this._updatePanel();
+    });
+    panel.querySelectorAll('[data-action="del-obj"]').forEach(el => {
+      el.onclick = (e) => { e.stopPropagation(); s.objectives.splice(parseInt(el.dataset.idx), 1); this._updatePanel(); };
+    });
+    panel.querySelectorAll('[data-action="edit-obj"]').forEach(el => {
+      el.onclick = () => this._editObjective(parseInt(el.dataset.idx));
+    });
+
+    // Trigger CRUD
+    bind('add-trigger', () => {
+      s.triggers.push({id: 'trigger_' + s.triggers.length, condition: {type: 'AllEnemiesDead'}, actions: [], once: true});
+      this._updatePanel();
+    });
+    panel.querySelectorAll('[data-action="del-trigger"]').forEach(el => {
+      el.onclick = (e) => { e.stopPropagation(); s.triggers.splice(parseInt(el.dataset.idx), 1); this._updatePanel(); };
+    });
+    panel.querySelectorAll('[data-action="edit-trigger"]').forEach(el => {
+      el.onclick = () => this._editTrigger(parseInt(el.dataset.idx));
+    });
+
+    // Dialogue CRUD
+    bind('add-dialogue', () => {
+      s.dialogue.push({speaker: '', text: '', voice_style: 'Normal', portrait: ''});
+      this._updatePanel();
+    });
+    panel.querySelectorAll('[data-action="del-dialogue"]').forEach(el => {
+      el.onclick = (e) => { e.stopPropagation(); s.dialogue.splice(parseInt(el.dataset.idx), 1); this._updatePanel(); };
+    });
+    panel.querySelectorAll('[data-action="edit-dialogue"]').forEach(el => {
+      el.onclick = () => this._editDialogue(parseInt(el.dataset.idx));
+    });
+
+    // Mutator CRUD
+    bind('add-mutator', () => {
+      s.mutators.push({type: 'NoBuildMode'});
+      this._updatePanel();
+    });
+    panel.querySelectorAll('[data-action="del-mutator"]').forEach(el => {
+      el.onclick = (e) => { e.stopPropagation(); s.mutators.splice(parseInt(el.dataset.idx), 1); this._updatePanel(); };
+    });
+    panel.querySelectorAll('[data-action="edit-mutator"]').forEach(el => {
+      el.onclick = () => this._editMutator(parseInt(el.dataset.idx));
+    });
+  }
+
+  // ===========================================================================
+  // DETAIL EDITORS (dialog overlays)
+  // ===========================================================================
+  _editWave(idx) {
+    const w = this.state.enemy_waves[idx];
+    if (!w) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+
+    const triggerOpts = WAVE_TRIGGER_TYPES.map(t =>
+      `<option value="${t}"${t === w.trigger.type ? ' selected' : ''}>${t}</option>`
+    ).join('');
+    const behaviorOpts = WAVE_AI_BEHAVIORS.map(b =>
+      `<option value="${b}"${b === (w.ai_behavior.type || w.ai_behavior) ? ' selected' : ''}>${b}</option>`
+    ).join('');
+
+    let unitListHtml = w.units.map((u, i) =>
+      `<div class="list-item"><span>${u.kind} @ (${u.position.x},${u.position.y}) P${u.player_id}</span><span class="del-btn" data-delidx="${i}">x</span></div>`
+    ).join('');
+
+    overlay.innerHTML = `
+      <div class="dialog" style="min-width:400px;max-height:80vh;overflow-y:auto">
+        <h3>Edit Wave: ${w.wave_id}</h3>
+        <label>Wave ID:</label><input id="we-id" value="${esc(w.wave_id)}">
+        <label>Trigger Type:</label><select id="we-trigger">${triggerOpts}</select>
+        <div id="we-trigger-extra"></div>
+        <label>AI Behavior:</label><select id="we-behavior">${behaviorOpts}</select>
+        <div id="we-behavior-extra"></div>
+        <label>Units (${w.units.length}):</label>
+        <div id="we-units">${unitListHtml}</div>
+        <div class="panel-row" style="margin-top:4px">
+          <select id="we-add-kind">${ALL_UNIT_KINDS.map(u => `<option>${u}</option>`).join('')}</select>
+          <input type="number" id="we-add-x" value="0" style="width:40px" placeholder="x">
+          <input type="number" id="we-add-y" value="0" style="width:40px" placeholder="y">
+          <input type="number" id="we-add-pid" value="1" style="width:40px" placeholder="pid">
+          <button class="btn" id="we-add-unit">+</button>
+        </div>
+        <div style="margin-top:12px">
+          <button class="btn btn-accent" id="we-save">Save</button>
+          <button class="btn" id="we-cancel">Cancel</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const updateTriggerExtra = () => {
+      const tt = overlay.querySelector('#we-trigger').value;
+      const ext = overlay.querySelector('#we-trigger-extra');
+      if (tt === 'AtTick') ext.innerHTML = `<input type="number" id="we-trigger-tick" value="${w.trigger.tick || 0}" placeholder="tick">`;
+      else if (tt === 'OnTrigger') ext.innerHTML = `<input id="we-trigger-tid" value="${esc(w.trigger.trigger_id || '')}" placeholder="trigger_id">`;
+      else ext.innerHTML = '';
+    };
+    const updateBehaviorExtra = () => {
+      const bt = overlay.querySelector('#we-behavior').value;
+      const ext = overlay.querySelector('#we-behavior-extra');
+      if (bt === 'AttackMove') ext.innerHTML = `<div class="panel-row"><input type="number" id="we-beh-x" value="${w.ai_behavior.x || 0}" style="width:50px" placeholder="x"><input type="number" id="we-beh-y" value="${w.ai_behavior.y || 0}" style="width:50px" placeholder="y"></div>`;
+      else ext.innerHTML = '';
+    };
+    updateTriggerExtra();
+    updateBehaviorExtra();
+    overlay.querySelector('#we-trigger').onchange = updateTriggerExtra;
+    overlay.querySelector('#we-behavior').onchange = updateBehaviorExtra;
+
+    overlay.querySelector('#we-add-unit').onclick = () => {
+      const kind = overlay.querySelector('#we-add-kind').value;
+      const x = parseInt(overlay.querySelector('#we-add-x').value) || 0;
+      const y = parseInt(overlay.querySelector('#we-add-y').value) || 0;
+      const pid = parseInt(overlay.querySelector('#we-add-pid').value) || 0;
+      w.units.push({kind, position: {x, y}, player_id: pid});
+      // Re-render units list
+      overlay.querySelector('#we-units').innerHTML = w.units.map((u, i) =>
+        `<div class="list-item"><span>${u.kind} @ (${u.position.x},${u.position.y}) P${u.player_id}</span><span class="del-btn" data-delidx="${i}">x</span></div>`
+      ).join('');
+      bindUnitDel();
+    };
+
+    const bindUnitDel = () => {
+      overlay.querySelectorAll('[data-delidx]').forEach(el => {
+        el.onclick = () => {
+          w.units.splice(parseInt(el.dataset.delidx), 1);
+          overlay.querySelector('#we-units').innerHTML = w.units.map((u, i) =>
+            `<div class="list-item"><span>${u.kind} @ (${u.position.x},${u.position.y}) P${u.player_id}</span><span class="del-btn" data-delidx="${i}">x</span></div>`
+          ).join('');
+          bindUnitDel();
+        };
+      });
+    };
+    bindUnitDel();
+
+    overlay.querySelector('#we-save').onclick = () => {
+      w.wave_id = overlay.querySelector('#we-id').value;
+      const tt = overlay.querySelector('#we-trigger').value;
+      if (tt === 'AtTick') w.trigger = {type: 'AtTick', tick: parseInt(overlay.querySelector('#we-trigger-tick')?.value) || 0};
+      else if (tt === 'OnTrigger') w.trigger = {type: 'OnTrigger', trigger_id: overlay.querySelector('#we-trigger-tid')?.value || ''};
+      else w.trigger = {type: 'Immediate'};
+
+      const bt = overlay.querySelector('#we-behavior').value;
+      if (bt === 'AttackMove') w.ai_behavior = {type: 'AttackMove', x: parseInt(overlay.querySelector('#we-beh-x')?.value) || 0, y: parseInt(overlay.querySelector('#we-beh-y')?.value) || 0};
+      else w.ai_behavior = {type: bt};
+
+      document.body.removeChild(overlay);
+      this._updatePanel();
+      this._render();
+    };
+    overlay.querySelector('#we-cancel').onclick = () => document.body.removeChild(overlay);
+  }
+
+  _editObjective(idx) {
+    const o = this.state.objectives[idx];
+    if (!o) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+
+    const condOpts = OBJECTIVE_CONDITIONS.map(c =>
+      `<option value="${c}"${c === o.condition.type ? ' selected' : ''}>${c}</option>`
+    ).join('');
+
+    overlay.innerHTML = `
+      <div class="dialog" style="min-width:360px">
+        <h3>Edit Objective</h3>
+        <label>ID:</label><input id="oe-id" value="${esc(o.id)}">
+        <label>Description:</label><textarea id="oe-desc">${esc(o.description)}</textarea>
+        <label>Primary:</label><input type="checkbox" id="oe-primary" ${o.primary ? 'checked' : ''}>
+        <label>Condition:</label><select id="oe-cond">${condOpts}</select>
+        <div id="oe-cond-extra"></div>
+        <div style="margin-top:12px">
+          <button class="btn btn-accent" id="oe-save">Save</button>
+          <button class="btn" id="oe-cancel">Cancel</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const updateCondExtra = () => {
+      const ct = overlay.querySelector('#oe-cond').value;
+      const ext = overlay.querySelector('#oe-cond-extra');
+      if (ct === 'EliminateWave') ext.innerHTML = `<input id="oe-wave" value="${esc(o.condition.wave_id || '')}" placeholder="wave_id">`;
+      else if (ct === 'KillCount') ext.innerHTML = `<input type="number" id="oe-count" value="${o.condition.count || 0}" placeholder="count">`;
+      else if (ct === 'Survive') ext.innerHTML = `<input type="number" id="oe-ticks" value="${o.condition.ticks || 0}" placeholder="ticks">`;
+      else if (ct === 'HeroDied') ext.innerHTML = `<select id="oe-hero">${HERO_IDS.map(h => `<option${h === (o.condition.hero||'') ? ' selected' : ''}>${h}</option>`).join('')}</select>`;
+      else if (ct === 'HeroReachesPos') ext.innerHTML = `
+        <select id="oe-hero">${HERO_IDS.map(h => `<option${h === (o.condition.hero||'') ? ' selected' : ''}>${h}</option>`).join('')}</select>
+        <div class="panel-row"><input type="number" id="oe-px" value="${o.condition.x||0}" style="width:50px"><input type="number" id="oe-py" value="${o.condition.y||0}" style="width:50px"><input type="number" id="oe-pr" value="${o.condition.radius||3}" style="width:50px" placeholder="radius"></div>`;
+      else ext.innerHTML = '';
+    };
+    updateCondExtra();
+    overlay.querySelector('#oe-cond').onchange = updateCondExtra;
+
+    overlay.querySelector('#oe-save').onclick = () => {
+      o.id = overlay.querySelector('#oe-id').value;
+      o.description = overlay.querySelector('#oe-desc').value;
+      o.primary = overlay.querySelector('#oe-primary').checked;
+      const ct = overlay.querySelector('#oe-cond').value;
+      if (ct === 'EliminateWave') o.condition = {type: ct, wave_id: overlay.querySelector('#oe-wave')?.value || ''};
+      else if (ct === 'KillCount') o.condition = {type: ct, count: parseInt(overlay.querySelector('#oe-count')?.value) || 0};
+      else if (ct === 'Survive') o.condition = {type: ct, ticks: parseInt(overlay.querySelector('#oe-ticks')?.value) || 0};
+      else if (ct === 'HeroDied') o.condition = {type: ct, hero: overlay.querySelector('#oe-hero')?.value || ''};
+      else if (ct === 'HeroReachesPos') o.condition = {type: ct, hero: overlay.querySelector('#oe-hero')?.value || '', x: parseInt(overlay.querySelector('#oe-px')?.value) || 0, y: parseInt(overlay.querySelector('#oe-py')?.value) || 0, radius: parseInt(overlay.querySelector('#oe-pr')?.value) || 3};
+      else o.condition = {type: ct};
+      document.body.removeChild(overlay);
+      this._updatePanel();
+    };
+    overlay.querySelector('#oe-cancel').onclick = () => document.body.removeChild(overlay);
+  }
+
+  _editTrigger(idx) {
+    const t = this.state.triggers[idx];
+    if (!t) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+
+    const condOpts = TRIGGER_CONDITIONS.map(c =>
+      `<option value="${c}"${c === t.condition.type ? ' selected' : ''}>${c}</option>`
+    ).join('');
+
+    let actionsHtml = t.actions.map((a, i) =>
+      `<div class="list-item"><span>${a.type}</span><span class="del-btn" data-delact="${i}">x</span></div>`
+    ).join('');
+
+    overlay.innerHTML = `
+      <div class="dialog" style="min-width:420px;max-height:80vh;overflow-y:auto">
+        <h3>Edit Trigger</h3>
+        <label>ID:</label><input id="te-id" value="${esc(t.id)}">
+        <label>Once:</label><input type="checkbox" id="te-once" ${t.once ? 'checked' : ''}>
+        <label>Condition:</label><select id="te-cond">${condOpts}</select>
+        <div id="te-cond-extra"></div>
+        <label>Actions (${t.actions.length}):</label>
+        <div id="te-actions">${actionsHtml}</div>
+        <div class="panel-row" style="margin-top:4px">
+          <select id="te-add-action">${TRIGGER_ACTIONS.map(a => `<option>${a}</option>`).join('')}</select>
+          <button class="btn" id="te-add-act-btn">+</button>
+        </div>
+        <div style="margin-top:12px">
+          <button class="btn btn-accent" id="te-save">Save</button>
+          <button class="btn" id="te-cancel">Cancel</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const updateCondExtra = () => {
+      const ct = overlay.querySelector('#te-cond').value;
+      const ext = overlay.querySelector('#te-cond-extra');
+      if (ct === 'AtTick') ext.innerHTML = `<input type="number" id="te-tick" value="${t.condition.tick||0}">`;
+      else if (ct === 'EnemyKillCount') ext.innerHTML = `<input type="number" id="te-count" value="${t.condition.count||0}">`;
+      else if (ct === 'WaveEliminated') ext.innerHTML = `<input id="te-wave" value="${esc(t.condition.wave_id||'')}">`;
+      else if (ct === 'FlagSet') ext.innerHTML = `<input id="te-flag" value="${esc(t.condition.flag||'')}">`;
+      else if (ct === 'TriggerFired') ext.innerHTML = `<input id="te-tid" value="${esc(t.condition.trigger_id||'')}">`;
+      else if (ct === 'PersistentFlag') ext.innerHTML = `<input id="te-pflag" value="${esc(t.condition.flag||'')}">`;
+      else if (ct === 'HeroAtPos') ext.innerHTML = `<select id="te-hero">${HERO_IDS.map(h=>`<option${h===(t.condition.hero||'')?' selected':''}>${h}</option>`).join('')}</select><div class="panel-row"><input type="number" id="te-px" value="${t.condition.x||0}" style="width:50px"><input type="number" id="te-py" value="${t.condition.y||0}" style="width:50px"><input type="number" id="te-pr" value="${t.condition.radius||3}" style="width:50px"></div>`;
+      else if (ct === 'HeroHpBelow') ext.innerHTML = `<select id="te-hero">${HERO_IDS.map(h=>`<option${h===(t.condition.hero||'')?' selected':''}>${h}</option>`).join('')}</select><input type="number" id="te-pct" value="${t.condition.percentage||50}" placeholder="%">`;
+      else if (ct === 'HazardLevel') ext.innerHTML = `<input id="te-htype" value="${esc(t.condition.hazard_type||'')}" placeholder="type"><input type="number" id="te-hlevel" value="${t.condition.level||0}" placeholder="level">`;
+      else if (ct === 'Periodic') ext.innerHTML = `<input type="number" id="te-interval" value="${t.condition.interval_ticks||100}" placeholder="interval"><input type="number" id="te-offset" value="${t.condition.offset_ticks||0}" placeholder="offset">`;
+      else ext.innerHTML = '';
+    };
+    updateCondExtra();
+    overlay.querySelector('#te-cond').onchange = updateCondExtra;
+
+    const refreshActions = () => {
+      overlay.querySelector('#te-actions').innerHTML = t.actions.map((a, i) =>
+        `<div class="list-item"><span>${a.type}${a.wave_id ? ': '+a.wave_id : ''}${a.flag ? ': '+a.flag : ''}${a.indices ? ': ['+a.indices.join(',')+']' : ''}</span><span class="del-btn" data-delact="${i}">x</span></div>`
+      ).join('');
+      overlay.querySelectorAll('[data-delact]').forEach(el => {
+        el.onclick = () => { t.actions.splice(parseInt(el.dataset.delact), 1); refreshActions(); };
+      });
+    };
+
+    overlay.querySelector('#te-add-act-btn').onclick = () => {
+      const aType = overlay.querySelector('#te-add-action').value;
+      const newAction = {type: aType};
+      if (aType === 'ShowDialogue') newAction.indices = [];
+      if (aType === 'SpawnWave') newAction.wave_id = '';
+      if (aType === 'SetFlag') newAction.flag = '';
+      if (aType === 'CompleteObjective') newAction.objective_id = '';
+      if (aType === 'PanCamera') { newAction.x = 0; newAction.y = 0; }
+      if (aType === 'SetPersistentFlag') newAction.flag = '';
+      if (aType === 'ToggleMutator') { newAction.mutator_index = 0; newAction.active = true; }
+      if (aType === 'SetTerrain') { newAction.positions = []; newAction.terrain = 'Grass'; }
+      if (aType === 'AreaDamage') { newAction.x = 0; newAction.y = 0; newAction.radius = 3; newAction.damage = 50; }
+      t.actions.push(newAction);
+      refreshActions();
+    };
+    refreshActions();
+
+    overlay.querySelector('#te-save').onclick = () => {
+      t.id = overlay.querySelector('#te-id').value;
+      t.once = overlay.querySelector('#te-once').checked;
+      const ct = overlay.querySelector('#te-cond').value;
+      if (ct === 'AtTick') t.condition = {type: ct, tick: parseInt(overlay.querySelector('#te-tick')?.value) || 0};
+      else if (ct === 'EnemyKillCount') t.condition = {type: ct, count: parseInt(overlay.querySelector('#te-count')?.value) || 0};
+      else if (ct === 'WaveEliminated') t.condition = {type: ct, wave_id: overlay.querySelector('#te-wave')?.value || ''};
+      else if (ct === 'FlagSet') t.condition = {type: ct, flag: overlay.querySelector('#te-flag')?.value || ''};
+      else if (ct === 'TriggerFired') t.condition = {type: ct, trigger_id: overlay.querySelector('#te-tid')?.value || ''};
+      else if (ct === 'PersistentFlag') t.condition = {type: ct, flag: overlay.querySelector('#te-pflag')?.value || ''};
+      else if (ct === 'HeroAtPos') t.condition = {type: ct, hero: overlay.querySelector('#te-hero')?.value || '', x: parseInt(overlay.querySelector('#te-px')?.value) || 0, y: parseInt(overlay.querySelector('#te-py')?.value) || 0, radius: parseInt(overlay.querySelector('#te-pr')?.value) || 3};
+      else if (ct === 'HeroHpBelow') t.condition = {type: ct, hero: overlay.querySelector('#te-hero')?.value || '', percentage: parseInt(overlay.querySelector('#te-pct')?.value) || 50};
+      else if (ct === 'HazardLevel') t.condition = {type: ct, hazard_type: overlay.querySelector('#te-htype')?.value || '', level: parseInt(overlay.querySelector('#te-hlevel')?.value) || 0};
+      else if (ct === 'Periodic') t.condition = {type: ct, interval_ticks: parseInt(overlay.querySelector('#te-interval')?.value) || 100, offset_ticks: parseInt(overlay.querySelector('#te-offset')?.value) || 0};
+      else t.condition = {type: ct};
+      document.body.removeChild(overlay);
+      this._updatePanel();
+    };
+    overlay.querySelector('#te-cancel').onclick = () => document.body.removeChild(overlay);
+  }
+
+  _editDialogue(idx) {
+    const d = this.state.dialogue[idx];
+    if (!d) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+
+    const vsOpts = VOICE_STYLES.map(v =>
+      `<option value="${v}"${v === d.voice_style ? ' selected' : ''}>${v}</option>`
+    ).join('');
+
+    overlay.innerHTML = `
+      <div class="dialog" style="min-width:360px">
+        <h3>Edit Dialogue Line [${idx}]</h3>
+        <label>Speaker:</label><input id="de-speaker" value="${esc(d.speaker)}">
+        <label>Text:</label><textarea id="de-text">${esc(d.text)}</textarea>
+        <label>Voice Style:</label><select id="de-style">${vsOpts}</select>
+        <label>Portrait:</label><input id="de-portrait" value="${esc(d.portrait)}" placeholder="portrait_key">
+        <div style="margin-top:12px">
+          <button class="btn btn-accent" id="de-save">Save</button>
+          <button class="btn" id="de-cancel">Cancel</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#de-save').onclick = () => {
+      d.speaker = overlay.querySelector('#de-speaker').value;
+      d.text = overlay.querySelector('#de-text').value;
+      d.voice_style = overlay.querySelector('#de-style').value;
+      d.portrait = overlay.querySelector('#de-portrait').value;
+      document.body.removeChild(overlay);
+      this._updatePanel();
+    };
+    overlay.querySelector('#de-cancel').onclick = () => document.body.removeChild(overlay);
+  }
+
+  _editMutator(idx) {
+    const m = this.state.mutators[idx];
+    if (!m) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+
+    const typeOpts = MUTATOR_TYPES.map(t =>
+      `<option value="${t}"${t === m.type ? ' selected' : ''}>${t}</option>`
+    ).join('');
+
+    overlay.innerHTML = `
+      <div class="dialog" style="min-width:360px">
+        <h3>Edit Mutator</h3>
+        <label>Type:</label><select id="me-type">${typeOpts}</select>
+        <div id="me-extra"></div>
+        <div style="margin-top:12px">
+          <button class="btn btn-accent" id="me-save">Save</button>
+          <button class="btn" id="me-cancel">Cancel</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const dirOpts = (sel) => ['North','South','East','West','AllEdges'].map(d =>
+      `<option${d===(sel||'South')?' selected':''}>${d}</option>`).join('');
+    const updateExtra = () => {
+      const mt = overlay.querySelector('#me-type').value;
+      const ext = overlay.querySelector('#me-extra');
+      if (mt === 'TimeLimit') ext.innerHTML = `<label>Max Ticks:</label><input type="number" id="me-max" value="${m.max_ticks||3000}"><label>Warning At:</label><input type="number" id="me-warn" value="${m.warning_at||2500}">`;
+      else if (mt === 'AiOnlyControl') ext.innerHTML = `<label>Tool Tier:</label><input type="number" id="me-tier" value="${m.tool_tier||0}" min="0" max="2">`;
+      else if (mt === 'DamageMultiplier') ext.innerHTML = `<label>Player Mult:</label><input type="number" id="me-pmult" value="${m.player_multiplier||1.0}" step="0.1"><label>Enemy Mult:</label><input type="number" id="me-emult" value="${m.enemy_multiplier||1.0}" step="0.1">`;
+      else if (mt === 'SpeedMultiplier') ext.innerHTML = `<label>Player Mult:</label><input type="number" id="me-pmult" value="${m.player_multiplier||1.0}" step="0.1"><label>Enemy Mult:</label><input type="number" id="me-emult" value="${m.enemy_multiplier||1.0}" step="0.1">`;
+      else if (mt === 'ResourceScarcity') ext.innerHTML = `<label>Food Mult:</label><input type="number" id="me-fmult" value="${m.food_multiplier||1.0}" step="0.1"><label>GPU Mult:</label><input type="number" id="me-gmult" value="${m.gpu_multiplier||1.0}" step="0.1">`;
+      else if (mt === 'DenseFog') ext.innerHTML = `<label>Vision Reduction:</label><input type="number" id="me-vr" value="${m.vision_reduction||2}">`;
+      else if (mt === 'DamageZone') ext.innerHTML = `<label>Dmg/Tick:</label><input type="number" id="me-cd" value="${m.damage_per_tick||1}" style="width:60px"><label>Active From Start:</label><input type="checkbox" id="me-afs" ${m.active_from_start?'checked':''}><label>Toggle Flag:</label><input type="text" id="me-tf" value="${m.toggle_flag||''}" style="width:100px">`;
+      else if (mt === 'Tremors') ext.innerHTML = `<label>Interval Ticks:</label><input type="number" id="me-int" value="${m.interval_ticks||100}"><label>Building Damage:</label><input type="number" id="me-bd" value="${m.building_damage||25}"><label>Terrain Change %:</label><input type="number" id="me-tcc" value="${m.terrain_change_chance||10}"><label>Epicenter Radius:</label><input type="number" id="me-rad" value="${m.epicenter_radius||5}"><label>Initial Delay:</label><input type="number" id="me-delay" value="${m.initial_delay_ticks||0}">`;
+      else if (mt === 'LavaRise') ext.innerHTML = `<label>Interval Ticks:</label><input type="number" id="me-int" value="${m.interval_ticks||100}"><label>Dmg/Tick:</label><input type="number" id="me-dmg" value="${m.damage_per_tick||10}"><label>Direction:</label><select id="me-dir">${dirOpts(m.direction)}</select><label>Rows/Wave:</label><input type="number" id="me-rpw" value="${m.rows_per_wave||1}"><label>Initial Delay:</label><input type="number" id="me-delay" value="${m.initial_delay_ticks||0}">`;
+      else if (mt === 'Flooding') ext.innerHTML = `<label>Interval Ticks:</label><input type="number" id="me-int" value="${m.interval_ticks||60}"><label>Initial Level:</label><input type="number" id="me-il" value="${m.initial_water_level||0}" min="0" max="3"><label>Max Level:</label><input type="number" id="me-ml" value="${m.max_water_level||3}" min="0" max="3"><label>Initial Delay:</label><input type="number" id="me-delay" value="${m.initial_delay_ticks||0}">`;
+      else if (mt === 'WindStorm') ext.innerHTML = `<label>Direction:</label><select id="me-dir">${dirOpts(m.direction)}</select><label>Force:</label><input type="number" id="me-force" value="${m.force||1}"><label>Interval Ticks:</label><input type="number" id="me-int" value="${m.interval_ticks||50}"><label>Duration Ticks:</label><input type="number" id="me-dur" value="${m.duration_ticks||10}"><label>Push Off Map:</label><input type="checkbox" id="me-pom" ${m.can_push_off_map?'checked':''}><label>Initial Delay:</label><input type="number" id="me-delay" value="${m.initial_delay_ticks||0}">`;
+      else if (mt === 'ToxicTide') ext.innerHTML = `<label>Interval Ticks:</label><input type="number" id="me-int" value="${m.interval_ticks||40}"><label>Dmg/Tick:</label><input type="number" id="me-dmg" value="${m.damage_per_tick||5}"><label>Rows/Wave:</label><input type="number" id="me-rpw" value="${m.rows_per_wave||1}"><label>Initial Delay:</label><input type="number" id="me-delay" value="${m.initial_delay_ticks||0}"><label>Min Safe Radius:</label><input type="number" id="me-msr" value="${m.min_safe_radius||8}">`;
+      else if (mt === 'VoiceOnlyControl') ext.innerHTML = `<label>AI Enabled:</label><input type="checkbox" id="me-ai" ${m.ai_enabled?'checked':''}><label>Enemy Difficulty Mult:</label><input type="number" id="me-edm" value="${m.enemy_difficulty_multiplier||1.0}" step="0.1">`;
+      else if (mt === 'RestrictedUnits') ext.innerHTML = `<label>Allowed Kinds (comma-sep):</label><input type="text" id="me-ak" value="${(m.allowed_kinds||[]).join(',')}" style="width:200px"><label>Max Count:</label><input type="number" id="me-mc" value="${m.max_unit_count||''}" placeholder="unlimited">`;
+      else ext.innerHTML = '';
+    };
+    updateExtra();
+    overlay.querySelector('#me-type').onchange = updateExtra;
+
+    overlay.querySelector('#me-save').onclick = () => {
+      const mt = overlay.querySelector('#me-type').value;
+      const newM = {type: mt};
+      const gv = (id) => overlay.querySelector(id)?.value;
+      const gi = (id, def) => { const v = parseInt(gv(id)); return isNaN(v) ? def : v; };
+      const gf = (id, def) => { const v = parseFloat(gv(id)); return isNaN(v) ? def : v; };
+      const gc = (id) => overlay.querySelector(id)?.checked||false;
+      if (mt === 'TimeLimit') { newM.max_ticks = gi('#me-max',3000); newM.warning_at = gi('#me-warn',2500); }
+      else if (mt === 'AiOnlyControl') { newM.tool_tier = gi('#me-tier',0); }
+      else if (mt === 'DamageMultiplier' || mt === 'SpeedMultiplier') { newM.player_multiplier = gf('#me-pmult',1.0); newM.enemy_multiplier = gf('#me-emult',1.0); }
+      else if (mt === 'ResourceScarcity') { newM.food_multiplier = gf('#me-fmult',1.0); newM.gpu_multiplier = gf('#me-gmult',1.0); }
+      else if (mt === 'DenseFog') { newM.vision_reduction = gi('#me-vr',2); }
+      else if (mt === 'DamageZone') { newM.damage_per_tick = gi('#me-cd',1); newM.active_from_start = gc('#me-afs'); newM.toggle_flag = gv('#me-tf')||null; newM.tiles = m.tiles || []; }
+      else if (mt === 'Tremors') { newM.interval_ticks = gi('#me-int',100); newM.building_damage = gi('#me-bd',25); newM.terrain_change_chance = gi('#me-tcc',10); newM.epicenter_radius = gi('#me-rad',5); newM.initial_delay_ticks = gi('#me-delay',0); }
+      else if (mt === 'LavaRise') { newM.interval_ticks = gi('#me-int',100); newM.damage_per_tick = gi('#me-dmg',10); newM.direction = gv('#me-dir')||'South'; newM.rows_per_wave = gi('#me-rpw',1); newM.initial_delay_ticks = gi('#me-delay',0); }
+      else if (mt === 'Flooding') { newM.interval_ticks = gi('#me-int',60); newM.initial_water_level = gi('#me-il',0); newM.max_water_level = gi('#me-ml',3); newM.initial_delay_ticks = gi('#me-delay',0); }
+      else if (mt === 'WindStorm') { newM.direction = gv('#me-dir')||'North'; newM.force = gi('#me-force',1); newM.interval_ticks = gi('#me-int',50); newM.duration_ticks = gi('#me-dur',10); newM.can_push_off_map = gc('#me-pom'); newM.initial_delay_ticks = gi('#me-delay',0); }
+      else if (mt === 'ToxicTide') { newM.interval_ticks = gi('#me-int',40); newM.damage_per_tick = gi('#me-dmg',5); newM.rows_per_wave = gi('#me-rpw',1); newM.initial_delay_ticks = gi('#me-delay',0); newM.min_safe_radius = gi('#me-msr',8); }
+      else if (mt === 'VoiceOnlyControl') { newM.ai_enabled = gc('#me-ai'); newM.enemy_difficulty_multiplier = gf('#me-edm',1.0); }
+      else if (mt === 'RestrictedUnits') { newM.allowed_kinds = (gv('#me-ak')||'').split(',').map(s=>s.trim()).filter(Boolean); newM.max_unit_count = gi('#me-mc',0)||null; }
+      this.state.mutators[idx] = newM;
+      document.body.removeChild(overlay);
+      this._updatePanel();
+    };
+    overlay.querySelector('#me-cancel').onclick = () => document.body.removeChild(overlay);
+  }
+
+  // ===========================================================================
+  // STATUS BAR
+  // ===========================================================================
+  _updateStatus() {
+    const g = this.hoverGrid;
+    document.getElementById('st-pos').textContent = g ? `${g.x}, ${g.y}` : '--';
+    if (g && g.x >= 0 && g.y >= 0 && g.x < this.state.width && g.y < this.state.height) {
+      const ti = this.state.getTerrain(g.x, g.y);
+      document.getElementById('st-terrain').textContent = TERRAIN_TYPES[ti] || '--';
+      document.getElementById('st-elev').textContent = 'Elev: ' + this.state.getElev(g.x, g.y);
+    } else {
+      document.getElementById('st-terrain').textContent = '--';
+      document.getElementById('st-elev').textContent = '--';
+    }
+    document.getElementById('st-zoom').textContent = this.renderer.zoom.toFixed(2) + 'x';
+    document.getElementById('st-tool').textContent = this.tool;
+  }
+
+  _statusMsg(msg) {
+    document.getElementById('st-tool').textContent = msg;
+    setTimeout(() => this._updateStatus(), 3000);
+  }
+
+  // ===========================================================================
+  // RENDER LOOP
+  // ===========================================================================
+  _render() {
+    this.renderer.render(this.state, this);
+  }
+
+  // ===========================================================================
+  // LOCAL STORAGE AUTO-SAVE
+  // ===========================================================================
+  _autoSave() {
+    try {
+      const data = JSON.stringify({
+        state: {
+          id: this.state.id, name: this.state.name, act: this.state.act,
+          mission_index: this.state.mission_index, width: this.state.width,
+          height: this.state.height, tiles: this.state.tiles,
+          elevation: Array.from(this.state.elevation),
+          units: this.state.units, buildings: this.state.buildings,
+          heroes: this.state.heroes, enemy_waves: this.state.enemy_waves,
+          objectives: this.state.objectives, triggers: this.state.triggers,
+          dialogue: this.state.dialogue, briefing_text: this.state.briefing_text,
+          debrief_text: this.state.debrief_text, ai_tool_tier: this.state.ai_tool_tier,
+          next_mission: this.state.next_mission, mutators: this.state.mutators,
+          starting_food: this.state.starting_food, starting_gpu: this.state.starting_gpu,
+          starting_nfts: this.state.starting_nfts,
+        }
+      });
+      localStorage.setItem('cc_map_editor', data);
+    } catch (e) { /* localStorage might be full or unavailable */ }
+  }
+
+  _autoLoad() {
+    try {
+      const raw = localStorage.getItem('cc_map_editor');
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data && data.state && data.state.width) {
+        const s = data.state;
+        this.state.id = s.id || 'untitled';
+        this.state.name = s.name || 'New Mission';
+        this.state.act = s.act || 0;
+        this.state.mission_index = s.mission_index || 0;
+        this.state.width = s.width;
+        this.state.height = s.height;
+        this.state.tiles = s.tiles;
+        this.state.elevation = new Uint8Array(s.elevation);
+        this.state.units = s.units || [];
+        this.state.buildings = s.buildings || [];
+        this.state.heroes = s.heroes || [];
+        this.state.enemy_waves = s.enemy_waves || [];
+        this.state.objectives = s.objectives || [];
+        this.state.triggers = s.triggers || [];
+        this.state.dialogue = s.dialogue || [];
+        this.state.briefing_text = s.briefing_text || '';
+        this.state.debrief_text = s.debrief_text || '';
+        this.state.ai_tool_tier = s.ai_tool_tier;
+        this.state.next_mission = s.next_mission || {type:'None'};
+        this.state.mutators = s.mutators || [];
+        this.state.starting_food = s.starting_food || 0;
+        this.state.starting_gpu = s.starting_gpu || 0;
+        this.state.starting_nfts = s.starting_nfts || 0;
+        this.undo.snapshot(this.state);
+        this.renderer.centerOnMap(this.state);
+        this._statusMsg('Restored from auto-save');
+      }
+    } catch (e) { /* ignore corrupt auto-save */ }
+  }
+}
+
+// ===========================================================================
+// BOOT
+// ===========================================================================
+window.addEventListener('DOMContentLoaded', () => {
+  window.app = new App();
+});
+</script>
+</body>
+</html>
