@@ -145,6 +145,32 @@ pub fn hero_data(hero: HeroId) -> HeroData {
     }
 }
 
+/// All hero IDs in canonical order.
+pub const ALL_HEROES: [HeroId; 8] = [
+    HeroId::Kelpie,
+    HeroId::FelixNine,
+    HeroId::Thimble,
+    HeroId::MotherGranite,
+    HeroId::RexSolstice,
+    HeroId::KingRingtail,
+    HeroId::TheEternal,
+    HeroId::Patches,
+];
+
+/// Returns the file-name slug for a hero (e.g. "king_ringtail", "the_eternal").
+pub fn hero_slug(hero: HeroId) -> &'static str {
+    match hero {
+        HeroId::Kelpie => "kelpie",
+        HeroId::FelixNine => "felix_nine",
+        HeroId::Thimble => "thimble",
+        HeroId::MotherGranite => "mother_granite",
+        HeroId::RexSolstice => "rex_solstice",
+        HeroId::KingRingtail => "king_ringtail",
+        HeroId::TheEternal => "the_eternal",
+        HeroId::Patches => "patches",
+    }
+}
+
 /// Maps a hero to their base unit template.
 /// Convenience wrapper around `hero_data`.
 pub fn hero_base_kind(hero: HeroId) -> UnitKind {
@@ -179,18 +205,6 @@ pub fn hero_faction_str(hero: HeroId) -> &'static str {
 mod tests {
     use super::*;
     use crate::unit_stats::base_stats;
-
-    /// All heroes defined in HeroId.
-    const ALL_HEROES: [HeroId; 8] = [
-        HeroId::Kelpie,
-        HeroId::FelixNine,
-        HeroId::Thimble,
-        HeroId::MotherGranite,
-        HeroId::RexSolstice,
-        HeroId::KingRingtail,
-        HeroId::TheEternal,
-        HeroId::Patches,
-    ];
 
     #[test]
     fn all_heroes_have_valid_base_kind() {
@@ -256,6 +270,32 @@ mod tests {
         let mods = hero_modifiers(HeroId::FelixNine);
         let boosted = base_hp + mods.health_bonus;
         assert_eq!(boosted, base_hp + Fixed::from_bits(100 << 16));
+    }
+
+    #[test]
+    fn hero_slug_all_valid() {
+        for hero in ALL_HEROES {
+            let slug = hero_slug(hero);
+            assert!(!slug.is_empty(), "{hero:?} has empty slug");
+            assert!(
+                slug.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'),
+                "{hero:?} slug '{slug}' contains invalid characters"
+            );
+        }
+    }
+
+    #[test]
+    fn hero_slug_uniqueness() {
+        let mut seen = std::collections::HashSet::new();
+        for hero in ALL_HEROES {
+            let slug = hero_slug(hero);
+            assert!(seen.insert(slug), "Duplicate hero slug: '{slug}'");
+        }
+    }
+
+    #[test]
+    fn all_heroes_constant_has_eight_entries() {
+        assert_eq!(ALL_HEROES.len(), 8);
     }
 
     #[test]

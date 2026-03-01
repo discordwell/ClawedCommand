@@ -85,6 +85,7 @@ fn mission_with_mutators(mutators: Vec<MissionMutator>) -> MissionDefinition {
                 hero_id: HeroId::Kelpie,
                 position: GridPos::new(0, 0),
                 mission_critical: true,
+                player_id: 0,
             }],
             units: vec![],
             buildings: vec![],

@@ -1,10 +1,11 @@
 use bevy::prelude::*;
 
 use crate::renderer::animation::{AnimIndices, AnimState, AnimTimer, PrevAnimState};
+use crate::renderer::hero_sprites::HeroSprites;
 use crate::setup::{TeamMaterials, UnitMesh, team_color, unit_scale};
 use crate::renderer::unit_gen::{UnitSprites, kind_index};
 use crate::renderer::zoom_lod::{self, ZoomTier};
-use cc_core::components::{Owner, Position, UnitType};
+use cc_core::components::{HeroIdentity, Owner, Position, UnitType};
 use cc_core::coords::{depth_z, world_to_screen};
 use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
 use cc_sim::resources::MapResource;
@@ -32,11 +33,12 @@ pub fn spawn_unit_visuals(
     mut materials: ResMut<Assets<ColorMaterial>>,
     team_mats: Option<Res<TeamMaterials>>,
     unit_sprites: Option<Res<UnitSprites>>,
+    hero_sprites: Option<Res<HeroSprites>>,
     tier: Res<ZoomTier>,
     map_res: Res<MapResource>,
-    new_units: Query<(Entity, &UnitType, &Owner, &Position), Without<UnitMesh>>,
+    new_units: Query<(Entity, &UnitType, &Owner, &Position, Option<&HeroIdentity>), Without<UnitMesh>>,
 ) {
-    for (entity, unit_type, owner, pos) in new_units.iter() {
+    for (entity, unit_type, owner, pos, hero_identity) in new_units.iter() {
         let screen = world_to_screen(pos.world);
         let grid = pos.world.to_grid();
         let elev = map_res.map.elevation_at(grid) as f32 * ELEVATION_PIXEL_OFFSET;
@@ -45,7 +47,10 @@ pub fn spawn_unit_visuals(
         let tint = team_color(owner.player_id);
 
         if let Some(ref sprites) = unit_sprites {
-            let image = sprites.sprites[kind_index(unit_type.kind)].clone();
+            // Use hero sprite if available, otherwise fall back to unit kind sprite
+            let image = hero_identity
+                .and_then(|hi| hero_sprites.as_ref()?.sprites.get(&hi.hero_id).cloned())
+                .unwrap_or_else(|| sprites.sprites[kind_index(unit_type.kind)].clone());
             commands.entity(entity).insert((
                 UnitMesh,
                 Sprite {

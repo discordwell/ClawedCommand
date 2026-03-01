@@ -89,6 +89,9 @@ pub struct HeroSpawn {
     pub position: GridPos,
     /// If true, mission fails when this hero dies.
     pub mission_critical: bool,
+    /// Which player owns this hero (default 0 for backward compat).
+    #[serde(default)]
+    pub player_id: u8,
 }
 
 /// Where/how to spawn a regular unit.
@@ -450,6 +453,7 @@ mod tests {
                     hero_id: HeroId::Kelpie,
                     position: GridPos::new(0, 0),
                     mission_critical: true,
+                    player_id: 0,
                 }],
                 units: vec![],
                 buildings: vec![],
@@ -932,5 +936,30 @@ mod tests {
         assert!(matches!(mission.mutators[1], crate::mutator::MissionMutator::SpeedMultiplier { .. }));
         assert!(matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act4_m14_junkyard_fort"));
         mission.validate().expect("Mission validation failed for act3_m13_escape_parliament");
+    }
+
+    #[test]
+    fn hero_spawn_player_id_default_zero() {
+        let ron_str = r#"(
+            hero_id: Kelpie,
+            position: (x: 5, y: 5),
+            mission_critical: false,
+        )"#;
+        let parsed: HeroSpawn = ron::from_str(ron_str).unwrap();
+        assert_eq!(parsed.player_id, 0);
+    }
+
+    #[test]
+    fn hero_spawn_player_id_round_trip() {
+        let spawn = HeroSpawn {
+            hero_id: HeroId::KingRingtail,
+            position: GridPos::new(10, 20),
+            mission_critical: false,
+            player_id: 1,
+        };
+        let ron_str = ron::to_string(&spawn).unwrap();
+        let parsed: HeroSpawn = ron::from_str(&ron_str).unwrap();
+        assert_eq!(parsed.player_id, 1);
+        assert_eq!(parsed.hero_id, HeroId::KingRingtail);
     }
 }

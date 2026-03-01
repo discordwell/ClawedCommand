@@ -8,6 +8,7 @@ pub mod camera;
 pub mod death;
 pub mod fog;
 pub mod health_bars;
+pub mod hero_sprites;
 pub mod minimap;
 pub mod projectile_assets;
 pub mod projectiles;
@@ -60,6 +61,7 @@ impl Plugin for RenderPlugin {
                     building_gen::generate_building_sprites,
                     anim_assets::load_anim_assets,
                     projectile_assets::load_projectile_assets,
+                    hero_sprites::load_hero_sprites,
                 ),
             )
             // Phase 1: Generate terrain tiles at Startup (no map dependency)

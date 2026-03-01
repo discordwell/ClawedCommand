@@ -130,8 +130,31 @@ fn setup_canyon(app: &mut App, scenario: u8) {
         .join("../../assets/campaign/demo_canyon.ron");
     let ron_str = std::fs::read_to_string(&ron_path)
         .unwrap_or_else(|e| panic!("Failed to read {}: {e}", ron_path.display()));
-    let mission: cc_core::mission::MissionDefinition = ron::from_str(&ron_str)
+    let mut mission: cc_core::mission::MissionDefinition = ron::from_str(&ron_str)
         .unwrap_or_else(|e| panic!("Failed to parse demo_canyon.ron: {e}"));
+
+    // Scenario 3: inject hero units for both players
+    if scenario == 3 {
+        use cc_core::hero::HeroId;
+        use cc_core::mission::HeroSpawn;
+        use cc_core::coords::GridPos;
+
+        // The Eternal (Croak hero) — near P0's base
+        mission.player_setup.heroes.push(HeroSpawn {
+            hero_id: HeroId::TheEternal,
+            position: GridPos::new(12, 12),
+            mission_critical: false,
+            player_id: 0,
+        });
+        // King Ringtail (LLAMA hero) — near P1's base
+        mission.player_setup.heroes.push(HeroSpawn {
+            hero_id: HeroId::KingRingtail,
+            position: GridPos::new(68, 36),
+            mission_critical: false,
+            player_id: 1,
+        });
+    }
+
     load_demo_mission(app, mission, "Canyon demo");
 
     eprintln!("Demo scenario {scenario}");

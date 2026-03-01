@@ -89,7 +89,7 @@ pub fn wave_spawner_system(
                 MovementSpeed {
                     speed: boosted_speed,
                 },
-                Owner { player_id: 0 },
+                Owner { player_id: hero_spawn.player_id },
                 UnitType { kind },
                 Health {
                     current: boosted_hp,

@@ -335,6 +335,7 @@ mod tests {
                     hero_id: HeroId::Kelpie,
                     position: GridPos::new(0, 0),
                     mission_critical: true,
+                    player_id: 0,
                 }],
                 units: vec![],
                 buildings: vec![],
