@@ -255,7 +255,6 @@ impl HeadlessSim {
                     attack_type: atk_type,
                     is_moving,
                     is_attacking,
-                    in_combat: attack_target.is_some(),
                     is_idle,
                     is_dead,
                     is_gathering: gathering.is_some(),

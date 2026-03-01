@@ -72,6 +72,38 @@ struct PlayerOnly {
 }
 
 #[derive(Deserialize, Serialize, JsonSchema)]
+struct PlayerFilterParams {
+    player_id: u8,
+    /// Optional filter: "idle", "wounded", "attacking", "gathering". Omit for all units.
+    filter: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct GetSafePositionsParams {
+    player_id: u8,
+    unit_id: u64,
+    /// Search radius in tiles (default 8).
+    search_radius: Option<u32>,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct GetKitePositionParams {
+    player_id: u8,
+    unit_id: u64,
+    target_id: u64,
+    desired_range: u32,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct PathQueryParams {
+    player_id: u8,
+    from_x: i32,
+    from_y: i32,
+    to_x: i32,
+    to_y: i32,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
 struct SpawnUnitParams {
     kind: String,
     x: i32,
@@ -314,14 +346,26 @@ impl HarnessServer {
     // Query tools (11)
     // =======================================================================
 
-    #[tool(description = "Get all own units for a player. Returns array of unit objects with id, kind, pos, hp, state.")]
+    #[tool(description = "Get own units for a player. Optional filter: 'idle' (idle units), 'wounded' (below 50% HP), 'attacking' (currently attacking), 'gathering' (gathering workers). Omit filter for all units. Returns array of unit objects with id, kind, pos, hp, state.")]
     async fn get_units(
         &self,
-        Parameters(params): Parameters<PlayerOnly>,
+        Parameters(params): Parameters<PlayerFilterParams>,
     ) -> Result<CallToolResult, McpError> {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
-        let json = serde_json::to_string_pretty(&snap.my_units.iter().map(|u| {
+        let units: Vec<_> = snap.my_units.iter().filter(|u| {
+            match params.filter.as_deref() {
+                Some("idle") => u.is_idle,
+                Some("wounded") => {
+                    let half_hp = u.health_max / Fixed::from_num(2);
+                    u.health_current < half_hp
+                }
+                Some("attacking") => u.is_attacking,
+                Some("gathering") => u.is_gathering,
+                _ => true,
+            }
+        }).collect();
+        let json = serde_json::to_string_pretty(&units.iter().map(|u| {
             serde_json::json!({
                 "id": u.id.0, "kind": format!("{:?}", u.kind),
                 "x": u.pos.x, "y": u.pos.y,
@@ -502,6 +546,86 @@ impl HarnessServer {
             "tick": sim.tick(),
             "game_state": format!("{:?}", sim.game_state()),
         });
+        Ok(CallToolResult::success(vec![Content::text(json.to_string())]))
+    }
+
+    // =======================================================================
+    // Spatial / Pathfinding query tools
+    // =======================================================================
+
+    #[tool(description = "Get safe positions for a unit — passable tiles within search_radius that are outside all enemy attack ranges. Returns array of {x, y} positions.")]
+    async fn get_safe_positions(
+        &self,
+        Parameters(params): Parameters<GetSafePositionsParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let map = sim.map();
+        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+        let unit = snap.my_units.iter().find(|u| u.id.0 == params.unit_id)
+            .ok_or_else(|| McpError::invalid_params(format!("Unit {} not found", params.unit_id), None))?;
+        let radius = params.search_radius.unwrap_or(8) as i32;
+        let positions = ctx.safe_positions(unit, radius);
+        let json = serde_json::to_string_pretty(&positions.iter().map(|p| {
+            serde_json::json!({"x": p.x, "y": p.y})
+        }).collect::<Vec<_>>()).unwrap_or_default();
+        Ok(CallToolResult::success(vec![Content::text(json)]))
+    }
+
+    #[tool(description = "Get the optimal kite position: a passable tile at exactly desired_range from target, closest to the unit. Returns {x, y} or null if none found.")]
+    async fn get_kite_position(
+        &self,
+        Parameters(params): Parameters<GetKitePositionParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let map = sim.map();
+        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+        let unit = snap.my_units.iter().find(|u| u.id.0 == params.unit_id)
+            .ok_or_else(|| McpError::invalid_params(format!("Unit {} not found", params.unit_id), None))?;
+        let target = snap.enemy_units.iter().find(|u| u.id.0 == params.target_id)
+            .ok_or_else(|| McpError::invalid_params(format!("Target {} not found", params.target_id), None))?;
+        let result = ctx.position_at_range(unit.pos, target.pos, params.desired_range as i32);
+        let json = match result {
+            Some(pos) => serde_json::json!({"x": pos.x, "y": pos.y}),
+            None => serde_json::json!(null),
+        };
+        Ok(CallToolResult::success(vec![Content::text(json.to_string())]))
+    }
+
+    #[tool(description = "Check if a path exists between two grid positions using A* pathfinding. Returns boolean.")]
+    async fn can_reach(
+        &self,
+        Parameters(params): Parameters<PathQueryParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let map = sim.map();
+        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+        let reachable = ctx.can_reach(
+            GridPos::new(params.from_x, params.from_y),
+            GridPos::new(params.to_x, params.to_y),
+        );
+        Ok(CallToolResult::success(vec![Content::text(format!("{reachable}"))]))
+    }
+
+    #[tool(description = "Get the A* path length in tiles between two grid positions. Returns integer length or null if unreachable.")]
+    async fn get_path_length(
+        &self,
+        Parameters(params): Parameters<PathQueryParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let map = sim.map();
+        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+        let length = ctx.path_length(
+            GridPos::new(params.from_x, params.from_y),
+            GridPos::new(params.to_x, params.to_y),
+        );
+        let json = match length {
+            Some(len) => serde_json::json!(len),
+            None => serde_json::json!(null),
+        };
         Ok(CallToolResult::success(vec![Content::text(json.to_string())]))
     }
 
@@ -1038,7 +1162,7 @@ impl HarnessServer {
     // Sim control tools (8)
     // =======================================================================
 
-    #[tool(description = "Spawn a unit at a position for a player. Returns entity ID. Kinds: Pawdler, Nuisance, Chonk, FlyingFox, Hisser, Yowler, Mouser, Catnapper, FerretSapper, MechCommander.")]
+    #[tool(description = "Spawn a unit at a position for a player. Returns entity ID. Cat: Pawdler, Nuisance, Chonk, FlyingFox, Hisser, Yowler, Mouser, Catnapper, FerretSapper, MechCommander. Corvid: MurderScrounger, Sentinel, Rookclaw, Magpike, Magpyre, Jaycaller, Jayflicker, Dusktalon, Hootseer, CorvusRex. Badger: Delver, Ironhide, Cragback, Warden, Sapjaw, Wardenmother, SeekerTunneler, Embermaw, Dustclaw, Gutripper. Mouse: Nibblet, Swarmer, Gnawer, Shrieker, Tunneler, Sparks, Quillback, Whiskerwitch, Plaguetail, WarrenMarshal. Croak: Ponderer, Regeneron, Broodmother, Gulper, Eftsaber, Croaker, Leapfrog, Shellwarden, Bogwhisper, MurkCommander. Raccoon: Scrounger, Bandit, HeapTitan, GlitchRat, PatchPossum, GreaseMonkey, DeadDropUnit, Wrecker, DumpsterDiver, JunkyardKing.")]
     async fn spawn_unit(
         &self,
         Parameters(params): Parameters<SpawnUnitParams>,
@@ -1050,7 +1174,7 @@ impl HarnessServer {
         Ok(CallToolResult::success(vec![Content::text(format!("{id}"))]))
     }
 
-    #[tool(description = "Spawn a building at a position for a player. Returns entity ID. Kinds: TheBox, CatTree, FishMarket, LitterBox, ServerRack, ScratchingPost, CatFlap, LaserPointer.")]
+    #[tool(description = "Spawn a building at a position for a player. Returns entity ID. Cat: TheBox, CatTree, FishMarket, LitterBox, ServerRack, ScratchingPost, CatFlap, LaserPointer. Corvid: TheParliament, Rookery, CarrionCache, AntennaArray, Panopticon, NestBox, ThornHedge, Watchtower. Mouse: TheBurrow, NestingBox, SeedVault, JunkTransmitter, GnawLab, WarrenExpansion, Mousehole, SqueakTower. Badger: TheSett, WarHollow, BurrowDepot, CoreTap, ClawMarks, DeepWarren, BulwarkGate, SlagThrower. Croak: TheGrotto, SpawningPools, LilyMarket, SunkenServer, FossilStones, ReedBed, TidalGate, SporeTower. Raccoon: TheDumpster, ScrapHeap, ChopShop, JunkServer, TinkerBench, TrashPile, DumpsterRelay, TetanusTower.")]
     async fn spawn_building(
         &self,
         Parameters(params): Parameters<SpawnBuildingParams>,
@@ -1169,5 +1293,373 @@ impl ServerHandler for HarnessServer {
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             ..Default::default()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::headless::HeadlessSim;
+    use cc_core::components::UnitKind;
+    use cc_core::coords::GridPos;
+
+    // Helper: create a HarnessServer wrapping a fresh HeadlessSim.
+    fn make_server(w: u32, h: u32) -> HarnessServer {
+        HarnessServer::new(HeadlessSim::new(w, h))
+    }
+
+    // -----------------------------------------------------------------------
+    // get_units filter tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn get_units_no_filter_returns_all() {
+        let server = make_server(32, 32);
+        {
+            let mut sim = server.sim.lock().await;
+            sim.spawn_unit(UnitKind::Hisser, GridPos::new(5, 5), 0);
+            sim.spawn_unit(UnitKind::Chonk, GridPos::new(10, 10), 0);
+        }
+        let result = server
+            .get_units(Parameters(PlayerFilterParams {
+                player_id: 0,
+                filter: None,
+            }))
+            .await
+            .unwrap();
+        let text = &result.content[0];
+        let json: Vec<serde_json::Value> =
+            serde_json::from_str(&text.as_text().unwrap().text).unwrap();
+        assert_eq!(json.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn get_units_idle_filter() {
+        let server = make_server(32, 32);
+        {
+            let mut sim = server.sim.lock().await;
+            // Spawn two units — both start idle
+            sim.spawn_unit(UnitKind::Hisser, GridPos::new(5, 5), 0);
+            let moving_id = sim.spawn_unit(UnitKind::Chonk, GridPos::new(10, 10), 0);
+            // Issue a move command to make one unit non-idle
+            sim.inject_command(GameCommand::Move {
+                unit_ids: vec![cc_core::commands::EntityId(moving_id)],
+                target: GridPos::new(20, 20),
+            });
+            sim.advance(1);
+        }
+        let result = server
+            .get_units(Parameters(PlayerFilterParams {
+                player_id: 0,
+                filter: Some("idle".to_string()),
+            }))
+            .await
+            .unwrap();
+        let text = &result.content[0];
+        let json: Vec<serde_json::Value> =
+            serde_json::from_str(&text.as_text().unwrap().text).unwrap();
+        // At least the Hisser should be idle, Chonk should be moving
+        assert!(
+            json.len() >= 1,
+            "Expected at least 1 idle unit, got {}",
+            json.len()
+        );
+        for unit in &json {
+            assert_eq!(unit["idle"], true, "Filtered units should all be idle");
+        }
+    }
+
+    #[tokio::test]
+    async fn get_units_wounded_filter() {
+        let server = make_server(32, 32);
+        {
+            let mut sim = server.sim.lock().await;
+            // Spawn a cat unit and an enemy near it to deal damage
+            sim.spawn_unit(UnitKind::Hisser, GridPos::new(5, 5), 0);
+            sim.spawn_unit(UnitKind::Hisser, GridPos::new(10, 10), 0); // healthy unit far away
+            // Spawn an enemy very close to damage the first unit
+            sim.spawn_unit(UnitKind::MechCommander, GridPos::new(5, 6), 1);
+            // Advance many ticks for combat to occur
+            sim.advance(30);
+        }
+        let result = server
+            .get_units(Parameters(PlayerFilterParams {
+                player_id: 0,
+                filter: Some("wounded".to_string()),
+            }))
+            .await
+            .unwrap();
+        let text = &result.content[0];
+        let json: Vec<serde_json::Value> =
+            serde_json::from_str(&text.as_text().unwrap().text).unwrap();
+        // All returned units should be below 50% HP
+        for unit in &json {
+            let hp = unit["hp"].as_f64().unwrap();
+            let hp_max = unit["hp_max"].as_f64().unwrap();
+            assert!(
+                hp < hp_max / 2.0,
+                "Wounded filter should only return units below 50% HP, got {hp}/{hp_max}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn get_units_attacking_filter() {
+        let server = make_server(32, 32);
+        {
+            let mut sim = server.sim.lock().await;
+            let attacker = sim.spawn_unit(UnitKind::Hisser, GridPos::new(5, 5), 0);
+            sim.spawn_unit(UnitKind::Pawdler, GridPos::new(20, 20), 0); // idle unit far away
+            let enemy = sim.spawn_unit(UnitKind::Chonk, GridPos::new(5, 6), 1);
+            sim.inject_command(GameCommand::Attack {
+                unit_ids: vec![cc_core::commands::EntityId(attacker)],
+                target: cc_core::commands::EntityId(enemy),
+            });
+            sim.advance(5);
+        }
+        let result = server
+            .get_units(Parameters(PlayerFilterParams {
+                player_id: 0,
+                filter: Some("attacking".to_string()),
+            }))
+            .await
+            .unwrap();
+        let text = &result.content[0];
+        let json: Vec<serde_json::Value> =
+            serde_json::from_str(&text.as_text().unwrap().text).unwrap();
+        for unit in &json {
+            assert_eq!(
+                unit["attacking"], true,
+                "Attacking filter should only return attacking units"
+            );
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // can_reach tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn can_reach_passable_path() {
+        let server = make_server(32, 32);
+        let result = server
+            .can_reach(Parameters(PathQueryParams {
+                player_id: 0,
+                from_x: 5,
+                from_y: 5,
+                to_x: 10,
+                to_y: 10,
+            }))
+            .await
+            .unwrap();
+        let text = &result.content[0];
+        assert_eq!(text.as_text().unwrap().text, "true");
+    }
+
+    #[tokio::test]
+    async fn can_reach_same_position() {
+        let server = make_server(32, 32);
+        let result = server
+            .can_reach(Parameters(PathQueryParams {
+                player_id: 0,
+                from_x: 5,
+                from_y: 5,
+                to_x: 5,
+                to_y: 5,
+            }))
+            .await
+            .unwrap();
+        let text = &result.content[0];
+        // Same position should be reachable
+        assert_eq!(text.as_text().unwrap().text, "true");
+    }
+
+    // -----------------------------------------------------------------------
+    // get_path_length tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn get_path_length_returns_value() {
+        let server = make_server(32, 32);
+        let result = server
+            .get_path_length(Parameters(PathQueryParams {
+                player_id: 0,
+                from_x: 5,
+                from_y: 5,
+                to_x: 10,
+                to_y: 10,
+            }))
+            .await
+            .unwrap();
+        let text = &result.content[0];
+        let val: serde_json::Value =
+            serde_json::from_str(&text.as_text().unwrap().text).unwrap();
+        assert!(val.is_number(), "Expected path length number, got {val}");
+        let len = val.as_u64().unwrap();
+        // Straight-line Chebyshev distance is 5; A* path should be >= 5
+        assert!(len >= 5, "Path length should be at least 5, got {len}");
+    }
+
+    // -----------------------------------------------------------------------
+    // get_safe_positions tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn get_safe_positions_returns_positions() {
+        let server = make_server(32, 32);
+        let unit_id;
+        {
+            let mut sim = server.sim.lock().await;
+            unit_id = sim.spawn_unit(UnitKind::Hisser, GridPos::new(10, 10), 0);
+            // Enemy far away — most positions should be safe
+            sim.spawn_unit(UnitKind::Hisser, GridPos::new(25, 25), 1);
+        }
+        let result = server
+            .get_safe_positions(Parameters(GetSafePositionsParams {
+                player_id: 0,
+                unit_id,
+                search_radius: Some(3),
+            }))
+            .await
+            .unwrap();
+        let text = &result.content[0];
+        let json: Vec<serde_json::Value> =
+            serde_json::from_str(&text.as_text().unwrap().text).unwrap();
+        // With enemy far away, there should be many safe positions
+        assert!(!json.is_empty(), "Expected safe positions, got none");
+        // Each position should have x and y fields
+        for pos in &json {
+            assert!(pos["x"].is_number());
+            assert!(pos["y"].is_number());
+        }
+    }
+
+    #[tokio::test]
+    async fn get_safe_positions_not_found_returns_error() {
+        let server = make_server(32, 32);
+        let result = server
+            .get_safe_positions(Parameters(GetSafePositionsParams {
+                player_id: 0,
+                unit_id: 999999,
+                search_radius: None,
+            }))
+            .await;
+        // Should return an error for unit not found
+        assert!(result.is_err());
+    }
+
+    // -----------------------------------------------------------------------
+    // get_kite_position tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn get_kite_position_finds_position() {
+        let server = make_server(64, 64);
+        let unit_id;
+        let target_id;
+        {
+            let mut sim = server.sim.lock().await;
+            unit_id = sim.spawn_unit(UnitKind::Hisser, GridPos::new(10, 10), 0);
+            target_id = sim.spawn_unit(UnitKind::Chonk, GridPos::new(10, 15), 1);
+        }
+        let result = server
+            .get_kite_position(Parameters(GetKitePositionParams {
+                player_id: 0,
+                unit_id,
+                target_id,
+                desired_range: 3,
+            }))
+            .await
+            .unwrap();
+        let text = &result.content[0];
+        let val: serde_json::Value =
+            serde_json::from_str(&text.as_text().unwrap().text).unwrap();
+        assert!(!val.is_null(), "Expected a kite position, got null");
+        assert!(val["x"].is_number());
+        assert!(val["y"].is_number());
+    }
+
+    // -----------------------------------------------------------------------
+    // spawn_unit / spawn_building all-faction tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn spawn_unit_non_cat_kinds() {
+        let server = make_server(32, 32);
+        // Test spawning units from each non-cat faction
+        let kinds = ["Swarmer", "Rookclaw", "Delver", "Ponderer", "Scrounger"];
+        for kind in &kinds {
+            let result = server
+                .spawn_unit(Parameters(SpawnUnitParams {
+                    kind: kind.to_string(),
+                    x: 5,
+                    y: 5,
+                    player_id: 0,
+                }))
+                .await
+                .unwrap();
+            let text = &result.content[0];
+            let id_str = &text.as_text().unwrap().text;
+            let id: u64 = id_str.parse().expect(&format!("Failed to parse entity ID for {kind}"));
+            assert!(id > 0, "Entity ID for {kind} should be non-zero");
+        }
+    }
+
+    #[tokio::test]
+    async fn spawn_unit_invalid_kind_returns_error() {
+        let server = make_server(32, 32);
+        let result = server
+            .spawn_unit(Parameters(SpawnUnitParams {
+                kind: "NotARealUnit".to_string(),
+                x: 5,
+                y: 5,
+                player_id: 0,
+            }))
+            .await;
+        assert!(result.is_err(), "Invalid unit kind should return error");
+    }
+
+    #[tokio::test]
+    async fn spawn_building_non_cat_kinds() {
+        let server = make_server(32, 32);
+        // Test spawning buildings from each non-cat faction
+        let kinds = [
+            "TheParliament",
+            "TheBurrow",
+            "TheSett",
+            "TheGrotto",
+            "TheDumpster",
+        ];
+        for kind in &kinds {
+            let result = server
+                .spawn_building(Parameters(SpawnBuildingParams {
+                    kind: kind.to_string(),
+                    x: 5,
+                    y: 5,
+                    player_id: 0,
+                }))
+                .await
+                .unwrap();
+            let text = &result.content[0];
+            let id_str = &text.as_text().unwrap().text;
+            let id: u64 = id_str
+                .parse()
+                .expect(&format!("Failed to parse entity ID for {kind}"));
+            assert!(id > 0, "Entity ID for {kind} should be non-zero");
+        }
+    }
+
+    #[tokio::test]
+    async fn spawn_building_invalid_kind_returns_error() {
+        let server = make_server(32, 32);
+        let result = server
+            .spawn_building(Parameters(SpawnBuildingParams {
+                kind: "NotARealBuilding".to_string(),
+                x: 5,
+                y: 5,
+                player_id: 0,
+            }))
+            .await;
+        assert!(result.is_err(), "Invalid building kind should return error");
     }
 }
