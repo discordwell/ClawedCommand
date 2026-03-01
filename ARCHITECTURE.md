@@ -393,6 +393,27 @@ The Box ──► Cat Tree ──► Nuisance, Hisser, Yowler, Chonk
 
 See [GAME_DESIGN.md](./GAME_DESIGN.md) for full unit roster, building details, and all six factions.
 
+### 7. Campaign Mutator System
+
+Data-driven mission modifiers that make each campaign mission mechanically unique. Defined in `cc_core::mutator::MissionMutator` enum (RON-serializable), stored as `mutators: Vec<MissionMutator>` in `MissionDefinition`.
+
+**Mutator Categories:**
+- **Environmental Hazards**: `LavaRise` (directional tile flooding with `FLAG_LAVA`), `ToxicTide` (shrinking ring with `FLAG_TOXIC`), `Tremors` (random epicenter `FLAG_TEMP_BLOCKED`), `Flooding` (elevation-based water conversion), `WindStorm` (periodic gust windows), `DenseFog` (vision reduction with periodic clearing), `DamageZone` (arbitrary tile damage)
+- **Control Restrictions**: `VoiceOnlyControl`, `NoAiControl`, `NoBuildMode`, `AiOnlyControl`, `RestrictedUnits`
+- **Gameplay Modifiers**: `TimeLimit`, `ResourceScarcity`, `DamageMultiplier`, `SpeedMultiplier`
+
+**Runtime Resources** (`cc_sim::campaign::mutator_state`):
+- `MutatorState` — per-mutator active flags, hazard advance counters, water level
+- `ControlRestrictions` — gates input systems (keyboard/mouse, voice, AI, building)
+- `FogState` — vision reduction consumed by client rendering
+
+**Systems** (chained after `mission_objective_system` in FixedUpdate):
+1. `environmental_hazard_system` — modifies map tile flags per-tick
+2. `hazard_damage_system` — applies `ApplyDamageCommand` to units on hazardous tiles
+3. `mutator_tick_system` — checks `TimeLimit`, fires `MissionFailedEvent`
+
+**Command Filtering**: Commands carry `CommandSource` (PlayerInput/VoiceCommand/AiAgent/Script). `process_commands` filters based on `ControlRestrictions`. Client input handlers (keyboard, mouse, voice) also gate early via `Option<Res<ControlRestrictions>>`.
+
 ---
 
 ## Project Structure

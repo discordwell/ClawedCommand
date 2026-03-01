@@ -71,63 +71,12 @@ pub const ALL_BUILDING_KINDS: [BuildingKind; 48] = [
 ];
 
 /// Map BuildingKind to array index (0..47).
+/// Derives position from `ALL_BUILDING_KINDS` to keep a single source of truth.
 pub fn building_kind_index(kind: BuildingKind) -> usize {
-    match kind {
-        // catGPT
-        BuildingKind::TheBox => 0,
-        BuildingKind::CatTree => 1,
-        BuildingKind::FishMarket => 2,
-        BuildingKind::LitterBox => 3,
-        BuildingKind::ServerRack => 4,
-        BuildingKind::ScratchingPost => 5,
-        BuildingKind::CatFlap => 6,
-        BuildingKind::LaserPointer => 7,
-        // Murder
-        BuildingKind::TheParliament => 8,
-        BuildingKind::Rookery => 9,
-        BuildingKind::CarrionCache => 10,
-        BuildingKind::AntennaArray => 11,
-        BuildingKind::Panopticon => 12,
-        BuildingKind::NestBox => 13,
-        BuildingKind::ThornHedge => 14,
-        BuildingKind::Watchtower => 15,
-        // Clawed
-        BuildingKind::TheBurrow => 16,
-        BuildingKind::NestingBox => 17,
-        BuildingKind::SeedVault => 18,
-        BuildingKind::JunkTransmitter => 19,
-        BuildingKind::GnawLab => 20,
-        BuildingKind::WarrenExpansion => 21,
-        BuildingKind::Mousehole => 22,
-        BuildingKind::SqueakTower => 23,
-        // Seekers
-        BuildingKind::TheSett => 24,
-        BuildingKind::WarHollow => 25,
-        BuildingKind::BurrowDepot => 26,
-        BuildingKind::CoreTap => 27,
-        BuildingKind::ClawMarks => 28,
-        BuildingKind::DeepWarren => 29,
-        BuildingKind::BulwarkGate => 30,
-        BuildingKind::SlagThrower => 31,
-        // Croak
-        BuildingKind::TheGrotto => 32,
-        BuildingKind::SpawningPools => 33,
-        BuildingKind::LilyMarket => 34,
-        BuildingKind::SunkenServer => 35,
-        BuildingKind::FossilStones => 36,
-        BuildingKind::ReedBed => 37,
-        BuildingKind::TidalGate => 38,
-        BuildingKind::SporeTower => 39,
-        // LLAMA
-        BuildingKind::TheDumpster => 40,
-        BuildingKind::ScrapHeap => 41,
-        BuildingKind::ChopShop => 42,
-        BuildingKind::JunkServer => 43,
-        BuildingKind::TinkerBench => 44,
-        BuildingKind::TrashPile => 45,
-        BuildingKind::DumpsterRelay => 46,
-        BuildingKind::TetanusTower => 47,
-    }
+    ALL_BUILDING_KINDS
+        .iter()
+        .position(|&k| k == kind)
+        .expect("BuildingKind not in ALL_BUILDING_KINDS")
 }
 
 /// Snake_case slug for file paths.
@@ -196,7 +145,7 @@ pub fn building_sprite_path(kind: BuildingKind) -> String {
 }
 
 /// Architectural role of a building (determines procedural shape and scale).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BuildingRole {
     Hq,
     Barracks,
@@ -333,12 +282,7 @@ pub fn generate_building_sprites(
     for kind in ALL_BUILDING_KINDS {
         let asset_path = building_sprite_path(kind);
 
-        #[cfg(not(target_arch = "wasm32"))]
-        let use_disk = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets"))
-            .join(&asset_path)
-            .exists();
-        #[cfg(target_arch = "wasm32")]
-        let use_disk = false;
+        let use_disk = super::asset_exists_on_disk(&asset_path);
 
         if use_disk {
             handles.push(asset_server.load(asset_path));
@@ -511,8 +455,12 @@ fn draw_building_shape(data: &mut [u8], w: usize, h: usize, kind: BuildingKind, 
             // Arch/gate shape
             fill_rect(data, w, h, 2, 3, w as i32 - 4, h as i32 - 4, 50, 50, 55);
             fill_rect(data, w, h, 4, 5, w as i32 - 8, h as i32 - 8, 155, 150, 145);
-            // Gate arch (clear center-bottom)
-            fill_rect(data, w, h, cx - 3, cy + 1, 7, h as i32 - cy - 3, 0, 0, 0, );
+            // Gate arch (clear center-bottom to transparent)
+            for py in (cy + 1)..(cy + 1 + h as i32 - cy - 3) {
+                for px in (cx - 3)..(cx - 3 + 7) {
+                    set_pixel(data, w, h, px, py, 0, 0, 0, 0);
+                }
+            }
             // Arch top (rounded via pixels)
             for dx in -3..=3i32 {
                 let arch_y = cy + 1 - (3 - dx.unsigned_abs() as i32).max(0);

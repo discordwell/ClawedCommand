@@ -40,6 +40,21 @@ fn write_pixel(data: &mut [u8], idx: usize, r: u8, g: u8, b: u8) {
     data[base + 3] = 255;
 }
 
+/// Paint terrain colors into the minimap data buffer.
+fn paint_terrain(data: &mut [u8], map: &cc_core::map::GameMap) {
+    let w = map.width as usize;
+    let h = map.height as usize;
+    for y in 0..h {
+        for x in 0..w {
+            let grid = cc_core::coords::GridPos::new(x as i32, y as i32);
+            if let Some(tile) = map.get(grid) {
+                let (r, g, b) = minimap_terrain_color(tile.terrain);
+                write_pixel(data, y * w + x, r, g, b);
+            }
+        }
+    }
+}
+
 /// Initialize the minimap image and UI node.
 pub fn setup_minimap(
     mut commands: Commands,
@@ -67,16 +82,7 @@ pub fn setup_minimap(
 
     // Paint initial terrain so it's not black on first frame
     if let Some(data) = image.data.as_mut() {
-        let map = &map_res.map;
-        for y in 0..(h as usize) {
-            for x in 0..(w as usize) {
-                let grid = cc_core::coords::GridPos::new(x as i32, y as i32);
-                if let Some(tile) = map.get(grid) {
-                    let (r, g, b) = minimap_terrain_color(tile.terrain);
-                    write_pixel(data, y * w as usize + x, r, g, b);
-                }
-            }
-        }
+        paint_terrain(data, &map_res.map);
     }
 
     let image_handle = images.add(image);
@@ -121,7 +127,6 @@ pub fn update_minimap(
     mut images: ResMut<Assets<Image>>,
     map_res: Res<MapResource>,
     units: Query<(&Position, &Owner), With<UnitMesh>>,
-    window: Single<&Window>,
     camera_q: Single<(&Transform, &Projection), With<Camera2d>>,
 ) {
     timer.0.tick(time.delta());
@@ -145,15 +150,7 @@ pub fn update_minimap(
         return;
     };
 
-    // Write terrain colors
-    for y in 0..h {
-        for x in 0..w {
-            let grid = cc_core::coords::GridPos::new(x as i32, y as i32);
-            let tile = map.get(grid).unwrap();
-            let (r, g, b) = minimap_terrain_color(tile.terrain);
-            write_pixel(data, y * w + x, r, g, b);
-        }
-    }
+    paint_terrain(data, map);
 
     // Write unit dots
     for (pos, owner) in units.iter() {
@@ -176,14 +173,12 @@ pub fn update_minimap(
         return;
     };
 
-    let win_w = window.width();
-    let win_h = window.height();
     let cam_x = cam_transform.translation.x;
     let cam_y = cam_transform.translation.y;
 
-    // Compute visible screen-space bounds from camera
-    let half_w = (ortho.area.max.x - ortho.area.min.x) * 0.5;
-    let half_h = (ortho.area.max.y - ortho.area.min.y) * 0.5;
+    // Compute visible screen-space bounds from camera (accounting for zoom scale)
+    let half_w = (ortho.area.max.x - ortho.area.min.x) * 0.5 * ortho.scale;
+    let half_h = (ortho.area.max.y - ortho.area.min.y) * 0.5 * ortho.scale;
 
     // 4 viewport corners in bevy world space → isometric world → grid
     let corners = [
