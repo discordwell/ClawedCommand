@@ -17,7 +17,27 @@ fn main() {
     let mut app = App::new();
 
     // Check for CLI flags
-    let demo_mode = std::env::args().any(|arg| arg == "--demo");
+    // --demo or --demo N (N=1/2/3, default 1)
+    let demo_scenario = {
+        let args: Vec<String> = std::env::args().collect();
+        let mut scenario: Option<u8> = None;
+        for (i, arg) in args.iter().enumerate() {
+            if arg == "--demo" {
+                // Check if next arg is a number
+                if let Some(next) = args.get(i + 1) {
+                    if let Ok(n) = next.parse::<u8>() {
+                        scenario = Some(n.clamp(1, 3));
+                    } else {
+                        scenario = Some(1);
+                    }
+                } else {
+                    scenario = Some(1);
+                }
+            }
+        }
+        scenario
+    };
+    let demo_mode = demo_scenario.is_some();
     let showcase_mode = std::env::args().any(|arg| arg == "--showcase");
 
     app.add_plugins(
@@ -55,30 +75,80 @@ fn main() {
         campaign.phase = CampaignPhase::InMission;
         app.insert_resource(campaign);
 
-        // Load demo combat script for both players
-        let script_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../assets/scripts/demo_combat.lua");
-        match std::fs::read_to_string(&script_path) {
-            Ok(script_source) => {
-                use cc_agent::events::ScriptRegistration;
-                use cc_agent::runner::ScriptRegistry;
+        // Load scenario-specific scripts
+        // S1: P0 → cat_formation, P1 → no script (just AttackMove from wave spawner)
+        // S2: P0 → cat_formation, P1 → clawed_formation
+        // S3: P0 → cat_formation, P1 → clawed_advanced
+        let scenario = demo_scenario.unwrap_or(1);
+        eprintln!("Demo scenario {scenario}");
 
-                let mut registry = ScriptRegistry::default();
-                for player_id in 0..2u8 {
+        use cc_agent::events::ScriptRegistration;
+        use cc_agent::runner::ScriptRegistry;
+
+        let scripts_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../assets/scripts");
+        let mut registry = ScriptRegistry::default();
+
+        // P0 always gets cat_formation
+        let p0_script_path = scripts_dir.join("cat_formation.lua");
+        match std::fs::read_to_string(&p0_script_path) {
+            Ok(source) => {
+                let mut reg = ScriptRegistration::new(
+                    "cat_formation_p0".to_string(),
+                    source,
+                    vec!["on_tick".to_string()],
+                    0,
+                );
+                reg.tick_interval = 3;
+                registry.register(reg);
+            }
+            Err(e) => {
+                eprintln!("Warning: failed to load cat_formation.lua: {e}");
+            }
+        }
+
+        // P1 script depends on scenario
+        let p1_script_name = match scenario {
+            1 => None, // No script — P1 relies on AttackMove from wave spawner
+            2 => Some("clawed_formation.lua"),
+            3 => Some("clawed_advanced.lua"),
+            _ => None,
+        };
+
+        if let Some(script_file) = p1_script_name {
+            let p1_script_path = scripts_dir.join(script_file);
+            match std::fs::read_to_string(&p1_script_path) {
+                Ok(source) => {
                     let mut reg = ScriptRegistration::new(
-                        format!("demo_combat_p{player_id}"),
-                        script_source.clone(),
+                        format!("{}_p1", script_file.trim_end_matches(".lua")),
+                        source,
                         vec!["on_tick".to_string()],
-                        player_id,
+                        1,
                     );
                     reg.tick_interval = 3;
                     registry.register(reg);
                 }
-                app.insert_resource(registry);
+                Err(e) => {
+                    eprintln!("Warning: failed to load {script_file}: {e}");
+                }
             }
-            Err(e) => {
-                eprintln!("Warning: failed to load demo combat script at {}: {e}", script_path.display());
-            }
+        }
+
+        app.insert_resource(registry);
+
+        // Scenario 3: give P1 extra GPU for abilities
+        if scenario == 3 {
+            let player_res = cc_sim::resources::PlayerResources {
+                players: vec![
+                    cc_sim::resources::PlayerResourceState::default(),
+                    {
+                        let mut p = cc_sim::resources::PlayerResourceState::default();
+                        p.gpu_cores = 200;
+                        p
+                    },
+                ],
+            };
+            app.insert_resource(player_res);
         }
     }
 

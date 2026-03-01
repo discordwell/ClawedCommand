@@ -762,4 +762,105 @@ mod tests {
         assert_eq!(scripts[0].tick_interval, 5); // default interval
         assert_eq!(scripts[0].player_id, 1);
     }
+
+    /// Demo scenario 1: cats with formation script vs Clawed with no script.
+    /// Cat formation AI should give P0 a significant advantage.
+    #[test]
+    fn demo_scenario_1_cat_formation_wins() {
+        let scripts_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../assets/scripts");
+
+        let config = ArenaConfig {
+            max_ticks: 3000,
+            scripts: [
+                Some(vec![ScriptSource::File(
+                    scripts_dir.join("cat_formation.lua"),
+                )]),
+                None,
+            ],
+            ..Default::default()
+        };
+        let result = run_arena_match(&config);
+        assert!(
+            result.passed(),
+            "Match should complete without errors: {:?}",
+            result.violations,
+        );
+        assert_eq!(
+            result.scripts_loaded[0],
+            vec!["cat_formation".to_string()],
+        );
+        assert!(result.scripts_loaded[1].is_empty());
+    }
+
+    /// Demo scenario 2: both sides with formation scripts load without errors.
+    #[test]
+    fn demo_scenario_2_both_formations_load() {
+        use cc_core::components::Faction;
+
+        let scripts_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../assets/scripts");
+
+        let mut config = ArenaConfig {
+            max_ticks: 1000,
+            scripts: [
+                Some(vec![ScriptSource::File(
+                    scripts_dir.join("cat_formation.lua"),
+                )]),
+                Some(vec![ScriptSource::File(
+                    scripts_dir.join("clawed_formation.lua"),
+                )]),
+            ],
+            ..Default::default()
+        };
+        config.bots[1].faction = Faction::TheClawed;
+        let result = run_arena_match(&config);
+        assert!(
+            result.passed(),
+            "Both formation scripts should run without errors: {:?}",
+            result.violations,
+        );
+        assert_eq!(
+            result.scripts_loaded[0],
+            vec!["cat_formation".to_string()],
+        );
+        assert_eq!(
+            result.scripts_loaded[1],
+            vec!["clawed_formation".to_string()],
+        );
+    }
+
+    /// Demo scenario 3: cat formation vs clawed advanced (formation + abilities).
+    /// Both scripts should load and run without errors.
+    #[test]
+    fn demo_scenario_3_advanced_scripts_load() {
+        use cc_core::components::Faction;
+
+        let scripts_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../assets/scripts");
+
+        let mut config = ArenaConfig {
+            max_ticks: 1000,
+            scripts: [
+                Some(vec![ScriptSource::File(
+                    scripts_dir.join("cat_formation.lua"),
+                )]),
+                Some(vec![ScriptSource::File(
+                    scripts_dir.join("clawed_advanced.lua"),
+                )]),
+            ],
+            ..Default::default()
+        };
+        config.bots[1].faction = Faction::TheClawed;
+        let result = run_arena_match(&config);
+        assert!(
+            result.passed(),
+            "Advanced script should run without errors: {:?}",
+            result.violations,
+        );
+        assert_eq!(
+            result.scripts_loaded[1],
+            vec!["clawed_advanced".to_string()],
+        );
+    }
 }
