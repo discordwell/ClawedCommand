@@ -195,42 +195,39 @@ fn setup_scene(
         }
     }
 
-    // -- Unit: try to load GLB, fall back to colored cube placeholder --
-    let start_pos = Vec3::new(2.0, elevation_at(2.0, 2.0), 2.0);
+    // -- Units: load both low-poly and high-poly side by side --
     let team_blue = Color::srgb(0.2, 0.4, 0.9);
 
-    let glb_path = "models/units/pawdler.glb";
-    let glb_exists = std::path::Path::new("assets/models/units/pawdler.glb").exists();
-
-    if glb_exists {
-        // Load GLB scene
+    // Low-poly (game-ready, ~5k faces) on the left
+    let lowpoly_pos = Vec3::new(1.0, elevation_at(1.0, 2.0), 2.0);
+    let lowpoly_path = "models/units/pawdler.glb";
+    if std::path::Path::new("assets/models/units/pawdler.glb").exists() {
         commands.spawn((
-            SceneRoot(asset_server.load(GltfAssetLabel::Scene(0).from_asset(glb_path))),
-            Transform::from_translation(start_pos).with_scale(Vec3::splat(0.5)),
+            SceneRoot(asset_server.load(GltfAssetLabel::Scene(0).from_asset(lowpoly_path))),
+            Transform::from_translation(lowpoly_pos).with_scale(Vec3::splat(0.5)),
             PocUnit {
                 team_color: team_blue,
-                target: start_pos,
+                target: lowpoly_pos,
                 colored: false,
             },
         ));
-    } else {
-        // Placeholder cube
-        info!("GLB not found at assets/{glb_path}, using placeholder cube");
-        let cube_mesh = meshes.add(Cuboid::new(0.4, 0.6, 0.4));
-        let cube_mat = materials.add(StandardMaterial {
-            base_color: team_blue,
-            ..default()
-        });
+        info!("Loaded low-poly pawdler (~5k faces)");
+    }
+
+    // High-poly (reference, ~1.5M faces) on the right
+    let highpoly_pos = Vec3::new(3.0, elevation_at(3.0, 2.0), 2.0);
+    let highpoly_path = "models/units/pawdler_highpoly.glb";
+    if std::path::Path::new("assets/models/units/pawdler_highpoly.glb").exists() {
         commands.spawn((
-            Mesh3d(cube_mesh),
-            MeshMaterial3d(cube_mat),
-            Transform::from_translation(start_pos + Vec3::Y * 0.3),
+            SceneRoot(asset_server.load(GltfAssetLabel::Scene(0).from_asset(highpoly_path))),
+            Transform::from_translation(highpoly_pos).with_scale(Vec3::splat(0.5)),
             PocUnit {
                 team_color: team_blue,
-                target: start_pos,
-                colored: true, // already colored
+                target: highpoly_pos,
+                colored: false,
             },
         ));
+        info!("Loaded high-poly pawdler (~1.5M faces)");
     }
 
     info!("PoC 3D scene ready — A/D orbit, Q/E zoom, 1-4 move unit");

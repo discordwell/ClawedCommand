@@ -107,10 +107,21 @@
       "scripts": ["combat_micro_per_unit"],
       "notes": "CATASTROPHIC. Per-unit focus fire (each unit targets weakest in its range) scatters damage across multiple targets. Group centroid-based focus fire (Gen 21) is far superior. Concentrated fire > distributed fire."
     }
+    {
+      "id": 24,
+      "timestamp": "2026-03-01T20:00:00Z",
+      "scripted_player": 0,
+      "matches_10": {"p0_wins": 7, "p1_wins": 0, "timeouts": 3, "p0_leading_timeouts": 3, "p1_leading_timeouts": 0},
+      "p0_win_rate": 0.70,
+      "p0_effective_dominance": 1.0,
+      "scripts": ["activate_abilities", "priority_focus", "push_buildings", "smart_retreat"],
+      "notes": "NEW BEST. Multi-faction ability implementation + improved activate_abilities (TacticalUplink toggle, lower DissonantScreech threshold to 2, more aggressive Zoomies at 40% HP). 70% decisive P0 win rate, 100% effective dominance. P0 leads all 3 timeouts. 7 new StatusEffectId variants (Stunned, Silenced, Entrenched, SpeedBuff, ArmorBuff, DamageBuff, PlayingDead). 40+ abilities implemented across all 6 factions."
+    }
   ],
-  "best_generation": 21,
-  "best_win_rate": 0.50,
-  "best_scripts": ["combat_micro"],
+  "best_generation": 24,
+  "best_win_rate": 0.70,
+  "best_effective_dominance": 1.0,
+  "best_scripts": ["activate_abilities", "priority_focus", "push_buildings", "smart_retreat"],
   "key_insights": [
     "GROUP focus fire (centroid-based, all units target same enemy) is the single most impactful script behavior. 0% -> 50% win rate.",
     "Retreat wounded units when outnumbered preserves army for attrition advantage.",
@@ -118,7 +129,9 @@
     "smart_fill is counterproductive on current FSM (FSM does own production fill). Extra units feed enemy kills.",
     "Ability commands interfere with attack commands — DO NOT combine ability and combat scripts for same units.",
     "Per-unit focus fire scatters damage. Group focus fire concentrates it. Always prefer group.",
-    "Script combinations matter: fewer focused scripts beat more scripts that conflict."
+    "Script combinations matter: fewer focused scripts beat more scripts that conflict.",
+    "TacticalUplink (MechCommander toggle) + more aggressive ability thresholds pushed win rate from 50% to 70%.",
+    "Multi-faction ability implementation provides gameplay depth — 40+ abilities now have real effects across all 6 factions."
   ],
   "seeds_5": [42, 123, 7777, 9999, 31415],
   "seeds_10": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]

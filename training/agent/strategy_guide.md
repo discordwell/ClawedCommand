@@ -238,13 +238,17 @@ The FSM handles economy, but scripts can optimize:
 3. **Aggressive army-wide retreat**: Full army retreat when outnumbered sounds logical but in practice the disengaging army takes free damage without dealing any.
 4. **Macro scripts (production/gathering)**: The FSM already handles economy well. Scripts that queue extra training or reassign workers provide zero measurable improvement.
 
-### What Works (Gen 18b — NEW BEST)
-4. **Ability activation**: The single highest-impact addition since focus fire. LoafMode (free tank buff), Zoomies (speed burst for engage/retreat), and DissonantScreech (AoE stun on 3+ clustered enemies) provide massive combat advantage. P0 outscores P1 in kills on 10/10 seeds.
+### What Works (Gen 24 — NEW BEST, 70% decisive / 100% effective)
+4. **Ability activation**: The single highest-impact addition since focus fire. LoafMode (free tank buff), Zoomies (speed burst for engage/retreat), and DissonantScreech (AoE stun on 2+ clustered enemies) provide massive combat advantage.
+5. **TacticalUplink**: MechCommander toggle aura that reduces ally cooldowns by 20%. Keep active always. Free ability — no GPU cost.
+6. **Aggressive Zoomies threshold**: Trigger at <40% HP (vs 30% in Gen 18b). More units survive to retreat.
+7. **Lower DissonantScreech threshold**: Fire at 2+ enemies (vs 3 in Gen 18b). More frequent AoE stuns.
 
 ### Key Insights
 - **Only focus fire is safe micro.** It changes targets without moving units or canceling attacks.
 - **Don't redirect units near enemy base.** If units are within 6 tiles of enemy buildings, let them hit buildings instead of chasing units.
-- **Abilities > extra units.** Gen 18 showed that smart_fill (extra unit production) HURTS when combined with abilities. The extra units dilute army quality and feed enemy kills. Focused ability usage on existing units beats quantity.
-- **Fewer scripts is often better.** Gen 18 with 5 scripts (10% P0 win rate) was worse than Gen 18b with 4 scripts (80% effective P0 dominance). Script interactions can be counterproductive.
-- **FSM symmetry fix applied.** defense_pos, fallback positions, and forward_pos now mirror based on map center. enemy_spawn pre-seeded from tick 0. Remaining P1 advantage (~50% FSM-only decisive wins) is map terrain generation.
+- **Abilities > extra units.** smart_fill (extra unit production) HURTS. Focused ability usage on existing units beats quantity.
+- **Fewer scripts is often better.** Script interactions can be counterproductive. Gen 22 showed ability+combat_micro = catastrophic regression.
+- **FSM symmetry fix applied.** defense_pos, fallback positions, and forward_pos now mirror based on map center. enemy_spawn pre-seeded from tick 0.
 - **Track cooldowns in `_G`**. Ability cooldowns aren't exposed in unit snapshots. Use `_G.ability_cooldowns` table with tick-based tracking.
+- **Multi-faction abilities implemented.** 40+ abilities have real effects across all 6 factions. 7 new StatusEffectIds: Stunned (hard CC), Silenced, Entrenched, SpeedBuff, ArmorBuff, DamageBuff, PlayingDead.

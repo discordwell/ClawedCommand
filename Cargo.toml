@@ -3,7 +3,7 @@ members = ["crates/cc_core", "crates/cc_sim", "crates/cc_client", "crates/cc_voi
 resolver = "2"
 
 [workspace.dependencies]
-bevy = { version = "0.18", features = ["default"] }
+bevy = { version = "0.18", features = ["default", "jpeg"] }
 serde = { version = "1", features = ["derive"] }
 fixed = "1"
 ron = "0.12"
