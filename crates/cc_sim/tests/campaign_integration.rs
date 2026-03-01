@@ -743,6 +743,9 @@ fn wave_eliminated_fires_when_all_wave_members_dead() {
     // Mark wave as spawned
     world.resource_mut::<CampaignState>().spawned_waves.insert("test_wave".into());
 
+    // Register the wave in WaveTracker (2 total, 2 alive)
+    world.resource_mut::<WaveTracker>().waves.insert("test_wave".into(), (2, 2));
+
     spawn_hero(&mut world, HeroId::Kelpie, GridPos::new(2, 2), 0, true);
 
     // Spawn 2 wave members
@@ -756,9 +759,10 @@ fn wave_eliminated_fires_when_all_wave_members_dead() {
     assert!(!world.resource::<CampaignState>().flags.contains("wave_cleared"),
         "WaveEliminated should not fire while members are alive");
 
-    // Kill both members
+    // Kill both members and update WaveTracker
     world.entity_mut(e1).insert(Dead);
     world.entity_mut(e2).insert(Dead);
+    world.resource_mut::<WaveTracker>().waves.insert("test_wave".into(), (2, 0));
 
     run_ticks(&mut world, &mut schedule, 1);
     assert!(world.resource::<CampaignState>().flags.contains("wave_cleared"),
