@@ -255,7 +255,7 @@ impl HeadlessSim {
                     attack_type: atk_type,
                     is_moving,
                     is_attacking,
-                    in_combat: attack_target.is_some(),
+                    // Note: is_attacking already covers in-combat status
                     is_idle,
                     is_dead,
                     is_gathering: gathering.is_some(),
@@ -498,5 +498,126 @@ mod tests {
         assert_eq!(snap1.enemy_units.len(), 1);
         assert_eq!(snap1.my_units[0].kind, UnitKind::Chonk);
         assert_eq!(snap1.enemy_units[0].kind, UnitKind::Hisser);
+    }
+
+    #[test]
+    fn cancel_queue_produces_correct_command() {
+        let mut sim = HeadlessSim::new(32, 32);
+        let building_bits = sim.spawn_building(BuildingKind::CatTree, GridPos::new(10, 10), 0);
+
+        // Inject a CancelQueue command
+        sim.inject_command(GameCommand::CancelQueue {
+            building: EntityId(building_bits),
+        });
+
+        // Verify the command was placed in the queue
+        let queue = sim.world.resource::<CommandQueue>();
+        assert_eq!(queue.commands.len(), 1);
+        assert!(matches!(
+            &queue.commands[0].command,
+            GameCommand::CancelQueue { building } if building.0 == building_bits
+        ));
+    }
+
+    #[test]
+    fn cancel_research_produces_correct_command() {
+        let mut sim = HeadlessSim::new(32, 32);
+        let building_bits = sim.spawn_building(BuildingKind::ScratchingPost, GridPos::new(10, 10), 0);
+
+        sim.inject_command(GameCommand::CancelResearch {
+            building: EntityId(building_bits),
+        });
+
+        let queue = sim.world.resource::<CommandQueue>();
+        assert_eq!(queue.commands.len(), 1);
+        assert!(matches!(
+            &queue.commands[0].command,
+            GameCommand::CancelResearch { building } if building.0 == building_bits
+        ));
+    }
+
+    #[test]
+    fn set_rally_point_produces_correct_command() {
+        let mut sim = HeadlessSim::new(32, 32);
+        let building_bits = sim.spawn_building(BuildingKind::CatTree, GridPos::new(10, 10), 0);
+
+        sim.inject_command(GameCommand::SetRallyPoint {
+            building: EntityId(building_bits),
+            target: GridPos::new(15, 20),
+        });
+
+        let queue = sim.world.resource::<CommandQueue>();
+        assert_eq!(queue.commands.len(), 1);
+        match &queue.commands[0].command {
+            GameCommand::SetRallyPoint { building, target } => {
+                assert_eq!(building.0, building_bits);
+                assert_eq!(*target, GridPos::new(15, 20));
+            }
+            other => panic!("Expected SetRallyPoint, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn get_resource_deposits_returns_deposits() {
+        let mut sim = HeadlessSim::new(32, 32);
+        sim.spawn_deposit(ResourceType::Food, GridPos::new(5, 5), 500);
+        sim.spawn_deposit(ResourceType::GpuCores, GridPos::new(10, 10), 300);
+        sim.spawn_deposit(ResourceType::Nft, GridPos::new(20, 20), 100);
+
+        let snap = sim.snapshot(0);
+        let map = sim.map();
+        let mut ctx = ScriptContext::new(
+            &snap, map, 0,
+            cc_core::terrain::FactionId::from_u8(0).unwrap_or(cc_core::terrain::FactionId::CatGPT),
+        );
+        let deposits = ctx.resource_deposits();
+        assert_eq!(deposits.len(), 3);
+
+        // Verify all deposit types are present
+        let types: Vec<ResourceType> = deposits.iter().map(|d| d.resource_type).collect();
+        assert!(types.contains(&ResourceType::Food));
+        assert!(types.contains(&ResourceType::GpuCores));
+        assert!(types.contains(&ResourceType::Nft));
+    }
+
+    #[test]
+    fn get_nearest_deposit_finds_closest() {
+        let mut sim = HeadlessSim::new(32, 32);
+        // Spawn two food deposits at different distances from (0,0)
+        sim.spawn_deposit(ResourceType::Food, GridPos::new(10, 10), 500);
+        sim.spawn_deposit(ResourceType::Food, GridPos::new(3, 3), 200);
+        sim.spawn_deposit(ResourceType::GpuCores, GridPos::new(1, 1), 100);
+
+        let snap = sim.snapshot(0);
+        let map = sim.map();
+        let mut ctx = ScriptContext::new(
+            &snap, map, 0,
+            cc_core::terrain::FactionId::from_u8(0).unwrap_or(cc_core::terrain::FactionId::CatGPT),
+        );
+
+        // Nearest Food deposit to (0,0) should be the one at (3,3)
+        let nearest = ctx.nearest_deposit(GridPos::new(0, 0), Some(ResourceType::Food));
+        assert!(nearest.is_some());
+        let nearest = nearest.unwrap();
+        assert_eq!(nearest.resource_type, ResourceType::Food);
+        assert_eq!(nearest.pos, GridPos::new(3, 3));
+        assert_eq!(nearest.remaining, 200);
+    }
+
+    #[test]
+    fn get_nearest_deposit_returns_none_for_missing_type() {
+        let mut sim = HeadlessSim::new(32, 32);
+        sim.spawn_deposit(ResourceType::Food, GridPos::new(5, 5), 500);
+
+        let snap = sim.snapshot(0);
+        let map = sim.map();
+        let mut ctx = ScriptContext::new(
+            &snap, map, 0,
+            cc_core::terrain::FactionId::from_u8(0).unwrap_or(cc_core::terrain::FactionId::CatGPT),
+        );
+
+        // No GpuCores deposits exist
+        let nearest = ctx.nearest_deposit(GridPos::new(0, 0), Some(ResourceType::GpuCores));
+        assert!(nearest.is_none());
     }
 }
