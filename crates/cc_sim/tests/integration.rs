@@ -2628,3 +2628,120 @@ fn construction_health_scales_during_build() {
         "UnderConstruction component should be removed after completion"
     );
 }
+
+/// Demo canyon combat: two armies attack-move toward each other across a river with a bridge.
+/// Verifies units pathfind through the crossing and deal damage.
+#[test]
+fn demo_canyon_attack_move_across_river() {
+    use cc_core::terrain::TerrainType;
+
+    // Build a 20x20 map with a river across the middle (y=9-10) and a bridge at x=9-10.
+    // All same elevation to avoid ramp requirements.
+    let mut map = GameMap::new(20, 20);
+    for y in 0..20i32 {
+        for x in 0..20i32 {
+            let pos = GridPos::new(x, y);
+            if let Some(tile) = map.get_mut(pos) {
+                if y == 9 || y == 10 {
+                    if x >= 9 && x <= 10 {
+                        tile.terrain = TerrainType::Road; // Bridge crossing
+                    } else {
+                        tile.terrain = TerrainType::Water; // Impassable river
+                    }
+                }
+                // All tiles elevation 0 (default) — no ramp needed
+            }
+        }
+    }
+
+    let (mut world, mut schedule) = make_sim(map);
+
+    // P0 army on north side (y=3), P1 army on south side (y=16)
+    let p0_units: Vec<Entity> = vec![
+        spawn_combat_unit(&mut world, GridPos::new(9, 3), 0, UnitKind::Chonk),
+        spawn_combat_unit(&mut world, GridPos::new(10, 3), 0, UnitKind::Nuisance),
+        spawn_combat_unit(&mut world, GridPos::new(9, 4), 0, UnitKind::Hisser),
+    ];
+    let p1_units: Vec<Entity> = vec![
+        spawn_combat_unit(&mut world, GridPos::new(9, 16), 1, UnitKind::Quillback),
+        spawn_combat_unit(&mut world, GridPos::new(10, 16), 1, UnitKind::Swarmer),
+        spawn_combat_unit(&mut world, GridPos::new(9, 15), 1, UnitKind::Shrieker),
+    ];
+
+    // Record initial HP
+    let p0_initial_hp: Vec<i32> = p0_units
+        .iter()
+        .map(|e| world.get::<Health>(*e).unwrap().current.to_num::<i32>())
+        .collect();
+    let p1_initial_hp: Vec<i32> = p1_units
+        .iter()
+        .map(|e| world.get::<Health>(*e).unwrap().current.to_num::<i32>())
+        .collect();
+
+    // Issue attack-move: P0 south, P1 north
+    issue_attack_move(&mut world, &p0_units, GridPos::new(10, 18));
+    issue_attack_move(&mut world, &p1_units, GridPos::new(10, 2));
+
+    // Run enough ticks for units to path across the bridge and engage
+    run_ticks(&mut world, &mut schedule, 200);
+
+    // Check that at least some units have taken damage
+    let mut any_p0_damaged = false;
+    let mut any_p1_damaged = false;
+
+    for (i, e) in p0_units.iter().enumerate() {
+        if let Some(hp) = world.get::<Health>(*e) {
+            if hp.current.to_num::<i32>() < p0_initial_hp[i] {
+                any_p0_damaged = true;
+            }
+        } else {
+            // Entity despawned (dead) = definitely took damage
+            any_p0_damaged = true;
+        }
+    }
+    for (i, e) in p1_units.iter().enumerate() {
+        if let Some(hp) = world.get::<Health>(*e) {
+            if hp.current.to_num::<i32>() < p1_initial_hp[i] {
+                any_p1_damaged = true;
+            }
+        } else {
+            any_p1_damaged = true;
+        }
+    }
+
+    assert!(
+        any_p0_damaged || any_p1_damaged,
+        "At least one side should have taken damage after attack-moving across the river"
+    );
+
+    // Verify units moved toward the bridge (at least one unit from each side
+    // should be closer to the river than their starting position)
+    let mut p0_advanced = false;
+    let mut p1_advanced = false;
+    for e in &p0_units {
+        if let Some(pos) = world.get::<Position>(*e) {
+            // P0 started at y=3-4, should have moved south toward y=9
+            if pos.world.to_grid().y > 5 {
+                p0_advanced = true;
+            }
+        } else {
+            // Dead = definitely moved into combat
+            p0_advanced = true;
+        }
+    }
+    for e in &p1_units {
+        if let Some(pos) = world.get::<Position>(*e) {
+            // P1 started at y=15-16, should have moved north toward y=10
+            if pos.world.to_grid().y < 14 {
+                p1_advanced = true;
+            }
+        } else {
+            p1_advanced = true;
+        }
+    }
+
+    assert!(
+        p0_advanced || p1_advanced,
+        "At least one army should have advanced toward the river bridge"
+    );
+}

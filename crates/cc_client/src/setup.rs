@@ -5,8 +5,10 @@ use cc_core::components::*;
 use cc_core::coords::{GridPos, WorldPos, depth_z, world_to_screen};
 use cc_core::map_format::ResourceKind;
 use cc_core::map_gen::{self, MapGenParams};
+use cc_core::mission::MissionMap;
 use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
 use cc_core::unit_stats::base_stats;
+use cc_sim::campaign::state::CampaignState;
 use cc_sim::resources::{MapResource, PlayerResources, SpawnPositions};
 
 use crate::renderer::animation::{AnimIndices, AnimState, AnimTimer, PrevAnimState};
@@ -57,6 +59,25 @@ pub fn building_color(player_id: u8) -> Color {
     }
 }
 
+/// Build a GameMap from inline mission tile data.
+pub(crate) fn game_map_from_inline(
+    width: u32,
+    height: u32,
+    tiles: &[cc_core::terrain::TerrainType],
+    elevation: &[u8],
+) -> cc_core::map::GameMap {
+    let mut map = cc_core::map::GameMap::new(width, height);
+    for (i, (terrain, elev)) in tiles.iter().zip(elevation.iter()).enumerate() {
+        let x = (i as u32 % width) as i32;
+        let y = (i as u32 / width) as i32;
+        if let Some(tile) = map.get_mut(GridPos::new(x, y)) {
+            tile.terrain = *terrain;
+            tile.elevation = *elev;
+        }
+    }
+    map
+}
+
 /// Set up the initial game state: procedurally generated map, camera, starter units + base.
 pub fn setup_game(
     mut commands: Commands,
@@ -69,20 +90,54 @@ pub fn setup_game(
     resource_sprites: Option<Res<ResourceNodeSprites>>,
     building_sprites: Option<Res<BuildingSprites>>,
     tier: Res<ZoomTier>,
+    campaign: Res<CampaignState>,
 ) {
-    let params = MapGenParams {
-        map_size: cc_core::map_gen::MapSize::Large,
-        num_players: 2,
-        seed: 42,
-        ..Default::default()
+    let map_def = if let Some(ref mission) = campaign.current_mission {
+        // Build map from mission definition
+        match &mission.map {
+            MissionMap::Inline { width, height, tiles, elevation } => {
+                let map = game_map_from_inline(*width, *height, tiles, elevation);
+                map_res.map = map;
+                None // No MapDefinition — skip resource deposits
+            }
+            MissionMap::Generated { seed, .. } => {
+                let params = MapGenParams {
+                    num_players: 2,
+                    seed: *seed,
+                    ..Default::default()
+                };
+                let def = map_gen::generate_map(&params);
+                map_res.map = def.to_game_map();
+                Some(def)
+            }
+        }
+    } else {
+        let params = MapGenParams {
+            map_size: cc_core::map_gen::MapSize::Large,
+            num_players: 2,
+            seed: 42,
+            ..Default::default()
+        };
+        let def = map_gen::generate_map(&params);
+        map_res.map = def.to_game_map();
+        Some(def)
     };
-    let map_def = map_gen::generate_map(&params);
-    let map = map_def.to_game_map();
-    map_res.map = map;
+
+    // For mission mode, override player resources
+    if let Some(ref mission) = campaign.current_mission {
+        let setup = &mission.player_setup;
+        for pres in player_resources.players.iter_mut() {
+            pres.food = setup.starting_food;
+            pres.gpu_cores = setup.starting_gpu;
+            pres.nfts = setup.starting_nfts;
+            pres.supply_cap = 0;
+            pres.supply = 0;
+        }
+    }
 
     // Center camera on the map center
-    let cx = map_def.width as i32 / 2;
-    let cy = map_def.height as i32 / 2;
+    let cx = map_res.map.width as i32 / 2;
+    let cy = map_res.map.height as i32 / 2;
     let center_world = WorldPos::from_grid(GridPos::new(cx, cy));
     let center_screen = world_to_screen(center_world);
     let cam_pos = Vec3::new(center_screen.x, -center_screen.y, 0.0);
@@ -104,7 +159,10 @@ pub fn setup_game(
         outline: materials.add(ColorMaterial::from_color(Color::srgba(0.0, 0.0, 0.0, 0.5))),
     };
 
-    // --- Spawn resource deposits ---
+    // --- Spawn resource deposits (skip in mission mode — no economy) ---
+    // --- Record spawn positions and spawn base + units (skip in mission mode — wave_spawner handles it) ---
+    if let Some(ref map_def) = map_def {
+
     for resource in &map_def.resources {
         let grid = GridPos::new(resource.pos.0, resource.pos.1);
         let world = WorldPos::from_grid(grid);
@@ -326,7 +384,66 @@ pub fn setup_game(
         }
     }
 
+    } // end if let Some(map_def) — skipped in mission mode
+
     commands.insert_resource(team_materials);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cc_core::terrain::TerrainType;
+
+    #[test]
+    fn game_map_from_inline_basic() {
+        let tiles = vec![
+            TerrainType::Grass, TerrainType::Rock, TerrainType::Water,
+            TerrainType::Road, TerrainType::Forest, TerrainType::Shallows,
+        ];
+        let elevation = vec![0, 2, 0, 1, 1, 0];
+        let map = game_map_from_inline(3, 2, &tiles, &elevation);
+        assert_eq!(map.width, 3);
+        assert_eq!(map.height, 2);
+        // (0,0) = Grass, elev 0
+        assert_eq!(map.terrain_at(GridPos::new(0, 0)), Some(TerrainType::Grass));
+        assert_eq!(map.elevation_at(GridPos::new(0, 0)), 0);
+        // (1,0) = Rock, elev 2
+        assert_eq!(map.terrain_at(GridPos::new(1, 0)), Some(TerrainType::Rock));
+        assert_eq!(map.elevation_at(GridPos::new(1, 0)), 2);
+        // (2,0) = Water, elev 0
+        assert_eq!(map.terrain_at(GridPos::new(2, 0)), Some(TerrainType::Water));
+        // (0,1) = Road, elev 1
+        assert_eq!(map.terrain_at(GridPos::new(0, 1)), Some(TerrainType::Road));
+        assert_eq!(map.elevation_at(GridPos::new(0, 1)), 1);
+        // Passability
+        assert!(map.is_passable(GridPos::new(0, 0)));  // Grass
+        assert!(!map.is_passable(GridPos::new(1, 0))); // Rock
+        assert!(!map.is_passable(GridPos::new(2, 0))); // Water (base)
+        assert!(map.is_passable(GridPos::new(0, 1)));  // Road
+    }
+
+    #[test]
+    fn game_map_from_inline_demo_canyon() {
+        let ron_str = include_str!("../../../assets/campaign/demo_canyon.ron");
+        let mission: cc_core::mission::MissionDefinition = ron::from_str(ron_str).unwrap();
+        let cc_core::mission::MissionMap::Inline { width, height, tiles, elevation } = &mission.map else {
+            panic!("Expected Inline");
+        };
+        let map = game_map_from_inline(*width, *height, tiles, elevation);
+        assert_eq!(map.width, 80);
+        assert_eq!(map.height, 48);
+        // P0 HQ position (10,10) should be passable grass
+        assert!(map.is_passable(GridPos::new(10, 10)));
+        assert_eq!(map.elevation_at(GridPos::new(10, 10)), 1);
+        // P1 HQ position (70,38) should be passable grass
+        assert!(map.is_passable(GridPos::new(70, 38)));
+        assert_eq!(map.elevation_at(GridPos::new(70, 38)), 1);
+        // Top wall is rock
+        assert_eq!(map.terrain_at(GridPos::new(40, 0)), Some(TerrainType::Rock));
+        assert_eq!(map.elevation_at(GridPos::new(40, 0)), 2);
+        // River center is water
+        assert_eq!(map.terrain_at(GridPos::new(30, 23)), Some(TerrainType::Water));
+    }
 }
 
 /// Scale factor per unit kind.
@@ -335,6 +452,7 @@ pub fn setup_game(
 pub fn unit_scale(kind: UnitKind, art_loaded: bool) -> f32 {
     if art_loaded {
         match kind {
+            // Cat units
             UnitKind::Pawdler => 0.19,
             UnitKind::Nuisance => 0.20,
             UnitKind::Mouser => 0.19,
@@ -345,10 +463,22 @@ pub fn unit_scale(kind: UnitKind, art_loaded: bool) -> f32 {
             UnitKind::Catnapper => 0.28,
             UnitKind::Chonk => 0.30,
             UnitKind::MechCommander => 0.38,
+            // Clawed (mice) units — slightly smaller than cats
+            UnitKind::Nibblet => 0.17,
+            UnitKind::Swarmer => 0.16,
+            UnitKind::Gnawer => 0.18,
+            UnitKind::Shrieker => 0.18,
+            UnitKind::Tunneler => 0.19,
+            UnitKind::Sparks => 0.18,
+            UnitKind::Quillback => 0.26,
+            UnitKind::Whiskerwitch => 0.22,
+            UnitKind::Plaguetail => 0.22,
+            UnitKind::WarrenMarshal => 0.34,
             _ => 0.20,
         }
     } else {
         match kind {
+            // Cat units
             UnitKind::Pawdler => 0.35,
             UnitKind::Nuisance => 0.5,
             UnitKind::Mouser => 0.45,
@@ -359,6 +489,17 @@ pub fn unit_scale(kind: UnitKind, art_loaded: bool) -> f32 {
             UnitKind::Catnapper => 0.65,
             UnitKind::Chonk => 0.7,
             UnitKind::MechCommander => 0.8,
+            // Clawed (mice) units — slightly smaller than cats
+            UnitKind::Nibblet => 0.30,
+            UnitKind::Swarmer => 0.40,
+            UnitKind::Gnawer => 0.40,
+            UnitKind::Shrieker => 0.45,
+            UnitKind::Tunneler => 0.40,
+            UnitKind::Sparks => 0.40,
+            UnitKind::Quillback => 0.60,
+            UnitKind::Whiskerwitch => 0.50,
+            UnitKind::Plaguetail => 0.50,
+            UnitKind::WarrenMarshal => 0.70,
             _ => 0.5,
         }
     }

@@ -765,4 +765,76 @@ mod tests {
         // Validate internal consistency
         mission.validate().expect("Mission validation failed");
     }
+
+    #[test]
+    fn parse_demo_canyon_ron() {
+        let ron_str = include_str!("../../../assets/campaign/demo_canyon.ron");
+        let mission: MissionDefinition = ron::from_str(ron_str)
+            .expect("Failed to parse demo_canyon.ron");
+        assert_eq!(mission.id, "demo_canyon");
+        assert_eq!(mission.name, "Canyon Battle");
+        // Inline map: 80x48 = 3840 tiles
+        match &mission.map {
+            MissionMap::Inline { width, height, tiles, elevation } => {
+                assert_eq!(*width, 80);
+                assert_eq!(*height, 48);
+                assert_eq!(tiles.len(), 80 * 48);
+                assert_eq!(elevation.len(), 80 * 48);
+            }
+            _ => panic!("Expected Inline map"),
+        }
+        // No heroes, no player units
+        assert!(mission.player_setup.heroes.is_empty());
+        assert!(mission.player_setup.units.is_empty());
+        // Two buildings (TheBox for P0, TheBurrow for P1)
+        assert_eq!(mission.player_setup.buildings.len(), 2);
+        assert_eq!(mission.player_setup.buildings[0].kind, crate::components::BuildingKind::TheBox);
+        assert_eq!(mission.player_setup.buildings[0].player_id, 0);
+        assert_eq!(mission.player_setup.buildings[1].kind, crate::components::BuildingKind::TheBurrow);
+        assert_eq!(mission.player_setup.buildings[1].player_id, 1);
+        // Two waves (P0 army, P1 army)
+        assert_eq!(mission.enemy_waves.len(), 2);
+        assert_eq!(mission.enemy_waves[0].wave_id, "p0_army");
+        assert_eq!(mission.enemy_waves[1].wave_id, "p1_army");
+        // P0 army: 12 cat units
+        assert_eq!(mission.enemy_waves[0].units.len(), 12);
+        // P1 army: 14 mouse units
+        assert_eq!(mission.enemy_waves[1].units.len(), 14);
+        // Single EliminateAll objective
+        assert_eq!(mission.objectives.len(), 1);
+        assert!(mission.objectives[0].primary);
+        assert!(matches!(mission.objectives[0].condition, ObjectiveCondition::EliminateAll));
+        // Zero resources
+        assert_eq!(mission.player_setup.starting_food, 0);
+        assert_eq!(mission.player_setup.starting_gpu, 0);
+        assert_eq!(mission.player_setup.starting_nfts, 0);
+        // Validates successfully
+        mission.validate().expect("Demo canyon validation failed");
+    }
+
+    #[test]
+    fn demo_canyon_map_terrain_distribution() {
+        let ron_str = include_str!("../../../assets/campaign/demo_canyon.ron");
+        let mission: MissionDefinition = ron::from_str(ron_str).unwrap();
+        let MissionMap::Inline { tiles, elevation, .. } = &mission.map else {
+            panic!("Expected Inline map");
+        };
+        // Rock walls exist (top and bottom rows)
+        let rock_count = tiles.iter().filter(|t| **t == TerrainType::Rock).count();
+        assert!(rock_count > 400, "Should have substantial rock walls, got {rock_count}");
+        // Water river exists
+        let water_count = tiles.iter().filter(|t| **t == TerrainType::Water).count();
+        assert!(water_count > 100, "Should have a river, got {water_count} water tiles");
+        // Shallows crossings exist
+        let shallows_count = tiles.iter().filter(|t| **t == TerrainType::Shallows).count();
+        assert!(shallows_count > 10, "Should have ford crossings, got {shallows_count} shallows");
+        // Road bridges exist
+        let road_count = tiles.iter().filter(|t| **t == TerrainType::Road).count();
+        assert!(road_count > 10, "Should have road bridges, got {road_count} road tiles");
+        // Elevation levels present
+        let max_elev = *elevation.iter().max().unwrap();
+        assert_eq!(max_elev, 2, "Should have elevation 2 for rock walls");
+        let elev_1_count = elevation.iter().filter(|e| **e == 1).count();
+        assert!(elev_1_count > 1000, "Plateaus should be elevation 1, got {elev_1_count}");
+    }
 }

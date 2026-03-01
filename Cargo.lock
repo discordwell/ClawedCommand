@@ -1873,6 +1873,7 @@ dependencies = [
  "cc_sim",
  "cc_voice",
  "getrandom 0.2.17",
+ "ron",
 ]
 
 [[package]]

@@ -9,9 +9,9 @@ use crate::renderer::unit_gen::{ALL_KINDS, unit_slug};
 #[derive(Resource)]
 pub struct AnimSheets {
     /// Walk sheet handles: (image, layout) per unit kind, indexed by kind_index.
-    pub walk: [Option<(Handle<Image>, Handle<TextureAtlasLayout>)>; 10],
+    pub walk: [Option<(Handle<Image>, Handle<TextureAtlasLayout>)>; 20],
     /// Attack sheet handles: (image, layout) per unit kind, indexed by kind_index.
-    pub attack: [Option<(Handle<Image>, Handle<TextureAtlasLayout>)>; 10],
+    pub attack: [Option<(Handle<Image>, Handle<TextureAtlasLayout>)>; 20],
 }
 
 /// Frame size for sprite sheets: 128x128 pixels per frame, 4 frames per row.
@@ -30,8 +30,8 @@ pub fn load_anim_assets(
     let layout = TextureAtlasLayout::from_grid(SHEET_FRAME_SIZE, SHEET_COLUMNS, SHEET_ROWS, None, None);
     let layout_handle = layouts.add(layout);
 
-    let mut walk: [Option<(Handle<Image>, Handle<TextureAtlasLayout>)>; 10] = Default::default();
-    let mut attack: [Option<(Handle<Image>, Handle<TextureAtlasLayout>)>; 10] = Default::default();
+    let mut walk: [Option<(Handle<Image>, Handle<TextureAtlasLayout>)>; 20] = Default::default();
+    let mut attack: [Option<(Handle<Image>, Handle<TextureAtlasLayout>)>; 20] = Default::default();
 
     for (i, kind) in ALL_KINDS.iter().enumerate() {
         let slug = unit_slug(*kind);

@@ -1,14 +1,18 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use bevy::prelude::*;
 
+use cc_core::building_stats::building_stats;
 use cc_core::components::*;
 use cc_core::coords::WorldPos;
 use cc_core::hero::{hero_base_kind, hero_modifiers};
+use cc_core::map::GameMap;
 use cc_core::mission::{WaveAiBehavior, WaveTrigger};
+use cc_core::terrain::FactionId;
 use cc_core::unit_stats::base_stats;
 
-use crate::resources::SimClock;
+use crate::pathfinding;
+use crate::resources::{MapResource, PlayerResources, SimClock};
 
 use super::state::{CampaignPhase, CampaignState};
 
@@ -37,8 +41,10 @@ pub fn wave_spawner_system(
     mut commands: Commands,
     clock: Res<SimClock>,
     campaign: Res<CampaignState>,
+    map_res: Res<MapResource>,
     mut wave_tracker: ResMut<WaveTracker>,
     mut mission_started: ResMut<MissionStarted>,
+    mut player_resources: ResMut<PlayerResources>,
 ) {
     if campaign.phase != CampaignPhase::InMission {
         return;
@@ -110,6 +116,27 @@ pub fn wave_spawner_system(
             spawn_unit(&mut commands, unit_spawn.kind, unit_spawn.position, 0, None);
         }
 
+        // Spawn player buildings (from mission setup)
+        for bspawn in &mission.player_setup.buildings {
+            let bstats = building_stats(bspawn.kind);
+            commands.spawn((
+                Position {
+                    world: WorldPos::from_grid(bspawn.position),
+                },
+                Velocity::zero(),
+                GridCell { pos: bspawn.position },
+                Owner { player_id: bspawn.player_id },
+                Building { kind: bspawn.kind },
+                Health { current: bstats.health, max: bstats.health },
+                Producer,
+                ProductionQueue::default(),
+            ));
+            // Update supply cap for this building
+            if let Some(pres) = player_resources.players.get_mut(bspawn.player_id as usize) {
+                pres.supply_cap += bstats.supply_provided;
+            }
+        }
+
         // Spawn Immediate waves
         for wave in &mission.enemy_waves {
             if matches!(wave.trigger, WaveTrigger::Immediate) {
@@ -119,6 +146,7 @@ pub fn wave_spawner_system(
                     &wave.units,
                     &wave.ai_behavior,
                     &mut wave_tracker,
+                    &map_res.map,
                 );
                 wave_tracker.processed.insert(wave.wave_id.clone());
             }
@@ -135,6 +163,7 @@ pub fn wave_spawner_system(
                     &wave.units,
                     &wave.ai_behavior,
                     &mut wave_tracker,
+                    &map_res.map,
                 );
                 wave_tracker.processed.insert(wave.wave_id.clone());
             }
@@ -154,6 +183,7 @@ pub fn wave_spawner_system(
                     &wave.units,
                     &wave.ai_behavior,
                     &mut wave_tracker,
+                    &map_res.map,
                 );
                 wave_tracker.processed.insert(wave.wave_id.clone());
             }
@@ -171,6 +201,7 @@ pub fn wave_spawner_system(
                 &wave.units,
                 &wave.ai_behavior,
                 &mut wave_tracker,
+                &map_res.map,
             );
             wave_tracker.processed.insert(wave.wave_id.clone());
         }
@@ -184,6 +215,7 @@ fn spawn_wave_entities(
     units: &[cc_core::mission::UnitSpawn],
     ai_behavior: &WaveAiBehavior,
     wave_tracker: &mut WaveTracker,
+    map: &GameMap,
 ) {
     let count = units.len() as u32;
 
@@ -205,6 +237,20 @@ fn spawn_wave_entities(
                 commands.entity(entity_id).insert(AttackMoveTarget {
                     target: *target,
                 });
+
+                // Pathfind toward the attack-move destination
+                let faction = FactionId::from_u8(unit_spawn.player_id)
+                    .unwrap_or(FactionId::CatGPT);
+                let start = unit_spawn.position;
+                if let Some(waypoints) = pathfinding::find_path(map, start, *target, faction) {
+                    let first_waypoint = waypoints[0];
+                    commands.entity(entity_id).insert(Path {
+                        waypoints: VecDeque::from(waypoints),
+                    });
+                    commands.entity(entity_id).insert(MoveTarget {
+                        target: WorldPos::from_grid(first_waypoint),
+                    });
+                }
             }
             WaveAiBehavior::Defend => {
                 commands.entity(entity_id).insert(HoldPosition);
