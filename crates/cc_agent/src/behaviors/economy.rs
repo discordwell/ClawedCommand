@@ -19,8 +19,7 @@ pub fn assign_idle_workers(ctx: &mut ScriptContext) -> BehaviorResult {
     let mut commands_issued = 0;
 
     for (uid, pos) in &idle_pawdlers {
-        if let Some(deposit) = ctx.nearest_deposit(*pos, None) {
-            let deposit_id = deposit.id;
+        if let Some(deposit_id) = ctx.nearest_deposit(*pos, None).map(|d| d.id) {
             ctx.cmd_gather(vec![*uid], deposit_id);
             commands_issued += 1;
         }
@@ -113,9 +112,7 @@ pub fn expand_economy(
     }
 
     // Otherwise, try to build a FishMarket near an unserved food deposit
-    if let Some(deposit) = ctx.nearest_deposit(builder.pos, None) {
-        let deposit_pos = deposit.pos;
-
+    if let Some(deposit_pos) = ctx.nearest_deposit(builder.pos, None).map(|d| d.pos) {
         // Check if we already have a FishMarket near this deposit
         let existing_markets: Vec<_> = ctx
             .my_buildings(Some(BuildingKind::FishMarket))
