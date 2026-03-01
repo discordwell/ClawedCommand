@@ -138,8 +138,8 @@ if outnumbered and enemies and #ranged_attackers > 0 then
                 -- Check if the kite position is on fast terrain
                 local cost = ctx:movement_cost(kx, ky)
                 if cost and cost < 1.3 then
+                    -- Move to max-range position (attack command would override move)
                     ctx:move_units({r.id}, kx, ky)
-                    ctx:attack_units({r.id}, closest_e.id)
                 else
                     -- Fallback: terrain-aware flee (same as Gen 42)
                     local flee_dx = r.x - closest_e.x
