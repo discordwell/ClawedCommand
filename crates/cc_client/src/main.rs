@@ -4,7 +4,7 @@ mod setup;
 mod ui;
 
 use bevy::prelude::*;
-#[cfg(feature = "native")]
+#[cfg(any(feature = "native", feature = "wasm-agent"))]
 use cc_agent::AgentPlugin;
 use cc_sim::SimPlugin;
 #[cfg(feature = "native")]
@@ -37,7 +37,7 @@ fn main() {
             .after(renderer::resource_nodes::generate_resource_sprites),
     );
 
-    #[cfg(feature = "native")]
+    #[cfg(any(feature = "native", feature = "wasm-agent"))]
     app.add_plugins(AgentPlugin);
 
     #[cfg(feature = "native")]

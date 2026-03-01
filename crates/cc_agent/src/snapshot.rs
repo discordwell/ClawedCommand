@@ -218,6 +218,78 @@ pub fn build_snapshot(
     }
 }
 
+/// Summarize a snapshot into a compact text description for the LLM.
+pub fn summarize_snapshot(snap: &GameStateSnapshot) -> String {
+    let mut s = format!(
+        "Tick: {} | Map: {}x{} | Player: {}\n",
+        snap.tick, snap.map_width, snap.map_height, snap.player_id
+    );
+    s.push_str(&format!(
+        "Resources: Food={}, GPU={}, NFTs={}, Supply={}/{}\n",
+        snap.my_resources.food,
+        snap.my_resources.gpu_cores,
+        snap.my_resources.nfts,
+        snap.my_resources.supply,
+        snap.my_resources.supply_cap,
+    ));
+
+    // Unit summary by kind
+    let mut unit_counts = std::collections::HashMap::new();
+    for u in &snap.my_units {
+        if !u.is_dead {
+            *unit_counts.entry(format!("{:?}", u.kind)).or_insert(0u32) += 1;
+        }
+    }
+    if !unit_counts.is_empty() {
+        s.push_str("My units: ");
+        let parts: Vec<String> = unit_counts
+            .iter()
+            .map(|(k, v)| format!("{}x{}", v, k))
+            .collect();
+        s.push_str(&parts.join(", "));
+        s.push('\n');
+    } else {
+        s.push_str("My units: none\n");
+    }
+
+    // Enemy summary
+    let alive_enemies = snap.enemy_units.iter().filter(|u| !u.is_dead).count();
+    if alive_enemies > 0 {
+        s.push_str(&format!("Visible enemies: {}\n", alive_enemies));
+    } else {
+        s.push_str("Visible enemies: none\n");
+    }
+
+    // Buildings
+    let my_buildings: Vec<String> = snap
+        .my_buildings
+        .iter()
+        .map(|b| {
+            if b.under_construction {
+                format!("{:?}(building)", b.kind)
+            } else {
+                format!("{:?}", b.kind)
+            }
+        })
+        .collect();
+    if !my_buildings.is_empty() {
+        s.push_str(&format!("My buildings: {}\n", my_buildings.join(", ")));
+    }
+
+    let enemy_buildings = snap.enemy_buildings.len();
+    if enemy_buildings > 0 {
+        s.push_str(&format!("Visible enemy buildings: {}\n", enemy_buildings));
+    }
+
+    // Deposits
+    let deposits = snap.resource_deposits.len();
+    if deposits > 0 {
+        s.push_str(&format!("Resource deposits: {}\n", deposits));
+    }
+
+    s
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// A single chat message.
@@ -43,6 +44,9 @@ pub enum LlmError {
 }
 
 /// Pluggable LLM client trait.
+/// On native: requires Send + Sync for cross-thread use.
+/// On WASM: single-threaded, no Send/Sync needed.
+#[cfg(not(target_arch = "wasm32"))]
 #[async_trait]
 pub trait LlmClient: Send + Sync {
     async fn complete(
@@ -52,6 +56,53 @@ pub trait LlmClient: Send + Sync {
     ) -> Result<LlmResponse, LlmError>;
 
     fn model_name(&self) -> &str;
+}
+
+#[cfg(target_arch = "wasm32")]
+#[async_trait(?Send)]
+pub trait LlmClient {
+    async fn complete(
+        &self,
+        messages: &[ChatMessage],
+        tools: Option<&[ToolDef]>,
+    ) -> Result<LlmResponse, LlmError>;
+
+    fn model_name(&self) -> &str;
+}
+
+/// Parse an OpenAI-compatible JSON response into LlmResponse.
+/// Shared by OpenAiCompatibleClient and WebLlmClient.
+pub fn parse_openai_response(json: &serde_json::Value) -> Result<LlmResponse, LlmError> {
+    let choice = json["choices"]
+        .get(0)
+        .ok_or_else(|| LlmError::Api("No choices in response".into()))?;
+
+    let content = choice["message"]["content"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
+
+    let mut tool_calls = Vec::new();
+    if let Some(calls) = choice["message"]["tool_calls"].as_array() {
+        for call in calls {
+            tool_calls.push(ToolCall {
+                id: call["id"].as_str().unwrap_or("").to_string(),
+                name: call["function"]["name"]
+                    .as_str()
+                    .unwrap_or("")
+                    .to_string(),
+                arguments: serde_json::from_str(
+                    call["function"]["arguments"].as_str().unwrap_or("{}"),
+                )
+                .unwrap_or(serde_json::Value::Object(serde_json::Map::new())),
+            });
+        }
+    }
+
+    Ok(LlmResponse {
+        content,
+        tool_calls,
+    })
 }
 
 /// OpenAI-compatible client — works for Mistral API, vLLM, Ollama.
@@ -73,11 +124,8 @@ impl OpenAiCompatibleClient {
             client: reqwest::Client::new(),
         }
     }
-}
 
-#[async_trait]
-impl LlmClient for OpenAiCompatibleClient {
-    async fn complete(
+    async fn do_complete(
         &self,
         messages: &[ChatMessage],
         tools: Option<&[ToolDef]>,
@@ -119,36 +167,35 @@ impl LlmClient for OpenAiCompatibleClient {
             .await
             .map_err(|e| LlmError::Parse(e.to_string()))?;
 
-        let choice = json["choices"]
-            .get(0)
-            .ok_or_else(|| LlmError::Api("No choices in response".into()))?;
+        parse_openai_response(&json)
+    }
+}
 
-        let content = choice["message"]["content"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
+#[cfg(not(target_arch = "wasm32"))]
+#[async_trait]
+impl LlmClient for OpenAiCompatibleClient {
+    async fn complete(
+        &self,
+        messages: &[ChatMessage],
+        tools: Option<&[ToolDef]>,
+    ) -> Result<LlmResponse, LlmError> {
+        self.do_complete(messages, tools).await
+    }
 
-        let mut tool_calls = Vec::new();
-        if let Some(calls) = choice["message"]["tool_calls"].as_array() {
-            for call in calls {
-                tool_calls.push(ToolCall {
-                    id: call["id"].as_str().unwrap_or("").to_string(),
-                    name: call["function"]["name"]
-                        .as_str()
-                        .unwrap_or("")
-                        .to_string(),
-                    arguments: serde_json::from_str(
-                        call["function"]["arguments"].as_str().unwrap_or("{}"),
-                    )
-                    .unwrap_or(serde_json::Value::Object(serde_json::Map::new())),
-                });
-            }
-        }
+    fn model_name(&self) -> &str {
+        &self.model
+    }
+}
 
-        Ok(LlmResponse {
-            content,
-            tool_calls,
-        })
+#[cfg(target_arch = "wasm32")]
+#[async_trait(?Send)]
+impl LlmClient for OpenAiCompatibleClient {
+    async fn complete(
+        &self,
+        messages: &[ChatMessage],
+        tools: Option<&[ToolDef]>,
+    ) -> Result<LlmResponse, LlmError> {
+        self.do_complete(messages, tools).await
     }
 
     fn model_name(&self) -> &str {
@@ -171,6 +218,7 @@ impl MockLlmClient {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[async_trait]
 impl LlmClient for MockLlmClient {
     async fn complete(
@@ -192,8 +240,30 @@ impl LlmClient for MockLlmClient {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+#[async_trait(?Send)]
+impl LlmClient for MockLlmClient {
+    async fn complete(
+        &self,
+        _messages: &[ChatMessage],
+        _tools: Option<&[ToolDef]>,
+    ) -> Result<LlmResponse, LlmError> {
+        let idx = self
+            .response_idx
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.responses
+            .get(idx % self.responses.len())
+            .cloned()
+            .ok_or_else(|| LlmError::Api("No mock responses".into()))
+    }
+
+    fn model_name(&self) -> &str {
+        "mock"
+    }
+}
+
 /// LLM configuration resource.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Resource)]
 pub struct LlmConfig {
     pub backend: LlmBackend,
     pub base_url: String,
@@ -207,6 +277,9 @@ pub enum LlmBackend {
     OpenAiCompatible,
     Anthropic,
     Mock,
+    #[cfg(target_arch = "wasm32")]
+    WebLlm,
+    Fallback,
 }
 
 impl Default for LlmConfig {
@@ -218,5 +291,20 @@ impl Default for LlmConfig {
             model: "devstral-small-2-2512".into(),
             temperature: 0.2,
         }
+    }
+}
+
+/// Agent readiness status, used by UI to show initialization progress.
+#[derive(Debug, Clone, Resource)]
+pub enum AgentStatus {
+    Unconfigured,
+    Initializing(f32),
+    Ready,
+    Error(String),
+}
+
+impl Default for AgentStatus {
+    fn default() -> Self {
+        Self::Unconfigured
     }
 }

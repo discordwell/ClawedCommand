@@ -1,7 +1,12 @@
 use std::collections::VecDeque;
 
 use bevy::prelude::*;
+
+#[cfg(not(target_arch = "wasm32"))]
 use crossbeam_channel::{Receiver, Sender, unbounded};
+
+#[cfg(target_arch = "wasm32")]
+use async_channel::{Receiver, Sender, unbounded};
 
 use cc_core::commands::GameCommand;
 use cc_sim::resources::CommandQueue;
@@ -65,7 +70,7 @@ impl AgentChatLog {
     }
 }
 
-/// Both halves of the crossbeam channels for the LLM background thread.
+/// Both halves of the channels for the LLM background thread/task.
 pub struct AgentChannels {
     pub request_rx: Receiver<AgentRequest>,
     pub response_tx: Sender<AgentResponse>,

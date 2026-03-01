@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ClawedCommand</title>
-    <link data-trunk rel="rust" data-cargo-no-default-features data-cargo-features="" />
+    <link data-trunk rel="rust" data-cargo-no-default-features data-cargo-features="wasm-agent" />
     <link data-trunk rel="copy-dir" href="../../assets" />
     <style>
         * { margin: 0; padding: 0; }
@@ -45,6 +45,58 @@
             }
         });
         observer.observe(document.body, { childList: true, subtree: true });
+    </script>
+    <!-- WebLLM bridge for in-browser AI inference -->
+    <script type="module">
+        // Lazy-loaded WebLLM — only downloads if the user selects WebGPU provider
+        window.ccWebLLM = {
+            _engine: null,
+            _status: 'idle',
+            _downloadProgress: 0,
+
+            isAvailable() {
+                return typeof navigator !== 'undefined' && !!navigator.gpu;
+            },
+
+            status() {
+                return this._status;
+            },
+
+            downloadProgress() {
+                return this._downloadProgress;
+            },
+
+            async init(modelId) {
+                if (this._engine) return;
+                this._status = 'loading';
+
+                const { CreateMLCEngine } = await import(
+                    'https://esm.run/@mlc-ai/web-llm'
+                );
+
+                this._engine = await CreateMLCEngine(modelId, {
+                    initProgressCallback: (progress) => {
+                        this._downloadProgress = progress.progress || 0;
+                        this._status = `loading: ${(this._downloadProgress * 100).toFixed(0)}%`;
+                    },
+                });
+                this._status = 'ready';
+            },
+
+            async complete(messagesJson, toolsJson) {
+                if (!this._engine) throw new Error('WebLLM not initialized');
+                const messages = JSON.parse(messagesJson);
+                const tools = JSON.parse(toolsJson);
+
+                const request = { messages };
+                if (tools && tools.length > 0) {
+                    request.tools = tools;
+                }
+
+                const response = await this._engine.chat.completions.create(request);
+                return JSON.stringify(response);
+            },
+        };
     </script>
 </body>
 </html>

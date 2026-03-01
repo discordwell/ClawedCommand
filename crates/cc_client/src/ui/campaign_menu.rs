@@ -1,7 +1,5 @@
 use bevy::prelude::*;
 
-use bevy_egui::{EguiContexts, egui};
-
 use cc_core::mission::MissionDefinition;
 use cc_sim::campaign::state::{CampaignPhase, CampaignState};
 
@@ -36,79 +34,98 @@ pub fn campaign_menu_toggle(
     }
 }
 
-/// Render the campaign mission select screen.
-pub fn campaign_menu_system(
-    mut contexts: EguiContexts,
+/// Marker for campaign menu root.
+#[derive(Component)]
+pub struct CampaignMenuRoot;
+
+/// Marker for campaign menu text.
+#[derive(Component)]
+pub struct CampaignMenuText;
+
+/// Marker for individual mission buttons.
+#[derive(Component)]
+pub struct MissionButton {
+    pub index: usize,
+}
+
+pub fn spawn_campaign_menu(mut commands: Commands) {
+    commands
+        .spawn((
+            CampaignMenuRoot,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Percent(50.0),
+                top: Val::Percent(50.0),
+                margin: UiRect {
+                    left: Val::Px(-200.0),
+                    top: Val::Px(-200.0),
+                    ..default()
+                },
+                width: Val::Px(400.0),
+                padding: UiRect::all(Val::Px(24.0)),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(8.0),
+                border_radius: BorderRadius::all(Val::Px(12.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.06, 0.06, 0.12, 0.94)),
+            Visibility::Hidden,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                CampaignMenuText,
+                Text::new("CAMPAIGN\n\nNo missions available."),
+                TextColor(Color::srgb(0.9, 0.9, 0.9)),
+                TextFont {
+                    font_size: 14.0,
+                    ..default()
+                },
+            ));
+        });
+}
+
+pub fn update_campaign_menu(
     menu_open: Res<CampaignMenuOpen>,
     available: Res<AvailableMissions>,
-    mut campaign: ResMut<CampaignState>,
+    campaign: Res<CampaignState>,
+    mut root_vis: Query<
+        &mut Visibility,
+        (With<CampaignMenuRoot>, Without<CampaignMenuText>),
+    >,
+    mut text_q: Query<&mut Text, With<CampaignMenuText>>,
 ) {
-    if !menu_open.0 {
+    let show = menu_open.0 && campaign.phase == CampaignPhase::Inactive;
+
+    for mut vis in root_vis.iter_mut() {
+        *vis = if show {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+    }
+
+    if !show {
         return;
     }
 
-    if campaign.phase != CampaignPhase::Inactive {
+    let Ok(mut text) = text_q.single_mut() else {
         return;
+    };
+
+    let mut lines = vec!["CAMPAIGN".to_string(), String::new()];
+
+    if available.missions.is_empty() {
+        lines.push("No missions available.".to_string());
+    } else {
+        for (i, mission) in available.missions.iter().enumerate() {
+            let completed = campaign.completed_missions.contains(&mission.id);
+            let prefix = if completed { "[DONE] " } else { "" };
+            let brief: String = mission.briefing_text.chars().take(50).collect();
+            lines.push(format!("{}. {}{} - {}...", i + 1, prefix, mission.name, brief));
+        }
+        lines.push(String::new());
+        lines.push("Press [Esc] to close".to_string());
     }
 
-    let Ok(ctx) = contexts.ctx_mut() else { return };
-
-    let mut selected_mission: Option<MissionDefinition> = None;
-
-    egui::Area::new(egui::Id::new("campaign_menu"))
-        .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
-        .show(ctx, |ui| {
-            egui::Frame::new()
-                .fill(egui::Color32::from_rgba_unmultiplied(15, 15, 30, 240))
-                .inner_margin(egui::Margin::same(30))
-                .corner_radius(12.0)
-                .show(ui, |ui| {
-                    ui.set_max_width(400.0);
-
-                    ui.label(
-                        egui::RichText::new("CAMPAIGN")
-                            .heading()
-                            .size(20.0)
-                            .color(egui::Color32::WHITE),
-                    );
-
-                    ui.add_space(16.0);
-                    ui.separator();
-                    ui.add_space(8.0);
-
-                    if available.missions.is_empty() {
-                        ui.label(
-                            egui::RichText::new("No missions available.")
-                                .size(14.0)
-                                .color(egui::Color32::GRAY),
-                        );
-                    }
-
-                    for mission in &available.missions {
-                        let completed = campaign.completed_missions.contains(&mission.id);
-                        let label = if completed {
-                            format!("[DONE] {} — {}", mission.name, mission.briefing_text.chars().take(60).collect::<String>())
-                        } else {
-                            format!("{} — {}", mission.name, mission.briefing_text.chars().take(60).collect::<String>())
-                        };
-
-                        let color = if completed {
-                            egui::Color32::from_rgb(100, 200, 100)
-                        } else {
-                            egui::Color32::WHITE
-                        };
-
-                        let btn = ui.button(egui::RichText::new(&label).size(13.0).color(color));
-                        if btn.clicked() {
-                            selected_mission = Some(mission.clone());
-                        }
-                        ui.add_space(4.0);
-                    }
-                });
-        });
-
-    // Load selected mission
-    if let Some(mission) = selected_mission {
-        campaign.load_mission(mission);
-    }
+    text.0 = lines.join("\n");
 }

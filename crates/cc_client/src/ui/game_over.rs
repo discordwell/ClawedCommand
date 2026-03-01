@@ -1,52 +1,130 @@
 use bevy::prelude::*;
-use bevy_egui::{EguiContexts, egui};
 
 use cc_sim::resources::GameState;
 
 const LOCAL_PLAYER: u8 = 0;
 
-/// Full-screen overlay when the game ends.
-pub fn game_over_system(mut contexts: EguiContexts, game_state: Res<GameState>) {
+/// Marker for the game over overlay root.
+#[derive(Component)]
+pub struct GameOverRoot;
+
+/// Marker for the title text.
+#[derive(Component)]
+pub struct GameOverTitle;
+
+/// Marker for the subtitle text.
+#[derive(Component)]
+pub struct GameOverSubtitle;
+
+pub fn spawn_game_over(mut commands: Commands) {
+    commands
+        .spawn((
+            GameOverRoot,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Percent(50.0),
+                top: Val::Percent(50.0),
+                margin: UiRect {
+                    left: Val::Px(-200.0),
+                    top: Val::Px(-80.0),
+                    ..default()
+                },
+                width: Val::Px(400.0),
+                padding: UiRect::all(Val::Px(40.0)),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                border_radius: BorderRadius::all(Val::Px(12.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
+            Visibility::Hidden,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                GameOverTitle,
+                Text::new(""),
+                TextColor(Color::srgb(1.0, 0.84, 0.0)),
+                TextFont {
+                    font_size: 48.0,
+                    ..default()
+                },
+            ));
+            parent.spawn((
+                GameOverSubtitle,
+                Text::new(""),
+                TextColor(Color::srgb(0.9, 0.9, 0.9)),
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
+                Node {
+                    margin: UiRect::top(Val::Px(16.0)),
+                    ..default()
+                },
+            ));
+        });
+}
+
+pub fn update_game_over(
+    game_state: Res<GameState>,
+    mut root_q: Query<
+        &mut Visibility,
+        (
+            With<GameOverRoot>,
+            Without<GameOverTitle>,
+            Without<GameOverSubtitle>,
+        ),
+    >,
+    mut title_q: Query<
+        (&mut Text, &mut TextColor),
+        (
+            With<GameOverTitle>,
+            Without<GameOverRoot>,
+            Without<GameOverSubtitle>,
+        ),
+    >,
+    mut subtitle_q: Query<
+        &mut Text,
+        (
+            With<GameOverSubtitle>,
+            Without<GameOverRoot>,
+            Without<GameOverTitle>,
+        ),
+    >,
+) {
     let winner = match *game_state {
-        GameState::Playing => return,
+        GameState::Playing => {
+            for mut vis in root_q.iter_mut() {
+                *vis = Visibility::Hidden;
+            }
+            return;
+        }
         GameState::Victory { winner } => winner,
     };
 
-    let Ok(ctx) = contexts.ctx_mut() else { return };
+    for mut vis in root_q.iter_mut() {
+        *vis = Visibility::Inherited;
+    }
 
-    let (title, color) = if winner == LOCAL_PLAYER {
-        ("VICTORY!", egui::Color32::from_rgb(255, 215, 0))
+    let (title, color, reason) = if winner == LOCAL_PLAYER {
+        (
+            "VICTORY!",
+            Color::srgb(1.0, 0.84, 0.0),
+            "Enemy base destroyed!",
+        )
     } else {
-        ("DEFEAT!", egui::Color32::from_rgb(255, 60, 60))
+        (
+            "DEFEAT!",
+            Color::srgb(1.0, 0.23, 0.23),
+            "Your base has been destroyed!",
+        )
     };
 
-    egui::Area::new(egui::Id::new("game_over_overlay"))
-        .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
-        .show(ctx, |ui| {
-            egui::Frame::NONE
-                .fill(egui::Color32::from_rgba_unmultiplied(0, 0, 0, 180))
-                .inner_margin(egui::Margin::same(40))
-                .corner_radius(12.0)
-                .show(ui, |ui| {
-                    ui.vertical_centered(|ui| {
-                        ui.label(
-                            egui::RichText::new(title)
-                                .size(64.0)
-                                .color(color)
-                                .strong(),
-                        );
-                        ui.add_space(16.0);
-                        let reason = if winner == LOCAL_PLAYER {
-                            "Enemy base destroyed!"
-                        } else {
-                            "Your base has been destroyed!"
-                        };
-                        ui.label(
-                            egui::RichText::new(reason)
-                                .size(24.0)
-                                .color(egui::Color32::WHITE),
-                        );
-                    });
-                });
-        });
+    if let Ok((mut text, mut text_color)) = title_q.single_mut() {
+        text.0 = title.to_string();
+        text_color.0 = color;
+    }
+    if let Ok(mut text) = subtitle_q.single_mut() {
+        text.0 = reason.to_string();
+    }
 }

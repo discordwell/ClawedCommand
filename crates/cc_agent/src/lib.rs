@@ -6,14 +6,28 @@ pub mod construct_mode;
 pub mod decision;
 pub mod events;
 pub mod llm_client;
-pub mod llm_runner;
-pub mod lua_runtime;
 pub mod mcp_tools;
-pub mod runner;
-pub mod script_context;
 pub mod snapshot;
 pub mod spatial;
 pub mod tool_tier;
+
+pub mod script_context;
+
+// Native-only modules (depend on mlua/tokio/crossbeam)
+#[cfg(not(target_arch = "wasm32"))]
+pub mod llm_runner;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod lua_runtime;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod runner;
+
+// WASM-only modules
+#[cfg(target_arch = "wasm32")]
+pub mod fallback_client;
+#[cfg(target_arch = "wasm32")]
+pub mod wasm_runner;
+#[cfg(target_arch = "wasm32")]
+pub mod webllm_client;
 
 #[cfg(test)]
 pub(crate) mod test_fixtures;
@@ -31,7 +45,7 @@ impl Plugin for AgentPlugin {
             .init_resource::<tool_tier::ToolRegistry>()
             .init_resource::<tool_tier::FactionToolStates>()
             .init_resource::<decision::AgentDecisionState>()
-            .add_plugins(runner::ScriptRunnerPlugin)
+            .init_resource::<llm_client::AgentStatus>()
             .add_systems(
                 Update,
                 (
@@ -40,5 +54,13 @@ impl Plugin for AgentPlugin {
                 ),
             )
             .add_systems(FixedUpdate, tool_tier::update_tool_tiers);
+
+        // Native: add Lua script runner + spawn LLM background thread
+        #[cfg(not(target_arch = "wasm32"))]
+        app.add_plugins(runner::ScriptRunnerPlugin);
+
+        // WASM: spawn async agent loop on browser event loop
+        #[cfg(target_arch = "wasm32")]
+        app.add_systems(Startup, wasm_runner::init_wasm_agent);
     }
 }

@@ -1,44 +1,50 @@
+//! WebLLM client — runs LLM inference in-browser via WebGPU.
+//!
+//! Bridges to JavaScript's `window.ccWebLLM` namespace via wasm-bindgen.
+//! Only compiled on wasm32 targets.
+
 use async_trait::async_trait;
 use wasm_bindgen::prelude::*;
 
-use crate::llm_client::{LlmClient, LlmError, LlmResponse, ChatMessage, ToolDef, parse_openai_response};
+use crate::llm_client::{ChatMessage, LlmClient, LlmError, LlmResponse, ToolDef, parse_openai_response};
 
+// JS bindings to window.ccWebLLM.*
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(js_namespace = ["window", "ccWebLLM"], catch)]
-    async fn init(model_id: &str) -> Result<JsValue, JsValue>;
-
-    #[wasm_bindgen(js_namespace = ["window", "ccWebLLM"], catch)]
-    async fn complete(messages_json: &str, tools_json: &str) -> Result<JsValue, JsValue>;
-
     #[wasm_bindgen(js_namespace = ["window", "ccWebLLM"], js_name = "isAvailable")]
-    fn is_available() -> bool;
+    fn webllm_is_available() -> bool;
 
-    #[wasm_bindgen(js_namespace = ["window", "ccWebLLM"])]
-    fn status() -> String;
+    #[wasm_bindgen(js_namespace = ["window", "ccWebLLM"], js_name = "status")]
+    fn webllm_status() -> String;
 
     #[wasm_bindgen(js_namespace = ["window", "ccWebLLM"], js_name = "downloadProgress")]
-    fn download_progress() -> f64;
+    fn webllm_download_progress() -> f64;
+
+    #[wasm_bindgen(js_namespace = ["window", "ccWebLLM"], js_name = "init", catch)]
+    async fn webllm_init(model_id: &str) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(js_namespace = ["window", "ccWebLLM"], js_name = "complete", catch)]
+    async fn webllm_complete(messages_json: &str, tools_json: &str) -> Result<JsValue, JsValue>;
 }
 
-/// Check if WebGPU is available in the browser.
+/// Check if WebGPU is available in this browser.
 pub fn webgpu_available() -> bool {
-    is_available()
+    webllm_is_available()
 }
 
 /// Get the current WebLLM status string.
-pub fn webllm_status() -> String {
-    status()
+pub fn status() -> String {
+    webllm_status()
 }
 
 /// Get model download progress (0.0 to 1.0).
-pub fn webllm_download_progress() -> f64 {
-    download_progress()
+pub fn download_progress() -> f32 {
+    webllm_download_progress() as f32
 }
 
-/// Initialize WebLLM with a model.
-pub async fn webllm_init(model_id: &str) -> Result<(), String> {
-    init(model_id)
+/// Initialize WebLLM with the given model.
+pub async fn init(model_id: &str) -> Result<(), String> {
+    webllm_init(model_id)
         .await
         .map(|_| ())
         .map_err(|e| format!("{:?}", e))
@@ -46,12 +52,12 @@ pub async fn webllm_init(model_id: &str) -> Result<(), String> {
 
 /// LLM client backed by WebLLM (in-browser WebGPU inference).
 pub struct WebLlmClient {
-    model: String,
+    model_id: String,
 }
 
 impl WebLlmClient {
-    pub fn new(model: String) -> Self {
-        Self { model }
+    pub fn new(model_id: String) -> Self {
+        Self { model_id }
     }
 }
 
@@ -62,45 +68,44 @@ impl LlmClient for WebLlmClient {
         messages: &[ChatMessage],
         tools: Option<&[ToolDef]>,
     ) -> Result<LlmResponse, LlmError> {
-        let messages_json = serde_json::to_string(messages)
-            .map_err(|e| LlmError::Parse(e.to_string()))?;
+        let messages_json =
+            serde_json::to_string(messages).map_err(|e| LlmError::Parse(e.to_string()))?;
 
         let tools_json = match tools {
-            Some(t) => {
-                let tool_defs: Vec<serde_json::Value> = t
+            Some(tools) => {
+                let tool_defs: Vec<serde_json::Value> = tools
                     .iter()
-                    .map(|td| {
+                    .map(|t| {
                         serde_json::json!({
                             "type": "function",
                             "function": {
-                                "name": td.name,
-                                "description": td.description,
-                                "parameters": td.parameters,
+                                "name": t.name,
+                                "description": t.description,
+                                "parameters": t.parameters,
                             }
                         })
                     })
                     .collect();
-                serde_json::to_string(&tool_defs)
-                    .map_err(|e| LlmError::Parse(e.to_string()))?
+                serde_json::to_string(&tool_defs).map_err(|e| LlmError::Parse(e.to_string()))?
             }
             None => "[]".to_string(),
         };
 
-        let result = complete(&messages_json, &tools_json)
+        let result = webllm_complete(&messages_json, &tools_json)
             .await
             .map_err(|e| LlmError::Api(format!("{:?}", e)))?;
 
-        let response_str = result
+        let json_str = result
             .as_string()
             .ok_or_else(|| LlmError::Parse("WebLLM returned non-string".into()))?;
 
-        let json: serde_json::Value = serde_json::from_str(&response_str)
-            .map_err(|e| LlmError::Parse(e.to_string()))?;
+        let json: serde_json::Value =
+            serde_json::from_str(&json_str).map_err(|e| LlmError::Parse(e.to_string()))?;
 
         parse_openai_response(&json)
     }
 
     fn model_name(&self) -> &str {
-        &self.model
+        &self.model_id
     }
 }

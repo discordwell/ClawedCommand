@@ -15,7 +15,7 @@ realfft = "3.4"
 crossbeam-channel = "0.5"
 cpal = "0.15"
 log = "0.4"
-bevy_egui = "0.39"
+
 
 [profile.wasm-release]
 inherits = "release"
