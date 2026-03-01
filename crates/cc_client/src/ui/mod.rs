@@ -1,7 +1,5 @@
 pub mod build_menu;
 pub mod building_info;
-pub mod resource_hud;
-
 pub mod ability_bar;
 pub mod briefing;
 pub mod campaign_menu;
@@ -38,7 +36,6 @@ impl Plugin for UiPlugin {
             .add_systems(
                 Startup,
                 (
-                    resource_hud::spawn_resource_hud,
                     resource_bar::spawn_resource_bar,
                     build_menu::spawn_build_menu,
                     building_info::spawn_building_info,
@@ -55,7 +52,6 @@ impl Plugin for UiPlugin {
             .add_systems(
                 Update,
                 (
-                    resource_hud::update_resource_hud,
                     resource_bar::update_resource_bar,
                     build_menu::update_build_menu,
                     building_info::update_building_info,

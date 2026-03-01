@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 
-use crate::renderer::screenshot::ScreenshotConfig;
-use cc_sim::resources::{PlayerResources, SimClock};
+use cc_sim::resources::{PlayerResourceState, PlayerResources, SimClock};
 
 const LOCAL_PLAYER: usize = 0;
 
@@ -45,7 +44,6 @@ pub fn spawn_resource_bar(mut commands: Commands) {
 pub fn update_resource_bar(
     player_resources: Res<PlayerResources>,
     clock: Option<Res<SimClock>>,
-    screenshot_config: Option<Res<ScreenshotConfig>>,
     mut text_q: Query<&mut Text, With<ResourceBarText>>,
 ) {
     let Some(pres) = player_resources.players.get(LOCAL_PLAYER) else {
@@ -57,6 +55,11 @@ pub fn update_resource_bar(
     };
 
     let tick = clock.as_ref().map(|c| c.tick).unwrap_or(0);
+    text.0 = format_resource_line(pres, tick);
+}
+
+/// Pure formatting for the resource bar — testable without Bevy.
+fn format_resource_line(pres: &PlayerResourceState, tick: u64) -> String {
     let total_secs = tick / 10;
     let mins = total_secs / 60;
     let secs = total_secs % 60;
@@ -67,21 +70,46 @@ pub fn update_resource_bar(
         ""
     };
 
-    let mut line = format!(
+    format!(
         "Food: {}  |  GPU: {}  |  NFTs: {}  |  Supply: {}/{}{}  |  {:02}:{:02}",
         pres.food, pres.gpu_cores, pres.nfts, pres.supply, pres.supply_cap, supply_warn, mins, secs,
-    );
+    )
+}
 
-    if let Some(ref config) = screenshot_config {
-        if let Some(interval) = config.auto_interval {
-            let label = if interval <= 10.0 {
-                " [AUTO 10s]"
-            } else {
-                " [AUTO 30s]"
-            };
-            line.push_str(label);
-        }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_resource_line_shows_all_fields() {
+        let pres = PlayerResourceState {
+            food: 300,
+            gpu_cores: 50,
+            nfts: 2,
+            supply: 5,
+            supply_cap: 10,
+            ..Default::default()
+        };
+        let line = format_resource_line(&pres, 615); // 61.5s = 01:01
+        assert!(line.contains("Food: 300"));
+        assert!(line.contains("GPU: 50"));
+        assert!(line.contains("NFTs: 2"));
+        assert!(line.contains("Supply: 5/10"));
+        assert!(line.contains("01:01"));
+        assert!(!line.contains('!'));
     }
 
-    text.0 = line;
+    #[test]
+    fn supply_warning_when_at_cap() {
+        let pres = PlayerResourceState {
+            food: 0,
+            gpu_cores: 0,
+            nfts: 0,
+            supply: 10,
+            supply_cap: 10,
+            ..Default::default()
+        };
+        let line = format_resource_line(&pres, 0);
+        assert!(line.contains("Supply: 10/10!"));
+    }
 }
