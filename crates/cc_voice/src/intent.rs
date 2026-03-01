@@ -10,8 +10,9 @@
 use bevy::prelude::*;
 
 use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::{Building, CursorGridPos, Dead, Owner, Position, UnitKind};
+use cc_core::components::{Building, CursorGridPos, Dead, Faction, Owner, Position, UnitKind};
 use cc_core::coords::GridPos;
+use cc_sim::ai::fsm::{FactionMap, faction_map};
 use cc_sim::resources::MapResource;
 
 use crate::events::VoiceCommandEvent;
@@ -386,19 +387,34 @@ pub fn resolve_voice_flank(
 // Build command resolution
 // ---------------------------------------------------------------------------
 
-/// Map voice building keyword to game BuildingKind (catGPT faction).
+/// Map a voice building keyword to a game BuildingKind using the player's faction map.
+///
+/// Voice keywords use generic role names (barracks, refinery, tower); the FactionMap
+/// translates them to faction-specific buildings (e.g. CatTree for catGPT, Rookery for Murder).
 pub fn voice_building_to_game_building(
     voice_kind: BuildingKind,
+    fmap: &FactionMap,
 ) -> cc_core::components::BuildingKind {
     match voice_kind {
-        BuildingKind::Barracks | BuildingKind::Tree => cc_core::components::BuildingKind::CatTree,
-        BuildingKind::Refinery | BuildingKind::Market => {
-            cc_core::components::BuildingKind::FishMarket
-        }
-        BuildingKind::Tower => cc_core::components::BuildingKind::LaserPointer,
-        BuildingKind::Box => cc_core::components::BuildingKind::TheBox,
-        BuildingKind::Rack => cc_core::components::BuildingKind::ServerRack,
-        BuildingKind::Post => cc_core::components::BuildingKind::ScratchingPost,
+        BuildingKind::Barracks | BuildingKind::Tree => fmap.barracks,
+        BuildingKind::Refinery | BuildingKind::Market => fmap.resource_depot,
+        BuildingKind::Tower => fmap.defense_tower,
+        BuildingKind::Box => fmap.hq,
+        BuildingKind::Rack => fmap.tech,
+        BuildingKind::Post => fmap.research,
+    }
+}
+
+/// Infer the player's faction from their HQ building kind.
+fn infer_faction_from_hq(hq_kind: cc_core::components::BuildingKind) -> Faction {
+    match hq_kind {
+        cc_core::components::BuildingKind::TheBox => Faction::CatGpt,
+        cc_core::components::BuildingKind::TheBurrow => Faction::TheClawed,
+        cc_core::components::BuildingKind::TheSett => Faction::SeekersOfTheDeep,
+        cc_core::components::BuildingKind::TheParliament => Faction::TheMurder,
+        cc_core::components::BuildingKind::TheDumpster => Faction::Llama,
+        cc_core::components::BuildingKind::TheGrotto => Faction::Croak,
+        _ => Faction::CatGpt, // fallback
     }
 }
 
@@ -591,10 +607,22 @@ pub fn voice_intent_system(
                         }
                         rally_cmd
                     }
-                    // Build → find idle Pawdler + build site
+                    // Build → find nearest worker + build site
                     AgentAction::Build => {
                         if let Some(voice_bk) = *pending_building {
-                            let game_bk = voice_building_to_game_building(voice_bk);
+                            // Infer faction from player's HQ building
+                            let player_faction = player_buildings
+                                .iter()
+                                .find(|(_, _, owner, b)| {
+                                    owner.player_id == 0 && b.kind.is_hq()
+                                })
+                                .map(|(_, _, _, b)| infer_faction_from_hq(b.kind))
+                                .unwrap_or(Faction::CatGpt);
+
+                            let fmap = faction_map(player_faction);
+                            let game_bk =
+                                voice_building_to_game_building(voice_bk, &fmap);
+
                             let center = cursor_grid.pos.unwrap_or(GridPos::new(
                                 mw as i32 / 2,
                                 mh as i32 / 2,
@@ -614,9 +642,9 @@ pub fn voice_intent_system(
                                 20,
                             );
 
-                            // Find nearest own idle Pawdler
+                            // Find nearest own worker (any faction's worker type)
                             let builder = own_units()
-                                .filter(|(_, ut, _, _)| ut.kind == UnitKind::Pawdler)
+                                .filter(|(_, ut, _, _)| ut.kind.is_worker())
                                 .min_by_key(|(_, _, pos, _)| {
                                     let gp = pos.world.to_grid();
                                     (gp.x - center.x).abs() + (gp.y - center.y).abs()
@@ -939,17 +967,47 @@ mod tests {
     }
 
     #[test]
-    fn test_voice_building_mapping() {
+    fn test_voice_building_mapping_catgpt() {
         use cc_core::components::BuildingKind as GBK;
 
-        assert_eq!(voice_building_to_game_building(BuildingKind::Barracks), GBK::CatTree);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Tree), GBK::CatTree);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Refinery), GBK::FishMarket);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Market), GBK::FishMarket);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Tower), GBK::LaserPointer);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Box), GBK::TheBox);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Rack), GBK::ServerRack);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Post), GBK::ScratchingPost);
+        let fmap = faction_map(Faction::CatGpt);
+        assert_eq!(voice_building_to_game_building(BuildingKind::Barracks, &fmap), GBK::CatTree);
+        assert_eq!(voice_building_to_game_building(BuildingKind::Tree, &fmap), GBK::CatTree);
+        assert_eq!(voice_building_to_game_building(BuildingKind::Refinery, &fmap), GBK::FishMarket);
+        assert_eq!(voice_building_to_game_building(BuildingKind::Market, &fmap), GBK::FishMarket);
+        assert_eq!(voice_building_to_game_building(BuildingKind::Tower, &fmap), GBK::LaserPointer);
+        assert_eq!(voice_building_to_game_building(BuildingKind::Box, &fmap), GBK::TheBox);
+        assert_eq!(voice_building_to_game_building(BuildingKind::Rack, &fmap), GBK::ServerRack);
+        assert_eq!(voice_building_to_game_building(BuildingKind::Post, &fmap), GBK::ScratchingPost);
+    }
+
+    #[test]
+    fn test_voice_building_mapping_other_factions() {
+        use cc_core::components::BuildingKind as GBK;
+
+        // The Murder: "barracks" → Rookery, "tower" → Watchtower
+        let murder = faction_map(Faction::TheMurder);
+        assert_eq!(voice_building_to_game_building(BuildingKind::Barracks, &murder), GBK::Rookery);
+        assert_eq!(voice_building_to_game_building(BuildingKind::Tower, &murder), GBK::Watchtower);
+
+        // Croak: "barracks" → SpawningPools, "refinery" → LilyMarket
+        let croak = faction_map(Faction::Croak);
+        assert_eq!(voice_building_to_game_building(BuildingKind::Barracks, &croak), GBK::SpawningPools);
+        assert_eq!(voice_building_to_game_building(BuildingKind::Refinery, &croak), GBK::LilyMarket);
+    }
+
+    #[test]
+    fn test_infer_faction_from_hq() {
+        use cc_core::components::BuildingKind as GBK;
+
+        assert_eq!(infer_faction_from_hq(GBK::TheBox), Faction::CatGpt);
+        assert_eq!(infer_faction_from_hq(GBK::TheBurrow), Faction::TheClawed);
+        assert_eq!(infer_faction_from_hq(GBK::TheSett), Faction::SeekersOfTheDeep);
+        assert_eq!(infer_faction_from_hq(GBK::TheParliament), Faction::TheMurder);
+        assert_eq!(infer_faction_from_hq(GBK::TheDumpster), Faction::Llama);
+        assert_eq!(infer_faction_from_hq(GBK::TheGrotto), Faction::Croak);
+        // Non-HQ falls back to CatGpt
+        assert_eq!(infer_faction_from_hq(GBK::CatTree), Faction::CatGpt);
     }
 
     #[test]
