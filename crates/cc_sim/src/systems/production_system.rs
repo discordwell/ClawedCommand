@@ -104,9 +104,9 @@ pub fn production_system(
                 if building.kind == BuildingKind::SporeTower {
                     commands.entity(entity).insert((
                         AttackStats {
-                            damage: Fixed::from_bits(5 << 16), // 5 damage
+                            damage: Fixed::from_bits(8 << 16), // 8 damage
                             range: Fixed::from_bits(5 << 16),  // 5 range
-                            attack_speed: 20,                   // 2s between attacks
+                            attack_speed: 15,                   // 1.5s between attacks
                             cooldown_remaining: 0,
                         },
                         AttackTypeMarker {
@@ -190,9 +190,9 @@ pub fn production_system(
                 if building.kind == BuildingKind::SqueakTower {
                     commands.entity(entity).insert((
                         AttackStats {
-                            damage: Fixed::from_bits(5 << 16), // 5 damage
-                            range: Fixed::from_bits(4 << 16),  // 4 range
-                            attack_speed: 20,                   // 2s between attacks
+                            damage: Fixed::from_bits(8 << 16), // 8 damage
+                            range: Fixed::from_bits(5 << 16),  // 5 range
+                            attack_speed: 15,                   // 1.5s between attacks
                             cooldown_remaining: 0,
                         },
                         AttackTypeMarker {

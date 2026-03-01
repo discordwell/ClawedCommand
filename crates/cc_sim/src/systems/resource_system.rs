@@ -121,7 +121,7 @@ pub fn gathering_system(
                     };
                     gathering.carried_amount = actual_carry;
 
-                    // Find nearest drop-off (TheBox or FishMarket owned by same player)
+                    // Find nearest resource dropoff building owned by same player
                     let nearest_dropoff = find_nearest_dropoff(
                         pos.world,
                         owner.player_id,
@@ -228,7 +228,26 @@ pub fn gathering_system(
     }
 }
 
-/// Find the nearest TheBox or FishMarket owned by the given player.
+/// Returns true if this building kind is a valid resource dropoff (HQ or resource depot).
+fn is_dropoff_building(kind: BuildingKind) -> bool {
+    matches!(
+        kind,
+        // CatGPT
+        BuildingKind::TheBox | BuildingKind::FishMarket |
+        // The Clawed
+        BuildingKind::TheBurrow | BuildingKind::SeedVault |
+        // Croak
+        BuildingKind::TheGrotto | BuildingKind::LilyMarket |
+        // The Murder
+        BuildingKind::TheParliament | BuildingKind::CarrionCache |
+        // LLAMA
+        BuildingKind::TheDumpster | BuildingKind::ScrapHeap |
+        // Seekers of the Deep
+        BuildingKind::TheSett | BuildingKind::BurrowDepot
+    )
+}
+
+/// Find the nearest HQ or resource depot owned by the given player.
 fn find_nearest_dropoff(
     from: WorldPos,
     player_id: u8,
@@ -241,9 +260,8 @@ fn find_nearest_dropoff(
         if bowner.player_id != player_id {
             continue;
         }
-        match building.kind {
-            BuildingKind::TheBox | BuildingKind::FishMarket => {}
-            _ => continue,
+        if !is_dropoff_building(building.kind) {
+            continue;
         }
 
         let dist = from.distance_squared(bpos.world);
@@ -267,9 +285,8 @@ fn is_near_dropoff(
         if bowner.player_id != player_id {
             continue;
         }
-        match building.kind {
-            BuildingKind::TheBox | BuildingKind::FishMarket => {}
-            _ => continue,
+        if !is_dropoff_building(building.kind) {
+            continue;
         }
 
         let dist = from.distance_squared(bpos.world);
@@ -279,4 +296,52 @@ fn is_near_dropoff(
     }
 
     false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cc_core::components::Faction;
+    use crate::ai::fsm::faction_map;
+
+    /// Ensure is_dropoff_building accepts the HQ and resource depot for every faction.
+    /// Regression test: previously only CatGPT buildings were accepted, causing
+    /// non-CatGPT workers to never deposit resources.
+    #[test]
+    fn all_faction_dropoffs_recognized() {
+        let factions = [
+            Faction::CatGpt,
+            Faction::TheClawed,
+            Faction::SeekersOfTheDeep,
+            Faction::TheMurder,
+            Faction::Llama,
+            Faction::Croak,
+        ];
+
+        for faction in &factions {
+            let fmap = faction_map(*faction);
+            assert!(
+                is_dropoff_building(fmap.hq),
+                "{:?} HQ ({:?}) not recognized as dropoff",
+                faction,
+                fmap.hq,
+            );
+            assert!(
+                is_dropoff_building(fmap.resource_depot),
+                "{:?} depot ({:?}) not recognized as dropoff",
+                faction,
+                fmap.resource_depot,
+            );
+        }
+    }
+
+    /// Non-dropoff buildings must NOT be accepted.
+    #[test]
+    fn non_dropoff_buildings_rejected() {
+        let fmap = faction_map(Faction::CatGpt);
+        assert!(!is_dropoff_building(fmap.barracks));
+        assert!(!is_dropoff_building(fmap.tech));
+        assert!(!is_dropoff_building(fmap.research));
+        assert!(!is_dropoff_building(fmap.supply));
+    }
 }

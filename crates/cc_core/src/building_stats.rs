@@ -319,7 +319,7 @@ pub fn building_stats(kind: BuildingKind) -> BuildingBaseStats {
         },
         // --- Seekers of the Deep (Badgers) ---
         BuildingKind::TheSett => BuildingBaseStats { health: Fixed::from_bits(600 << 16), build_time: 0, food_cost: 0, gpu_cost: 0, supply_provided: 10, can_produce: &[UnitKind::Delver] },
-        BuildingKind::WarHollow => BuildingBaseStats { health: Fixed::from_bits(400 << 16), build_time: 180, food_cost: 175, gpu_cost: 0, supply_provided: 0, can_produce: &[UnitKind::Ironhide, UnitKind::Sapjaw, UnitKind::Warden, UnitKind::Gutripper] },
+        BuildingKind::WarHollow => BuildingBaseStats { health: Fixed::from_bits(400 << 16), build_time: 150, food_cost: 150, gpu_cost: 0, supply_provided: 0, can_produce: &[UnitKind::Ironhide, UnitKind::Sapjaw, UnitKind::Warden, UnitKind::Gutripper] },
         BuildingKind::BurrowDepot => BuildingBaseStats { health: Fixed::from_bits(250 << 16), build_time: 120, food_cost: 100, gpu_cost: 0, supply_provided: 0, can_produce: &[] },
         BuildingKind::CoreTap => BuildingBaseStats { health: Fixed::from_bits(300 << 16), build_time: 150, food_cost: 125, gpu_cost: 100, supply_provided: 0, can_produce: &[UnitKind::SeekerTunneler, UnitKind::Embermaw, UnitKind::Dustclaw, UnitKind::Cragback, UnitKind::Wardenmother] },
         BuildingKind::ClawMarks => BuildingBaseStats { health: Fixed::from_bits(250 << 16), build_time: 120, food_cost: 125, gpu_cost: 75, supply_provided: 0, can_produce: &[] },

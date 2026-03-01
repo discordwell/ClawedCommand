@@ -240,7 +240,7 @@ pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
         },
         Faction::TheClawed => AiPersonalityProfile {
             name: "Claudeus Maximus".into(),
-            attack_threshold: 8,          // need numbers to compete with CatGPT
+            attack_threshold: 10,         // swarm identity: overwhelm with cheap units
             unit_preferences: vec![
                 (UnitKind::Swarmer, 6),
                 (UnitKind::Plaguetail, 3), // was Shrieker — viable T1 barracks ranged
@@ -248,7 +248,7 @@ pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
                 (UnitKind::Sparks, 2),
             ],                            // removed Quillback (tech-gated)
             target_workers: 3,
-            economy_priority: true,       // was false
+            economy_priority: false,      // rush army, skip tech
             retreat_threshold: 15,
             eval_speed_mult: 0.5,
             chaos_factor: 8,              // was 12
