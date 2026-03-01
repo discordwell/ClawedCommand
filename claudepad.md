@@ -1,11 +1,13 @@
 # Claudepad - ClawedCommand
 
 ## Session Summaries
-- **2026-02-28T130:00:00Z** — Agent Harness Code Review Fixes: Fixed 3 critical issues from code review: (1) added player_id param to all 8+13 MCP tool param structs, (2) replaced all GameMap::new() with sim.map() using scoped block pattern for borrow safety, (3) renamed distance_between→distance_squared_between. Fixed FactionId::CatGPT hardcoding (25 occurrences) to use from_u8(player_id). Fixed economy.rs borrow checker errors. All 238 tests pass (109 cc_core + 35 cc_sim + 89 cc_agent + 5 cc_harness).
-- **2026-02-28T120:00:00Z** — Tiered Agent Tools: Implemented 4-tier tool unlock system (Basic/Tactical/Strategic/Advanced). Created tool_tier.rs, refactored behaviors.rs → behaviors/ module (economy.rs, tactical.rs, strategic.rs), added 10 new behavior primitives. Wired tier-gating into MCP tools, Lua runtime, agent bridge, runner, harness server. 89 cc_agent + 109 cc_core + 5 cc_harness + 80 cc_sim tests pass (1 pre-existing sim failure).
+- **2026-02-28T210:00:00Z** — Campaign Gaps Phase 1: Core Systems. Registered wave_spawner module (WaveTracker, MissionStarted, wave_spawner_system, wave_tracking_system). Added PersistentCampaignState (Act3Choice, PatchesStatus, flags). Added NextMission enum + ai_tool_tier to MissionDefinition. Added PersistentFlag condition + SetPersistentFlag action. Fixed WaveMembership→WaveMember rename. WaveEliminated uses WaveTracker resource. Fixed DreamSiege `attack` typo. 8 new wave integration tests + RON validation test. All 280 tests pass (120 cc_core + 36 cc_sim + 43 campaign + 66 integration + 15 abilities). 4 Act 1 mission RON files validated. Updated CAMPAIGN_GAPS.md + TDL.md.
+- **2026-02-28T180:00:00Z** — Phase 4B: First 10 Abilities. Implemented all 10 abilities across 3 activation types. New systems: ability_effect_system (bridge), full aura_system, 4 deferred commands (ApplyStatusCommand, AoeCcCommand, RevulsionAoeCommand, + existing ApplyDamage). 15 new integration tests in separate file (phase4b_abilities.rs) to avoid linter interference. 201 workspace tests pass + 1 pre-existing campaign failure. Also fixed linter-introduced fsm.rs BuildOrder query mismatch.
+- **2026-02-28T140:00:00Z** — Wet Test Session #3: Fixed linter-introduced regressions. Pushed commit 829c3cf. Ongoing: linter persistently toggles PersistentFlag enum variants.
+- **2026-02-28T130:00:00Z** — Agent Harness Code Review Fixes: Fixed 3 critical issues from code review. All 238 tests pass.
+- **2026-02-28T120:00:00Z** — Tiered Agent Tools: 4-tier tool unlock system. 89 cc_agent + 109 cc_core + 5 cc_harness + 80 cc_sim tests pass.
 - **2026-02-28T110:00:00Z** — Wet Test Continuation: Fixed rmcp exclusion, SpiteCarryBuff, supply cap test, idle worker regression. 355 tests + 10 wet tests pass.
 - **2026-02-28T105:00:00Z** — Campaign System Implementation. Hero system, mission definitions, campaign state machine, dialogue UI, 6 AI personality profiles, prologue mission. 360 tests pass.
-- **2026-02-28T99:00:00Z** — Agent Harness Implementation. Extended cc_agent ScriptContext, behaviors.rs with 8 composable primitives, cc_harness crate with HeadlessSim + MCP server. 62 cc_agent + 5 cc_harness tests pass.
 - (older entries moved to oldpad.md)
 ## Key Findings
 - Player wants hybrid control: direct unit micro + AI agent delegation
