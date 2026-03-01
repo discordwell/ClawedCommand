@@ -1286,6 +1286,19 @@ pub struct Stasis {
     pub per_unit_cooldown_tick: u64,
 }
 
+// ---------------------------------------------------------------------------
+// Cursor position (shared between input systems)
+// ---------------------------------------------------------------------------
+
+/// Current cursor position in grid coordinates, updated each frame by the client.
+///
+/// Engine-agnostic data — the client writes it, voice/AI systems read it.
+#[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::prelude::Resource))]
+pub struct CursorGridPos {
+    pub pos: Option<GridPos>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

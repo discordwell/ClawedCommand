@@ -2,7 +2,7 @@ pub mod keyboard;
 pub mod mouse;
 
 use bevy::prelude::*;
-use cc_core::components::{BuildingKind, UnitKind};
+use cc_core::components::{BuildingKind, CursorGridPos, UnitKind};
 
 /// Current input mode — changes how left-click behaves.
 #[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,12 +48,15 @@ impl Plugin for InputPlugin {
             .init_resource::<DragSelectState>()
             .init_resource::<PlacementPreview>()
             .init_resource::<DoubleClickState>()
+            .init_resource::<CursorGridPos>()
             .add_systems(
                 Update,
                 (
+                    mouse::update_cursor_grid_pos,
                     mouse::handle_mouse_input,
                     keyboard::handle_keyboard,
-                ),
+                )
+                    .chain(),
             );
     }
 }

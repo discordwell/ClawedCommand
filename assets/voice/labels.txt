@@ -114,5 +114,6 @@ help
 undo
 yes
 no
+nearby
 unknown
 silence

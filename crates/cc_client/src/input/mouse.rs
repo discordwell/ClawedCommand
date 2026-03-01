@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::{Building, Owner, Position, Producer, ResourceDeposit, Selected, UnitType};
+use cc_core::components::{Building, CursorGridPos, Owner, Position, Producer, ResourceDeposit, Selected, UnitType};
 use cc_core::coords::{ScreenPos, screen_to_world};
 use cc_sim::resources::{CommandQueue, MapResource};
 
@@ -350,6 +350,30 @@ pub fn handle_mouse_input(
             target,
         });
     }
+}
+
+/// Updates the shared CursorGridPos resource each frame.
+///
+/// Runs before voice systems so they can read the cursor position.
+pub fn update_cursor_grid_pos(
+    window: Single<&Window>,
+    camera_q: Single<(&Camera, &GlobalTransform), With<Camera2d>>,
+    mut cursor_grid: ResMut<CursorGridPos>,
+) {
+    let Some(cursor_pos) = window.cursor_position() else {
+        cursor_grid.pos = None;
+        return;
+    };
+    let (camera, camera_transform) = *camera_q;
+    let Ok(world_pos) = camera.viewport_to_world_2d(camera_transform, cursor_pos) else {
+        cursor_grid.pos = None;
+        return;
+    };
+    let iso_world = screen_to_world(ScreenPos {
+        x: world_pos.x,
+        y: -world_pos.y,
+    });
+    cursor_grid.pos = Some(iso_world.to_grid());
 }
 
 /// Distance between a Position and a WorldPos in world units.
