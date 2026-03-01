@@ -46,7 +46,7 @@ CATEGORY_MAP = {
     ],
     "directions": ["north", "south", "east", "west"],
     "buildings": ["barracks", "refinery", "tower", "box", "tree", "market", "rack", "post"],
-    "meta": ["base", "cancel", "help", "undo", "yes", "no"],
+    "meta": ["base", "cancel", "help", "undo", "yes", "no", "nearby"],
     "conjunctions": ["and", "with", "except", "not"],
     "special": ["unknown", "silence"],
 }
@@ -252,7 +252,7 @@ def benchmark_latency(onnx_path, n_iters=100):
     }
 
 
-def verify_onnx_format(onnx_path, num_classes=118):
+def verify_onnx_format(onnx_path, num_classes=119):
     """Verify ONNX model has correct input/output format."""
     import onnxruntime as ort
 

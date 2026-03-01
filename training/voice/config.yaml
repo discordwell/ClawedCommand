@@ -11,8 +11,8 @@ audio:
 
 model:
   name: "TC-ResNet8"
-  num_classes: 118
-  k: 2                   # Width multiplier (doubled for 118-class vocab)
+  num_classes: 119
+  k: 2                   # Width multiplier (doubled for 119-class vocab)
   channels: [32, 48, 64, 96]   # k=2 channel widths (~300K params)
 
 training:
@@ -42,13 +42,10 @@ tts:
     - "Moira"
     - "Tessa"
     - "Samantha"
-    - "Alex"
-    - "Tom"
-    - "Fiona"
   speed_variations: [130, 160, 190, 220, 250]  # words per minute
 
 # -----------------------------------------------------------------------
-# Vocabulary — 118 classes
+# Vocabulary — 119 classes
 #
 # Grammar: [agent_command] [unit_selector | group_selector] [conjunction ...]
 # Example: "retreat" → "chonks" → "and" → "hissers"
@@ -206,6 +203,7 @@ vocabulary:
     - undo          # Undo last command
     - "yes"         # Confirm (quoted — YAML parses bare yes/no as booleans)
     - "no"          # Deny / cancel (quoted — YAML parses bare yes/no as booleans)
+    - nearby        # Units near cursor / selection
 
   # Internal classifier classes (not user-spoken)
   special:

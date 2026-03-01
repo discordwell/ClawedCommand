@@ -18,7 +18,7 @@ distillation:
   temp_end: 2.0
 
 training:
-  epochs: 200
+  epochs: 100
   batch_size: 128
   learning_rate: 0.01
   weight_decay: 0.001
@@ -57,7 +57,7 @@ teacher_finetune:
   freeze_blocks: 2           # Number of temporal blocks to freeze
   label_smoothing: 0.1       # Prevents near-one-hot soft targets
   mixup_alpha: 0.2           # Mixup regularization strength
-  num_classes: 118           # Game vocabulary
+  num_classes: 119           # Game vocabulary
 
 # Post-distillation student fine-tuning
 student_finetune:

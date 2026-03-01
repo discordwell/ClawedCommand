@@ -23,7 +23,7 @@ use cc_sim::ai::MultiAiState;
 use cc_sim::harness::invariants::{InvariantChecker, InvariantViolation, Severity};
 use cc_sim::harness::{
     MatchOutcome, count_living_entities, determine_leader, headless_despawn_system,
-    spawn_starting_entities,
+    spawn_combat_unit, spawn_starting_entities,
 };
 use cc_sim::resources::{
     CombatStats, CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock,
@@ -78,6 +78,9 @@ pub struct ArenaConfig {
     pub scripts: [Option<Vec<ScriptSource>>; 2],
     /// Compute budget per script execution (default 500).
     pub script_budget: u32,
+    /// Extra combat units to spawn at match start: (player_id, UnitKind, count).
+    /// Spawned near each player's HQ after normal starting entities.
+    pub extra_spawns: Vec<(u8, UnitKind, u32)>,
 }
 
 impl Default for ArenaConfig {
@@ -103,6 +106,7 @@ impl Default for ArenaConfig {
             ],
             scripts: [None, None],
             script_budget: 500,
+            extra_spawns: Vec::new(),
         }
     }
 }
@@ -409,6 +413,19 @@ fn make_arena_sim(
     for (player_id, spawn_pos) in &spawn_positions {
         let faction = config.bots[*player_id as usize].faction;
         spawn_starting_entities(&mut world, *player_id, *spawn_pos, faction, map_def);
+    }
+
+    // Spawn extra combat units near each player's HQ
+    for (player_id, kind, count) in &config.extra_spawns {
+        if let Some((_, base_pos)) = spawn_positions.iter().find(|(pid, _)| pid == player_id) {
+            for i in 0..*count {
+                // Spread units in a grid around the HQ
+                let dx = (i % 6) as i32 - 2;
+                let dy = (i / 6) as i32 + 2;
+                let pos = GridPos::new(base_pos.x + dx, base_pos.y + dy);
+                spawn_combat_unit(&mut world, pos, *player_id, *kind);
+            }
+        }
     }
 
     // Seed ArenaStats prev counts so starting units aren't counted as "trained"
@@ -861,6 +878,60 @@ mod tests {
         assert_eq!(
             result.scripts_loaded[1],
             vec!["clawed_advanced".to_string()],
+        );
+    }
+
+    /// Demo scenario 4: big-army mirror match — both CatGPT with Gen 42
+    /// terrain-aware combat micro and doubled starting armies.
+    #[test]
+    fn demo_scenario_4_big_army_mirror_match() {
+        let scripts_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../training/arena/gen_042/player_1");
+
+        let config = ArenaConfig {
+            max_ticks: 8000,
+            scripts: [
+                Some(vec![ScriptSource::File(scripts_dir.clone())]),
+                Some(vec![ScriptSource::File(scripts_dir)]),
+            ],
+            extra_spawns: vec![
+                // Player 0: 4 Chonks, 4 Hissers, 3 Nuisances, 2 Yowlers
+                (0, UnitKind::Chonk, 4),
+                (0, UnitKind::Hisser, 4),
+                (0, UnitKind::Nuisance, 3),
+                (0, UnitKind::Yowler, 2),
+                // Player 1: same army
+                (1, UnitKind::Chonk, 4),
+                (1, UnitKind::Hisser, 4),
+                (1, UnitKind::Nuisance, 3),
+                (1, UnitKind::Yowler, 2),
+            ],
+            ..Default::default()
+        };
+        let result = run_arena_match(&config);
+        assert!(
+            result.passed(),
+            "Big-army mirror match should complete without errors: {:?}",
+            result.violations,
+        );
+        // Both sides should have loaded the terrain kite script
+        assert_eq!(
+            result.scripts_loaded[0],
+            vec!["combat_micro_terrain_kite_only".to_string()],
+        );
+        assert_eq!(
+            result.scripts_loaded[1],
+            vec!["combat_micro_terrain_kite_only".to_string()],
+        );
+        // Print results for visibility
+        println!(
+            "Demo 4 result: {} | ticks: {} | p0 kills: {} lost: {} | p1 kills: {} lost: {}",
+            result.outcome,
+            result.final_tick,
+            result.stats.players[0].units_killed,
+            result.stats.players[0].units_lost,
+            result.stats.players[1].units_killed,
+            result.stats.players[1].units_lost,
         );
     }
 }

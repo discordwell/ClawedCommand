@@ -20,7 +20,7 @@ class TCResNet14Wide(nn.Module):
     ~5M params with default channels [64, 96, 128, 192, 256].
     """
 
-    def __init__(self, n_mels=40, num_classes=118, channels=None, dropout=0.1):
+    def __init__(self, n_mels=40, num_classes=119, channels=None, dropout=0.1):
         super().__init__()
         if channels is None:
             channels = [64, 96, 128, 192, 256]
@@ -100,7 +100,7 @@ def get_student_features_fn():
 
 if __name__ == "__main__":
     # Quick sanity check
-    model = TCResNet14Wide(n_mels=40, num_classes=118)
+    model = TCResNet14Wide(n_mels=40, num_classes=119)
     param_count = sum(p.numel() for p in model.parameters())
     print(f"Teacher params: {param_count:,}")
 

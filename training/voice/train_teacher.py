@@ -4,7 +4,7 @@
 Phase 1 (pretrain): Train TC-ResNet14-Wide on Google Speech Commands v2 (35 classes)
                     to learn general speech representations from real human audio.
 
-Phase 2 (finetune): Fine-tune on the unified game vocabulary (118 classes) with
+Phase 2 (finetune): Fine-tune on the unified game vocabulary (119 classes) with
                     label smoothing and mixup regularization.
 
 Usage:
@@ -186,11 +186,11 @@ def phase_pretrain(args):
 
     train_loader = DataLoader(
         train_dataset, batch_size=phase_cfg["batch_size"],
-        shuffle=True, num_workers=4, pin_memory=True,
+        shuffle=True, num_workers=2, pin_memory=True,
     )
     val_loader = DataLoader(
         val_no_aug, batch_size=phase_cfg["batch_size"],
-        shuffle=False, num_workers=4, pin_memory=True,
+        shuffle=False, num_workers=2, pin_memory=True,
     )
 
     print(f"Train: {len(train_dataset)}, Val: {len(val_dataset)}")
@@ -262,7 +262,7 @@ def phase_pretrain(args):
 
 
 def phase_finetune(args):
-    """Phase 2: Fine-tune teacher on game vocabulary (118 classes)."""
+    """Phase 2: Fine-tune teacher on game vocabulary (119 classes)."""
     cfg = load_config()
     base_cfg = load_base_config()
     phase_cfg = cfg["teacher_finetune"]
@@ -301,11 +301,11 @@ def phase_finetune(args):
 
     train_loader = DataLoader(
         train_dataset, batch_size=phase_cfg["batch_size"],
-        shuffle=True, num_workers=4, pin_memory=True,
+        shuffle=True, num_workers=2, pin_memory=True,
     )
     val_loader = DataLoader(
         val_dataset, batch_size=phase_cfg["batch_size"],
-        shuffle=False, num_workers=4, pin_memory=True,
+        shuffle=False, num_workers=2, pin_memory=True,
     )
 
     print(f"Train: {len(train_dataset)}, Val: {len(val_dataset)}")
@@ -324,7 +324,7 @@ def phase_finetune(args):
         print(f"Loaded pretrained teacher from {args.pretrained} "
               f"(pretrain acc: {checkpoint.get('best_val_acc', 'N/A')})")
 
-    # Replace FC for 118 classes
+    # Replace FC for 119 classes
     model.replace_fc(num_classes)
     model = model.to(device)
 

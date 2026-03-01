@@ -132,6 +132,7 @@ fn main() {
             ],
             scripts: [p0_scripts.clone(), p1_scripts.clone()],
             script_budget: 500,
+            extra_spawns: Vec::new(),
         };
 
         print!("Seed {seed}: ");
