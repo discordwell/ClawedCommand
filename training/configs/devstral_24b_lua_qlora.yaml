@@ -1,0 +1,56 @@
+# Devstral Small 2 (24B) QLoRA fine-tuning config — Lua script generation
+# This trains on Lua code generation examples (gold_lua_examples.jsonl),
+# NOT MCP tool-call format. The model learns to emit Lua scripts that call
+# ScriptContext methods, rather than JSON tool-call messages.
+#
+# Hardware: 1x L40S 48GB (Brev)
+# Framework: Unsloth + TRL SFTTrainer
+# Budget: ~$8 for 2 runs (~$4 each, ~1.5 hrs on L40S at ~$1.25/hr)
+# Note: For final full-LoRA run on A100 80GB, use devstral_24b_lora.yaml
+
+model:
+  name: "mistralai/Devstral-Small-2-24B-Instruct-2512"
+  max_seq_len: 4096
+  load_in_4bit: true              # QLoRA — fits L40S 48GB comfortably
+  dtype: "bfloat16"
+
+lora:
+  rank: 32
+  alpha: 64
+  dropout: 0.0
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+training:
+  output_dir: "./outputs/devstral_24b_lua_qlora_v1"
+  learning_rate: 2.0e-4
+  num_epochs: 3
+  per_device_batch_size: 4        # 24B QLoRA fits batch 4 on 48GB
+  gradient_accumulation_steps: 8   # Effective batch size = 32
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  optimizer: "adamw_8bit"
+  lr_scheduler_type: "cosine"
+  bf16: true
+  seed: 42
+  logging_steps: 10
+  eval_steps: 50
+  save_steps: 100
+  max_grad_norm: 1.0
+
+data:
+  train_file: "../data/gold_lua_examples.jsonl"
+  eval_file: "../data/gold_lua_examples.jsonl"  # Use gold set for eval until synthetic set is generated
+  chat_template: "mistral"        # Use Mistral's native chat template
+
+inference:
+  engine: "vllm"
+  quantization: "awq"
+  gpu_memory_utilization: 0.9
+  max_model_len: 4096

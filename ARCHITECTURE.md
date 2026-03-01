@@ -69,6 +69,46 @@ Players command armies through a dual interface: traditional RTS point-and-click
 
 ---
 
+## System Layers
+
+The architecture separates into five distinct layers, each with a clear responsibility and interface to the layers above and below it.
+
+```
+┌─────────────────────────────────────────┐
+│  FRONTEND (cc_client)                   │
+│  Renderer, UI, input handling           │
+├─────────────────────────────────────────┤
+│  BACKEND (cc_sim, cc_core)              │  ← tells frontend what to display
+│  Bevy ECS simulation, commands, physics │
+├─────────────────────────────────────────┤
+│  SCRIPTED AI (cc_agent scripts)         │  ← uses ctx API
+│  Player Lua scripts, enemy AI, FSM      │
+├─────────────────────────────────────────┤
+│  INTELLIGENCE LAYER                     │  ← creates scripts / comprehends voice
+│  Agentic builders + voice comprehension │
+│  (Fine-tuned Devstral Small 2)          │
+├─────────────────────────────────────────┤
+│  FINE-TUNING PIPELINE                   │  ← trains the intelligence layer
+│  (Not in-game — Brev GPU + Unsloth)    │
+└─────────────────────────────────────────┘
+```
+
+**Layer descriptions (top to bottom):**
+
+1. **Frontend** — The Bevy 2D renderer, camera, input handlers, and UI panels in `cc_client`. Reads ECS state from the backend and renders it. Sends player inputs (mouse, keyboard, voice PTT) down as `GameCommand`s.
+
+2. **Backend** — The deterministic ECS simulation in `cc_sim` and `cc_core`. Processes commands from both the player and scripted AI through a unified command queue. Runs at a fixed 10Hz tick rate. This is the authoritative game state — the frontend only displays what the backend computes.
+
+3. **Scripted AI** — Lua scripts that execute each tick via the `ScriptContext` (ctx) API. These include hand-authored starter scripts (basic_attack, basic_retreat, etc.), player-created scripts from construct mode, and the enemy AI FSM. Scripts call ctx methods like `ctx:nearest_enemy()`, `ctx:attack()`, `ctx:move_to()` to issue commands. They run inside a sandboxed Luau runtime with instruction-count limits.
+
+4. **Intelligence Layer** — The fine-tuned Devstral Small 2 model that *generates* Lua scripts on player request (the "agentic builder") and comprehends voice commands to trigger the right script. This layer does not run every tick — it activates on player interaction (chat input, voice command) and produces artifacts (Lua scripts, command triggers) that the Scripted AI layer then executes. This is the key architectural insight: the LLM is a *code generator* that sits above the runtime, not an in-loop decision maker.
+
+5. **Fine-Tuning Pipeline** — Offline training infrastructure (Brev GPU, Unsloth, TRL) that produces the weights used by the Intelligence Layer. Not part of the running game. Consumes replay data and hand-authored examples, outputs LoRA adapters.
+
+**Data flow across layers:** Player speaks a voice command → Frontend captures audio → Intelligence Layer classifies intent and selects/generates a Lua script → Scripted AI executes that script each tick via ctx API → Backend processes the resulting commands → Frontend renders the outcome.
+
+---
+
 ## Core Layers
 
 ### 1. Game Simulation (Bevy ECS)
@@ -158,7 +198,29 @@ The meta-game is the vibecoding itself — players use an LLM to generate Lua sc
 
 > Full technical details, code examples, and training data formats in **[MISTRAL.md](./MISTRAL.md)**.
 
-This is the novel core of ClawedCommand.
+This is the novel core of ClawedCommand. The AI agent layer is split into three distinct sub-systems that operate at different timescales and abstraction levels:
+
+#### 4a. Scripted AI (runs every tick)
+
+Lua scripts that execute each simulation tick through the `ScriptContext` (ctx) API. These are the actual "brains" that control units in real time.
+
+**Sources of scripts:**
+- **Hand-authored starters** — `basic_attack.lua`, `basic_retreat.lua`, `basic_gather.lua`, `basic_build.lua`, `basic_train.lua` ship with the game as examples and defaults
+- **Player-created** — written in construct mode (the in-game LLM-powered Lua editor) or by hand
+- **Enemy AI FSM** — faction-specific behavior trees implemented as Lua scripts
+
+**Runtime:**
+- Sandboxed Luau via `mlua` with instruction-count limits (budget-gated)
+- `ScriptContext` exposes 25+ methods: `ctx:nearest_enemy()`, `ctx:attack()`, `ctx:move_to()`, `ctx:units_in_range()`, `ctx:build()`, etc.
+- 8 composable behavior primitives in the `behaviors` module
+- `SpatialIndex` for efficient spatial queries within scripts
+- Scripts produce `GameCommand`s that feed into the same unified command queue as player input
+
+**Key point:** scripts run deterministically at simulation tick rate. They do not call the LLM. They are pure game logic.
+
+#### 4b. Agentic Builder — the Intelligence Layer (runs on player request)
+
+The fine-tuned Devstral model that *generates* Lua scripts and issues strategic commands. This is one layer above the scripted AI — it produces the scripts that the scripted AI then runs.
 
 **Architecture:**
 
@@ -168,15 +230,30 @@ Player ──(natural language)──► Agent Interface (Chat UI)
                                       ▼
                               Fine-tuned Devstral
                               (understands game state,
-                               generates tool calls)
+                               generates Lua scripts +
+                               tool calls)
                                       │
-                                      ▼
-                              MCP Tool Server
-                              (game-specific tools)
-                                      │
-                                      ▼
-                              Command Queue ──► ECS Simulation
+                          ┌───────────┴───────────┐
+                          ▼                       ▼
+                   MCP Tool Server          Lua Script Output
+                   (game-specific tools)    (saved to script library)
+                          │                       │
+                          ▼                       ▼
+                   Command Queue          Scripted AI Layer
+                          │              (runs script each tick)
+                          ▼                       │
+                   ECS Simulation ◄───────────────┘
 ```
+
+**When it activates:**
+- Player types a chat message ("build a forward base near the GPU deposit")
+- Player requests a new script in construct mode ("write me a kiting script for Hissers")
+- Voice comprehension triggers a script-generation request for a novel intent
+
+**What it produces:**
+- Direct `GameCommand`s via MCP tool calls (for immediate one-shot actions)
+- Lua scripts (for ongoing behaviors that persist across ticks)
+- Script modifications (refining existing scripts based on player feedback)
 
 **Model Selection:**
 
@@ -217,15 +294,23 @@ MCP tool definitions map to Mistral's function calling format with minimal conve
 
 **Cost estimation (competitive play):** ~$0.012 per player turn, ~$0.72 per player per game at ~60 turns.
 
-**Code generation mode:**
-- For complex strategies, the model generates reusable strategy scripts
-- Scripts run in a WASM sandbox (Wasmtime) with access only to the game tools
-- Players can save, edit, and share strategy scripts
-- Scripts are versioned and can be rolled back
-
 **Inference routing:**
 - **Competitive/ranked** — Mistral API, Devstral 2, server-side (fair, anti-cheat)
 - **Practice/single-player** — local vLLM or Ollama, Devstral Small 2 Q4_K_M (free, works offline, requires RTX 4090 or Mac 32GB+)
+
+#### 4c. Voice Comprehension (bridges voice to scripts)
+
+Voice comprehension sits in the Intelligence Layer alongside the agentic builder. It translates spoken commands into script activations.
+
+**Pipeline:**
+1. `cc_voice` captures audio and runs on-device keyword spotting (TC-ResNet8 + Silero VAD)
+2. Classified keywords are mapped to intents (e.g., "attack" + "north" → attack-north intent)
+3. Simple intents trigger pre-existing scripts directly (e.g., `basic_attack.lua` with a direction parameter)
+4. Complex or ambiguous intents escalate to the agentic builder, which may generate a new script or select the best match from the player's script library
+
+**Key insight:** voice commands and chat commands converge at the same Intelligence Layer. The difference is input modality (audio vs. text), not processing layer. Both ultimately produce Lua scripts or direct commands that flow through the Scripted AI layer into the simulation.
+
+See [VOICE.md](./VOICE.md) for the full keyword spotting technical details.
 
 ### 5. Renderer (Bevy 2D + Isometric)
 

@@ -131,6 +131,66 @@ GGUF quantizations available from:
 
 ---
 
+## Agentic Lua Builder
+
+### Role
+
+Devstral Small 2 acts as an **agentic builder**: given a player's natural language prompt, it generates a complete Lua script that uses the game's `ctx` API to control units. Instead of the model making iterative tool calls against MCP, it produces a self-contained script that the Luau runtime executes directly.
+
+### How It Differs from Tool-Call Format
+
+The original fine-tuning approach (documented below in "Tool Use / Function Calling") uses MCP tool-call format — the assistant emits `tool_calls` with 9-char IDs and stringified JSON arguments, the harness executes them, and returns `role: "tool"` results in a multi-turn loop.
+
+The agentic builder approach is simpler: a system prompt containing the full `ctx` API reference, a user request, and the assistant responds with a complete Lua script. No tool-call round-trips.
+
+### Training Data Format (Lua Generation)
+
+```json
+{
+  "messages": [
+    {"role": "system", "content": "<system prompt with ctx API reference>"},
+    {"role": "user", "content": "Make a script that sends idle workers to the nearest fish pond"},
+    {"role": "assistant", "content": "-- Intent: gather\n-- Description: Send idle workers to nearest food deposit\n\nlocal workers = ctx:idle_units(\"Pawdler\")\nfor _, w in ipairs(workers) do\n  local deposit = ctx:nearest_deposit(w.x, w.y, \"Food\")\n  if deposit then ctx:gather({w.id}, deposit.id) end\nend"}
+  ]
+}
+```
+
+The system prompt lives at `training/data/system_prompt.txt` and contains the full `ctx` API reference (all 25+ ScriptContext methods, behavior primitives, spatial queries, and tactical helpers).
+
+### Why Lua Over MCP Tool Calls
+
+| Aspect | MCP Tool Calls | Lua Scripts |
+|---|---|---|
+| **Reusability** | One-shot, ephemeral | Save, name, share, rebind |
+| **Composability** | Flat tool list | Call behaviors, nest logic, use loops |
+| **Expressiveness** | Limited to tool schemas | Full `ctx` API — spatial queries, tactical helpers, budgets |
+| **Latency** | Multiple LLM round-trips | Single generation, immediate execution |
+| **Sandboxing** | N/A (server-side) | Luau runtime with instruction limits |
+
+A single Lua script can encapsulate a complete strategy (e.g., "gather with idle workers, defend base if attacked, expand when safe") that would require dozens of sequential tool calls.
+
+### Pipeline
+
+```
+50 gold examples (hand-authored)
+        │
+        ▼
+Eval sandbox (verify scripts run against HeadlessSim)
+        │
+        ▼
+500 synthetic augmented (via Claude API, validated)
+        │
+        ▼
+QLoRA on Devstral Small 2 (Unsloth, rank 32, alpha 64)
+        │
+        ▼
+GGUF export → Q4_K_M for local inference
+```
+
+Training configs reuse the existing `training/configs/` structure. The key difference from tool-call fine-tuning is that assistant messages contain raw Lua code strings rather than structured `tool_calls` objects, so no special loss masking or tool-call ID generation is needed.
+
+---
+
 ## Tool Use / Function Calling
 
 ### Defining Game Tools
