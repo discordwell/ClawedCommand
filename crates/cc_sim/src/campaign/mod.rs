@@ -22,17 +22,13 @@ impl Plugin for CampaignPlugin {
             .add_systems(
                 FixedUpdate,
                 (
-                    wave_spawner::wave_tracking_system
-                        .after(cleanup_system::cleanup_system),
-                    triggers::trigger_check_system
-                        .after(wave_spawner::wave_tracking_system)
-                        .before(wave_spawner::wave_spawner_system),
-                    wave_spawner::wave_spawner_system
-                        .after(triggers::trigger_check_system),
-                    state::mission_objective_system
-                        .after(wave_spawner::wave_spawner_system)
-                        .before(cleanup_system::cleanup_system),
-                ),
+                    wave_spawner::wave_tracking_system,
+                    triggers::trigger_check_system,
+                    wave_spawner::wave_spawner_system,
+                    state::mission_objective_system,
+                )
+                    .chain()
+                    .after(cleanup_system::cleanup_system),
             );
     }
 }
