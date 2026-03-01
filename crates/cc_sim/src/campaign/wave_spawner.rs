@@ -164,7 +164,7 @@ pub fn wave_spawner_system(
     }
 }
 
-/// Spawn all entities for a wave, tagging them with WaveMembership.
+/// Spawn all entities for a wave, tagging them with WaveMember.
 fn spawn_wave_entities(
     commands: &mut Commands,
     wave_id: &str,
@@ -175,7 +175,7 @@ fn spawn_wave_entities(
     let count = units.len() as u32;
 
     for unit_spawn in units {
-        let wave_membership = WaveMembership {
+        let wave_membership = WaveMember {
             wave_id: wave_id.to_string(),
         };
         let entity_id = spawn_unit(
@@ -217,7 +217,7 @@ fn spawn_unit(
     kind: UnitKind,
     pos: cc_core::coords::GridPos,
     player_id: u8,
-    wave_membership: Option<WaveMembership>,
+    wave_membership: Option<WaveMember>,
 ) -> Entity {
     let stats = base_stats(kind);
     let mut entity = commands.spawn((
@@ -259,7 +259,7 @@ pub fn wave_tracking_system(
     mut commands: Commands,
     mut campaign: ResMut<CampaignState>,
     mut wave_tracker: ResMut<WaveTracker>,
-    dead_wave_units: Query<(Entity, &WaveMembership), With<Dead>>,
+    dead_wave_units: Query<(Entity, &WaveMember), With<Dead>>,
 ) {
     if campaign.phase != CampaignPhase::InMission {
         return;
@@ -274,7 +274,7 @@ pub fn wave_tracking_system(
         // Increment global kill count
         campaign.enemy_kill_count += 1;
 
-        // Remove WaveMembership from dead entity to avoid re-counting
-        commands.entity(entity).remove::<WaveMembership>();
+        // Remove WaveMember from dead entity to avoid re-counting
+        commands.entity(entity).remove::<WaveMember>();
     }
 }

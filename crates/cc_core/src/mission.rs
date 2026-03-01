@@ -36,6 +36,12 @@ pub struct MissionDefinition {
     pub briefing_text: String,
     /// Text shown after mission completion.
     pub debrief_text: String,
+    /// AI tool tier allowed in this mission (None = default/all).
+    #[serde(default)]
+    pub ai_tool_tier: Option<u8>,
+    /// What mission comes next.
+    #[serde(default)]
+    pub next_mission: NextMission,
 }
 
 /// Map source for a mission.
@@ -228,6 +234,8 @@ pub enum TriggerCondition {
         /// HP percentage threshold (e.g. 50 = 50%).
         percentage: u32,
     },
+    /// Fires when a persistent campaign flag is set.
+    PersistentFlag(String),
 }
 
 /// Actions performed when a trigger fires.
@@ -243,6 +251,29 @@ pub enum TriggerAction {
     CompleteObjective(String),
     /// Pan the camera to a position.
     PanCamera(GridPos),
+    /// Set a persistent campaign flag (survives across missions).
+    SetPersistentFlag(String),
+}
+
+/// What mission comes after this one.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum NextMission {
+    /// A specific mission ID.
+    Fixed(String),
+    /// Branch based on a persistent flag.
+    Branching {
+        flag: String,
+        on_true: String,
+        on_false: String,
+    },
+    /// No next mission (end of campaign or handled externally).
+    None,
+}
+
+impl Default for NextMission {
+    fn default() -> Self {
+        NextMission::None
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -351,7 +382,9 @@ impl MissionDefinition {
                             ));
                         }
                     }
-                    TriggerAction::SetFlag(_) | TriggerAction::PanCamera(_) => {}
+                    TriggerAction::SetFlag(_)
+                    | TriggerAction::PanCamera(_)
+                    | TriggerAction::SetPersistentFlag(_) => {}
                 }
             }
         }
@@ -427,6 +460,8 @@ mod tests {
             }],
             briefing_text: "Test briefing".into(),
             debrief_text: "Test debrief".into(),
+            ai_tool_tier: None,
+            next_mission: NextMission::None,
         }
     }
 
@@ -527,5 +562,62 @@ mod tests {
         assert!(errs.iter().any(|e| e.contains("unknown wave 'phantom_wave'")));
         assert!(errs.iter().any(|e| e.contains("unknown objective 'phantom_obj'")));
         assert_eq!(errs.len(), 3, "Should find exactly 3 errors from the single trigger");
+    }
+
+    #[test]
+    fn next_mission_ron_round_trip() {
+        let mut mission = minimal_mission();
+        mission.next_mission = NextMission::Fixed("act1_m2".into());
+        let ron_str =
+            ron::ser::to_string_pretty(&mission, ron::ser::PrettyConfig::default()).unwrap();
+        let parsed: MissionDefinition = ron::from_str(&ron_str).unwrap();
+        assert!(matches!(parsed.next_mission, NextMission::Fixed(ref id) if id == "act1_m2"));
+    }
+
+    #[test]
+    fn next_mission_branching_round_trip() {
+        let mut mission = minimal_mission();
+        mission.next_mission = NextMission::Branching {
+            flag: "helped_rex".into(),
+            on_true: "act3_ally".into(),
+            on_false: "act3_rival".into(),
+        };
+        let ron_str =
+            ron::ser::to_string_pretty(&mission, ron::ser::PrettyConfig::default()).unwrap();
+        let parsed: MissionDefinition = ron::from_str(&ron_str).unwrap();
+        match &parsed.next_mission {
+            NextMission::Branching { flag, on_true, on_false } => {
+                assert_eq!(flag, "helped_rex");
+                assert_eq!(on_true, "act3_ally");
+                assert_eq!(on_false, "act3_rival");
+            }
+            _ => panic!("Expected Branching"),
+        }
+    }
+
+    #[test]
+    fn persistent_flag_condition_serializes() {
+        let cond = TriggerCondition::PersistentFlag("murder_alliance".into());
+        let ron_str = ron::to_string(&cond).unwrap();
+        let parsed: TriggerCondition = ron::from_str(&ron_str).unwrap();
+        assert!(matches!(parsed, TriggerCondition::PersistentFlag(ref s) if s == "murder_alliance"));
+    }
+
+    #[test]
+    fn set_persistent_flag_action_serializes() {
+        let action = TriggerAction::SetPersistentFlag("helped_rex".into());
+        let ron_str = ron::to_string(&action).unwrap();
+        let parsed: TriggerAction = ron::from_str(&ron_str).unwrap();
+        assert!(matches!(parsed, TriggerAction::SetPersistentFlag(ref s) if s == "helped_rex"));
+    }
+
+    #[test]
+    fn ai_tool_tier_defaults_to_none() {
+        let mission = minimal_mission();
+        assert!(mission.ai_tool_tier.is_none());
+        let ron_str =
+            ron::ser::to_string_pretty(&mission, ron::ser::PrettyConfig::default()).unwrap();
+        let parsed: MissionDefinition = ron::from_str(&ron_str).unwrap();
+        assert!(parsed.ai_tool_tier.is_none());
     }
 }

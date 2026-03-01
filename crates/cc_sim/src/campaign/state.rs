@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use cc_core::components::{Dead, HeroIdentity, Owner, Position};
 use cc_core::mission::{MissionDefinition, ObjectiveCondition};
@@ -9,6 +10,49 @@ use cc_core::mission::{MissionDefinition, ObjectiveCondition};
 use crate::resources::SimClock;
 
 use super::triggers::ObjectiveCompleteEvent;
+
+/// Act 3 branching choice.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Act3Choice {
+    HelpRex,
+    RefuseRex,
+}
+
+/// Status of the Patches character.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PatchesStatus {
+    Free,
+    Captured,
+}
+
+impl Default for PatchesStatus {
+    fn default() -> Self {
+        PatchesStatus::Free
+    }
+}
+
+/// Persistent campaign state that survives across mission loads.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PersistentCampaignState {
+    pub act3_choice: Option<Act3Choice>,
+    pub gemineye_fabrication_rate: u32,
+    pub patches_status: PatchesStatus,
+    pub murder_alliance: bool,
+    pub flicker_subplot_progress: u8,
+    pub ponderer_fragment_found: bool,
+    pub ending_d_eligible: bool,
+    pub flags: HashSet<String>,
+}
+
+impl PersistentCampaignState {
+    pub fn has_flag(&self, flag: &str) -> bool {
+        self.flags.contains(flag)
+    }
+
+    pub fn set_flag(&mut self, flag: String) {
+        self.flags.insert(flag);
+    }
+}
 
 /// Campaign phase FSM.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,6 +94,8 @@ pub struct CampaignState {
     pub phase: CampaignPhase,
     /// IDs of waves that have been spawned.
     pub spawned_waves: HashSet<String>,
+    /// Persistent state that survives across mission loads.
+    pub persistent: PersistentCampaignState,
 }
 
 impl Default for CampaignState {
@@ -63,12 +109,14 @@ impl Default for CampaignState {
             objective_status: Vec::new(),
             phase: CampaignPhase::Inactive,
             spawned_waves: HashSet::new(),
+            persistent: PersistentCampaignState::default(),
         }
     }
 }
 
 impl CampaignState {
     /// Initialize campaign state from a mission definition.
+    /// Preserves `persistent` and `completed_missions` across loads.
     pub fn load_mission(&mut self, mission: MissionDefinition) {
         self.objective_status = mission
             .objectives
@@ -84,6 +132,7 @@ impl CampaignState {
         self.spawned_waves.clear();
         self.phase = CampaignPhase::Briefing;
         self.current_mission = Some(Arc::new(mission));
+        // persistent and completed_missions are intentionally preserved
     }
 
     /// Check if all primary objectives are complete.
@@ -352,5 +401,30 @@ mod tests {
         let state = CampaignState::default();
         assert_eq!(state.phase, CampaignPhase::Inactive);
         assert!(state.current_mission.is_none());
+    }
+
+    #[test]
+    fn persistent_state_survives_mission_load() {
+        let mut state = CampaignState::default();
+        state.persistent.set_flag("helped_rex".into());
+        state.persistent.murder_alliance = true;
+        state.completed_missions.insert("prologue".into());
+
+        state.load_mission(test_mission());
+
+        assert!(state.persistent.has_flag("helped_rex"));
+        assert!(state.persistent.murder_alliance);
+        assert!(state.completed_missions.contains("prologue"));
+        assert_eq!(state.enemy_kill_count, 0);
+        assert!(state.fired_triggers.is_empty());
+        assert!(state.flags.is_empty());
+    }
+
+    #[test]
+    fn persistent_flag_operations() {
+        let mut persistent = PersistentCampaignState::default();
+        assert!(!persistent.has_flag("test"));
+        persistent.set_flag("test".into());
+        assert!(persistent.has_flag("test"));
     }
 }

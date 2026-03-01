@@ -107,6 +107,9 @@ pub fn trigger_check_system(
                 TriggerAction::PanCamera(_pos) => {
                     // Camera panning is handled by the client — we just fire the trigger event
                 }
+                TriggerAction::SetPersistentFlag(flag) => {
+                    campaign.persistent.set_flag(flag.clone());
+                }
             }
         }
 
@@ -201,6 +204,8 @@ fn evaluate_condition(
             }
             false
         }
+
+        TriggerCondition::PersistentFlag(flag) => campaign.persistent.has_flag(flag),
     }
 }
 
