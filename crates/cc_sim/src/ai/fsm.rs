@@ -2,8 +2,8 @@ use bevy::prelude::*;
 
 use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::{
-    BuildOrder, Building, BuildingKind, Faction, Gathering, MoveTarget, Owner, Position, Producer,
-    ResourceDeposit, UnitKind, UnitType, UpgradeType,
+    AttackType, BuildOrder, Building, BuildingKind, Dead, Faction, Gathering, Health, MoveTarget,
+    Owner, Position, Producer, ResourceDeposit, UnitKind, UnitType, UpgradeType,
 };
 use cc_core::coords::GridPos;
 use cc_core::map::GameMap;
@@ -354,7 +354,6 @@ struct BuildingCensus {
     cat_tree_entity: Option<Entity>,
     server_rack_entity: Option<Entity>,
     scratching_post_entity: Option<Entity>,
-    building_count: u32,
     building_positions: Vec<(GridPos, BuildingKind)>,
 }
 
@@ -419,14 +418,12 @@ fn take_building_census(
         cat_tree_entity: None,
         server_rack_entity: None,
         scratching_post_entity: None,
-        building_count: 0,
         building_positions: Vec::new(),
     };
     for (entity, building, owner, pos, producer) in buildings.iter() {
         if owner.player_id != ai_player {
             continue;
         }
-        census.building_count += 1;
         census.building_positions.push((pos.world.to_grid(), building.kind));
         match building.kind {
             BuildingKind::TheBox => {
