@@ -46,6 +46,8 @@ pub fn script_runner_system(
     mut registry: ResMut<ScriptRegistry>,
     mut prev_snapshots: ResMut<PreviousSnapshots>,
     tool_states: Res<FactionToolStates>,
+    #[cfg(feature = "harness")]
+    mut arena_stats: Option<ResMut<crate::arena::ArenaStats>>,
     units: Query<
         (
             Entity,
@@ -179,6 +181,15 @@ pub fn script_runner_system(
                 }
                 Err(e) => {
                     log::warn!("Script '{}' error: {}", script.name, e);
+                    // Capture error for arena reporting if ArenaStats resource exists
+                    #[cfg(feature = "harness")]
+                    if let Some(ref mut stats) = arena_stats {
+                        stats.script_errors.push(crate::arena::ArenaScriptError {
+                            tick: sim_clock.tick,
+                            script_name: script.name.clone(),
+                            message: format!("{}", e),
+                        });
+                    }
                 }
             }
         }

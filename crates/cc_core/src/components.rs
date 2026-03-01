@@ -127,6 +127,25 @@ pub enum BuildingKind {
     ThornHedge,
     /// Defense tower — long-range ranged auto-attack.
     Watchtower,
+    // --- The Clawed (Mice) ---
+    /// HQ (Clawed) — pre-built, produces Nibblet, resource drop-off.
+    TheBurrow,
+    /// Barracks (Clawed) — produces Swarmer, Gnawer, Plaguetail, Sparks.
+    NestingBox,
+    /// Resource drop-off + food storage.
+    SeedVault,
+    /// Tech building (Clawed) — produces Shrieker, Tunneler, Quillback, Whiskerwitch, WarrenMarshal.
+    JunkTransmitter,
+    /// Research building (Clawed) — upgrades.
+    GnawLab,
+    /// Supply depot (Clawed) — increases supply cap.
+    WarrenExpansion,
+    /// Garrison building (Clawed) — units enter for protection.
+    Mousehole,
+    /// Defensive tower (Clawed) — auto-attacks enemies in range.
+    SqueakTower,
+    // --- Seekers of the Deep (Badgers) ---
+    TheSett, WarHollow, BurrowDepot, CoreTap, ClawMarks, DeepWarren, BulwarkGate, SlagThrower,
     // --- Croak (Axolotls) ---
     /// HQ (Croak) — pre-built, produces Ponderer.
     TheGrotto,
@@ -173,6 +192,24 @@ impl std::str::FromStr for BuildingKind {
             "NestBox" => Ok(Self::NestBox),
             "ThornHedge" => Ok(Self::ThornHedge),
             "Watchtower" => Ok(Self::Watchtower),
+            // The Clawed (Mice)
+            "TheBurrow" => Ok(Self::TheBurrow),
+            "NestingBox" => Ok(Self::NestingBox),
+            "SeedVault" => Ok(Self::SeedVault),
+            "JunkTransmitter" => Ok(Self::JunkTransmitter),
+            "GnawLab" => Ok(Self::GnawLab),
+            "WarrenExpansion" => Ok(Self::WarrenExpansion),
+            "Mousehole" => Ok(Self::Mousehole),
+            "SqueakTower" => Ok(Self::SqueakTower),
+            // Seekers of the Deep (Badgers)
+            "TheSett" => Ok(Self::TheSett),
+            "WarHollow" => Ok(Self::WarHollow),
+            "BurrowDepot" => Ok(Self::BurrowDepot),
+            "CoreTap" => Ok(Self::CoreTap),
+            "ClawMarks" => Ok(Self::ClawMarks),
+            "DeepWarren" => Ok(Self::DeepWarren),
+            "BulwarkGate" => Ok(Self::BulwarkGate),
+            "SlagThrower" => Ok(Self::SlagThrower),
             // Croak (Axolotls)
             "TheGrotto" => Ok(Self::TheGrotto),
             "SpawningPools" => Ok(Self::SpawningPools),
@@ -257,6 +294,8 @@ pub enum UnitKind {
     Dusktalon,     // Stealth Assassin (Owl) — ground-based stealth, high burst
     Hootseer,      // Area Denial/Debuffer (Owl) — panoptic gaze, dread aura
     CorvusRex,     // Hero/Heavy (Augmented Crow) — corvid network, all-seeing lie
+    // --- Seekers of the Deep (Badgers) ---
+    Delver, Ironhide, Cragback, Warden, Sapjaw, Wardenmother, SeekerTunneler, Embermaw, Dustclaw, Gutripper,
     // --- The Clawed (Mice) ---
     Nibblet,       // Worker (Mouse) — gathers food, builds
     Swarmer,       // Light Infantry (Mouse) — cheap, fast attack speed, swarm in numbers
@@ -312,6 +351,28 @@ impl std::str::FromStr for UnitKind {
             "Dusktalon" => Ok(Self::Dusktalon),
             "Hootseer" => Ok(Self::Hootseer),
             "CorvusRex" => Ok(Self::CorvusRex),
+            // Seekers of the Deep (Badgers)
+            "Delver" => Ok(Self::Delver),
+            "Ironhide" => Ok(Self::Ironhide),
+            "Cragback" => Ok(Self::Cragback),
+            "Warden" => Ok(Self::Warden),
+            "Sapjaw" => Ok(Self::Sapjaw),
+            "Wardenmother" => Ok(Self::Wardenmother),
+            "SeekerTunneler" => Ok(Self::SeekerTunneler),
+            "Embermaw" => Ok(Self::Embermaw),
+            "Dustclaw" => Ok(Self::Dustclaw),
+            "Gutripper" => Ok(Self::Gutripper),
+            // The Clawed (Mice)
+            "Nibblet" => Ok(Self::Nibblet),
+            "Swarmer" => Ok(Self::Swarmer),
+            "Gnawer" => Ok(Self::Gnawer),
+            "Shrieker" => Ok(Self::Shrieker),
+            "Tunneler" => Ok(Self::Tunneler),
+            "Sparks" => Ok(Self::Sparks),
+            "Quillback" => Ok(Self::Quillback),
+            "Whiskerwitch" => Ok(Self::Whiskerwitch),
+            "Plaguetail" => Ok(Self::Plaguetail),
+            "WarrenMarshal" => Ok(Self::WarrenMarshal),
             // Croak (Axolotls)
             "Ponderer" => Ok(Self::Ponderer),
             "Regeneron" => Ok(Self::Regeneron),
@@ -634,6 +695,12 @@ pub enum AuraType {
     ContagiousYawning,
     TacticalUplink,
     GeppityUplink,
+    // Seekers of the Deep (Badgers)
+    VigilanceAura, DeepseekUplinkAura, FortressProtocolAura, FrenzyAura,
+    // The Clawed (Mice)
+    RallyTheSwarm,
+    WhiskernetRelay,
+    SqueakTowerPulse,
     // Croak (Axolotls)
     AncientMoss,
     BogSong,
@@ -734,8 +801,32 @@ pub enum UpgradeType {
     SwiftWings,
     /// Unlocks Dusktalon training at AntennaArray.
     AssassinTraining,
+    // --- Seekers of the Deep (Badgers) ---
+    SharperFangs, ReinforcedHide, SteadyStance, SiegeEngineering, ExosuitPrototype,
+    // --- The Clawed (Mice) ---
+    /// +2 damage for all Clawed combat units.
+    SharperTeeth,
+    /// +20 HP for all Clawed combat units.
+    ThickerHide,
+    /// +10% speed for all Clawed units.
+    QuickPaws,
+    /// Unlocks advanced Gnawer siege abilities.
+    AdvancedGnawing,
+    /// Unlocks WarrenMarshal training at JunkTransmitter.
+    WarrenProtocol,
     /// Unlocks CorvusRex training at AntennaArray.
     RexPrototype,
+    // --- Croak (Axolotls) ---
+    /// +15% HP for all Croak combat units.
+    TougherHide,
+    /// +10% speed for all Croak units.
+    SlickerMucus,
+    /// +0.5% HP/s regen for all Croak units on water.
+    AmphibianAgility,
+    /// Unlocks Shellwarden training at SunkenServer.
+    SiegeEvolution,
+    /// Unlocks MurkCommander training at SunkenServer.
+    MurkPrototype,
 }
 
 impl std::fmt::Display for UpgradeType {
@@ -751,6 +842,16 @@ impl std::fmt::Display for UpgradeType {
             Self::SwiftWings => write!(f, "SwiftWings"),
             Self::AssassinTraining => write!(f, "AssassinTraining"),
             Self::RexPrototype => write!(f, "RexPrototype"),
+            Self::SharperTeeth => write!(f, "SharperTeeth"),
+            Self::ThickerHide => write!(f, "ThickerHide"),
+            Self::QuickPaws => write!(f, "QuickPaws"),
+            Self::AdvancedGnawing => write!(f, "AdvancedGnawing"),
+            Self::WarrenProtocol => write!(f, "WarrenProtocol"),
+            Self::TougherHide => write!(f, "TougherHide"),
+            Self::SlickerMucus => write!(f, "SlickerMucus"),
+            Self::AmphibianAgility => write!(f, "AmphibianAgility"),
+            Self::SiegeEvolution => write!(f, "SiegeEvolution"),
+            Self::MurkPrototype => write!(f, "MurkPrototype"),
         }
     }
 }
@@ -769,6 +870,16 @@ impl std::str::FromStr for UpgradeType {
             "SwiftWings" => Ok(Self::SwiftWings),
             "AssassinTraining" => Ok(Self::AssassinTraining),
             "RexPrototype" => Ok(Self::RexPrototype),
+            "SharperTeeth" => Ok(Self::SharperTeeth),
+            "ThickerHide" => Ok(Self::ThickerHide),
+            "QuickPaws" => Ok(Self::QuickPaws),
+            "AdvancedGnawing" => Ok(Self::AdvancedGnawing),
+            "WarrenProtocol" => Ok(Self::WarrenProtocol),
+            "TougherHide" => Ok(Self::TougherHide),
+            "SlickerMucus" => Ok(Self::SlickerMucus),
+            "AmphibianAgility" => Ok(Self::AmphibianAgility),
+            "SiegeEvolution" => Ok(Self::SiegeEvolution),
+            "MurkPrototype" => Ok(Self::MurkPrototype),
             _ => Err(()),
         }
     }
@@ -817,6 +928,46 @@ pub struct WaveMember {
 
 
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// The Clawed (Mice) faction components
+// ---------------------------------------------------------------------------
+
+/// Tracks Gnawer structural weakness stacks against buildings.
+/// Each consecutive attack on the same building adds a stack, increasing damage.
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+#[derive(Debug, Clone, Copy)]
+pub struct StructuralWeaknessTimer {
+    pub stacks: u32,
+    pub target_entity: Option<EntityId>,
+}
+
+impl Default for StructuralWeaknessTimer {
+    fn default() -> Self {
+        Self {
+            stacks: 0,
+            target_entity: None,
+        }
+    }
+}
+
+/// Tracks Sparks static charge stacks, accumulated during movement.
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+#[derive(Debug, Clone, Copy)]
+pub struct StaticChargeStacks {
+    pub stacks: u32,
+}
+
+impl Default for StaticChargeStacks {
+    fn default() -> Self {
+        Self { stacks: 0 }
+    }
+}
+
+/// Marker: Plaguetail spawns a contagion cloud on death.
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+#[derive(Debug, Clone, Copy)]
+pub struct ContagionCloudOnDeath;
 // Murder faction components
 // ---------------------------------------------------------------------------
 
@@ -867,6 +1018,76 @@ pub struct PanopticGazeCone {
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
 pub struct UniqueBuildingLimit;
 
+// ---------------------------------------------------------------------------
+// Croak faction components
+// ---------------------------------------------------------------------------
+
+/// Tracks the Limb Economy for axolotl units (Regeneron).
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct LimbTracker {
+    pub current_limbs: u8,
+    pub max_limbs: u8,
+    pub regen_ticks: u32,
+}
+
+/// Marker: Croak unit is standing on water and receiving Water Affinity bonuses.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct WaterAffinityBuff;
+
+/// Tracks Broodmother's active Spawnlings.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct SpawnlingCounter {
+    pub count: u8,
+    pub spawn_cooldown: u32,
+}
+
+/// Links a Spawnling back to its parent Broodmother.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct SpawnlingParent {
+    pub parent_entity: EntityId,
+}
+
+/// Tracks Croaker's active Bog Patches for Resonance Chain logic.
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct BogPatchCounter {
+    pub active_patches: Vec<(i32, i32)>,
+}
+
+/// Tracks Gulper's Devour ability state.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct DevourState {
+    pub swallowed_entity: EntityId,
+    pub swallowed_max_hp: Fixed,
+    pub digest_ticks_remaining: u32,
+    pub digest_damage_per_tick: Fixed,
+    pub temp_shields: Fixed,
+}
+
+/// Marker: Shellwarden is in Hunker mode (75% DR, immobile, reflects damage).
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct Hunkered;
+
+/// Marker: Eftsaber is submerged via Waterway (untargetable, invisible, water-only movement).
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct Submerged;
+
+/// Stasis state from MurkCommander's Undying Presence aura.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct Stasis {
+    pub remaining_ticks: u32,
+    pub revive_hp_fraction: Fixed,
+    pub per_unit_cooldown_tick: u64,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -887,6 +1108,14 @@ mod tests {
             BuildingKind::TheBox, BuildingKind::CatTree, BuildingKind::FishMarket,
             BuildingKind::LitterBox, BuildingKind::ServerRack, BuildingKind::ScratchingPost,
             BuildingKind::CatFlap, BuildingKind::LaserPointer,
+            // The Clawed (Mice)
+            BuildingKind::TheBurrow, BuildingKind::NestingBox, BuildingKind::SeedVault,
+            BuildingKind::JunkTransmitter, BuildingKind::GnawLab, BuildingKind::WarrenExpansion,
+            BuildingKind::Mousehole, BuildingKind::SqueakTower,
+            // Croak (Axolotls)
+            BuildingKind::TheGrotto, BuildingKind::SpawningPools, BuildingKind::LilyMarket,
+            BuildingKind::SunkenServer, BuildingKind::FossilStones, BuildingKind::ReedBed,
+            BuildingKind::TidalGate, BuildingKind::SporeTower,
         ] {
             let s = kind.to_string();
             let parsed: BuildingKind = s.parse().unwrap();
@@ -901,6 +1130,14 @@ mod tests {
             UnitKind::Pawdler, UnitKind::Nuisance, UnitKind::Chonk, UnitKind::FlyingFox,
             UnitKind::Hisser, UnitKind::Yowler, UnitKind::Mouser, UnitKind::Catnapper,
             UnitKind::FerretSapper, UnitKind::MechCommander,
+            // The Clawed (Mice)
+            UnitKind::Nibblet, UnitKind::Swarmer, UnitKind::Gnawer, UnitKind::Shrieker,
+            UnitKind::Tunneler, UnitKind::Sparks, UnitKind::Quillback, UnitKind::Whiskerwitch,
+            UnitKind::Plaguetail, UnitKind::WarrenMarshal,
+            // Croak (Axolotls)
+            UnitKind::Ponderer, UnitKind::Regeneron, UnitKind::Broodmother, UnitKind::Gulper,
+            UnitKind::Eftsaber, UnitKind::Croaker, UnitKind::Leapfrog, UnitKind::Shellwarden,
+            UnitKind::Bogwhisper, UnitKind::MurkCommander,
         ] {
             let s = kind.to_string();
             let parsed: UnitKind = s.parse().unwrap();

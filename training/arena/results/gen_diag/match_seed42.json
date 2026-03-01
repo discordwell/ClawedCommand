@@ -1,0 +1,99 @@
+{
+  "seed": 42,
+  "outcome": "Victory(player 0 at tick 3181)",
+  "duration_ticks": 3181,
+  "wall_time_ms": 2367,
+  "player_stats": [
+    {
+      "units_trained": 16,
+      "units_lost": 9,
+      "units_killed": 14,
+      "buildings_built": 4,
+      "buildings_lost": 0,
+      "damage_dealt": 0.0,
+      "damage_taken": 0.0,
+      "resources_gathered": 0
+    },
+    {
+      "units_trained": 17,
+      "units_lost": 14,
+      "units_killed": 9,
+      "buildings_built": 4,
+      "buildings_lost": 5,
+      "damage_dealt": 0.0,
+      "damage_taken": 0.0,
+      "resources_gathered": 0
+    }
+  ],
+  "scripts_loaded": [
+    [
+      "state_dump"
+    ],
+    []
+  ],
+  "script_errors": [
+    {
+      "tick": 100,
+      "script_name": "state_dump",
+      "message": "Lua error: runtime error: [string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: T=100 | F=70 | G=50 | S=5/10 | TheBox=prod | Units=Pawdler:3 \nstack traceback:\n\t[C]: in ?\n\t[C]: in function 'error'\n\t[string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: in ?"
+    },
+    {
+      "tick": 200,
+      "script_name": "state_dump",
+      "message": "Lua error: runtime error: [string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: T=200 | F=10 | G=50 | S=5/10 | TheBox=idle | FishMarket=building | Units=Pawdler:5 \nstack traceback:\n\t[C]: in ?\n\t[C]: in function 'error'\n\t[string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: in ?"
+    },
+    {
+      "tick": 300,
+      "script_name": "state_dump",
+      "message": "Lua error: runtime error: [string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: T=300 | F=60 | G=50 | S=5/10 | TheBox=idle | FishMarket=idle | Units=Pawdler:5 \nstack traceback:\n\t[C]: in ?\n\t[C]: in function 'error'\n\t[string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: in ?"
+    },
+    {
+      "tick": 500,
+      "script_name": "state_dump",
+      "message": "Lua error: runtime error: [string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: T=500 | F=20 | G=70 | S=5/10 | TheBox=idle | CatTree=building | FishMarket=idle | Units=Pawdler:5 \nstack traceback:\n\t[C]: in ?\n\t[C]: in function 'error'\n\t[string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: in ?"
+    },
+    {
+      "tick": 750,
+      "script_name": "state_dump",
+      "message": "Lua error: runtime error: [string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: T=750 | F=20 | G=70 | S=7/10 | TheBox=idle | CatTree=prod | FishMarket=idle | Units=Pawdler:5 Nuisance:1 \nstack traceback:\n\t[C]: in ?\n\t[C]: in function 'error'\n\t[string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: in ?"
+    },
+    {
+      "tick": 1000,
+      "script_name": "state_dump",
+      "message": "Lua error: runtime error: [string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: T=1000 | F=40 | G=70 | S=8/20 | TheBox=idle | CatTree=idle | LitterBox=building | FishMarket=idle | Units=Pawdler:5 Nuisance:3 \nstack traceback:\n\t[C]: in ?\n\t[C]: in function 'error'\n\t[string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: in ?"
+    },
+    {
+      "tick": 1500,
+      "script_name": "state_dump",
+      "message": "Lua error: runtime error: [string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: T=1500 | F=95 | G=45 | S=11/20 | TheBox=idle | CatTree=idle | LitterBox=idle | FishMarket=idle | Units=Pawdler:6 Nuisance:5 \nstack traceback:\n\t[C]: in ?\n\t[C]: in function 'error'\n\t[string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: in ?"
+    },
+    {
+      "tick": 2000,
+      "script_name": "state_dump",
+      "message": "Lua error: runtime error: [string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: T=2000 | F=45 | G=45 | S=19/20 | TheBox=idle | CatTree=prod | LitterBox=idle | FishMarket=idle | Units=Pawdler:6 Hisser:2 Nuisance:7 \nstack traceback:\n\t[C]: in ?\n\t[C]: in function 'error'\n\t[string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: in ?"
+    },
+    {
+      "tick": 2500,
+      "script_name": "state_dump",
+      "message": "Lua error: runtime error: [string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: T=2500 | F=40 | G=45 | S=13/20 | TheBox=idle | CatTree=idle | LitterBox=idle | FishMarket=idle | Units=Pawdler:3 Nuisance:6 Hisser:2 \nstack traceback:\n\t[C]: in ?\n\t[C]: in function 'error'\n\t[string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: in ?"
+    },
+    {
+      "tick": 3000,
+      "script_name": "state_dump",
+      "message": "Lua error: runtime error: [string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: T=3000 | F=40 | G=225 | S=11/20 | TheBox=idle | CatTree=idle | LitterBox=idle | FishMarket=idle | Units=Pawdler:3 Nuisance:6 Hisser:1 \nstack traceback:\n\t[C]: in ?\n\t[C]: in function 'error'\n\t[string \"crates/cc_agent/src/lua_runtime.rs:1289:13\"]:63: in ?"
+    }
+  ],
+  "timeline": [
+    {
+      "tick": 2060,
+      "event": "first_combat"
+    },
+    {
+      "tick": 3181,
+      "event": "victory_player_0"
+    }
+  ],
+  "violations_warning": 0,
+  "violations_error": 0,
+  "passed": true
+}

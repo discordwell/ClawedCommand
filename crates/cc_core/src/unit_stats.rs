@@ -110,6 +110,188 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             attack_type: AttackType::Ranged,
             food_cost: 400, gpu_cost: 200, supply_cost: 6, train_time: 250,
         },
+        // --- The Murder (Corvids) ---
+        UnitKind::MurderScrounger => UnitBaseStats {
+            health: Fixed::from_bits(55 << 16),    // 55
+            speed: Fixed::from_bits(9175),          // 0.14
+            damage: Fixed::from_bits(3 << 16),     // 3
+            range: Fixed::from_bits(1 << 16),      // 1
+            attack_speed: 15,
+            attack_type: AttackType::Melee,
+            food_cost: 50, gpu_cost: 0, supply_cost: 1, train_time: 50,
+        },
+        UnitKind::Sentinel => UnitBaseStats {
+            health: Fixed::from_bits(60 << 16),    // 60
+            speed: Fixed::from_bits(10486),         // 0.16
+            damage: Fixed::from_bits(12 << 16),    // 12
+            range: Fixed::from_bits(6 << 16),      // 6
+            attack_speed: 14,
+            attack_type: AttackType::Ranged,
+            food_cost: 75, gpu_cost: 0, supply_cost: 1, train_time: 60,
+        },
+        UnitKind::Rookclaw => UnitBaseStats {
+            health: Fixed::from_bits(70 << 16),    // 70
+            speed: Fixed::from_bits(13107),         // 0.20
+            damage: Fixed::from_bits(10 << 16),    // 10
+            range: Fixed::from_bits(1 << 16),      // 1
+            attack_speed: 10,
+            attack_type: AttackType::Melee,
+            food_cost: 75, gpu_cost: 0, supply_cost: 1, train_time: 55,
+        },
+        UnitKind::Magpike => UnitBaseStats {
+            health: Fixed::from_bits(55 << 16),    // 55
+            speed: Fixed::from_bits(11796),         // 0.18
+            damage: Fixed::from_bits(6 << 16),     // 6
+            range: Fixed::from_bits(4 << 16),      // 4
+            attack_speed: 12,
+            attack_type: AttackType::Ranged,
+            food_cost: 100, gpu_cost: 25, supply_cost: 2, train_time: 80,
+        },
+        UnitKind::Magpyre => UnitBaseStats {
+            health: Fixed::from_bits(50 << 16),    // 50
+            speed: Fixed::from_bits(11141),         // 0.17
+            damage: Fixed::from_bits(8 << 16),     // 8
+            range: Fixed::from_bits(3 << 16),      // 3
+            attack_speed: 15,
+            attack_type: AttackType::Ranged,
+            food_cost: 100, gpu_cost: 50, supply_cost: 2, train_time: 90,
+        },
+        UnitKind::Jaycaller => UnitBaseStats {
+            health: Fixed::from_bits(85 << 16),    // 85
+            speed: Fixed::from_bits(9175),          // 0.14
+            damage: Fixed::from_bits(5 << 16),     // 5
+            range: Fixed::from_bits(4 << 16),      // 4
+            attack_speed: 15,
+            attack_type: AttackType::Ranged,
+            food_cost: 100, gpu_cost: 50, supply_cost: 2, train_time: 100,
+        },
+        UnitKind::Jayflicker => UnitBaseStats {
+            health: Fixed::from_bits(60 << 16),    // 60
+            speed: Fixed::from_bits(10486),         // 0.16
+            damage: Fixed::from_bits(7 << 16),     // 7
+            range: Fixed::from_bits(3 << 16),      // 3
+            attack_speed: 12,
+            attack_type: AttackType::Ranged,
+            food_cost: 125, gpu_cost: 50, supply_cost: 2, train_time: 90,
+        },
+        UnitKind::Dusktalon => UnitBaseStats {
+            health: Fixed::from_bits(65 << 16),    // 65
+            speed: Fixed::from_bits(13107),         // 0.20
+            damage: Fixed::from_bits(15 << 16),    // 15
+            range: Fixed::from_bits(1 << 16),      // 1
+            attack_speed: 8,
+            attack_type: AttackType::Melee,
+            food_cost: 125, gpu_cost: 25, supply_cost: 2, train_time: 80,
+        },
+        UnitKind::Hootseer => UnitBaseStats {
+            health: Fixed::from_bits(100 << 16),   // 100
+            speed: Fixed::from_bits(6554),          // 0.10
+            damage: Fixed::from_bits(8 << 16),     // 8
+            range: Fixed::from_bits(5 << 16),      // 5
+            attack_speed: 18,
+            attack_type: AttackType::Ranged,
+            food_cost: 150, gpu_cost: 50, supply_cost: 3, train_time: 120,
+        },
+        UnitKind::CorvusRex => UnitBaseStats {
+            health: Fixed::from_bits(450 << 16),   // 450
+            speed: Fixed::from_bits(6554),          // 0.10
+            damage: Fixed::from_bits(16 << 16),    // 16
+            range: Fixed::from_bits(4 << 16),      // 4
+            attack_speed: 15,
+            attack_type: AttackType::Ranged,
+            food_cost: 400, gpu_cost: 200, supply_cost: 6, train_time: 250,
+        },
+        // --- Croak (Axolotls) ---
+        UnitKind::Ponderer => UnitBaseStats {
+            health: Fixed::from_bits(55 << 16),    // 55
+            speed: Fixed::from_bits(6553),          // 0.10
+            damage: Fixed::from_bits(3 << 16),     // 3
+            range: Fixed::from_bits(1 << 16),      // 1
+            attack_speed: 18,
+            attack_type: AttackType::Melee,
+            food_cost: 50, gpu_cost: 0, supply_cost: 1, train_time: 50,
+        },
+        UnitKind::Regeneron => UnitBaseStats {
+            health: Fixed::from_bits(75 << 16),    // 75
+            speed: Fixed::from_bits(10485),         // 0.16
+            damage: Fixed::from_bits(7 << 16),     // 7
+            range: Fixed::from_bits(1 << 16),      // 1
+            attack_speed: 10,
+            attack_type: AttackType::Melee,
+            food_cost: 75, gpu_cost: 0, supply_cost: 1, train_time: 60,
+        },
+        UnitKind::Broodmother => UnitBaseStats {
+            health: Fixed::from_bits(100 << 16),   // 100
+            speed: Fixed::from_bits(6553),          // 0.10
+            damage: Fixed::from_bits(4 << 16),     // 4
+            range: Fixed::from_bits(3 << 16),      // 3
+            attack_speed: 15,
+            attack_type: AttackType::Ranged,
+            food_cost: 125, gpu_cost: 25, supply_cost: 2, train_time: 100,
+        },
+        UnitKind::Gulper => UnitBaseStats {
+            health: Fixed::from_bits(280 << 16),   // 280
+            speed: Fixed::from_bits(4587),          // 0.07
+            damage: Fixed::from_bits(10 << 16),    // 10
+            range: Fixed::from_bits(1 << 16),      // 1
+            attack_speed: 18,
+            attack_type: AttackType::Melee,
+            food_cost: 175, gpu_cost: 25, supply_cost: 3, train_time: 130,
+        },
+        UnitKind::Eftsaber => UnitBaseStats {
+            health: Fixed::from_bits(60 << 16),    // 60
+            speed: Fixed::from_bits(11796),         // 0.18
+            damage: Fixed::from_bits(12 << 16),    // 12
+            range: Fixed::from_bits(1 << 16),      // 1
+            attack_speed: 9,
+            attack_type: AttackType::Melee,
+            food_cost: 100, gpu_cost: 25, supply_cost: 2, train_time: 80,
+        },
+        UnitKind::Croaker => UnitBaseStats {
+            health: Fixed::from_bits(65 << 16),    // 65
+            speed: Fixed::from_bits(6553),          // 0.10
+            damage: Fixed::from_bits(16 << 16),    // 16
+            range: Fixed::from_bits(6 << 16),      // 6
+            attack_speed: 40,
+            attack_type: AttackType::Ranged,
+            food_cost: 125, gpu_cost: 0, supply_cost: 2, train_time: 90,
+        },
+        UnitKind::Leapfrog => UnitBaseStats {
+            health: Fixed::from_bits(70 << 16),    // 70
+            speed: Fixed::from_bits(11141),         // 0.17
+            damage: Fixed::from_bits(8 << 16),     // 8
+            range: Fixed::from_bits(1 << 16),      // 1
+            attack_speed: 10,
+            attack_type: AttackType::Melee,
+            food_cost: 75, gpu_cost: 0, supply_cost: 1, train_time: 60,
+        },
+        UnitKind::Shellwarden => UnitBaseStats {
+            health: Fixed::from_bits(350 << 16),   // 350
+            speed: Fixed::from_bits(3932),          // 0.06
+            damage: Fixed::from_bits(6 << 16),     // 6
+            range: Fixed::from_bits(1 << 16),      // 1
+            attack_speed: 22,
+            attack_type: AttackType::Melee,
+            food_cost: 175, gpu_cost: 50, supply_cost: 4, train_time: 140,
+        },
+        UnitKind::Bogwhisper => UnitBaseStats {
+            health: Fixed::from_bits(80 << 16),    // 80
+            speed: Fixed::from_bits(7209),          // 0.11
+            damage: Fixed::from_bits(5 << 16),     // 5
+            range: Fixed::from_bits(5 << 16),      // 5
+            attack_speed: 15,
+            attack_type: AttackType::Ranged,
+            food_cost: 125, gpu_cost: 50, supply_cost: 2, train_time: 110,
+        },
+        UnitKind::MurkCommander => UnitBaseStats {
+            health: Fixed::from_bits(450 << 16),   // 450
+            speed: Fixed::from_bits(5898),          // 0.09
+            damage: Fixed::from_bits(15 << 16),    // 15
+            range: Fixed::from_bits(3 << 16),      // 3
+            attack_speed: 15,
+            attack_type: AttackType::Ranged,
+            food_cost: 400, gpu_cost: 200, supply_cost: 6, train_time: 250,
+        },
         other => unimplemented!("base_stats not yet defined for {other:?}"),
     }
 }
@@ -131,6 +313,17 @@ mod tests {
             UnitKind::Catnapper,
             UnitKind::FerretSapper,
             UnitKind::MechCommander,
+            // Croak (Axolotls)
+            UnitKind::Ponderer,
+            UnitKind::Regeneron,
+            UnitKind::Broodmother,
+            UnitKind::Gulper,
+            UnitKind::Eftsaber,
+            UnitKind::Croaker,
+            UnitKind::Leapfrog,
+            UnitKind::Shellwarden,
+            UnitKind::Bogwhisper,
+            UnitKind::MurkCommander,
         ];
         for kind in kinds {
             let stats = base_stats(kind);
@@ -150,6 +343,13 @@ mod tests {
             UnitKind::Chonk,
             UnitKind::Mouser,
             UnitKind::FerretSapper,
+            // Croak melee
+            UnitKind::Ponderer,
+            UnitKind::Regeneron,
+            UnitKind::Gulper,
+            UnitKind::Eftsaber,
+            UnitKind::Leapfrog,
+            UnitKind::Shellwarden,
         ];
         for kind in melee_kinds {
             let stats = base_stats(kind);
@@ -170,6 +370,11 @@ mod tests {
             UnitKind::Yowler,
             UnitKind::Catnapper,
             UnitKind::MechCommander,
+            // Croak ranged
+            UnitKind::Broodmother,
+            UnitKind::Croaker,
+            UnitKind::Bogwhisper,
+            UnitKind::MurkCommander,
         ];
         for kind in ranged_kinds {
             let stats = base_stats(kind);
@@ -196,5 +401,21 @@ mod tests {
         let mech = base_stats(UnitKind::MechCommander);
         let chonk = base_stats(UnitKind::Chonk);
         assert!(mech.health > chonk.health);
+    }
+
+    #[test]
+    fn shellwarden_tankiest_croak() {
+        let shellwarden = base_stats(UnitKind::Shellwarden);
+        let gulper = base_stats(UnitKind::Gulper);
+        let regeneron = base_stats(UnitKind::Regeneron);
+        assert!(shellwarden.health > gulper.health);
+        assert!(shellwarden.health > regeneron.health);
+    }
+
+    #[test]
+    fn murk_commander_strongest_croak() {
+        let murk = base_stats(UnitKind::MurkCommander);
+        let shellwarden = base_stats(UnitKind::Shellwarden);
+        assert!(murk.health > shellwarden.health);
     }
 }

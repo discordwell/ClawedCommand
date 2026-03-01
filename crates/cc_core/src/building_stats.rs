@@ -89,16 +89,83 @@ pub fn building_stats(kind: BuildingKind) -> BuildingBaseStats {
             supply_provided: 0,
             can_produce: &[],
         },
-        // Non-cat factions — placeholder stats
-        _ => BuildingBaseStats {
+        // --- Croak (Axolotls) ---
+        BuildingKind::TheGrotto => BuildingBaseStats {
+            health: Fixed::from_bits(500 << 16),
+            build_time: 0, // pre-built
+            food_cost: 0,
+            gpu_cost: 0,
+            supply_provided: 10,
+            can_produce: &[UnitKind::Ponderer],
+        },
+        BuildingKind::SpawningPools => BuildingBaseStats {
+            health: Fixed::from_bits(300 << 16),
+            build_time: 150, // 15 seconds
+            food_cost: 150,
+            gpu_cost: 0,
+            supply_provided: 0,
+            can_produce: &[
+                UnitKind::Regeneron,
+                UnitKind::Croaker,
+                UnitKind::Leapfrog,
+                UnitKind::Gulper,
+            ],
+        },
+        BuildingKind::LilyMarket => BuildingBaseStats {
             health: Fixed::from_bits(200 << 16),
-            build_time: 100,
+            build_time: 100, // 10 seconds
             food_cost: 100,
             gpu_cost: 0,
             supply_provided: 0,
             can_produce: &[],
         },
-        // Non-cat faction buildings — placeholder stats
+        BuildingKind::SunkenServer => BuildingBaseStats {
+            health: Fixed::from_bits(250 << 16),
+            build_time: 120, // 12 seconds
+            food_cost: 100,
+            gpu_cost: 75,
+            supply_provided: 0,
+            can_produce: &[
+                UnitKind::Eftsaber,
+                UnitKind::Broodmother,
+                UnitKind::Shellwarden,
+                UnitKind::Bogwhisper,
+                UnitKind::MurkCommander,
+            ],
+        },
+        BuildingKind::FossilStones => BuildingBaseStats {
+            health: Fixed::from_bits(200 << 16),
+            build_time: 100, // 10 seconds
+            food_cost: 100,
+            gpu_cost: 50,
+            supply_provided: 0,
+            can_produce: &[],
+        },
+        BuildingKind::ReedBed => BuildingBaseStats {
+            health: Fixed::from_bits(100 << 16),
+            build_time: 75, // 7.5 seconds
+            food_cost: 75,
+            gpu_cost: 0,
+            supply_provided: 10,
+            can_produce: &[],
+        },
+        BuildingKind::TidalGate => BuildingBaseStats {
+            health: Fixed::from_bits(400 << 16),
+            build_time: 100, // 10 seconds
+            food_cost: 150,
+            gpu_cost: 0,
+            supply_provided: 0,
+            can_produce: &[],
+        },
+        BuildingKind::SporeTower => BuildingBaseStats {
+            health: Fixed::from_bits(150 << 16),
+            build_time: 80, // 8 seconds
+            food_cost: 75,
+            gpu_cost: 25,
+            supply_provided: 0,
+            can_produce: &[],
+        },
+        // Non-cat/croak faction buildings — placeholder stats
         _ => BuildingBaseStats {
             health: Fixed::from_bits(200 << 16),
             build_time: 100,
@@ -185,5 +252,64 @@ mod tests {
     fn scratching_post_no_production() {
         let stats = building_stats(BuildingKind::ScratchingPost);
         assert!(stats.can_produce.is_empty());
+    }
+
+    // --- Croak building tests ---
+
+    #[test]
+    fn all_croak_buildings_have_stats() {
+        let kinds = [
+            BuildingKind::TheGrotto,
+            BuildingKind::SpawningPools,
+            BuildingKind::LilyMarket,
+            BuildingKind::SunkenServer,
+            BuildingKind::FossilStones,
+            BuildingKind::ReedBed,
+            BuildingKind::TidalGate,
+            BuildingKind::SporeTower,
+        ];
+        for kind in kinds {
+            let stats = building_stats(kind);
+            assert!(stats.health > Fixed::ZERO, "{kind:?} should have positive health");
+        }
+    }
+
+    #[test]
+    fn grotto_is_pre_built() {
+        let stats = building_stats(BuildingKind::TheGrotto);
+        assert_eq!(stats.build_time, 0);
+        assert_eq!(stats.food_cost, 0);
+        assert_eq!(stats.gpu_cost, 0);
+    }
+
+    #[test]
+    fn grotto_produces_ponderer() {
+        let stats = building_stats(BuildingKind::TheGrotto);
+        assert!(stats.can_produce.contains(&UnitKind::Ponderer));
+    }
+
+    #[test]
+    fn spawning_pools_produces_basic_croak_units() {
+        let stats = building_stats(BuildingKind::SpawningPools);
+        assert!(stats.can_produce.contains(&UnitKind::Regeneron));
+        assert!(stats.can_produce.contains(&UnitKind::Croaker));
+        assert!(stats.can_produce.contains(&UnitKind::Leapfrog));
+        assert!(stats.can_produce.contains(&UnitKind::Gulper));
+    }
+
+    #[test]
+    fn sunken_server_produces_advanced_croak_units() {
+        let stats = building_stats(BuildingKind::SunkenServer);
+        assert!(stats.can_produce.contains(&UnitKind::Eftsaber));
+        assert!(stats.can_produce.contains(&UnitKind::Broodmother));
+        assert!(stats.can_produce.contains(&UnitKind::Shellwarden));
+        assert!(stats.can_produce.contains(&UnitKind::Bogwhisper));
+        assert!(stats.can_produce.contains(&UnitKind::MurkCommander));
+    }
+
+    #[test]
+    fn reed_bed_provides_supply() {
+        let stats = building_stats(BuildingKind::ReedBed);
+        assert_eq!(stats.supply_provided, 10);
     }
 }

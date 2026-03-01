@@ -56,6 +56,27 @@ pub enum AbilityId {
     Disassemble, PryBar, ChainBreak,
     TreasureTrash, RefuseShield, StenchCloudAbility,
     OpenSourceUplinkAbility, FrankensteinProtocol, OverclockCascade,
+    // --- Croak (Axolotls) ---
+    // Ponderer (worker)
+    AmbientGathering, MucusTrail, ExistentialDread,
+    // Regeneron (skirmisher)
+    LimbToss, RegrowthBurst, PhantomLimb,
+    // Broodmother (support)
+    SpawnPool, Transfusion, PrimordialSoup,
+    // Gulper (heavy)
+    Devour, Regurgitate, Bottomless,
+    // Eftsaber (assassin)
+    ToxicSkin, Waterway, Venomstrike,
+    // Croaker (artillery)
+    BogMortar, ResonanceChain, Inflate,
+    // Leapfrog (harasser)
+    Hop, TongueLash, Slipstream,
+    // Shellwarden (tank)
+    HunkerAbility, AncientMossAbility, TidalMemory,
+    // Bogwhisper (caster)
+    MireCurse, Prophecy, BogSongAbility,
+    // MurkCommander (hero)
+    UndyingPresenceAbility, GrokProtocol, MurkUplinkAbility,
 }
 
 /// How an ability is activated.
@@ -229,7 +250,137 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
             id, activation: Activated, cooldown_ticks: 300, gpu_cost: 50,
             duration_ticks: 100, range: Fixed::ZERO, max_charges: 0,
         },
-        // Non-cat faction abilities — placeholder stats
+        // --- LLAMA: Scrounger ---
+        AbilityId::DumpsterDiveAbility => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::PocketStash => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::PlayDead => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 200, gpu_cost: 0,
+            duration_ticks: 80, range: Fixed::ZERO, max_charges: 0,
+        },
+        // --- LLAMA: Bandit ---
+        AbilityId::StickyFingers => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::JuryRig => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 50, gpu_cost: 0,
+            duration_ticks: 20, range: Fixed::from_bits(1 << 16), max_charges: 0,
+        },
+        AbilityId::Getaway => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 150, gpu_cost: 0,
+            duration_ticks: 15, range: Fixed::ZERO, max_charges: 0,
+        },
+        // --- LLAMA: Heap Titan ---
+        AbilityId::ScrapArmorAbility => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(4 << 16), max_charges: 0,
+        },
+        AbilityId::WreckBall => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 120, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(5 << 16), max_charges: 0,
+        },
+        AbilityId::MagneticPulse => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 250, gpu_cost: 0,
+            duration_ticks: 40, range: Fixed::from_bits(3 << 16), max_charges: 0,
+        },
+        // --- LLAMA: Glitch Rat ---
+        AbilityId::CableGnaw => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 300, gpu_cost: 0,
+            duration_ticks: 30, range: Fixed::from_bits(1 << 16), max_charges: 0,
+        },
+        AbilityId::SignalScramble => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 200, gpu_cost: 4,
+            duration_ticks: 40, range: Fixed::from_bits(6 << 16), max_charges: 0,
+        },
+        AbilityId::TunnelRat => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        // --- LLAMA: Patch Possum ---
+        AbilityId::DuctTapeFix => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 100, gpu_cost: 0,
+            duration_ticks: 50, range: Fixed::from_bits(4 << 16), max_charges: 0,
+        },
+        AbilityId::SalvageResurrection => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 250, gpu_cost: 0,
+            duration_ticks: 40, range: Fixed::from_bits(1 << 16), max_charges: 0,
+        },
+        AbilityId::FeignDeath => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 450, gpu_cost: 0,
+            duration_ticks: 30, range: Fixed::ZERO, max_charges: 0,
+        },
+        // --- LLAMA: Grease Monkey ---
+        AbilityId::JunkLauncher => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::SalvageTurret => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 150, gpu_cost: 0,
+            duration_ticks: 200, range: Fixed::from_bits(2 << 16), max_charges: 1,
+        },
+        AbilityId::Overcharge => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 200, gpu_cost: 0,
+            duration_ticks: 60, range: Fixed::ZERO, max_charges: 0,
+        },
+        // --- LLAMA: Dead Drop ---
+        AbilityId::Eavesdrop => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(8 << 16), max_charges: 0,
+        },
+        AbilityId::TrashHeapAmbush => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 80, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::LeakInjection => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 300, gpu_cost: 5,
+            duration_ticks: 40, range: Fixed::ZERO, max_charges: 0,
+        },
+        // --- LLAMA: Wrecker ---
+        AbilityId::Disassemble => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::PryBar => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 180, gpu_cost: 0,
+            duration_ticks: 40, range: Fixed::from_bits(1 << 16), max_charges: 0,
+        },
+        AbilityId::ChainBreak => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 140, gpu_cost: 0,
+            duration_ticks: 60, range: Fixed::from_bits(3 << 16), max_charges: 0,
+        },
+        // --- LLAMA: Dumpster Diver ---
+        AbilityId::TreasureTrash => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::RefuseShield => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 200, gpu_cost: 0,
+            duration_ticks: 150, range: Fixed::from_bits(3 << 16), max_charges: 0,
+        },
+        AbilityId::StenchCloudAbility => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 180, gpu_cost: 0,
+            duration_ticks: 60, range: Fixed::from_bits(3 << 16), max_charges: 0,
+        },
+        // --- LLAMA: Junkyard King ---
+        AbilityId::OpenSourceUplinkAbility => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(8 << 16), max_charges: 0,
+        },
+        AbilityId::FrankensteinProtocol => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 450, gpu_cost: 10,
+            duration_ticks: 0, range: Fixed::from_bits(3 << 16), max_charges: 0,
+        },
+        AbilityId::OverclockCascade => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 350, gpu_cost: 0,
+            duration_ticks: 80, range: Fixed::from_bits(6 << 16), max_charges: 0,
+        },
+        // Non-cat/LLAMA faction abilities — placeholder stats
         _ => AbilityDef {
             id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
             duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
@@ -300,6 +451,57 @@ pub fn unit_abilities(kind: UnitKind) -> [AbilityId; 3] {
             AbilityId::Override,
             AbilityId::GeppityUplink,
         ],
+        // --- LLAMA (Raccoons) ---
+        UnitKind::Scrounger => [
+            AbilityId::DumpsterDiveAbility,
+            AbilityId::PocketStash,
+            AbilityId::PlayDead,
+        ],
+        UnitKind::Bandit => [
+            AbilityId::StickyFingers,
+            AbilityId::JuryRig,
+            AbilityId::Getaway,
+        ],
+        UnitKind::HeapTitan => [
+            AbilityId::ScrapArmorAbility,
+            AbilityId::WreckBall,
+            AbilityId::MagneticPulse,
+        ],
+        UnitKind::GlitchRat => [
+            AbilityId::CableGnaw,
+            AbilityId::SignalScramble,
+            AbilityId::TunnelRat,
+        ],
+        UnitKind::PatchPossum => [
+            AbilityId::DuctTapeFix,
+            AbilityId::SalvageResurrection,
+            AbilityId::FeignDeath,
+        ],
+        UnitKind::GreaseMonkey => [
+            AbilityId::JunkLauncher,
+            AbilityId::SalvageTurret,
+            AbilityId::Overcharge,
+        ],
+        UnitKind::DeadDropUnit => [
+            AbilityId::Eavesdrop,
+            AbilityId::TrashHeapAmbush,
+            AbilityId::LeakInjection,
+        ],
+        UnitKind::Wrecker => [
+            AbilityId::Disassemble,
+            AbilityId::PryBar,
+            AbilityId::ChainBreak,
+        ],
+        UnitKind::DumpsterDiver => [
+            AbilityId::TreasureTrash,
+            AbilityId::RefuseShield,
+            AbilityId::StenchCloudAbility,
+        ],
+        UnitKind::JunkyardKing => [
+            AbilityId::OpenSourceUplinkAbility,
+            AbilityId::FrankensteinProtocol,
+            AbilityId::OverclockCascade,
+        ],
         other => unimplemented!("unit_abilities not yet defined for {other:?}"),
     }
 }
@@ -308,10 +510,11 @@ pub fn unit_abilities(kind: UnitKind) -> [AbilityId; 3] {
 mod tests {
     use super::*;
 
-    /// All 30 AbilityId variants have a valid AbilityDef.
+    /// All 60 AbilityId variants (30 cat + 30 LLAMA) have a valid AbilityDef.
     #[test]
     fn all_ability_defs_valid() {
         let all_ids = [
+            // catGPT (30)
             AbilityId::OpportunisticHoarder, AbilityId::SpiteCarry, AbilityId::Revulsion,
             AbilityId::AnnoyanceStacks, AbilityId::Hairball, AbilityId::Zoomies,
             AbilityId::GravitationalChonk, AbilityId::LoafMode, AbilityId::NineLives,
@@ -322,8 +525,19 @@ mod tests {
             AbilityId::DreamSiege, AbilityId::ContagiousYawning, AbilityId::PowerNap,
             AbilityId::ShapedCharge, AbilityId::BoobyTrap, AbilityId::TunnelNetwork,
             AbilityId::TacticalUplink, AbilityId::Override, AbilityId::GeppityUplink,
+            // LLAMA (30)
+            AbilityId::DumpsterDiveAbility, AbilityId::PocketStash, AbilityId::PlayDead,
+            AbilityId::StickyFingers, AbilityId::JuryRig, AbilityId::Getaway,
+            AbilityId::ScrapArmorAbility, AbilityId::WreckBall, AbilityId::MagneticPulse,
+            AbilityId::CableGnaw, AbilityId::SignalScramble, AbilityId::TunnelRat,
+            AbilityId::DuctTapeFix, AbilityId::SalvageResurrection, AbilityId::FeignDeath,
+            AbilityId::JunkLauncher, AbilityId::SalvageTurret, AbilityId::Overcharge,
+            AbilityId::Eavesdrop, AbilityId::TrashHeapAmbush, AbilityId::LeakInjection,
+            AbilityId::Disassemble, AbilityId::PryBar, AbilityId::ChainBreak,
+            AbilityId::TreasureTrash, AbilityId::RefuseShield, AbilityId::StenchCloudAbility,
+            AbilityId::OpenSourceUplinkAbility, AbilityId::FrankensteinProtocol, AbilityId::OverclockCascade,
         ];
-        assert_eq!(all_ids.len(), 30);
+        assert_eq!(all_ids.len(), 60);
         for id in all_ids {
             let def = ability_def(id);
             assert_eq!(def.id, id, "{id:?} def should match its id");
@@ -334,10 +548,16 @@ mod tests {
     #[test]
     fn unit_abilities_returns_three_per_kind() {
         let kinds = [
+            // catGPT
             UnitKind::Pawdler, UnitKind::Nuisance, UnitKind::Chonk,
             UnitKind::FlyingFox, UnitKind::Hisser, UnitKind::Yowler,
             UnitKind::Mouser, UnitKind::Catnapper, UnitKind::FerretSapper,
             UnitKind::MechCommander,
+            // LLAMA
+            UnitKind::Scrounger, UnitKind::Bandit, UnitKind::HeapTitan,
+            UnitKind::GlitchRat, UnitKind::PatchPossum, UnitKind::GreaseMonkey,
+            UnitKind::DeadDropUnit, UnitKind::Wrecker, UnitKind::DumpsterDiver,
+            UnitKind::JunkyardKing,
         ];
         for kind in kinds {
             let abilities = unit_abilities(kind);
@@ -353,11 +573,23 @@ mod tests {
     #[test]
     fn passive_abilities_no_cooldown() {
         let passives = [
+            // catGPT
             AbilityId::OpportunisticHoarder,
             AbilityId::AnnoyanceStacks,
             AbilityId::GravitationalChonk,
             AbilityId::CorrosiveSpit,
             AbilityId::DreamSiege,
+            // LLAMA
+            AbilityId::DumpsterDiveAbility,
+            AbilityId::PocketStash,
+            AbilityId::StickyFingers,
+            AbilityId::ScrapArmorAbility,
+            AbilityId::TunnelRat,
+            AbilityId::JunkLauncher,
+            AbilityId::Eavesdrop,
+            AbilityId::Disassemble,
+            AbilityId::TreasureTrash,
+            AbilityId::OpenSourceUplinkAbility,
         ];
         for id in passives {
             let def = ability_def(id);
@@ -386,6 +618,7 @@ mod tests {
     #[test]
     fn activated_abilities_have_cooldown() {
         let activated = [
+            // catGPT
             AbilityId::SpiteCarry,
             AbilityId::Hairball,
             AbilityId::Zoomies,
@@ -393,6 +626,26 @@ mod tests {
             AbilityId::DisgustMortar,
             AbilityId::DissonantScreech,
             AbilityId::Override,
+            // LLAMA
+            AbilityId::PlayDead,
+            AbilityId::JuryRig,
+            AbilityId::Getaway,
+            AbilityId::WreckBall,
+            AbilityId::MagneticPulse,
+            AbilityId::CableGnaw,
+            AbilityId::SignalScramble,
+            AbilityId::DuctTapeFix,
+            AbilityId::SalvageResurrection,
+            AbilityId::SalvageTurret,
+            AbilityId::Overcharge,
+            AbilityId::TrashHeapAmbush,
+            AbilityId::LeakInjection,
+            AbilityId::PryBar,
+            AbilityId::ChainBreak,
+            AbilityId::RefuseShield,
+            AbilityId::StenchCloudAbility,
+            AbilityId::FrankensteinProtocol,
+            AbilityId::OverclockCascade,
         ];
         for id in activated {
             let def = ability_def(id);

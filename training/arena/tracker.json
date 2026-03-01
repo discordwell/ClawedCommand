@@ -1,0 +1,77 @@
+{
+  "generations": [
+    {
+      "id": 0,
+      "timestamp": "2026-03-01T00:00:00Z",
+      "scripted_player": null,
+      "opponent": "fsm_balanced",
+      "matches": 5,
+      "wins": 1,
+      "losses": 3,
+      "timeouts": 1,
+      "p0_win_rate": 0.2,
+      "avg_ticks": 4033,
+      "scripts": [],
+      "notes": "Baseline FSM vs FSM. P1 has map advantage on most seeds."
+    },
+    {
+      "id": 1,
+      "timestamp": "2026-03-01T01:00:00Z",
+      "scripted_player": 0,
+      "opponent": "fsm_balanced",
+      "matches": 5,
+      "wins": 0,
+      "losses": 4,
+      "timeouts": 1,
+      "p0_win_rate": 0.0,
+      "avg_ticks": 4200,
+      "scripts": ["combat_micro", "retreat_logic", "scout_and_adapt", "formation_control"],
+      "notes": "CATASTROPHIC. Scripts overrode FSM commands every tick. formation_control split army blob, retreat pulled units during fights. 0% win rate."
+    },
+    {
+      "id": 2,
+      "timestamp": "2026-03-01T02:00:00Z",
+      "scripted_player": 0,
+      "opponent": "fsm_balanced",
+      "matches": 5,
+      "wins": 1,
+      "losses": 3,
+      "timeouts": 1,
+      "p0_win_rate": 0.2,
+      "avg_ticks": 4033,
+      "scripts": ["tactical_focus", "worker_helper"],
+      "notes": "Too conservative. Scripts never triggered. Identical to baseline."
+    },
+    {
+      "id": 3,
+      "timestamp": "2026-03-01T03:00:00Z",
+      "scripted_player": 0,
+      "opponent": "fsm_balanced",
+      "matches": 5,
+      "wins": 1,
+      "losses": 3,
+      "timeouts": 1,
+      "p0_win_rate": 0.2,
+      "avg_ticks": 4033,
+      "scripts": ["smart_focus", "economy_boost"],
+      "notes": "Focus fire targeted same enemy FSM already auto-targeted. Zero net effect."
+    },
+    {
+      "id": 4,
+      "timestamp": "2026-03-01T04:00:00Z",
+      "scripted_player": 0,
+      "opponent": "fsm_balanced",
+      "matches": 5,
+      "wins": 1,
+      "losses": 3,
+      "timeouts": 1,
+      "p0_win_rate": 0.2,
+      "avg_ticks": 3846,
+      "scripts": ["priority_kill", "production_boost"],
+      "notes": "Fixed lua_runtime bugs (producing field, field name aliases). Scripts have measurable effects but inconsistent: seed 31415 K/D flipped from 13/16 to 15/9, but seeds 42,123 got worse. priority_kill may pull units off good fights."
+    }
+  ],
+  "best_generation": 0,
+  "best_win_rate": 0.2,
+  "seeds": [42, 123, 7777, 9999, 31415]
+}
