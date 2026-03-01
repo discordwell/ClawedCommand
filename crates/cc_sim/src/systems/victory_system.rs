@@ -34,8 +34,7 @@ pub fn victory_system(
         *game_state = GameState::Victory {
             winner: players_with_hq[0],
         };
-    } else if players_with_hq.is_empty() {
-        // All HQs destroyed simultaneously — attacker advantage tiebreak (player 0 wins)
-        *game_state = GameState::Victory { winner: 0 };
     }
+    // If all HQs destroyed simultaneously, don't declare a winner —
+    // let the game continue until one side has no living entities.
 }

@@ -606,7 +606,7 @@ pub fn count_living_entities(world: &mut World) -> [u32; 2] {
 fn check_elimination(world: &mut World) -> Option<u8> {
     let counts = count_living_entities(world);
     match (counts[0] > 0, counts[1] > 0) {
-        (false, false) => Some(0), // mutual elimination — attacker advantage
+        (false, false) => None, // mutual elimination — draw, no P0 bias
         (false, true) => Some(1),
         (true, false) => Some(0),
         (true, true) => None,

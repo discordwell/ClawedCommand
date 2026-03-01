@@ -902,7 +902,8 @@ mod wet {
     }
 
     /// Test all 5 non-CatGPT factions against CatGPT at Basic tier across 5 seeds.
-    /// Prints a balance report and asserts no faction is completely dominated.
+    /// Each faction plays as both P0 and P1 to eliminate positional bias.
+    /// Prints a balance report and asserts every faction wins at least 1 game.
     #[test]
     fn wet_faction_vs_catgpt_basic_tier() {
         use cc_core::components::Faction;
@@ -924,80 +925,89 @@ mod wet {
 
         for (i, (name, faction)) in opponents.iter().enumerate() {
             let mut timeouts = 0u32;
+            // Run each seed twice: once as P0 (faction) vs P1 (CatGPT),
+            // and once as P0 (CatGPT) vs P1 (faction).
             for &seed in &seeds {
-                let result = run_basic_tier_match(Faction::CatGpt, *faction, seed);
+                for &(faction_is_p0, label) in &[(false, "P1"), (true, "P0")] {
+                    let result = if faction_is_p0 {
+                        run_basic_tier_match(*faction, Faction::CatGpt, seed)
+                    } else {
+                        run_basic_tier_match(Faction::CatGpt, *faction, seed)
+                    };
 
-                let (p0_won, p1_won, draw) = match &result.outcome {
-                    MatchOutcome::Victory { winner, .. } => {
-                        (*winner == 0, *winner == 1, false)
-                    }
-                    MatchOutcome::Timeout { leading_player, .. } => {
-                        match leading_player {
-                            Some(0) => (true, false, false),
-                            Some(1) => (false, true, false),
-                            _ => (false, false, true),
+                    // Determine who won from the faction's perspective
+                    let faction_player: u8 = if faction_is_p0 { 0 } else { 1 };
+                    let (faction_won, catgpt_won, draw) = match &result.outcome {
+                        MatchOutcome::Victory { winner, .. } => {
+                            (*winner == faction_player, *winner != faction_player, false)
                         }
+                        MatchOutcome::Timeout { leading_player, .. } => {
+                            match leading_player {
+                                Some(p) if *p == faction_player => (true, false, false),
+                                Some(_) => (false, true, false),
+                                None => (false, false, true),
+                            }
+                        }
+                        MatchOutcome::Draw { .. } => (false, false, true),
+                        MatchOutcome::Error { .. } => (false, false, true),
+                    };
+
+                    if draw {
+                        reports[i].draws += 1;
+                    } else if faction_won {
+                        reports[i].wins += 1;
+                    } else if catgpt_won {
+                        reports[i].losses += 1;
                     }
-                    MatchOutcome::Draw { .. } => (false, false, true),
-                    MatchOutcome::Error { .. } => (false, false, true),
-                };
 
-                if draw {
-                    reports[i].draws += 1;
-                } else if p1_won {
-                    reports[i].wins += 1; // opponent (faction) won
-                } else if p0_won {
-                    reports[i].losses += 1; // CatGPT won
+                    if matches!(&result.outcome, MatchOutcome::Timeout { .. }) {
+                        timeouts += 1;
+                    }
+
+                    reports[i].total_ticks += result.final_tick;
+                    reports[i].games += 1;
+
+                    assert!(
+                        result.passed(),
+                        "{} ({}) vs CatGpt (seed {}) had fatal violations: {:?}",
+                        name, label, seed, result.fatal_violations()
+                    );
+
+                    println!(
+                        "  {:18} ({}) vs CatGpt seed {:3}: {:40} ticks: {:5} wall: {}ms",
+                        name, label, seed, format!("{}", result.outcome), result.final_tick, result.wall_time_ms,
+                    );
                 }
-
-                if matches!(&result.outcome, MatchOutcome::Timeout { .. }) {
-                    timeouts += 1;
-                }
-
-                reports[i].total_ticks += result.final_tick;
-                reports[i].games += 1;
-
-                assert!(
-                    result.passed(),
-                    "CatGpt vs {} (seed {}) had fatal violations: {:?}",
-                    name, seed, result.fatal_violations()
-                );
-
-                println!(
-                    "  CatGpt vs {:18} seed {:3}: {:40} ticks: {:5} wall: {}ms",
-                    name, seed, format!("{}", result.outcome), result.final_tick, result.wall_time_ms,
-                );
             }
 
-            // No matchup should have ALL 5 games timeout
+            // No matchup should have ALL games timeout
+            let total_games = (seeds.len() * 2) as u32;
             assert!(
-                timeouts < seeds.len() as u32,
+                timeouts < total_games,
                 "{} vs CatGPT: all {} games timed out — factions can't finish games",
-                name, seeds.len()
+                name, total_games
             );
         }
 
         // ── Balance report ──
-        println!("\n╔══════════════════════╦══════╦══════╦══════╦════════════╗");
-        println!("║ Faction vs CatGPT    ║ Wins ║ Loss ║ Draw ║  Avg Ticks ║");
-        println!("╠══════════════════════╬══════╬══════╬══════╬════════════╣");
+        println!("\n╔══════════════════════╦══════╦══════╦══════╦═══════╦════════════╗");
+        println!("║ Faction vs CatGPT    ║ Wins ║ Loss ║ Draw ║ Games ║  Avg Ticks ║");
+        println!("╠══════════════════════╬══════╬══════╬══════╬═══════╬════════════╣");
         for r in &reports {
             println!(
-                "║ {:20} ║ {:4} ║ {:4} ║ {:4} ║ {:10} ║",
-                r.name, r.wins, r.losses, r.draws, r.avg_ticks()
+                "║ {:20} ║ {:4} ║ {:4} ║ {:4} ║ {:5} ║ {:10} ║",
+                r.name, r.wins, r.losses, r.draws, r.games, r.avg_ticks()
             );
         }
-        println!("╚══════════════════════╩══════╩══════╩══════╩════════════╝");
+        println!("╚══════════════════════╩══════╩══════╩══════╩═══════╩════════════╝");
 
-        // Balance check: warn if any faction can't win a single game.
-        // Non-CatGpt unit stats aren't balanced yet, so this is informational only.
+        // Balance assertion: every faction must win at least 1 game
         for r in &reports {
-            if r.wins + r.draws == 0 {
-                println!(
-                    "WARNING: {} won 0 out of {} games vs CatGPT — needs balance tuning",
-                    r.name, r.games
-                );
-            }
+            assert!(
+                r.wins > 0,
+                "BALANCE FAIL: {} won 0 out of {} games vs CatGPT — faction is unviable",
+                r.name, r.games
+            );
         }
     }
 }

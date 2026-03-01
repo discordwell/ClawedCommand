@@ -59,9 +59,9 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
         UnitKind::Hisser => UnitBaseStats {
             health: Fixed::from_bits(70 << 16),    // 70
             speed: Fixed::from_bits(7864),          // 0.12
-            damage: Fixed::from_bits(14 << 16),    // 14
+            damage: Fixed::from_bits(12 << 16),    // 12 (was 14)
             range: Fixed::from_bits(5 << 16),      // 5
-            attack_speed: 12,
+            attack_speed: 13,                      // was 12
             attack_type: AttackType::Ranged,
             food_cost: 100, gpu_cost: 0, supply_cost: 2, train_time: 80,
         },
@@ -141,11 +141,11 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
         UnitKind::Magpike => UnitBaseStats {
             health: Fixed::from_bits(55 << 16),    // 55
             speed: Fixed::from_bits(11796),         // 0.18
-            damage: Fixed::from_bits(6 << 16),     // 6
+            damage: Fixed::from_bits(8 << 16),     // 8
             range: Fixed::from_bits(4 << 16),      // 4
-            attack_speed: 12,
+            attack_speed: 10,
             attack_type: AttackType::Ranged,
-            food_cost: 100, gpu_cost: 25, supply_cost: 2, train_time: 80,
+            food_cost: 85, gpu_cost: 25, supply_cost: 2, train_time: 65,
         },
         UnitKind::Magpyre => UnitBaseStats {
             health: Fixed::from_bits(50 << 16),    // 50
@@ -203,9 +203,9 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
         },
         // --- Seekers of the Deep (Badgers) ---
         UnitKind::Delver => UnitBaseStats { health: Fixed::from_bits(50 << 16), speed: Fixed::from_bits(6553), damage: Fixed::from_bits(3 << 16), range: Fixed::from_bits(1 << 16), attack_speed: 18, attack_type: AttackType::Melee, food_cost: 50, gpu_cost: 0, supply_cost: 1, train_time: 55 },
-        UnitKind::Ironhide => UnitBaseStats { health: Fixed::from_bits(250 << 16), speed: Fixed::from_bits(5242), damage: Fixed::from_bits(16 << 16), range: Fixed::from_bits(1 << 16), attack_speed: 18, attack_type: AttackType::Melee, food_cost: 125, gpu_cost: 0, supply_cost: 2, train_time: 100 },
+        UnitKind::Ironhide => UnitBaseStats { health: Fixed::from_bits(250 << 16), speed: Fixed::from_bits(6553), damage: Fixed::from_bits(16 << 16), range: Fixed::from_bits(1 << 16), attack_speed: 18, attack_type: AttackType::Melee, food_cost: 125, gpu_cost: 0, supply_cost: 2, train_time: 100 }, // speed 0.08→0.10
         UnitKind::Cragback => UnitBaseStats { health: Fixed::from_bits(350 << 16), speed: Fixed::from_bits(3932), damage: Fixed::from_bits(30 << 16), range: Fixed::from_bits(8 << 16), attack_speed: 30, attack_type: AttackType::Ranged, food_cost: 200, gpu_cost: 50, supply_cost: 4, train_time: 150 },
-        UnitKind::Warden => UnitBaseStats { health: Fixed::from_bits(150 << 16), speed: Fixed::from_bits(6553), damage: Fixed::from_bits(8 << 16), range: Fixed::from_bits(3 << 16), attack_speed: 15, attack_type: AttackType::Ranged, food_cost: 100, gpu_cost: 25, supply_cost: 2, train_time: 80 },
+        UnitKind::Warden => UnitBaseStats { health: Fixed::from_bits(150 << 16), speed: Fixed::from_bits(6553), damage: Fixed::from_bits(8 << 16), range: Fixed::from_bits(3 << 16), attack_speed: 15, attack_type: AttackType::Ranged, food_cost: 100, gpu_cost: 0, supply_cost: 2, train_time: 80 }, // gpu 25→0
         UnitKind::Sapjaw => UnitBaseStats { health: Fixed::from_bits(120 << 16), speed: Fixed::from_bits(7864), damage: Fixed::from_bits(18 << 16), range: Fixed::from_bits(1 << 16), attack_speed: 12, attack_type: AttackType::Melee, food_cost: 100, gpu_cost: 0, supply_cost: 2, train_time: 80 },
         UnitKind::Wardenmother => UnitBaseStats { health: Fixed::from_bits(600 << 16), speed: Fixed::from_bits(5242), damage: Fixed::from_bits(22 << 16), range: Fixed::from_bits(3 << 16), attack_speed: 15, attack_type: AttackType::Ranged, food_cost: 450, gpu_cost: 250, supply_cost: 6, train_time: 280 },
         UnitKind::SeekerTunneler => UnitBaseStats { health: Fixed::from_bits(80 << 16), speed: Fixed::from_bits(9175), damage: Fixed::from_bits(6 << 16), range: Fixed::from_bits(1 << 16), attack_speed: 20, attack_type: AttackType::Melee, food_cost: 75, gpu_cost: 25, supply_cost: 1, train_time: 70 },
@@ -223,13 +223,13 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             food_cost: 50, gpu_cost: 0, supply_cost: 1, train_time: 50,
         },
         UnitKind::Regeneron => UnitBaseStats {
-            health: Fixed::from_bits(75 << 16),    // 75
+            health: Fixed::from_bits(80 << 16),    // 80
             speed: Fixed::from_bits(10485),         // 0.16
-            damage: Fixed::from_bits(7 << 16),     // 7
+            damage: Fixed::from_bits(8 << 16),     // 8
             range: Fixed::from_bits(1 << 16),      // 1
-            attack_speed: 10,
+            attack_speed: 8,
             attack_type: AttackType::Melee,
-            food_cost: 75, gpu_cost: 0, supply_cost: 1, train_time: 60,
+            food_cost: 70, gpu_cost: 0, supply_cost: 1, train_time: 55,
         },
         UnitKind::Broodmother => UnitBaseStats {
             health: Fixed::from_bits(100 << 16),   // 100
@@ -241,13 +241,13 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             food_cost: 125, gpu_cost: 25, supply_cost: 2, train_time: 100,
         },
         UnitKind::Gulper => UnitBaseStats {
-            health: Fixed::from_bits(280 << 16),   // 280
+            health: Fixed::from_bits(300 << 16),   // 300
             speed: Fixed::from_bits(4587),          // 0.07
-            damage: Fixed::from_bits(10 << 16),    // 10
+            damage: Fixed::from_bits(14 << 16),    // 14
             range: Fixed::from_bits(1 << 16),      // 1
-            attack_speed: 18,
+            attack_speed: 16,
             attack_type: AttackType::Melee,
-            food_cost: 175, gpu_cost: 25, supply_cost: 3, train_time: 130,
+            food_cost: 160, gpu_cost: 25, supply_cost: 3, train_time: 115,
         },
         UnitKind::Eftsaber => UnitBaseStats {
             health: Fixed::from_bits(60 << 16),    // 60
@@ -263,9 +263,9 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             speed: Fixed::from_bits(6553),          // 0.10
             damage: Fixed::from_bits(16 << 16),    // 16
             range: Fixed::from_bits(6 << 16),      // 6
-            attack_speed: 40,
+            attack_speed: 18,
             attack_type: AttackType::Ranged,
-            food_cost: 125, gpu_cost: 0, supply_cost: 2, train_time: 90,
+            food_cost: 90, gpu_cost: 0, supply_cost: 2, train_time: 70,
         },
         UnitKind::Leapfrog => UnitBaseStats {
             health: Fixed::from_bits(70 << 16),    // 70
@@ -305,11 +305,11 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             food_cost: 30, gpu_cost: 0, supply_cost: 1, train_time: 35,
         },
         UnitKind::Swarmer => UnitBaseStats {
-            health: Fixed::from_bits(45 << 16),    // 45
-            speed: Fixed::from_bits(10486),         // 0.16
-            damage: Fixed::from_bits(5 << 16),     // 5
+            health: Fixed::from_bits(70 << 16),    // 70 (was 45)
+            speed: Fixed::from_bits(13107),         // 0.20 (was 0.15)
+            damage: Fixed::from_bits(7 << 16),     // 7 (was 5)
             range: Fixed::from_bits(1 << 16),      // 1
-            attack_speed: 8,
+            attack_speed: 6,                       // was 8 (DPS 1.17)
             attack_type: AttackType::Melee,
             food_cost: 40, gpu_cost: 0, supply_cost: 1, train_time: 30,
         },
@@ -323,7 +323,7 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             food_cost: 50, gpu_cost: 0, supply_cost: 1, train_time: 45,
         },
         UnitKind::Shrieker => UnitBaseStats {
-            health: Fixed::from_bits(35 << 16),    // 35
+            health: Fixed::from_bits(45 << 16),    // 45
             speed: Fixed::from_bits(9175),          // 0.14
             damage: Fixed::from_bits(8 << 16),     // 8
             range: Fixed::from_bits(3 << 16),      // 3
@@ -341,13 +341,13 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             food_cost: 75, gpu_cost: 25, supply_cost: 2, train_time: 70,
         },
         UnitKind::Sparks => UnitBaseStats {
-            health: Fixed::from_bits(40 << 16),    // 40
+            health: Fixed::from_bits(50 << 16),    // 50 (was 40)
             speed: Fixed::from_bits(11141),         // 0.17
-            damage: Fixed::from_bits(7 << 16),     // 7
-            range: Fixed::from_bits(2 << 16),      // 2
-            attack_speed: 12,
+            damage: Fixed::from_bits(10 << 16),    // 10 (was 7)
+            range: Fixed::from_bits(4 << 16),      // 4 (was 2)
+            attack_speed: 10,                      // was 12 (DPS 1.0)
             attack_type: AttackType::Ranged,
-            food_cost: 60, gpu_cost: 15, supply_cost: 1, train_time: 50,
+            food_cost: 60, gpu_cost: 0, supply_cost: 1, train_time: 50, // gpu 15→0
         },
         UnitKind::Quillback => UnitBaseStats {
             health: Fixed::from_bits(200 << 16),   // 200
@@ -370,8 +370,8 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
         UnitKind::Plaguetail => UnitBaseStats {
             health: Fixed::from_bits(60 << 16),    // 60
             speed: Fixed::from_bits(7209),          // 0.11
-            damage: Fixed::from_bits(6 << 16),     // 6
-            range: Fixed::from_bits(2 << 16),      // 2
+            damage: Fixed::from_bits(10 << 16),    // 10 (was 6)
+            range: Fixed::from_bits(4 << 16),      // 4 (was 2)
             attack_speed: 12,
             attack_type: AttackType::Ranged,
             food_cost: 45, gpu_cost: 0, supply_cost: 1, train_time: 40,
@@ -411,13 +411,13 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             health: Fixed::from_bits(80 << 16), speed: Fixed::from_bits(8520), damage: Fixed::from_bits(4 << 16), range: Fixed::from_bits(3 << 16), attack_speed: 15, attack_type: AttackType::Ranged, food_cost: 90, gpu_cost: 25, supply_cost: 2, train_time: 80,
         },
         UnitKind::GreaseMonkey => UnitBaseStats {
-            health: Fixed::from_bits(65 << 16), speed: Fixed::from_bits(6554), damage: Fixed::from_bits(12 << 16), range: Fixed::from_bits(4 << 16), attack_speed: 14, attack_type: AttackType::Ranged, food_cost: 90, gpu_cost: 10, supply_cost: 2, train_time: 75,
+            health: Fixed::from_bits(65 << 16), speed: Fixed::from_bits(6554), damage: Fixed::from_bits(12 << 16), range: Fixed::from_bits(4 << 16), attack_speed: 14, attack_type: AttackType::Ranged, food_cost: 90, gpu_cost: 0, supply_cost: 2, train_time: 75, // gpu 10→0
         },
         UnitKind::DeadDropUnit => UnitBaseStats {
             health: Fixed::from_bits(50 << 16), speed: Fixed::from_bits(9175), damage: Fixed::from_bits(8 << 16), range: Fixed::from_bits(1 << 16), attack_speed: 12, attack_type: AttackType::Melee, food_cost: 80, gpu_cost: 20, supply_cost: 1, train_time: 65,
         },
         UnitKind::Wrecker => UnitBaseStats {
-            health: Fixed::from_bits(100 << 16), speed: Fixed::from_bits(7864), damage: Fixed::from_bits(14 << 16), range: Fixed::from_bits(1 << 16), attack_speed: 10, attack_type: AttackType::Melee, food_cost: 110, gpu_cost: 15, supply_cost: 2, train_time: 85,
+            health: Fixed::from_bits(100 << 16), speed: Fixed::from_bits(7864), damage: Fixed::from_bits(14 << 16), range: Fixed::from_bits(1 << 16), attack_speed: 10, attack_type: AttackType::Melee, food_cost: 110, gpu_cost: 0, supply_cost: 2, train_time: 85, // gpu 15→0
         },
         UnitKind::DumpsterDiver => UnitBaseStats {
             health: Fixed::from_bits(75 << 16), speed: Fixed::from_bits(7209), damage: Fixed::from_bits(6 << 16), range: Fixed::from_bits(2 << 16), attack_speed: 15, attack_type: AttackType::Ranged, food_cost: 85, gpu_cost: 20, supply_cost: 2, train_time: 70,

@@ -231,7 +231,7 @@ pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
                 (UnitKind::FlyingFox, 1),
             ],
             target_workers: 4,
-            economy_priority: false,
+            economy_priority: true,
             retreat_threshold: 30,
             eval_speed_mult: 1.0,
             chaos_factor: 10,
@@ -240,43 +240,41 @@ pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
         },
         Faction::TheClawed => AiPersonalityProfile {
             name: "Claudeus Maximus".into(),
-            attack_threshold: 12,
+            attack_threshold: 8,          // need numbers to compete with CatGPT
             unit_preferences: vec![
                 (UnitKind::Swarmer, 6),
-                (UnitKind::Shrieker, 3),
+                (UnitKind::Plaguetail, 3), // was Shrieker — viable T1 barracks ranged
                 (UnitKind::Gnawer, 2),
                 (UnitKind::Sparks, 2),
-                (UnitKind::Quillback, 1),
-            ],
-            target_workers: 8,
-            economy_priority: true,
+            ],                            // removed Quillback (tech-gated)
+            target_workers: 3,
+            economy_priority: true,       // was false
             retreat_threshold: 15,
             eval_speed_mult: 0.5,
-            chaos_factor: 12,
+            chaos_factor: 8,              // was 12
             leak_chance: 0,
             max_tier: None,
         },
         Faction::SeekersOfTheDeep => AiPersonalityProfile {
             name: "Deepseek".into(),
-            attack_threshold: 12,
+            attack_threshold: 6,          // tanky expensive units, attack with fewer
             unit_preferences: vec![
-                (UnitKind::Ironhide, 4),
-                (UnitKind::Embermaw, 3),
-                (UnitKind::Cragback, 2),
-                (UnitKind::Warden, 2),
-                (UnitKind::Sapjaw, 1),
-            ],
-            target_workers: 5,
-            economy_priority: true,
+                (UnitKind::Sapjaw, 4),    // 100f 0gpu, 1.5 DPS melee — best T1 fighter
+                (UnitKind::Dustclaw, 3),  // 75f 0gpu, 1.2 DPS melee, fast
+                (UnitKind::Warden, 3),    // 100f 0gpu, ranged support
+                (UnitKind::Ironhide, 2),  // 125f 0gpu, 250 HP tank
+            ],                            // removed GPU-gated: Embermaw, Cragback, Gutripper
+            target_workers: 4,
+            economy_priority: true,       // was false
             retreat_threshold: 50,
-            eval_speed_mult: 3.0,
+            eval_speed_mult: 1.0,
             chaos_factor: 0,
             leak_chance: 0,
             max_tier: None,
         },
         Faction::TheMurder => AiPersonalityProfile {
             name: "Gemineye".into(),
-            attack_threshold: 7,
+            attack_threshold: 8,
             unit_preferences: vec![
                 (UnitKind::Rookclaw, 4),
                 (UnitKind::Sentinel, 3),
@@ -284,45 +282,45 @@ pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
                 (UnitKind::Jaycaller, 1),
             ],
             target_workers: 4,
-            economy_priority: false,
+            economy_priority: true,       // was false
             retreat_threshold: 40,
-            eval_speed_mult: 0.7,
-            chaos_factor: 20,
+            eval_speed_mult: 1.0,
+            chaos_factor: 8,
             leak_chance: 0,
             max_tier: None,
         },
         Faction::Llama => AiPersonalityProfile {
             name: "Llhama".into(),
-            attack_threshold: 5,
+            attack_threshold: 7,
             unit_preferences: vec![
                 (UnitKind::Bandit, 4),
                 (UnitKind::Wrecker, 3),
-                (UnitKind::GreaseMonkey, 2),
+                (UnitKind::GreaseMonkey, 3), // was 2 — GPU-free now, lean into ranged
                 (UnitKind::HeapTitan, 1),
             ],
             target_workers: 3,
-            economy_priority: false,
-            retreat_threshold: 10,
+            economy_priority: true,          // was false
+            retreat_threshold: 25,
             eval_speed_mult: 0.6,
-            chaos_factor: 25,
+            chaos_factor: 8,                 // was 12
             leak_chance: 30,
             max_tier: None,
         },
         Faction::Croak => AiPersonalityProfile {
             name: "Grok".into(),
-            attack_threshold: 10,
+            attack_threshold: 7,
             unit_preferences: vec![
-                (UnitKind::Shellwarden, 4),  // tank/anchor
-                (UnitKind::Regeneron, 3),    // skirmisher
-                (UnitKind::Croaker, 3),      // ranged/terrain creation
-                (UnitKind::Broodmother, 2),  // support/healing
-                (UnitKind::Gulper, 2),       // heavy bruiser
-                (UnitKind::Leapfrog, 1),     // harasser
+                (UnitKind::Regeneron, 3),    // barracks melee
+                (UnitKind::Croaker, 3),      // barracks ranged
+                (UnitKind::Gulper, 2),       // barracks bruiser
+                (UnitKind::Leapfrog, 2),     // barracks harasser
+                (UnitKind::Shellwarden, 3),  // tech tank (available later)
+                (UnitKind::Broodmother, 1),  // tech support (available later)
             ],
-            target_workers: 5,
-            economy_priority: true,
-            retreat_threshold: 60,
-            eval_speed_mult: 1.2,
+            target_workers: 4,
+            economy_priority: true,          // was false
+            retreat_threshold: 40,
+            eval_speed_mult: 0.9,
             chaos_factor: 10,
             leak_chance: 0,
             max_tier: None,
@@ -871,39 +869,52 @@ fn run_ai_fsm(
                 });
             }
 
-            if uc.army_count >= 4 { AiPhase::MidGame } else { AiPhase::BuildUp }
+            // Scale BuildUp length with attack_threshold: higher threshold → more buildup
+            let buildup_target = ((attack_threshold + 1) / 2).max(3);
+            if uc.army_count >= buildup_target { AiPhase::MidGame } else { AiPhase::BuildUp }
         }
 
         AiPhase::MidGame => {
-            let reserve = food_reserve_for_buildings(AiPhase::MidGame, &bc, pres.gpu_cores, &fmap);
-            let tech_stats = cc_core::building_stats::building_stats(fmap.tech);
-            let research_stats = cc_core::building_stats::building_stats(fmap.research);
+            // economy_priority=true: invest in tech/research/tower before army
+            // economy_priority=false: skip tech/research, rush army to attack threshold
+            let economy = ai_state.profile.economy_priority;
+            let reserve = if economy {
+                food_reserve_for_buildings(AiPhase::MidGame, &bc, pres.gpu_cores, &fmap)
+            } else {
+                0 // Don't hold food back — spend it all on army
+            };
+
+            if economy {
+                let tech_stats = cc_core::building_stats::building_stats(fmap.tech);
+                let research_stats = cc_core::building_stats::building_stats(fmap.research);
+
+                if builder_used.is_none() && !bc.has_tech && pres.food >= tech_stats.food_cost && pres.gpu_cores >= tech_stats.gpu_cost && bc.has_hq {
+                    if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
+                        let build_pos = find_build_position(bc.hq_pos, map, &bc.building_positions);
+                        cmd_queue.push_for_player(ai_player, GameCommand::Build {
+                            builder: EntityId(builder.to_bits()),
+                            building_kind: fmap.tech,
+                            position: build_pos,
+                        });
+                        builder_used = Some(builder);
+                    }
+                }
+
+                if builder_used.is_none() && !bc.has_research && pres.food >= research_stats.food_cost && pres.gpu_cores >= research_stats.gpu_cost && bc.has_hq {
+                    if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
+                        let build_pos = find_build_position(bc.hq_pos, map, &bc.building_positions);
+                        cmd_queue.push_for_player(ai_player, GameCommand::Build {
+                            builder: EntityId(builder.to_bits()),
+                            building_kind: fmap.research,
+                            position: build_pos,
+                        });
+                        builder_used = Some(builder);
+                    }
+                }
+            }
+
+            // Defense tower is always useful — build it regardless of economy_priority
             let tower_stats = cc_core::building_stats::building_stats(fmap.defense_tower);
-
-            if builder_used.is_none() && !bc.has_tech && pres.food >= tech_stats.food_cost && pres.gpu_cores >= tech_stats.gpu_cost && bc.has_hq {
-                if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
-                    let build_pos = find_build_position(bc.hq_pos, map, &bc.building_positions);
-                    cmd_queue.push_for_player(ai_player, GameCommand::Build {
-                        builder: EntityId(builder.to_bits()),
-                        building_kind: fmap.tech,
-                        position: build_pos,
-                    });
-                    builder_used = Some(builder);
-                }
-            }
-
-            if builder_used.is_none() && !bc.has_research && pres.food >= research_stats.food_cost && pres.gpu_cores >= research_stats.gpu_cost && bc.has_hq {
-                if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
-                    let build_pos = find_build_position(bc.hq_pos, map, &bc.building_positions);
-                    cmd_queue.push_for_player(ai_player, GameCommand::Build {
-                        builder: EntityId(builder.to_bits()),
-                        building_kind: fmap.research,
-                        position: build_pos,
-                    });
-                    builder_used = Some(builder);
-                }
-            }
-
             if builder_used.is_none() && !bc.has_defense_tower && pres.food >= tower_stats.food_cost && pres.gpu_cores >= tower_stats.gpu_cost && bc.has_hq {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
                     let build_pos = find_build_position(bc.hq_pos, map, &bc.building_positions);
@@ -1705,13 +1716,13 @@ mod tests {
         let deepseek = faction_personality(Faction::SeekersOfTheDeep);
         let llhama = faction_personality(Faction::Llama);
 
-        // Deepseek is more cautious
-        assert!(deepseek.attack_threshold > geppity.attack_threshold);
+        // Deepseek is methodical — zero chaos
+        assert_eq!(deepseek.chaos_factor, 0);
+        // Deepseek evaluates at same speed as CatGPT
+        assert!(deepseek.eval_speed_mult >= geppity.eval_speed_mult);
         // Llhama leaks intel
         assert!(llhama.leak_chance > 0);
         assert_eq!(geppity.leak_chance, 0);
-        // Deepseek never makes mistakes
-        assert_eq!(deepseek.chaos_factor, 0);
     }
 
     #[test]
