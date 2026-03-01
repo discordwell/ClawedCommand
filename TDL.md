@@ -171,17 +171,14 @@
 - [ ] Add `NSMicrophoneUsageDescription` to Info.plist for macOS mic permission
 - [ ] Test end-to-end: run game → hold V → say "stop" → units stop
 
-## 3D Renderer Migration
+## 3D Models (Promotional Video Only)
 
-- [ ] Evaluate Tripo GLB output quality — decide image-to-model vs text-to-model vs multi-view
-- [ ] Generate GLB models for all 10 cat unit types via Tripo API
-- [ ] Generate GLB models for 8 cat building types
-- [ ] Generate terrain tile 3D meshes (grass, dirt, forest, water, etc.)
-- [ ] Replace 2D isometric renderer with 3D orthographic camera in cc_client
-- [ ] Implement 3D depth sorting (replaces sprite-based Y-sort)
-- [ ] Port zoom LOD system to 3D (mesh LOD levels instead of sprite swap)
-- [ ] Port health bars/selection rings to 3D billboard quads
-- [ ] Port fog of war to 3D (shader-based or geometry overlay)
-- [ ] Animate GLB models (idle, walk, attack) — either skeletal or swap meshes
-- [ ] Team color tinting system for 3D materials (per-faction color multiply)
-- [ ] Performance profiling: ensure 60fps with full 64x64 map in 3D
+> **Decision**: Game uses 2D sprites for units/buildings on isometric terrain. 3D unit/building models via Tripo are for trailers/promotional video only — do NOT replace 2D sprites with 3D animated models. Isometric maps and 3D terrain are fine.
+
+- [x] Tripo pipeline PoC validated — sprite → 3D model → retopo → GLB → Bevy 3D render
+- [x] Pawdler GLB generated (4986 faces, 1k texture, 1.1MB) at `assets/models/units/pawdler.glb`
+- [x] PoC example at `crates/cc_client/examples/poc_3d.rs` (run with `BEVY_ASSET_ROOT=. cargo run --example poc_3d`)
+- [ ] Generate GLB models for remaining 9 cat unit types (via Tripo Studio web UI, ~40 credits each)
+- [ ] Generate GLB models for other faction units as needed for video
+- [ ] Generate building GLBs for cinematic shots
+- [ ] Render promotional trailer scenes using Bevy 3D camera

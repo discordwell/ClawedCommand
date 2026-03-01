@@ -312,24 +312,25 @@ Voice comprehension sits in the Intelligence Layer alongside the agentic builder
 
 See [VOICE.md](./VOICE.md) for the full keyword spotting technical details.
 
-### 5. Renderer (Bevy 2D + Isometric → 3D Migration Planned)
+### 5. Renderer (Isometric — 2D Sprites on 3D Terrain)
 
-**Current: 2D isometric projection:**
+**Isometric map rendering:**
 - Tile-based map with diamond-shaped tiles
+- Smooth camera with zoom (0.5x-3.5x), pan, edge scrolling, minimap
+- Isometric 3D terrain is on the table (elevation, camera orbit) — the maps look great
+
+**Units and buildings — 2D sprites (permanent):**
 - Sprite-based units and buildings with directional animations
 - Depth sorting based on y-position for correct overlap
-- Smooth camera with zoom (0.5x-3.5x), pan, edge scrolling, minimap
 - Two-tier zoom LOD with hysteresis: Tactical (< 2.0x) shows full sprites/health bars/props; Strategic (>= 2.0x) shows simplified colored-dot icons
 - 2x sprite resolution for crisp close-up zoom (drawn at 1x, nearest-neighbor upscaled)
+- Do NOT replace with 3D animated models — 2D sprites are the art style
 
-**Planned: 3D orthographic renderer (Into the Breach / Bad North style):**
-- AI-generated GLB models via Tripo API (image-to-3D from existing sprites)
-- 3D orthographic camera at isometric angle (~35.26°), orbitable
-- `assets/models/units/` stores GLB files, loaded via `SceneRoot`
-- Team color tinting via material base_color multiply blend
-- PoC validated in `crates/cc_client/examples/poc_3d.rs`
-- 3D model generation script: `tools/asset_pipeline/scripts/generate_3d_model.py`
-- Full migration tracked in TDL.md under "3D Renderer Migration"
+**3D unit/building models (promotional video only):**
+- AI-generated GLB models via Tripo Studio (~40 credits/model, ~5K faces after retopo)
+- PoC: `crates/cc_client/examples/poc_3d.rs` (Bevy 3D isometric camera, terrain grid, team color tinting)
+- Assets: `assets/models/units/pawdler.glb`, generation script: `tools/asset_pipeline/scripts/generate_3d_model.py`
+- Tracked in TDL.md under "3D Models (Promotional Video Only)"
 
 **Visual layers (bottom to top):**
 1. Terrain tiles

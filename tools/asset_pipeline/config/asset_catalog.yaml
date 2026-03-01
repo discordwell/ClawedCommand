@@ -475,6 +475,436 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/mech_commander_idle.png
+  # --- Walk sheets (remaining units) ---
+  chonk_walk:
+    template: unit_sheet
+    status: planned
+    params:
+      name: The Chonk
+      animation: walk cycle
+      description: Fat cat waddling forward, belly swaying
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      extra_notes: Heavy, slow waddle. Belly should visibly sway side to side.
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/chonk_walk.png
+  flying_fox_walk:
+    template: unit_sheet
+    status: planned
+    params:
+      name: Flying Fox
+      animation: fly cycle
+      description: Cat with wings flapping in flight
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      extra_notes: Wings fully spread through flap cycle. Hover animation.
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/flying_fox_walk.png
+  hisser_walk:
+    template: unit_sheet
+    status: planned
+    params:
+      name: The Hisser
+      animation: walk cycle
+      description: Arched cat stalking forward with raised hackles
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      extra_notes: Aggressive stalking posture. Tail puffed up.
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/hisser_walk.png
+  yowler_walk:
+    template: unit_sheet
+    status: planned
+    params:
+      name: The Yowler
+      animation: walk cycle
+      description: Support cat walking with mouth slightly open
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      extra_notes: Mouth slightly ajar, ready to yowl. Sound wave hints.
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/yowler_walk.png
+  mouser_walk:
+    template: unit_sheet
+    status: planned
+    params:
+      name: The Mouser
+      animation: walk cycle
+      description: Dark stealth cat slinking forward low to the ground
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      extra_notes: Slinky, low-profile movement. Near-invisible against shadows.
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/mouser_walk.png
+  catnapper_walk:
+    template: unit_sheet
+    status: planned
+    params:
+      name: The Catnapper
+      animation: walk cycle
+      description: Sleepy siege cat being reluctantly dragged along
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      extra_notes: Very slow, reluctant movement. Zzz bubbles persist while walking.
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/catnapper_walk.png
+  ferret_sapper_walk:
+    template: unit_sheet
+    status: planned
+    params:
+      name: Ferret Sapper
+      animation: walk cycle
+      description: Wiry ferret trotting forward carrying explosives
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      extra_notes: Bouncy ferret gait. Bomb fuse trail behind.
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/ferret_sapper_walk.png
+  mech_commander_walk:
+    template: unit_sheet
+    status: planned
+    params:
+      name: Mech Commander
+      animation: walk cycle
+      description: Heavy mech suit stomping forward, cat visible in cockpit
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      extra_notes: Heavy, mechanical stomp cycle. Ground shake visual.
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/mech_commander_walk.png
+  # --- Attack sheets ---
+  pawdler_attack:
+    template: unit_sheet
+    status: planned
+    params:
+      name: Pawdler
+      animation: attack / pickaxe swing
+      description: Pawdler swinging pickaxe at target
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      extra_notes: "Reluctant swing → overhead → impact → recover."
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/pawdler_attack.png
+  chonk_attack:
+    template: unit_sheet
+    status: planned
+    params:
+      name: The Chonk
+      animation: attack / body slam
+      description: Fat cat body-slamming forward
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      extra_notes: "Lean back → belly slam → bounce → settle."
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/chonk_attack.png
+  flying_fox_attack:
+    template: unit_sheet
+    status: planned
+    params:
+      name: Flying Fox
+      animation: attack / dive bomb
+      description: Winged cat diving and scratching
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      extra_notes: "Wings tuck → dive → slash → pull up."
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/flying_fox_attack.png
+  hisser_attack:
+    template: unit_sheet
+    status: planned
+    params:
+      name: The Hisser
+      animation: attack / spit projectile
+      description: Arched cat launching acid spit at range
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      extra_notes: "Arch back → open mouth → spit glob → recoil. Green projectile visible."
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/hisser_attack.png
+  yowler_attack:
+    template: unit_sheet
+    status: planned
+    params:
+      name: The Yowler
+      animation: attack / sonic yowl
+      description: Support cat unleashing a sonic yowl with visible sound waves
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      extra_notes: "Inhale → mouth wide → sonic burst → echo. Purple sound rings radiating."
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/yowler_attack.png
+  mouser_attack:
+    template: unit_sheet
+    status: planned
+    params:
+      name: The Mouser
+      animation: attack / backstab
+      description: Dark stealth cat striking from behind
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      extra_notes: "Coil → lunge → slash → fade back. Green eyes flash."
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/mouser_attack.png
+  catnapper_attack:
+    template: unit_sheet
+    status: planned
+    params:
+      name: The Catnapper
+      animation: attack / siege shot
+      description: Sleeping cat launching a dream-powered siege projectile
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      extra_notes: "Sleep shift → dream bubble grows → launch → Zzz reset. Eyes stay closed."
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/catnapper_attack.png
+  ferret_sapper_attack:
+    template: unit_sheet
+    status: planned
+    params:
+      name: Ferret Sapper
+      animation: attack / bomb throw
+      description: Ferret hurling an explosive charge
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      extra_notes: "Wind up → throw → bomb arc → fuse spark."
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/ferret_sapper_attack.png
+  mech_commander_attack:
+    template: unit_sheet
+    status: planned
+    params:
+      name: Mech Commander
+      animation: attack / cannon blast
+      description: Mech suit firing cannon arms with cat visible bracing in cockpit
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      extra_notes: "Aim → muzzle flash → recoil → stabilize. Cat bounces inside cockpit."
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/mech_commander_attack.png
+projectiles:
+  spit:
+    template: unit_static
+    status: planned
+    params:
+      name: Acid Spit
+      pose: glob of acid in flight
+      description: Green acidic spit glob with dripping trail. Hisser's ranged projectile.
+      width: 32
+      height: 32
+      direction: south-east
+      extra_notes: Translucent green with brighter core. Drip particles behind.
+    output:
+      type: single
+      game_path: assets/sprites/projectiles/spit.png
+  laser_beam:
+    template: unit_static
+    status: planned
+    params:
+      name: Laser Beam
+      pose: concentrated red beam
+      description: Focused red laser beam shot from tower. Elongated shape.
+      width: 32
+      height: 16
+      direction: south-east
+      extra_notes: Pure red with white-hot center. Slightly elongated horizontal.
+    output:
+      type: single
+      game_path: assets/sprites/projectiles/laser_beam.png
+  sonic_wave:
+    template: unit_static
+    status: planned
+    params:
+      name: Sonic Wave
+      pose: expanding purple sound ring
+      description: Purple-blue concentric sound wave ring. Yowler's sonic attack.
+      width: 32
+      height: 32
+      direction: south-east
+      extra_notes: Translucent purple rings radiating outward. Musical note hints.
+    output:
+      type: single
+      game_path: assets/sprites/projectiles/sonic_wave.png
+  mech_shot:
+    template: unit_static
+    status: planned
+    params:
+      name: Mech Cannon Shot
+      pose: blue-white energy bolt
+      description: Cyan energy bolt fired from mech cannon. Sharp angular shape.
+      width: 32
+      height: 16
+      direction: south-east
+      extra_notes: Bright cyan with white streak. Angular, technological appearance.
+    output:
+      type: single
+      game_path: assets/sprites/projectiles/mech_shot.png
+  explosive:
+    template: unit_static
+    status: planned
+    params:
+      name: Explosive
+      pose: small bomb in flight
+      description: Orange glowing explosive charge in an arc. Catnapper's siege projectile.
+      width: 32
+      height: 32
+      direction: south-east
+      extra_notes: Glowing orange with spark trail. Small bomb shape with lit fuse.
+    output:
+      type: single
+      game_path: assets/sprites/projectiles/explosive.png
 resources:
   fish_pond:
     template: resource
