@@ -43,19 +43,27 @@ pub struct TeamMaterials {
 /// Values are close to white with a color bias so dark sprites stay visible
 /// (Bevy's Sprite.color is multiplicative — strong tints crush dark pixels).
 pub fn team_color(player_id: u8) -> Color {
-    if player_id == 0 {
-        Color::srgb(0.7, 0.8, 1.0) // Soft blue tint
-    } else {
-        Color::srgb(1.0, 0.7, 0.7) // Soft red tint
+    match player_id {
+        0 => Color::srgb(0.7, 0.8, 1.0),  // catGPT — soft blue
+        1 => Color::srgb(1.0, 0.7, 0.7),  // Murder — soft red
+        2 => Color::srgb(1.0, 0.88, 0.6), // Clawed — warm amber
+        3 => Color::srgb(0.65, 0.95, 0.7), // Seekers — forest green
+        4 => Color::srgb(0.6, 0.95, 0.95), // Croak — teal
+        5 => Color::srgb(1.0, 0.78, 0.5), // LLAMA — orange
+        _ => Color::srgb(1.0, 0.7, 0.7),  // default — soft red
     }
 }
 
 /// Building mesh color by player.
 pub fn building_color(player_id: u8) -> Color {
-    if player_id == 0 {
-        Color::srgb(0.3, 0.5, 0.9) // Blue
-    } else {
-        Color::srgb(0.9, 0.3, 0.3) // Red
+    match player_id {
+        0 => Color::srgb(0.3, 0.5, 0.9), // catGPT — blue
+        1 => Color::srgb(0.9, 0.3, 0.3), // Murder — red
+        2 => Color::srgb(0.8, 0.6, 0.2), // Clawed — amber
+        3 => Color::srgb(0.2, 0.7, 0.3), // Seekers — green
+        4 => Color::srgb(0.2, 0.7, 0.7), // Croak — teal
+        5 => Color::srgb(0.9, 0.5, 0.2), // LLAMA — orange
+        _ => Color::srgb(0.9, 0.3, 0.3), // default — red
     }
 }
 

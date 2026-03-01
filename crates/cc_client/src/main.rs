@@ -1,6 +1,7 @@
 mod input;
 mod renderer;
 mod setup;
+mod showcase;
 mod ui;
 
 use bevy::asset::AssetPlugin;
@@ -15,8 +16,9 @@ use cc_voice::VoicePlugin;
 fn main() {
     let mut app = App::new();
 
-    // Check for --demo flag
+    // Check for CLI flags
     let demo_mode = std::env::args().any(|arg| arg == "--demo");
+    let showcase_mode = std::env::args().any(|arg| arg == "--showcase");
 
     app.add_plugins(
         DefaultPlugins
@@ -78,6 +80,33 @@ fn main() {
                 eprintln!("Warning: failed to load demo combat script at {}: {e}", script_path.display());
             }
         }
+    }
+
+    // If --showcase, build all-factions building showcase mission
+    if showcase_mode && !demo_mode {
+        let mission = showcase::build_showcase_mission();
+        if let Err(errors) = mission.validate() {
+            panic!("Showcase mission validation failed: {errors:?}");
+        }
+        let mut campaign = CampaignState::default();
+        campaign.load_mission(mission);
+        campaign.phase = CampaignPhase::InMission;
+        app.insert_resource(campaign);
+
+        // 6-player resources (one per faction) — inserted before SimPlugin
+        // so that init_resource in SimSystemsPlugin is a no-op.
+        let player_res = cc_sim::resources::PlayerResources {
+            players: (0..6)
+                .map(|_| {
+                    let mut p = cc_sim::resources::PlayerResourceState::default();
+                    p.food = 9999;
+                    p.gpu_cores = 9999;
+                    p.supply_cap = 100;
+                    p
+                })
+                .collect(),
+        };
+        app.insert_resource(player_res);
     }
 
     app.add_plugins(SimPlugin)
