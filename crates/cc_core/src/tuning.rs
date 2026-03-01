@@ -59,3 +59,6 @@ pub const ATTACK_REISSUE_INTERVAL: u64 = 50;
 
 /// Chebyshev distance (tiles) for detecting enemy threats near the AI's base.
 pub const BASE_THREAT_RADIUS: i32 = 8;
+
+/// Minimum Chebyshev distance between AI building placements (tiles).
+pub const AI_BUILD_SPACING: i32 = 3;

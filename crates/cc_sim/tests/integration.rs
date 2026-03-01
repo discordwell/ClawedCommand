@@ -2356,3 +2356,128 @@ fn test_duplicate_build_at_same_location() {
     let food = world.resource::<PlayerResources>().players[0].food;
     assert_eq!(food, 600 - 150 - 150, "Both builds should deduct resources");
 }
+
+#[test]
+fn test_ai_builds_on_valid_terrain() {
+    use cc_core::terrain::TerrainType;
+    use cc_sim::ai::fsm::{AiDifficulty, AiPhase, AiState};
+    use cc_sim::ai::MultiAiState;
+
+    // Create a 64×64 map with some water patches to test avoidance
+    let mut map = GameMap::new(64, 64);
+    // Water strip along y=52..56 to block naive placement near base at (55,55)
+    for x in 50..60 {
+        for y in 52..56 {
+            map.get_mut(GridPos::new(x, y)).unwrap().terrain = TerrainType::Water;
+        }
+    }
+
+    let mut world = World::new();
+    world.insert_resource(CommandQueue::default());
+    world.insert_resource(SimClock::default());
+    world.insert_resource(ControlGroups::default());
+    world.insert_resource(GameState::Playing);
+    world.insert_resource(SpawnPositions::default());
+    world.insert_resource(SimRng::default());
+
+    // Set up player resources: player 0 (human), player 1 (AI)
+    let mut player_res = PlayerResources::default();
+    while player_res.players.len() < 2 {
+        player_res.players.push(Default::default());
+    }
+    player_res.players[1].food = 500;
+    player_res.players[1].gpu_cores = 200;
+    player_res.players[1].supply = 1; // 1 worker
+    player_res.players[1].supply_cap = 20;
+    world.insert_resource(player_res);
+    world.insert_resource(MapResource { map });
+
+    // AI state: player 1, Hard difficulty, start in BuildUp phase
+    let ai_state = AiState {
+        player_id: 1,
+        phase: AiPhase::BuildUp,
+        difficulty: AiDifficulty::Hard,
+        enemy_spawn: Some(GridPos::new(5, 5)),
+        ..AiState::default()
+    };
+    world.insert_resource(ai_state);
+    world.insert_resource(MultiAiState::default());
+
+    // Spawn AI buildings: TheBox at (55,55) with Producer, CatTree at (58,55)
+    spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(55, 55), 1);
+    spawn_building(&mut world, BuildingKind::CatTree, GridPos::new(58, 55), 1);
+
+    // Spawn 1 worker for AI player 1 (single worker prevents duplicate build races)
+    spawn_combat_unit(&mut world, GridPos::new(54, 57), 1, UnitKind::Pawdler);
+
+    // Spawn a resource deposit near AI base
+    spawn_deposit(&mut world, GridPos::new(50, 58));
+
+    // Build schedule with AI system
+    let mut schedule = Schedule::new(FixedUpdate);
+    schedule.add_systems(
+        (
+            tick_system,
+            process_commands,
+            ability_cooldown_system,
+            ability_effect_system,
+            status_effect_system,
+            aura_system,
+            stat_modifier_system,
+            production_system,
+            research_system,
+            gathering_system,
+            target_acquisition_system,
+            combat_system,
+            tower_combat_system,
+            projectile_system,
+            movement_system,
+            builder_system,
+            grid_sync_system,
+            cleanup_system,
+            cc_sim::ai::fsm::ai_decision_system,
+        )
+            .chain(),
+    );
+    schedule.add_systems(victory_system);
+
+    // Run 200 ticks (Hard AI evaluates every 5 ticks)
+    run_ticks(&mut world, &mut schedule, 200);
+
+    // Collect all AI buildings
+    let ai_buildings: Vec<(GridPos, BuildingKind)> = world
+        .query_filtered::<(&Building, &Position, &Owner), ()>()
+        .iter(&world)
+        .filter(|(_, _, owner)| owner.player_id == 1)
+        .map(|(b, pos, _)| (pos.world.to_grid(), b.kind))
+        .collect();
+
+    // Should have more than the initial 2 buildings (TheBox + CatTree)
+    assert!(
+        ai_buildings.len() > 2,
+        "AI should have built at least 1 new building, found {} total",
+        ai_buildings.len()
+    );
+
+    let map_ref = &world.resource::<MapResource>().map;
+
+    // All buildings must be on passable terrain
+    for (pos, kind) in &ai_buildings {
+        // TheBox and CatTree were manually placed; check new ones
+        assert!(
+            map_ref.is_passable(*pos) || *kind == BuildingKind::TheBox || *kind == BuildingKind::CatTree,
+            "Building {kind:?} at {pos:?} is on impassable terrain"
+        );
+    }
+
+    // No two buildings should occupy the exact same tile
+    for i in 0..ai_buildings.len() {
+        for j in (i + 1)..ai_buildings.len() {
+            assert_ne!(
+                ai_buildings[i].0, ai_buildings[j].0,
+                "Buildings {:?} and {:?} overlap at {:?}",
+                ai_buildings[i].1, ai_buildings[j].1, ai_buildings[i].0
+            );
+        }
+    }
+}

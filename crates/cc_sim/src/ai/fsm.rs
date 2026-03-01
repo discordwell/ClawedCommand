@@ -6,9 +6,10 @@ use cc_core::components::{
     ResourceDeposit, UnitKind, UnitType, UpgradeType,
 };
 use cc_core::coords::GridPos;
-use cc_core::tuning::{ATTACK_REISSUE_INTERVAL, BASE_THREAT_RADIUS};
+use cc_core::map::GameMap;
+use cc_core::tuning::{AI_BUILD_SPACING, ATTACK_REISSUE_INTERVAL, BASE_THREAT_RADIUS};
 
-use crate::resources::{CommandQueue, PlayerResources, SimClock};
+use crate::resources::{CommandQueue, MapResource, PlayerResources, SimClock};
 
 /// AI difficulty level — controls decision frequency.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -285,6 +286,7 @@ pub fn ai_decision_system(
     mut ai_state: ResMut<AiState>,
     mut cmd_queue: ResMut<CommandQueue>,
     player_resources: Res<PlayerResources>,
+    map_res: Res<MapResource>,
     units: Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
     buildings: Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
     deposits: Query<(Entity, &Position, &ResourceDeposit)>,
@@ -294,6 +296,7 @@ pub fn ai_decision_system(
         &mut ai_state,
         &mut cmd_queue,
         &player_resources,
+        &map_res.map,
         &units,
         &buildings,
         &deposits,
@@ -307,6 +310,7 @@ pub fn multi_ai_decision_system(
     mut multi_ai: ResMut<super::MultiAiState>,
     mut cmd_queue: ResMut<CommandQueue>,
     player_resources: Res<PlayerResources>,
+    map_res: Res<MapResource>,
     units: Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
     buildings: Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
     deposits: Query<(Entity, &Position, &ResourceDeposit)>,
@@ -317,6 +321,7 @@ pub fn multi_ai_decision_system(
             ai_state,
             &mut cmd_queue,
             &player_resources,
+            &map_res.map,
             &units,
             &buildings,
             &deposits,
@@ -332,6 +337,8 @@ struct UnitCensus {
     idle_workers: Vec<Entity>,
     all_workers: Vec<Entity>,
     army_entities: Vec<Entity>,
+    /// BuildOrders currently in-flight (kind + target position).
+    pending_builds: Vec<(BuildingKind, GridPos)>,
 }
 
 /// Census of the AI player's buildings.
@@ -348,6 +355,7 @@ struct BuildingCensus {
     server_rack_entity: Option<Entity>,
     scratching_post_entity: Option<Entity>,
     building_count: u32,
+    building_positions: Vec<(GridPos, BuildingKind)>,
 }
 
 /// Scan all units and classify them as workers, army, or enemy army.
@@ -362,6 +370,7 @@ fn take_unit_census(
         idle_workers: Vec::new(),
         all_workers: Vec::new(),
         army_entities: Vec::new(),
+        pending_builds: Vec::new(),
     };
     for (entity, _, owner, unit_type, gathering, move_target, build_order) in units.iter() {
         if owner.player_id != ai_player {
@@ -375,8 +384,8 @@ fn take_unit_census(
                 census.worker_count += 1;
                 // Workers with active BuildOrders are busy building — exclude from
                 // both idle and available-builder lists to prevent reassignment.
-                if build_order.is_some() {
-                    // Still count as a worker, but not available for tasks
+                if let Some(bo) = build_order {
+                    census.pending_builds.push((bo.building_kind, bo.position));
                 } else {
                     census.all_workers.push(entity);
                     if gathering.is_none() && move_target.is_none() {
@@ -411,12 +420,14 @@ fn take_building_census(
         server_rack_entity: None,
         scratching_post_entity: None,
         building_count: 0,
+        building_positions: Vec::new(),
     };
     for (entity, building, owner, pos, producer) in buildings.iter() {
         if owner.player_id != ai_player {
             continue;
         }
         census.building_count += 1;
+        census.building_positions.push((pos.world.to_grid(), building.kind));
         match building.kind {
             BuildingKind::TheBox => {
                 census.has_box = true;
@@ -480,6 +491,7 @@ fn run_ai_fsm(
     ai_state: &mut AiState,
     cmd_queue: &mut CommandQueue,
     player_resources: &PlayerResources,
+    map: &GameMap,
     units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
     buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
     deposits: &Query<(Entity, &Position, &ResourceDeposit)>,
@@ -497,7 +509,21 @@ fn run_ai_fsm(
     };
 
     let uc = take_unit_census(ai_player, units);
-    let bc = take_building_census(ai_player, buildings);
+    let mut bc = take_building_census(ai_player, buildings);
+
+    // Merge in-flight BuildOrders so the AI treats pending builds
+    // as if the buildings already exist (prevents duplicate orders).
+    for (kind, pos) in &uc.pending_builds {
+        bc.building_positions.push((*pos, *kind));
+        match kind {
+            BuildingKind::FishMarket => bc.has_fish_market = true,
+            BuildingKind::CatTree => bc.has_cat_tree = true,
+            BuildingKind::ServerRack => bc.has_server_rack = true,
+            BuildingKind::ScratchingPost => bc.has_scratching_post = true,
+            BuildingKind::LaserPointer => bc.has_laser_pointer = true,
+            _ => {}
+        }
+    }
 
     // Discover enemy base if not yet known
     if ai_state.enemy_spawn.is_none() {
@@ -535,7 +561,7 @@ fn run_ai_fsm(
             // Build one structure per tick to avoid same-worker conflicts
             if builder_used.is_none() && !bc.has_fish_market && pres.food >= 100 && bc.has_box {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
-                    let build_pos = find_build_position(bc.box_pos, bc.building_count);
+                    let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: BuildingKind::FishMarket,
@@ -547,7 +573,7 @@ fn run_ai_fsm(
 
             if builder_used.is_none() && !bc.has_cat_tree && pres.food >= 150 && bc.has_box {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
-                    let build_pos = find_build_position(bc.box_pos, bc.building_count + 1);
+                    let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: BuildingKind::CatTree,
@@ -558,7 +584,7 @@ fn run_ai_fsm(
             }
 
             if builder_used.is_none() {
-                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, bc.building_count, cmd_queue) {
+                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue) {
                     builder_used = Some(b);
                 }
             }
@@ -585,7 +611,7 @@ fn run_ai_fsm(
             // Build one structure per tick to avoid same-worker conflicts
             if builder_used.is_none() && !bc.has_server_rack && pres.food >= 100 && pres.gpu_cores >= 75 && bc.has_box {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
-                    let build_pos = find_build_position(bc.box_pos, bc.building_count);
+                    let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: BuildingKind::ServerRack,
@@ -597,7 +623,7 @@ fn run_ai_fsm(
 
             if builder_used.is_none() && !bc.has_scratching_post && pres.food >= 100 && pres.gpu_cores >= 50 && bc.has_box {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
-                    let build_pos = find_build_position(bc.box_pos, bc.building_count + 1);
+                    let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: BuildingKind::ScratchingPost,
@@ -609,7 +635,7 @@ fn run_ai_fsm(
 
             if builder_used.is_none() && !bc.has_laser_pointer && pres.food >= 75 && pres.gpu_cores >= 25 && bc.has_box {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
-                    let build_pos = find_build_position(bc.box_pos, bc.building_count + 2);
+                    let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: BuildingKind::LaserPointer,
@@ -675,7 +701,7 @@ fn run_ai_fsm(
             }
 
             if builder_used.is_none() {
-                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, bc.building_count, cmd_queue) {
+                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue) {
                     builder_used = Some(b);
                 }
             }
@@ -742,7 +768,7 @@ fn run_ai_fsm(
                 }
             }
 
-            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, bc.building_count, cmd_queue) {
+            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue) {
                 builder_used = Some(b);
             }
 
@@ -786,7 +812,7 @@ fn run_ai_fsm(
                 }
             }
 
-            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, bc.building_count, cmd_queue) {
+            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue) {
                 builder_used = Some(b);
             }
 
@@ -881,12 +907,13 @@ fn maybe_build_supply(
     idle_workers: &[Entity],
     all_workers: &[Entity],
     box_pos: Option<GridPos>,
-    building_count: u32,
+    map: &GameMap,
+    building_positions: &[(GridPos, BuildingKind)],
     cmd_queue: &mut CommandQueue,
 ) -> Option<Entity> {
     if pres.supply + 2 >= pres.supply_cap && pres.food >= 75 {
         if let Some(builder) = pick_builder(idle_workers, all_workers) {
-            let build_pos = find_build_position(box_pos, building_count);
+            let build_pos = find_build_position(box_pos, map, building_positions);
             cmd_queue.push(GameCommand::Build {
                 builder: EntityId(builder.to_bits()),
                 building_kind: BuildingKind::LitterBox,
@@ -899,23 +926,59 @@ fn maybe_build_supply(
 }
 
 /// Find a position near the base to place a building.
-/// Uses building_count as offset to avoid stacking buildings on the same tile.
-fn find_build_position(box_pos: Option<GridPos>, building_count: u32) -> GridPos {
+/// Uses a growing spiral search with terrain passability and collision checks.
+fn find_build_position(
+    box_pos: Option<GridPos>,
+    map: &GameMap,
+    existing_buildings: &[(GridPos, BuildingKind)],
+) -> GridPos {
     let base = box_pos.unwrap_or(GridPos::new(32, 32));
-    // Spiral placement: offset each new building to a different spot near the base
-    let offsets: [(i32, i32); 8] = [
-        (3, 0),
-        (0, 3),
-        (-3, 0),
-        (0, -3),
-        (3, 3),
-        (-3, 3),
-        (-3, -3),
-        (3, -3),
-    ];
-    let idx = building_count as usize % offsets.len();
-    let (dx, dy) = offsets[idx];
-    GridPos::new(base.x + dx, base.y + dy)
+    let mut fallback: Option<GridPos> = None;
+
+    // Search concentric rings at increasing distances from the base
+    for dist in AI_BUILD_SPACING..AI_BUILD_SPACING + 12 {
+        // Walk the perimeter of a square at Chebyshev distance `dist`
+        for offset in 0..(dist * 8) {
+            let (dx, dy) = ring_offset(dist, offset);
+            let candidate = GridPos::new(base.x + dx, base.y + dy);
+
+            if !map.is_passable(candidate) {
+                continue;
+            }
+
+            // Check collision: no existing building within AI_BUILD_SPACING
+            let too_close = existing_buildings.iter().any(|(bp, _)| {
+                let cx = (bp.x - candidate.x).abs();
+                let cy = (bp.y - candidate.y).abs();
+                cx < AI_BUILD_SPACING && cy < AI_BUILD_SPACING
+            });
+            if too_close {
+                if fallback.is_none() {
+                    fallback = Some(candidate);
+                }
+                continue;
+            }
+
+            return candidate;
+        }
+    }
+
+    // All spiral positions occupied or blocked — return first passable fallback
+    fallback.unwrap_or(base)
+}
+
+/// Map a linear offset to (dx, dy) on the perimeter of a Chebyshev-distance ring.
+fn ring_offset(dist: i32, offset: i32) -> (i32, i32) {
+    let side_len = dist * 2;
+    let side = offset / side_len;
+    let pos = offset % side_len;
+    match side {
+        0 => (-dist + pos, -dist),          // top edge, left to right
+        1 => (dist, -dist + pos),           // right edge, top to bottom
+        2 => (dist - pos, dist),            // bottom edge, right to left
+        3 => (-dist, dist - pos),           // left edge, bottom to top
+        _ => (0, 0),
+    }
 }
 
 /// Check if enemy units are within 8 tiles of any of the AI's buildings.
@@ -1062,5 +1125,62 @@ mod tests {
     fn last_attack_tick_defaults_to_zero() {
         let state = AiState::default();
         assert_eq!(state.last_attack_tick, 0);
+    }
+
+    #[test]
+    fn find_build_position_avoids_water() {
+        use cc_core::map::GameMap;
+        use cc_core::terrain::TerrainType;
+
+        let mut map = GameMap::new(20, 20);
+        let base = GridPos::new(10, 10);
+
+        // Flood the first ring (distance AI_BUILD_SPACING) with water
+        for dx in -AI_BUILD_SPACING..=AI_BUILD_SPACING {
+            for dy in -AI_BUILD_SPACING..=AI_BUILD_SPACING {
+                let chebyshev = dx.abs().max(dy.abs());
+                if chebyshev == AI_BUILD_SPACING {
+                    let pos = GridPos::new(base.x + dx, base.y + dy);
+                    if let Some(tile) = map.get_mut(pos) {
+                        tile.terrain = TerrainType::Water;
+                    }
+                }
+            }
+        }
+
+        // Place an existing building at (10, 14) to test collision avoidance
+        let existing = vec![(GridPos::new(10, 14), BuildingKind::FishMarket)];
+
+        let result = find_build_position(Some(base), &map, &existing);
+
+        // Must be passable
+        assert!(map.is_passable(result), "Position {result:?} should be passable");
+
+        // Must not overlap with existing building
+        assert_ne!(result, GridPos::new(10, 14), "Should not overlap existing building");
+    }
+
+    #[test]
+    fn find_build_position_spiral_grows() {
+        use cc_core::map::GameMap;
+
+        let map = GameMap::new(30, 30);
+        let base = GridPos::new(15, 15);
+
+        // Place buildings covering the first ring
+        let mut existing: Vec<(GridPos, BuildingKind)> = Vec::new();
+        for dx in -AI_BUILD_SPACING..=AI_BUILD_SPACING {
+            for dy in -AI_BUILD_SPACING..=AI_BUILD_SPACING {
+                existing.push((GridPos::new(base.x + dx, base.y + dy), BuildingKind::LitterBox));
+            }
+        }
+
+        let result = find_build_position(Some(base), &map, &existing);
+
+        // Should place beyond the first ring
+        let dist_x = (result.x - base.x).abs();
+        let dist_y = (result.y - base.y).abs();
+        let chebyshev = dist_x.max(dist_y);
+        assert!(chebyshev >= AI_BUILD_SPACING, "Should place at distance >= {AI_BUILD_SPACING}, got {chebyshev}");
     }
 }
