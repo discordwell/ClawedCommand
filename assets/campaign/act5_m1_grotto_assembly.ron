@@ -260,7 +260,7 @@
         // Flooding: rises every 100 ticks after activation, converting elevation 0 tiles to water
         Flooding(
             interval_ticks: 100,
-            current_water_level: 0,
+            initial_water_level: 0,
             max_water_level: 2,
             initial_delay_ticks: 150,
         ),

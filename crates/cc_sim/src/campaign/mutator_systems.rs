@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 
-use cc_core::commands::GameCommand;
 use cc_core::components::{Health, Owner, Position};
 use cc_core::coords::GridPos;
 use cc_core::math::Fixed;
@@ -8,7 +7,9 @@ use cc_core::mission::MissionDefinition;
 use cc_core::mutator::{HazardDirection, MissionMutator};
 use cc_core::terrain::{FLAG_LAVA, FLAG_TEMP_BLOCKED, FLAG_TOXIC, FLAG_WATER_CONVERTED};
 
-use crate::campaign::mutator_state::{ControlRestrictions, FogState, MutatorState};
+use crate::campaign::mutator_state::{
+    should_fire, ControlRestrictions, FogState, MutatorState,
+};
 use crate::campaign::state::{CampaignPhase, CampaignState, MissionFailedEvent};
 use crate::resources::{MapResource, SimClock, SimRng};
 use crate::systems::damage::ApplyDamageCommand;
@@ -60,8 +61,8 @@ pub fn mutator_init(
                 fog.vision_reduction = *vision_reduction;
                 fog.currently_clear = false;
             }
-            MissionMutator::Flooding { current_water_level, .. } => {
-                mutator_state.current_water_level = *current_water_level;
+            MissionMutator::Flooding { initial_water_level, .. } => {
+                mutator_state.current_water_level = *initial_water_level;
             }
             _ => {}
         }
@@ -106,7 +107,7 @@ pub fn environmental_hazard_system(
     let height = map_res.map.height as i32;
 
     for (i, mutator) in mission.mutators.iter().enumerate() {
-        if !mutator_state.active.get(i).copied().unwrap_or(false) {
+        if !mutator_state.is_active(i) {
             continue;
         }
 
@@ -118,11 +119,7 @@ pub fn environmental_hazard_system(
                 initial_delay_ticks,
                 ..
             } => {
-                if tick < *initial_delay_ticks {
-                    continue;
-                }
-                let elapsed = tick - initial_delay_ticks;
-                if elapsed % interval_ticks != 0 {
+                if !should_fire(tick, *initial_delay_ticks, *interval_ticks) {
                     continue;
                 }
                 let wave = mutator_state.lava_advance_count;
@@ -165,24 +162,19 @@ pub fn environmental_hazard_system(
                         }
                         HazardDirection::AllEdges => {
                             let r = row as i32;
-                            // All four edges inward
                             for x in 0..width {
-                                // North edge
                                 if r < height {
                                     set_tile_flags(&mut map_res.map, x, r, flags);
                                 }
-                                // South edge
                                 let sy = height - 1 - r;
                                 if sy >= 0 {
                                     set_tile_flags(&mut map_res.map, x, sy, flags);
                                 }
                             }
                             for y in 0..height {
-                                // West edge
                                 if r < width {
                                     set_tile_flags(&mut map_res.map, r, y, flags);
                                 }
-                                // East edge
                                 let ex = width - 1 - r;
                                 if ex >= 0 {
                                     set_tile_flags(&mut map_res.map, ex, y, flags);
@@ -202,25 +194,20 @@ pub fn environmental_hazard_system(
                 min_safe_radius,
                 ..
             } => {
-                if tick < *initial_delay_ticks {
-                    continue;
-                }
-                let elapsed = tick - initial_delay_ticks;
-                if elapsed % interval_ticks != 0 {
+                if !should_fire(tick, *initial_delay_ticks, *interval_ticks) {
                     continue;
                 }
 
                 let center = safe_zone_center.unwrap_or(GridPos::new(width / 2, height / 2));
                 let ring = mutator_state.toxic_advance_count;
 
-                // Mark tiles from outer edges inward up to the current ring
                 for row_offset in 0..*rows_per_wave {
                     let depth = ring * rows_per_wave + row_offset;
                     for x in 0..width {
                         for y in 0..height {
                             let dx = (x - center.x).unsigned_abs();
                             let dy = (y - center.y).unsigned_abs();
-                            let dist = dx.max(dy); // Chebyshev distance
+                            let dist = dx.max(dy);
                             let edge_dist_x = x.min(width - 1 - x) as u32;
                             let edge_dist_y = y.min(height - 1 - y) as u32;
                             let edge_dist = edge_dist_x.min(edge_dist_y);
@@ -241,15 +228,10 @@ pub fn environmental_hazard_system(
                 initial_delay_ticks,
                 ..
             } => {
-                if tick < *initial_delay_ticks {
-                    continue;
-                }
-                let elapsed = tick - initial_delay_ticks;
-                if elapsed % interval_ticks != 0 {
+                if !should_fire(tick, *initial_delay_ticks, *interval_ticks) {
                     continue;
                 }
 
-                // Pick random epicenter
                 let cx = sim_rng.next_bounded(width as u32) as i32;
                 let cy = sim_rng.next_bounded(height as u32) as i32;
                 let radius = *epicenter_radius as i32;
@@ -261,7 +243,6 @@ pub fn environmental_hazard_system(
                         if x < 0 || y < 0 || x >= width || y >= height {
                             continue;
                         }
-                        // Random terrain change
                         if sim_rng.next_bounded(100) < *terrain_change_chance {
                             set_tile_flags(&mut map_res.map, x, y, FLAG_TEMP_BLOCKED);
                         }
@@ -275,11 +256,7 @@ pub fn environmental_hazard_system(
                 initial_delay_ticks,
                 ..
             } => {
-                if tick < *initial_delay_ticks {
-                    continue;
-                }
-                let elapsed = tick - initial_delay_ticks;
-                if elapsed % interval_ticks != 0 {
+                if !should_fire(tick, *initial_delay_ticks, *interval_ticks) {
                     continue;
                 }
 
@@ -306,7 +283,7 @@ pub fn environmental_hazard_system(
                 initial_delay_ticks,
                 ..
             } => {
-                if tick < *initial_delay_ticks {
+                if *interval_ticks == 0 || tick < *initial_delay_ticks {
                     continue;
                 }
                 let elapsed = tick - initial_delay_ticks;
@@ -316,10 +293,12 @@ pub fn environmental_hazard_system(
 
             MissionMutator::DenseFog { periodic_clearing, .. } => {
                 if let Some(clearing) = periodic_clearing {
-                    let cycle = tick % clearing.interval_ticks;
-                    let is_clear = cycle < clearing.clear_duration_ticks;
-                    fog.currently_clear = is_clear;
-                    mutator_state.fog_cleared = is_clear;
+                    if clearing.interval_ticks > 0 {
+                        let cycle = tick % clearing.interval_ticks;
+                        let is_clear = cycle < clearing.clear_duration_ticks;
+                        fog.currently_clear = is_clear;
+                        mutator_state.fog_cleared = is_clear;
+                    }
                 }
             }
 
@@ -351,7 +330,7 @@ pub fn hazard_damage_system(
     let mut damage_zones: Vec<(&[GridPos], u32)> = Vec::new();
 
     for (i, mutator) in mission.mutators.iter().enumerate() {
-        if !mutator_state.active.get(i).copied().unwrap_or(false) {
+        if !mutator_state.is_active(i) {
             continue;
         }
         match mutator {
@@ -429,7 +408,7 @@ pub fn mutator_tick_system(
     let tick = sim_clock.tick;
 
     for (i, mutator) in mission.mutators.iter().enumerate() {
-        if !mutator_state.active.get(i).copied().unwrap_or(false) {
+        if !mutator_state.is_active(i) {
             continue;
         }
         if let MissionMutator::TimeLimit { max_ticks, .. } = mutator {

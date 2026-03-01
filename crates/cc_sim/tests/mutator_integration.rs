@@ -396,7 +396,7 @@ fn flooding_converts_low_elevation_tiles() {
 
     let mission = mission_with_mutators(vec![MissionMutator::Flooding {
         interval_ticks: 1,
-        current_water_level: 0,
+        initial_water_level: 0,
         max_water_level: 2,
         initial_delay_ticks: 0,
     }]);

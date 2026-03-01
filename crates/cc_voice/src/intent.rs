@@ -682,7 +682,7 @@ pub fn voice_intent_system(
                 };
 
                 if let Some(c) = cmd {
-                    cmd_queue.push_for_player(0, c);
+                    cmd_queue.push_sourced(Some(0), cc_core::commands::CommandSource::VoiceCommand, c);
                 }
 
                 // Clear all pending state after command execution

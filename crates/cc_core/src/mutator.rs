@@ -50,7 +50,7 @@ pub enum MissionMutator {
     /// Rising water level converts low-elevation tiles to water.
     Flooding {
         interval_ticks: u64,
-        current_water_level: u8,
+        initial_water_level: u8,
         max_water_level: u8,
         initial_delay_ticks: u64,
     },
@@ -194,7 +194,7 @@ mod tests {
     fn ron_round_trip_flooding() {
         let m = MissionMutator::Flooding {
             interval_ticks: 60,
-            current_water_level: 0,
+            initial_water_level: 0,
             max_water_level: 3,
             initial_delay_ticks: 30,
         };

@@ -20,6 +20,22 @@ pub struct MutatorState {
     pub fog_cleared: bool,
 }
 
+impl MutatorState {
+    /// Check if a mutator at the given index is active.
+    pub fn is_active(&self, index: usize) -> bool {
+        self.active.get(index).copied().unwrap_or(false)
+    }
+}
+
+/// Check if a periodic hazard should fire this tick, accounting for initial delay and interval.
+/// Returns false if `interval_ticks` is zero (prevents division-by-zero).
+pub fn should_fire(tick: u64, initial_delay_ticks: u64, interval_ticks: u64) -> bool {
+    if interval_ticks == 0 || tick < initial_delay_ticks {
+        return false;
+    }
+    (tick - initial_delay_ticks) % interval_ticks == 0
+}
+
 /// Control restrictions derived from mutators — checked by command filtering
 /// and input systems to gate what the player can do.
 #[derive(Resource, Clone, Debug)]
