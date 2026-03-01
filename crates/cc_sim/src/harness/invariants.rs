@@ -1,5 +1,7 @@
 //! Invariant checking for wet test harness.
 
+use std::collections::HashMap;
+
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -58,6 +60,8 @@ pub struct InvariantChecker {
     prev_position_hash: Option<u64>,
     /// How many consecutive ticks the position hash has been unchanged.
     stuck_counter: u64,
+    /// First tick each entity was observed under construction, for stall detection.
+    construction_first_seen: HashMap<u64, u64>,
 }
 
 impl InvariantChecker {
@@ -68,6 +72,7 @@ impl InvariantChecker {
             map_height,
             prev_position_hash: None,
             stuck_counter: 0,
+            construction_first_seen: HashMap::new(),
         }
     }
 
@@ -78,6 +83,8 @@ impl InvariantChecker {
         self.check_bounds(world, tick);
         self.check_friendly_fire(world, tick);
         self.check_stuck(world, tick);
+        self.check_dead_entities(world, tick);
+        self.check_construction_progress(world, tick);
     }
 
     /// Record a panic as a Fatal violation.
@@ -189,6 +196,59 @@ impl InvariantChecker {
                         ),
                     });
                 }
+            }
+        }
+    }
+
+    fn check_dead_entities(&mut self, world: &mut World, tick: u64) {
+        for (entity,) in world
+            .query_filtered::<(Entity,), (With<Dead>, With<AttackTarget>)>()
+            .iter(world)
+        {
+            self.violations.push(InvariantViolation {
+                tick,
+                severity: Severity::Error,
+                kind: "DeadAttacking".into(),
+                message: format!(
+                    "Entity {:?} is Dead but still has an AttackTarget",
+                    entity
+                ),
+            });
+        }
+    }
+
+    fn check_construction_progress(&mut self, world: &mut World, tick: u64) {
+        let current_uc: Vec<(u64, String)> = world
+            .query_filtered::<(Entity, &Building), With<UnderConstruction>>()
+            .iter(world)
+            .map(|(e, b)| (e.to_bits(), format!("{:?}", b.kind)))
+            .collect();
+
+        let current_bits: std::collections::HashSet<u64> =
+            current_uc.iter().map(|(bits, _)| *bits).collect();
+
+        // Remove entries for buildings no longer under construction
+        self.construction_first_seen
+            .retain(|bits, _| current_bits.contains(bits));
+
+        for (bits, kind) in &current_uc {
+            let first_seen = *self
+                .construction_first_seen
+                .entry(*bits)
+                .or_insert(tick);
+
+            if tick - first_seen > 500 {
+                self.violations.push(InvariantViolation {
+                    tick,
+                    severity: Severity::Warning,
+                    kind: "ConstructionStall".into(),
+                    message: format!(
+                        "Building {} (entity bits {}) under construction for {} ticks (since tick {})",
+                        kind, bits, tick - first_seen, first_seen
+                    ),
+                });
+                // Reset so we don't spam every check interval
+                self.construction_first_seen.insert(*bits, tick);
             }
         }
     }

@@ -266,4 +266,274 @@ mod wet {
         assert!(report.duration_ticks > 0);
         assert!(report.wall_time_ms > 0);
     }
+
+    // -----------------------------------------------------------------------
+    // Gameplay observation tests
+    // -----------------------------------------------------------------------
+
+    /// Print a human-readable timeline of gameplay for visual inspection.
+    /// Run with `--nocapture` to see the narrative output.
+    #[test]
+    fn wet_gameplay_narrative() {
+        let config = HarnessConfig {
+            seed: 42,
+            max_ticks: 8000,
+            snapshot_interval: 200,
+            ..Default::default()
+        };
+        let result = run_match(&config);
+
+        println!("\n=== GAMEPLAY NARRATIVE: seed 42 ===\n");
+
+        let mut prev_buildings: [Vec<String>; 2] = [Vec::new(), Vec::new()];
+
+        for snap in &result.snapshots {
+            // Phase header
+            let phases: Vec<String> = snap
+                .players
+                .iter()
+                .map(|p| format!("P{}: {}", p.player_id, p.ai_phase))
+                .collect();
+            println!("--- Tick {} ({}) ---", snap.tick, phases.join(" | "));
+
+            // Per-player summary
+            for p in &snap.players {
+                let pid = p.player_id as usize;
+                let army_count = snap
+                    .units
+                    .iter()
+                    .filter(|u| u.owner == p.player_id && u.kind != "Pawdler" && !u.is_dead)
+                    .count();
+
+                // Detect new buildings since last snapshot
+                let current_buildings: Vec<String> = snap
+                    .buildings
+                    .iter()
+                    .filter(|b| b.owner == p.player_id && !b.is_under_construction)
+                    .map(|b| b.kind.clone())
+                    .collect();
+                let new_buildings: Vec<&String> = current_buildings
+                    .iter()
+                    .filter(|b| !prev_buildings[pid].contains(b))
+                    .collect();
+                let new_str = if new_buildings.is_empty() {
+                    String::new()
+                } else {
+                    format!(
+                        " (+{})",
+                        new_buildings
+                            .iter()
+                            .map(|s| s.as_str())
+                            .collect::<Vec<_>>()
+                            .join(", +")
+                    )
+                };
+                prev_buildings[pid] = current_buildings;
+
+                println!(
+                    "  P{}: {} units ({} army), {} buildings{} | food={} gpu={} supply={}/{}",
+                    p.player_id,
+                    p.unit_count,
+                    army_count,
+                    p.building_count,
+                    new_str,
+                    p.food,
+                    p.gpu_cores,
+                    p.supply,
+                    p.supply_cap,
+                );
+            }
+
+            // Construction in progress
+            let under_construction: Vec<String> = snap
+                .buildings
+                .iter()
+                .filter(|b| b.is_under_construction)
+                .map(|b| format!("P{} {}", b.owner, b.kind))
+                .collect();
+            if !under_construction.is_empty() {
+                println!("  [Under construction: {}]", under_construction.join(", "));
+            }
+
+            // Research activity
+            for p in &snap.players {
+                if let Some(ref research) = p.researching {
+                    println!("  [P{} researching: {}]", p.player_id, research);
+                }
+                if !p.completed_upgrades.is_empty() {
+                    println!(
+                        "  [P{} completed: {}]",
+                        p.player_id,
+                        p.completed_upgrades.join(", ")
+                    );
+                }
+            }
+
+            // Build orders
+            let builders: Vec<String> = snap
+                .units
+                .iter()
+                .filter(|u| u.has_build_order)
+                .map(|u| format!("P{} {}", u.owner, u.kind))
+                .collect();
+            if !builders.is_empty() {
+                println!("  [Builders en route: {}]", builders.join(", "));
+            }
+
+            // Combat activity
+            if snap.projectile_count > 0 {
+                println!("  [COMBAT: {} projectiles in flight]", snap.projectile_count);
+            }
+
+            // Status effects
+            let affected: u32 = snap.units.iter().map(|u| u.active_status_effects).sum();
+            if affected > 0 {
+                println!("  [Status effects: {} active across units]", affected);
+            }
+
+            // Unit losses (dead units still in snapshot)
+            let dead_count = snap.units.iter().filter(|u| u.is_dead).count();
+            if dead_count > 0 {
+                println!("  [Deaths this snapshot: {}]", dead_count);
+            }
+
+            println!();
+        }
+
+        // Summary
+        let warnings = result
+            .violations
+            .iter()
+            .filter(|v| matches!(v.severity, invariants::Severity::Warning))
+            .count();
+        let errors = result
+            .violations
+            .iter()
+            .filter(|v| {
+                matches!(
+                    v.severity,
+                    invariants::Severity::Error | invariants::Severity::Fatal
+                )
+            })
+            .count();
+
+        println!(
+            "=== RESULT: {} | wall: {}ms | {} warnings, {} errors ===\n",
+            result.outcome, result.wall_time_ms, warnings, errors
+        );
+
+        // Print any violations for visibility
+        for v in &result.violations {
+            println!("  {}", v);
+        }
+
+        assert!(
+            result.passed(),
+            "Narrative match should pass (no Error/Fatal violations)"
+        );
+    }
+
+    /// Check that specific gameplay milestones were observed across multiple seeds.
+    #[test]
+    fn wet_feature_milestones() {
+        let seeds = [42, 123, 999];
+        let mut all_milestones: Vec<Vec<(&str, bool)>> = Vec::new();
+
+        for &seed in &seeds {
+            let config = HarnessConfig {
+                seed,
+                max_ticks: 8000,
+                snapshot_interval: 200,
+                ..Default::default()
+            };
+            let result = run_match(&config);
+            let snaps = &result.snapshots;
+
+            let ever_had_cat_tree = snaps.iter().any(|s| {
+                s.buildings
+                    .iter()
+                    .any(|b| b.kind == "CatTree" && !b.is_under_construction)
+            });
+            let ever_had_server_rack = snaps.iter().any(|s| {
+                s.buildings
+                    .iter()
+                    .any(|b| b.kind == "ServerRack" && !b.is_under_construction)
+            });
+            let ever_had_fish_market = snaps.iter().any(|s| {
+                s.buildings
+                    .iter()
+                    .any(|b| b.kind == "FishMarket" && !b.is_under_construction)
+            });
+            let ever_had_research = snaps.iter().any(|s| {
+                s.players
+                    .iter()
+                    .any(|p| !p.completed_upgrades.is_empty())
+            });
+            let ever_had_advanced_unit = snaps.iter().any(|s| {
+                s.units
+                    .iter()
+                    .any(|u| u.kind == "FlyingFox" || u.kind == "Catnapper")
+            });
+            let ever_had_combat = snaps.iter().any(|s| s.projectile_count > 0);
+            let ever_had_construction = snaps.iter().any(|s| {
+                s.buildings.iter().any(|b| b.is_under_construction)
+            });
+            let reached_attack_phase = snaps.iter().any(|s| {
+                s.players.iter().any(|p| p.ai_phase == "Attack")
+            });
+            let reached_midgame = snaps.iter().any(|s| {
+                s.players.iter().any(|p| p.ai_phase == "MidGame")
+            });
+            let reached_buildup = snaps.iter().any(|s| {
+                s.players.iter().any(|p| p.ai_phase == "BuildUp")
+            });
+
+            let milestones = vec![
+                ("FishMarket built", ever_had_fish_market),
+                ("CatTree built", ever_had_cat_tree),
+                ("ServerRack built", ever_had_server_rack),
+                ("Research completed", ever_had_research),
+                ("Advanced unit trained", ever_had_advanced_unit),
+                ("Combat occurred", ever_had_combat),
+                ("Construction observed", ever_had_construction),
+                ("Reached BuildUp", reached_buildup),
+                ("Reached MidGame", reached_midgame),
+                ("Reached Attack phase", reached_attack_phase),
+            ];
+
+            println!("\n=== MILESTONES: seed {} | {} ===", seed, result.outcome);
+            for (name, hit) in &milestones {
+                let marker = if *hit { "OK" } else { "MISS" };
+                println!("  [{marker}] {name}");
+            }
+
+            assert!(
+                result.passed(),
+                "seed {seed} should pass (no Error/Fatal violations)"
+            );
+
+            all_milestones.push(milestones);
+        }
+
+        // Assert critical milestones were hit in at least one seed
+        let critical = [
+            "Construction observed",
+            "Combat occurred",
+            "Reached BuildUp",
+        ];
+
+        println!("\n=== CRITICAL MILESTONE SUMMARY ===");
+        for name in &critical {
+            let hit_count = all_milestones
+                .iter()
+                .filter(|ms| ms.iter().any(|(n, hit)| n == name && *hit))
+                .count();
+            println!("  {}: {}/{} seeds", name, hit_count, seeds.len());
+            assert!(
+                hit_count > 0,
+                "Critical milestone '{}' was never observed in any seed",
+                name
+            );
+        }
+    }
 }

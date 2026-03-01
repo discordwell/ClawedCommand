@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use cc_core::components::*;
+use cc_core::status_effects::StatusEffects;
 
 use crate::ai::MultiAiState;
 use crate::resources::PlayerResources;
@@ -32,6 +33,8 @@ pub struct PlayerSnapshot {
     pub unit_count: u32,
     pub building_count: u32,
     pub ai_phase: String,
+    pub completed_upgrades: Vec<String>,
+    pub researching: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -47,6 +50,8 @@ pub struct UnitSnapshot {
     pub has_move_target: bool,
     pub has_attack_target: bool,
     pub is_gathering: bool,
+    pub has_build_order: bool,
+    pub active_status_effects: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -58,6 +63,7 @@ pub struct BuildingSnapshot {
     pub health_max: f32,
     pub is_under_construction: bool,
     pub queue_length: u32,
+    pub has_research_queue: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -77,6 +83,12 @@ pub fn capture_snapshot(world: &mut World, tick: u64) -> GameStateSnapshot {
             .map(|ai| format!("{:?}", ai.phase))
             .unwrap_or_else(|| "Unknown".into());
 
+        let completed_upgrades: Vec<String> = pres
+            .completed_upgrades
+            .iter()
+            .map(|u| format!("{:?}", u))
+            .collect();
+
         players.push(PlayerSnapshot {
             player_id: i as u8,
             food: pres.food,
@@ -87,12 +99,14 @@ pub fn capture_snapshot(world: &mut World, tick: u64) -> GameStateSnapshot {
             unit_count: 0, // filled below
             building_count: 0,
             ai_phase,
+            completed_upgrades,
+            researching: None, // filled below from buildings
         });
     }
 
     // Units
     let mut units = Vec::new();
-    for (entity, pos, owner, ut, health, dead, move_target, attack_target, gathering) in world
+    for (entity, pos, owner, ut, health, dead, move_target, attack_target, gathering, build_order, status_effects) in world
         .query::<(
             Entity,
             &cc_core::components::Position,
@@ -103,6 +117,8 @@ pub fn capture_snapshot(world: &mut World, tick: u64) -> GameStateSnapshot {
             Option<&MoveTarget>,
             Option<&AttackTarget>,
             Option<&Gathering>,
+            Option<&BuildOrder>,
+            Option<&StatusEffects>,
         )>()
         .iter(world)
     {
@@ -119,6 +135,10 @@ pub fn capture_snapshot(world: &mut World, tick: u64) -> GameStateSnapshot {
             has_move_target: move_target.is_some(),
             has_attack_target: attack_target.is_some(),
             is_gathering: gathering.is_some(),
+            has_build_order: build_order.is_some(),
+            active_status_effects: status_effects
+                .map(|se| se.effects.len() as u32)
+                .unwrap_or(0),
         });
 
         // Count per-player
@@ -129,7 +149,7 @@ pub fn capture_snapshot(world: &mut World, tick: u64) -> GameStateSnapshot {
 
     // Buildings
     let mut buildings = Vec::new();
-    for (entity, owner, building, health, uc, queue) in world
+    for (entity, owner, building, health, uc, queue, research_queue) in world
         .query::<(
             Entity,
             &Owner,
@@ -137,9 +157,27 @@ pub fn capture_snapshot(world: &mut World, tick: u64) -> GameStateSnapshot {
             &Health,
             Option<&UnderConstruction>,
             Option<&ProductionQueue>,
+            Option<&ResearchQueue>,
         )>()
         .iter(world)
     {
+        let has_research = research_queue
+            .map(|rq| !rq.queue.is_empty())
+            .unwrap_or(false);
+
+        // Track active research for the player snapshot
+        if has_research {
+            if let Some(rq) = research_queue {
+                if let Some((upgrade, _)) = rq.queue.front() {
+                    if let Some(ps) = players.get_mut(owner.player_id as usize) {
+                        if ps.researching.is_none() {
+                            ps.researching = Some(format!("{:?}", upgrade));
+                        }
+                    }
+                }
+            }
+        }
+
         buildings.push(BuildingSnapshot {
             entity_bits: entity.to_bits(),
             kind: format!("{:?}", building.kind),
@@ -148,6 +186,7 @@ pub fn capture_snapshot(world: &mut World, tick: u64) -> GameStateSnapshot {
             health_max: health.max.to_num::<f32>(),
             is_under_construction: uc.is_some(),
             queue_length: queue.map(|q| q.queue.len() as u32).unwrap_or(0),
+            has_research_queue: has_research,
         });
 
         if let Some(ps) = players.get_mut(owner.player_id as usize) {
@@ -156,10 +195,7 @@ pub fn capture_snapshot(world: &mut World, tick: u64) -> GameStateSnapshot {
     }
 
     // Projectiles
-    let projectile_count = world
-        .query::<&Projectile>()
-        .iter(world)
-        .count() as u32;
+    let projectile_count = world.query::<&Projectile>().iter(world).count() as u32;
 
     GameStateSnapshot {
         tick,
