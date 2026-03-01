@@ -1,7 +1,12 @@
+use std::collections::HashSet;
+use std::sync::Arc;
+
 use bevy::prelude::*;
 
-use cc_core::components::{Dead, HeroIdentity, Owner};
+use cc_core::components::{Dead, HeroIdentity, Owner, Position};
 use cc_core::mission::{MissionDefinition, ObjectiveCondition};
+
+use crate::resources::SimClock;
 
 use super::triggers::ObjectiveCompleteEvent;
 
@@ -28,35 +33,36 @@ pub struct ObjectiveStatus {
 /// Central campaign state resource.
 #[derive(Resource)]
 pub struct CampaignState {
-    /// Current loaded mission definition. None = no campaign active.
-    pub current_mission: Option<MissionDefinition>,
+    /// Current loaded mission definition (Arc-wrapped to avoid cloning every tick).
+    /// None = no campaign active.
+    pub current_mission: Option<Arc<MissionDefinition>>,
     /// Completed mission IDs (for progression tracking).
-    pub completed_missions: Vec<String>,
+    pub completed_missions: HashSet<String>,
     /// Narrative flags set by triggers (for branching storylines).
-    pub flags: Vec<String>,
+    pub flags: HashSet<String>,
     /// Total enemy kills in current mission.
     pub enemy_kill_count: u32,
     /// Trigger IDs that have already fired (for `once` triggers).
-    pub fired_triggers: Vec<String>,
+    pub fired_triggers: HashSet<String>,
     /// Status of each objective in the current mission.
     pub objective_status: Vec<ObjectiveStatus>,
     /// Current campaign phase.
     pub phase: CampaignPhase,
     /// IDs of waves that have been spawned.
-    pub spawned_waves: Vec<String>,
+    pub spawned_waves: HashSet<String>,
 }
 
 impl Default for CampaignState {
     fn default() -> Self {
         Self {
             current_mission: None,
-            completed_missions: Vec::new(),
-            flags: Vec::new(),
+            completed_missions: HashSet::new(),
+            flags: HashSet::new(),
             enemy_kill_count: 0,
-            fired_triggers: Vec::new(),
+            fired_triggers: HashSet::new(),
             objective_status: Vec::new(),
             phase: CampaignPhase::Inactive,
-            spawned_waves: Vec::new(),
+            spawned_waves: HashSet::new(),
         }
     }
 }
@@ -77,7 +83,7 @@ impl CampaignState {
         self.flags.clear();
         self.spawned_waves.clear();
         self.phase = CampaignPhase::Briefing;
-        self.current_mission = Some(mission);
+        self.current_mission = Some(Arc::new(mission));
     }
 
     /// Check if all primary objectives are complete.
@@ -123,11 +129,13 @@ pub struct MissionVictoryEvent;
 
 /// System: check objective conditions each tick and detect victory/failure.
 pub fn mission_objective_system(
+    clock: Res<SimClock>,
     mut campaign: ResMut<CampaignState>,
     mut obj_events: MessageReader<ObjectiveCompleteEvent>,
     mut victory_writer: MessageWriter<MissionVictoryEvent>,
     mut fail_writer: MessageWriter<MissionFailedEvent>,
-    heroes: Query<(&HeroIdentity, &Owner, Has<Dead>)>,
+    heroes: Query<(&HeroIdentity, &Owner, Has<Dead>, Option<&Position>)>,
+    enemies: Query<(&Owner, Has<Dead>)>,
 ) {
     if campaign.phase != CampaignPhase::InMission {
         return;
@@ -138,9 +146,17 @@ pub fn mission_objective_system(
         campaign.complete_objective(&event.objective_id);
     }
 
-    let Some(mission) = campaign.current_mission.clone() else {
+    let Some(mission) = campaign.current_mission.as_ref().map(Arc::clone) else {
         return;
     };
+
+    // Count living enemies for EliminateAll
+    let mut living_enemies = 0u32;
+    for (owner, is_dead) in enemies.iter() {
+        if owner.player_id != 0 && !is_dead {
+            living_enemies += 1;
+        }
+    }
 
     // Check each objective's condition
     for obj in &mission.objectives {
@@ -154,16 +170,44 @@ pub fn mission_objective_system(
 
         match &obj.condition {
             ObjectiveCondition::EliminateAll => {
-                // Handled by trigger system checking all enemies dead
+                // Auto-evaluate: complete when all enemies are dead
+                if living_enemies == 0 {
+                    campaign.complete_objective(&obj.id);
+                }
             }
             ObjectiveCondition::KillCount(target) => {
                 if campaign.enemy_kill_count >= *target {
                     campaign.complete_objective(&obj.id);
                 }
             }
+            ObjectiveCondition::Survive(tick_target) => {
+                // Auto-evaluate: complete when current tick >= target
+                if clock.tick >= *tick_target {
+                    campaign.complete_objective(&obj.id);
+                }
+            }
+            ObjectiveCondition::HeroReachesPos {
+                hero,
+                position,
+                radius,
+            } => {
+                // Auto-evaluate: complete when hero is within radius of position
+                for (identity, _owner, _is_dead, pos_opt) in heroes.iter() {
+                    if identity.hero_id == *hero {
+                        if let Some(pos) = pos_opt {
+                            let grid = pos.world.to_grid();
+                            let dx = (grid.x - position.x).abs();
+                            let dy = (grid.y - position.y).abs();
+                            if dx <= *radius && dy <= *radius {
+                                campaign.complete_objective(&obj.id);
+                            }
+                        }
+                    }
+                }
+            }
             ObjectiveCondition::HeroDied(hero_id) => {
                 // This is a FAIL condition — if the hero is dead, mission fails
-                for (identity, _owner, is_dead) in heroes.iter() {
+                for (identity, _owner, is_dead, _pos) in heroes.iter() {
                     if identity.hero_id == *hero_id && is_dead {
                         fail_writer.write(MissionFailedEvent {
                             reason: format!(
@@ -176,17 +220,17 @@ pub fn mission_objective_system(
                     }
                 }
             }
+            ObjectiveCondition::EliminateWave(_) => {
+                // Handled by trigger system via WaveEliminated condition
+            }
             ObjectiveCondition::Manual => {
                 // Only completed by triggers
-            }
-            _ => {
-                // Other conditions (Survive, HeroReachesPos, etc.) handled by trigger system
             }
         }
     }
 
     // Check mission-critical heroes
-    for (identity, _owner, is_dead) in heroes.iter() {
+    for (identity, _owner, is_dead, _pos) in heroes.iter() {
         if identity.mission_critical && is_dead {
             fail_writer.write(MissionFailedEvent {
                 reason: format!("{:?} was mission-critical and has fallen.", identity.hero_id),
@@ -202,9 +246,7 @@ pub fn mission_objective_system(
         campaign.phase = CampaignPhase::Debriefing;
         let mission_id = campaign.current_mission.as_ref().map(|m| m.id.clone());
         if let Some(id) = mission_id {
-            if !campaign.completed_missions.contains(&id) {
-                campaign.completed_missions.push(id);
-            }
+            campaign.completed_missions.insert(id);
         }
     }
 }

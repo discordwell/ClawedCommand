@@ -11,6 +11,60 @@ use crate::math::Fixed;
 // Economy / Building enums
 // ---------------------------------------------------------------------------
 
+/// Faction affiliations in the game world.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Faction {
+    /// Neutral / unaligned (e.g. Kelpie before joining a faction).
+    Neutral,
+    /// catGPT — cats led by AI "Minstral".
+    CatGpt,
+    /// The Clawed — mice led by AI "Geppity".
+    TheClawed,
+    /// Seekers of the Deep — badgers led by AI "Deepseek".
+    SeekersOfTheDeep,
+    /// The Murder — corvids led by AI "Gemineye".
+    TheMurder,
+    /// LLAMA — raccoons led by AI "Llhama".
+    Llama,
+    /// Croak — axolotls led by AI "Grok".
+    Croak,
+}
+
+impl Faction {
+    /// Returns the canonical string name for this faction.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Faction::Neutral => "neutral",
+            Faction::CatGpt => "catGPT",
+            Faction::TheClawed => "The Clawed",
+            Faction::SeekersOfTheDeep => "Seekers of the Deep",
+            Faction::TheMurder => "The Murder",
+            Faction::Llama => "LLAMA",
+            Faction::Croak => "Croak",
+        }
+    }
+
+    /// Parse a faction from its string representation.
+    pub fn from_faction_str(s: &str) -> Option<Self> {
+        match s {
+            "neutral" => Some(Faction::Neutral),
+            "catGPT" => Some(Faction::CatGpt),
+            "The Clawed" => Some(Faction::TheClawed),
+            "Seekers of the Deep" => Some(Faction::SeekersOfTheDeep),
+            "The Murder" => Some(Faction::TheMurder),
+            "LLAMA" => Some(Faction::Llama),
+            "Croak" => Some(Faction::Croak),
+            _ => None,
+        }
+    }
+}
+
+impl std::fmt::Display for Faction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// Resource types in the game economy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ResourceType {
@@ -578,6 +632,13 @@ pub struct HeroIdentity {
     pub mission_critical: bool,
 }
 
+/// Marks an entity as belonging to a specific enemy wave (for WaveEliminated tracking).
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct WaveMember {
+    pub wave_id: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -641,5 +702,36 @@ mod tests {
     fn stat_modifiers_cannot_attack_default_false() {
         let mods = StatModifiers::default();
         assert!(!mods.cannot_attack);
+    }
+
+    #[test]
+    fn faction_as_str_round_trip() {
+        let factions = [
+            Faction::Neutral, Faction::CatGpt, Faction::TheClawed,
+            Faction::SeekersOfTheDeep, Faction::TheMurder, Faction::Llama, Faction::Croak,
+        ];
+        for f in factions {
+            let s = f.as_str();
+            let parsed = Faction::from_faction_str(s).unwrap();
+            assert_eq!(parsed, f);
+        }
+    }
+
+    #[test]
+    fn faction_display_matches_as_str() {
+        for f in [Faction::CatGpt, Faction::Llama, Faction::Croak] {
+            assert_eq!(format!("{f}"), f.as_str());
+        }
+    }
+
+    #[test]
+    fn faction_from_unknown_returns_none() {
+        assert!(Faction::from_faction_str("bogus").is_none());
+    }
+
+    #[test]
+    fn wave_member_stores_wave_id() {
+        let wm = WaveMember { wave_id: "wave_1".into() };
+        assert_eq!(wm.wave_id, "wave_1");
     }
 }

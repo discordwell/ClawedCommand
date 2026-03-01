@@ -4,7 +4,7 @@
 
 #[cfg(feature = "harness")]
 mod wet {
-    use cc_sim::ai::fsm::{AiDifficulty, BotPersonality};
+    use cc_sim::ai::fsm::{AiDifficulty, AiPersonalityProfile};
     use cc_sim::harness::*;
 
     #[test]
@@ -42,12 +42,12 @@ mod wet {
                 BotConfig {
                     player_id: 0,
                     difficulty: AiDifficulty::Hard,
-                    personality: BotPersonality::Aggressive,
+                    profile: AiPersonalityProfile::aggressive(),
                 },
                 BotConfig {
                     player_id: 1,
                     difficulty: AiDifficulty::Medium,
-                    personality: BotPersonality::Defensive,
+                    profile: AiPersonalityProfile::defensive(),
                 },
             ],
             ..Default::default()

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use cc_core::components::{Dead, Health, HeroIdentity, Owner, Position};
+use cc_core::components::{Dead, Health, HeroIdentity, Owner, Position, WaveMember};
 use cc_core::mission::{DialogueLine, TriggerAction, TriggerCondition};
 
 use crate::resources::SimClock;
@@ -35,12 +35,14 @@ pub fn trigger_check_system(
     mut objective_writer: MessageWriter<ObjectiveCompleteEvent>,
     heroes: Query<(&HeroIdentity, &Position, &Owner, &Health, Has<Dead>)>,
     enemies: Query<(&Owner, Has<Dead>)>,
+    wave_members: Query<(&WaveMember, Has<Dead>)>,
 ) {
     if campaign.phase != CampaignPhase::InMission {
         return;
     }
 
-    let Some(mission) = campaign.current_mission.clone() else {
+    use std::sync::Arc;
+    let Some(mission) = campaign.current_mission.as_ref().map(Arc::clone) else {
         return;
     };
 
@@ -67,6 +69,7 @@ pub fn trigger_check_system(
             &campaign,
             &heroes,
             living_enemies,
+            &wave_members,
         ) {
             triggers_to_fire.push(trigger.id.clone());
         }
@@ -91,14 +94,10 @@ pub fn trigger_check_system(
                 }
                 TriggerAction::SpawnWave(wave_id) => {
                     // Mark wave as pending spawn — actual spawning handled by mission loader
-                    if !campaign.spawned_waves.contains(wave_id) {
-                        campaign.spawned_waves.push(wave_id.clone());
-                    }
+                    campaign.spawned_waves.insert(wave_id.clone());
                 }
                 TriggerAction::SetFlag(flag) => {
-                    if !campaign.flags.contains(flag) {
-                        campaign.flags.push(flag.clone());
-                    }
+                    campaign.flags.insert(flag.clone());
                 }
                 TriggerAction::CompleteObjective(obj_id) => {
                     objective_writer.write(ObjectiveCompleteEvent {
@@ -113,7 +112,7 @@ pub fn trigger_check_system(
 
         // Mark trigger as fired
         if trigger.once {
-            campaign.fired_triggers.push(trigger_id.clone());
+            campaign.fired_triggers.insert(trigger_id.clone());
         }
 
         trigger_writer.write(TriggerFiredEvent {
@@ -129,6 +128,7 @@ fn evaluate_condition(
     campaign: &CampaignState,
     heroes: &Query<(&HeroIdentity, &Position, &Owner, &Health, Has<Dead>)>,
     living_enemies: u32,
+    wave_members: &Query<(&WaveMember, Has<Dead>)>,
 ) -> bool {
     match condition {
         TriggerCondition::AtTick(t) => tick == *t,
@@ -153,11 +153,25 @@ fn evaluate_condition(
 
         TriggerCondition::AllEnemiesDead => living_enemies == 0,
 
-        TriggerCondition::WaveEliminated(_wave_id) => {
-            // Wave elimination tracking requires per-wave entity tracking
-            // For now, check if the wave was spawned and all enemies are dead
-            // TODO: track per-wave entity membership for precise elimination checks
-            false
+        TriggerCondition::WaveEliminated(wave_id) => {
+            // Check if the wave was spawned and all members are dead.
+            // If the wave hasn't been spawned yet, it's not eliminated.
+            if !campaign.spawned_waves.contains(wave_id) {
+                return false;
+            }
+            // Count living members of this wave
+            let mut wave_total = 0u32;
+            let mut wave_dead = 0u32;
+            for (member, is_dead) in wave_members.iter() {
+                if member.wave_id == *wave_id {
+                    wave_total += 1;
+                    if is_dead {
+                        wave_dead += 1;
+                    }
+                }
+            }
+            // Wave is eliminated if it has members and all are dead
+            wave_total > 0 && wave_dead == wave_total
         }
 
         TriggerCondition::FlagSet(flag) => campaign.flags.contains(flag),
@@ -168,11 +182,11 @@ fn evaluate_condition(
 
         TriggerCondition::All(conditions) => conditions
             .iter()
-            .all(|c| evaluate_condition(c, tick, campaign, heroes, living_enemies)),
+            .all(|c| evaluate_condition(c, tick, campaign, heroes, living_enemies, wave_members)),
 
         TriggerCondition::Any(conditions) => conditions
             .iter()
-            .any(|c| evaluate_condition(c, tick, campaign, heroes, living_enemies)),
+            .any(|c| evaluate_condition(c, tick, campaign, heroes, living_enemies, wave_members)),
 
         TriggerCondition::HeroHpBelow { hero, percentage } => {
             for (identity, _pos, _owner, health, _is_dead) in heroes.iter() {
@@ -210,20 +224,20 @@ mod tests {
         let _cond = TriggerCondition::FlagSet("test_flag".into());
 
         // Flag not set → false
-        assert!(!campaign.flags.contains(&"test_flag".to_string()));
+        assert!(!campaign.flags.contains("test_flag"));
 
         // Set flag
-        campaign.flags.push("test_flag".into());
-        assert!(campaign.flags.contains(&"test_flag".to_string()));
+        campaign.flags.insert("test_flag".into());
+        assert!(campaign.flags.contains("test_flag"));
     }
 
     #[test]
     fn trigger_fired_condition() {
         let mut campaign = CampaignState::default();
-        assert!(!campaign.fired_triggers.contains(&"t1".to_string()));
+        assert!(!campaign.fired_triggers.contains("t1"));
 
-        campaign.fired_triggers.push("t1".into());
-        assert!(campaign.fired_triggers.contains(&"t1".to_string()));
+        campaign.fired_triggers.insert("t1".into());
+        assert!(campaign.fired_triggers.contains("t1"));
     }
 
     #[test]
