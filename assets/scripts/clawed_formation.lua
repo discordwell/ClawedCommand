@@ -112,69 +112,60 @@ if #retreat_ids > 0 then
 end
 
 -- === FORMATION POSITIONING ===
+-- Reposition units not yet in combat into formation.
 if enemies and enemy_count > 0 then
     -- Quillbacks: advance as frontline
-    local tank_idle_ids = {}
+    local tank_ids = {}
     for _, u in ipairs(tanks) do
-        if u.idle then table.insert(tank_idle_ids, u.id) end
+        if not u.attacking then table.insert(tank_ids, u.id) end
     end
-    if #tank_idle_ids > 0 then
+    if #tank_ids > 0 then
         local tx = math.floor(army_cx + dir_x * 4)
         local ty = math.floor(army_cy + dir_y * 4)
         tx = math.max(0, math.min(map_w - 1, tx))
         ty = math.max(0, math.min(map_h - 1, ty))
-        ctx:attack_move(tank_idle_ids, tx, ty)
+        ctx:attack_move(tank_ids, tx, ty)
     end
 
     -- Ranged: stay behind Quillbacks at max range
-    local ranged_idle_ids = {}
+    local ranged_move_ids = {}
     for _, u in ipairs(ranged) do
-        if u.idle then table.insert(ranged_idle_ids, u.id) end
+        if not u.attacking then table.insert(ranged_move_ids, u.id) end
     end
-    if #ranged_idle_ids > 0 then
+    if #ranged_move_ids > 0 then
         local rx = math.floor(army_cx - dir_x * 1)
         local ry = math.floor(army_cy - dir_y * 1)
         rx = math.max(0, math.min(map_w - 1, rx))
         ry = math.max(0, math.min(map_h - 1, ry))
-        ctx:attack_move(ranged_idle_ids, rx, ry)
+        ctx:attack_move(ranged_move_ids, rx, ry)
     end
 
     -- Swarmers: cluster together (SafetyInNumbers passive triggers within 3 tiles)
-    -- Move toward swarm centroid, then attack-move forward
     if #swarm > 0 then
-        local swarm_cx, swarm_cy = 0, 0
+        local swarm_move_ids = {}
         for _, u in ipairs(swarm) do
-            swarm_cx = swarm_cx + u.x
-            swarm_cy = swarm_cy + u.y
+            if not u.attacking then table.insert(swarm_move_ids, u.id) end
         end
-        swarm_cx = swarm_cx / #swarm
-        swarm_cy = swarm_cy / #swarm
-
-        local swarm_idle_ids = {}
-        for _, u in ipairs(swarm) do
-            if u.idle then table.insert(swarm_idle_ids, u.id) end
-        end
-        if #swarm_idle_ids > 0 then
-            -- Move toward clustered attack position near tanks
+        if #swarm_move_ids > 0 then
             local sx = math.floor(army_cx + dir_x * 3)
             local sy = math.floor(army_cy + dir_y * 3)
             sx = math.max(0, math.min(map_w - 1, sx))
             sy = math.max(0, math.min(map_h - 1, sy))
-            ctx:attack_move(swarm_idle_ids, sx, sy)
+            ctx:attack_move(swarm_move_ids, sx, sy)
         end
     end
 
     -- Gnawer: follows main army
-    local siege_idle_ids = {}
+    local siege_move_ids = {}
     for _, u in ipairs(siege) do
-        if u.idle then table.insert(siege_idle_ids, u.id) end
+        if not u.attacking then table.insert(siege_move_ids, u.id) end
     end
-    if #siege_idle_ids > 0 then
+    if #siege_move_ids > 0 then
         local gx = math.floor(army_cx + dir_x * 2)
         local gy = math.floor(army_cy + dir_y * 2)
         gx = math.max(0, math.min(map_w - 1, gx))
         gy = math.max(0, math.min(map_h - 1, gy))
-        ctx:attack_move(siege_idle_ids, gx, gy)
+        ctx:attack_move(siege_move_ids, gx, gy)
     end
 end
 

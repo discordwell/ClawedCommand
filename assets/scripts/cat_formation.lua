@@ -107,12 +107,13 @@ if #retreat_ids > 0 then
 end
 
 -- === FORMATION POSITIONING ===
--- Only reposition units that are idle (not already engaged)
+-- Reposition units not yet in combat (idle or moving) into formation.
+-- Units actively attacking stay on their targets.
 if enemies and enemy_count > 0 then
     -- Tanks: advance toward enemy cluster as frontline screen
     local tank_ids = {}
     for _, u in ipairs(tanks) do
-        if u.idle then
+        if not u.attacking then
             table.insert(tank_ids, u.id)
         end
     end
@@ -126,34 +127,34 @@ if enemies and enemy_count > 0 then
     end
 
     -- Ranged: stay 3-4 tiles behind the tank line
-    local ranged_idle_ids = {}
+    local ranged_move_ids = {}
     for _, u in ipairs(ranged) do
-        if u.idle then
-            table.insert(ranged_idle_ids, u.id)
+        if not u.attacking then
+            table.insert(ranged_move_ids, u.id)
         end
     end
-    if #ranged_idle_ids > 0 then
+    if #ranged_move_ids > 0 then
         local rx = math.floor(army_cx - dir_x * 1)
         local ry = math.floor(army_cy - dir_y * 1)
         rx = math.max(0, math.min(map_w - 1, rx))
         ry = math.max(0, math.min(map_h - 1, ry))
-        ctx:attack_move(ranged_idle_ids, rx, ry)
+        ctx:attack_move(ranged_move_ids, rx, ry)
     end
 
     -- Melee DPS: flank from the side, attack-move toward enemies
-    local melee_idle_ids = {}
+    local melee_move_ids = {}
     for _, u in ipairs(melee) do
-        if u.idle then
-            table.insert(melee_idle_ids, u.id)
+        if not u.attacking then
+            table.insert(melee_move_ids, u.id)
         end
     end
-    if #melee_idle_ids > 0 then
+    if #melee_move_ids > 0 then
         -- Perpendicular flank offset
         local flank_x = math.floor(army_cx + dir_x * 3 + dir_y * 3)
         local flank_y = math.floor(army_cy + dir_y * 3 - dir_x * 3)
         flank_x = math.max(0, math.min(map_w - 1, flank_x))
         flank_y = math.max(0, math.min(map_h - 1, flank_y))
-        ctx:attack_move(melee_idle_ids, flank_x, flank_y)
+        ctx:attack_move(melee_move_ids, flank_x, flank_y)
     end
 end
 
