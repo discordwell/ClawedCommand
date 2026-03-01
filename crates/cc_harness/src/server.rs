@@ -329,6 +329,26 @@ struct RegisterScriptParams {
     source: String,
 }
 
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct BuildingOnly {
+    building_id: u64,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct BuildingPos {
+    building_id: u64,
+    x: i32,
+    y: i32,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct NearestDepositParams {
+    player_id: u8,
+    x: i32,
+    y: i32,
+    resource_type: String,
+}
+
 // ---------------------------------------------------------------------------
 // Tool implementations
 // ---------------------------------------------------------------------------
@@ -535,6 +555,52 @@ impl HarnessServer {
             })
         }).collect::<Vec<_>>()).unwrap_or_default();
         Ok(CallToolResult::success(vec![Content::text(json)]))
+    }
+
+    #[tool(description = "Get all resource deposits on the map. Returns array with id, resource_type, pos, remaining.")]
+    async fn get_resource_deposits(
+        &self,
+        Parameters(params): Parameters<PlayerOnly>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let map = sim.map();
+        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+        let deposits = ctx.resource_deposits();
+        let json = serde_json::to_string_pretty(&deposits.iter().map(|d| {
+            serde_json::json!({
+                "id": d.id.0,
+                "resource_type": format!("{:?}", d.resource_type),
+                "x": d.pos.x,
+                "y": d.pos.y,
+                "remaining": d.remaining,
+            })
+        }).collect::<Vec<_>>()).unwrap_or_default();
+        Ok(CallToolResult::success(vec![Content::text(json)]))
+    }
+
+    #[tool(description = "Find nearest resource deposit of a given type to a position. Types: Food, GpuCores, Nft.")]
+    async fn get_nearest_deposit(
+        &self,
+        Parameters(params): Parameters<NearestDepositParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let kind = params.resource_type.parse::<ResourceType>()
+            .map_err(|_| McpError::invalid_params(format!("Unknown resource type: {}", params.resource_type), None))?;
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let map = sim.map();
+        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+        let result = match ctx.nearest_deposit(GridPos::new(params.x, params.y), Some(kind)) {
+            Some(d) => serde_json::json!({
+                "id": d.id.0,
+                "resource_type": format!("{:?}", d.resource_type),
+                "x": d.pos.x,
+                "y": d.pos.y,
+                "remaining": d.remaining,
+            }),
+            None => serde_json::json!(null),
+        };
+        Ok(CallToolResult::success(vec![Content::text(result.to_string())]))
     }
 
     #[tool(description = "Get map dimensions, tick count, and game state.")]
@@ -778,6 +844,43 @@ impl HarnessServer {
         sim.inject_command(GameCommand::Research {
             building: EntityId(params.building_id),
             upgrade,
+        });
+        Ok(CallToolResult::success(vec![Content::text("OK")]))
+    }
+
+    #[tool(description = "Cancel the front item in a building's production queue.")]
+    async fn cancel_queue(
+        &self,
+        Parameters(params): Parameters<BuildingOnly>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        sim.inject_command(GameCommand::CancelQueue {
+            building: EntityId(params.building_id),
+        });
+        Ok(CallToolResult::success(vec![Content::text("OK")]))
+    }
+
+    #[tool(description = "Cancel research at a building.")]
+    async fn cancel_research(
+        &self,
+        Parameters(params): Parameters<BuildingOnly>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        sim.inject_command(GameCommand::CancelResearch {
+            building: EntityId(params.building_id),
+        });
+        Ok(CallToolResult::success(vec![Content::text("OK")]))
+    }
+
+    #[tool(description = "Set rally point for a production building.")]
+    async fn set_rally_point(
+        &self,
+        Parameters(params): Parameters<BuildingPos>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        sim.inject_command(GameCommand::SetRallyPoint {
+            building: EntityId(params.building_id),
+            target: GridPos::new(params.x, params.y),
         });
         Ok(CallToolResult::success(vec![Content::text("OK")]))
     }
