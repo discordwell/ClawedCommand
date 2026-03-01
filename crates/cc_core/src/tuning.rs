@@ -132,6 +132,17 @@ pub const LIMB_TOSS_DAMAGE: Fixed = Fixed::from_bits(10 << 16);
 
 /// Venomstrike (Eftsaber/Croak): single-target damage + Waterlogged.
 pub const VENOMSTRIKE_DAMAGE: Fixed = Fixed::from_bits(15 << 16);
+/// Venomstrike: Waterlogged debuff duration (ticks).
+pub const VENOMSTRIKE_WATERLOGGED_TICKS: u32 = 60;
+
+/// ShortCircuit (Sparks/The Clawed): AoE silence duration (ticks).
+pub const SHORT_CIRCUIT_SILENCE_TICKS: u32 = 30;
+
+/// SonicSpit (Shrieker/The Clawed): AoE stun duration (ticks).
+pub const SONIC_SPIT_STUN_TICKS: u32 = 15;
+
+/// Omen (Hootseer/Murder): AoE Tilted debuff radius (tiles).
+pub const OMEN_RADIUS: Fixed = Fixed::from_bits(3 << 16);
 
 // ---------------------------------------------------------------------------
 // AI

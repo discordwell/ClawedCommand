@@ -460,9 +460,9 @@ fn llama_getaway_gives_speed_buff() {
 // Croak (Axolotls) — Abilities
 // ---------------------------------------------------------------------------
 
-/// HunkerAbility toggle applies Entrenched.
+/// HunkerAbility toggle applies LoafModeActive (immobile + 50% DR).
 #[test]
-fn croak_hunker_applies_entrenched() {
+fn croak_hunker_applies_loaf_mode() {
     let (mut world, mut schedule) = make_sim();
     let shellwarden = spawn_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Shellwarden);
 
@@ -472,8 +472,8 @@ fn croak_hunker_applies_entrenched() {
 
     let effects = world.get::<StatusEffects>(shellwarden).unwrap();
     assert!(
-        effects.has(StatusEffectId::Entrenched),
-        "Shellwarden should be Entrenched after Hunker toggle"
+        effects.has(StatusEffectId::LoafModeActive),
+        "Shellwarden should have LoafModeActive after Hunker toggle"
     );
 }
 

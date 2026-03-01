@@ -236,9 +236,9 @@ pub fn ability_effect_system(
                 // Croak (Axolotls) — self-buff bridges
                 // =============================================
                 AbilityId::HunkerAbility => {
-                    // Toggle: immobile + damage reduction (like LoafMode)
+                    // Toggle: immobile + 50% DR (reuses LoafModeActive)
                     if slot.active {
-                        ensure_effect(&mut effects, StatusEffectId::Entrenched, 2, entity);
+                        ensure_effect(&mut effects, StatusEffectId::LoafModeActive, 2, entity);
                     }
                 }
                 AbilityId::Inflate => {

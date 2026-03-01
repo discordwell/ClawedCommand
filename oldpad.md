@@ -1,5 +1,18 @@
 # Oldpad - ClawedCommand (Archived Session Summaries)
 
+- **2026-03-01T093:00:00Z** — 3D Rendering PoC Complete: Tripo Studio browser automation → GLB model → Bevy PoC with isometric terrain grid, team color tinting, camera orbit/zoom.
+- **2026-03-01T170:00:00Z** — The Clawed Faction Implementation (Re-applied): 10 UnitKind, 8 BuildingKind, 30 AbilityId, 5 UpgradeType variants. All tests pass.
+- **2026-03-01T160:00:00Z** — Croak Faction Implementation: 10 UnitKind, 8 BuildingKind, 30 AbilityId, Waterlogged status effect, 9 ECS components. 533 tests pass.
+- **2026-03-01T140:00:00Z** — LLAMA Faction Implementation: 10 UnitKind, 8 BuildingKind, 30 AbilityId, 5 LLAMA-specific components. 533 tests pass.
+- **2026-03-01T120:00:00Z** — Devstral Lua Fine-Tuning Pipeline: 50 gold training examples, eval/validation scripts, QLoRA config. 92% avg eval score.
+- **2026-03-01T100:00:00Z** — Code Review Fixes: 7 fixes including Lua field name mismatch, clear_in_flight race condition, VecDeque optimization. 474 tests pass.
+- **2026-03-01T080:00:00Z** — LLM Runner + Construct Mode UI: End-to-end AI integration with llm_runner.rs, decision.rs, agent_bridge.rs. 422 tests pass.
+- **2026-03-01T060:00:00Z** — AI FSM Research + Advanced Units Fix: Fixed AI never researching upgrades during Attack/Defend phases. 211 tests pass.
+- **2026-02-28T280:00:00Z** — Phase 4C: 10 abilities + 2 TDL fixes. 20 new integration tests. 456 workspace tests pass.
+- **2026-02-28T230:00:00Z** — Unit Training Flow: Build/training hotkeys, resource HUD, build-cancel refunds. 431 tests pass.
+- **2026-03-01T013:00:00Z** — Web Build Phase W1+W2: WASM builds with native feature flag, cfg-gated UI modules.
+- **2026-02-28T220:00:00Z** — Wet Test Session #4: Fixed patterns, WaveTracker, added systems to harness chain. 431 + 10 wet tests pass.
+- **2026-02-28T210:00:00Z** — Campaign Gaps Phase 1: WaveEliminated, PersistentCampaignState, 8 wave integration tests. 280 tests pass.
 - **2026-02-28T105:00:00Z** — Campaign System Implementation. Hero system, mission definitions, campaign state machine, dialogue UI, 6 AI personality profiles, prologue mission. 360 tests pass.
 - **2026-02-28T110:00:00Z** — Wet Test Continuation: Fixed rmcp exclusion, SpiteCarryBuff, supply cap test, idle worker regression. 355 tests + 10 wet tests pass.
 - **2026-02-28T70:00:00Z** — Zoom LOD System: Two-tier zoom LOD with hysteresis. ZoomTier resource (Tactical/Strategic) with thresholds 2.0/1.8. StrategicIcon colored-dot children per unit (inverse scale for uniform size). Sprite alpha=0 in Strategic via selection system. Run conditions gate health bars, terrain borders, water, selection pulse, death fade to Tactical only. 2× sprite resolution (draw at 1×, nearest-neighbor upscale). Zoom range narrowed 0.5-3.5 (was 0.3-5.0), default 1.2. Has<T> queries in toggle_lod_visuals. Doubled health bar/selection ring dimensions for halved unit_scale. spawn_strategic_icon helper eliminates duplication. 13 new tests. 224 tests pass. Code reviewed twice (correctness + refactor).

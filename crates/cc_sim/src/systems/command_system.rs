@@ -22,11 +22,12 @@ use cc_core::upgrade_stats::upgrade_stats;
 use cc_core::tuning::{
     CHAIN_BREAK_BUILDING_MULT, CHAIN_BREAK_DAMAGE, CHAIN_BREAK_RADIUS,
     DISGUST_MORTAR_DAMAGE, DISGUST_MORTAR_RADIUS, ECHOLOCATION_REVEAL_TICKS,
-    HAIRBALL_DURATION_TICKS, LIMB_TOSS_DAMAGE, QUILL_BURST_DAMAGE, QUILL_BURST_RADIUS,
-    SCORCHED_EARTH_DAMAGE, SCORCHED_EARTH_RADIUS, SEISMIC_SLAM_STUN_TICKS,
-    SHAPED_CHARGE_BUILDING_MULT, SHAPED_CHARGE_DAMAGE, SHAPED_CHARGE_RADIUS,
+    HAIRBALL_DURATION_TICKS, LIMB_TOSS_DAMAGE, OMEN_RADIUS, QUILL_BURST_DAMAGE,
+    QUILL_BURST_RADIUS, SCORCHED_EARTH_DAMAGE, SCORCHED_EARTH_RADIUS,
+    SEISMIC_SLAM_STUN_TICKS, SHAPED_CHARGE_BUILDING_MULT, SHAPED_CHARGE_DAMAGE,
+    SHAPED_CHARGE_RADIUS, SHORT_CIRCUIT_SILENCE_TICKS, SONIC_SPIT_STUN_TICKS,
     TALON_DIVE_DAMAGE, TALON_DIVE_RADIUS, VENOMSTRIKE_DAMAGE,
-    WRECK_BALL_DAMAGE, WRECK_BALL_RADIUS,
+    VENOMSTRIKE_WATERLOGGED_TICKS, WRECK_BALL_DAMAGE, WRECK_BALL_RADIUS,
 };
 use crate::systems::damage::{
     AoeCcCommand, AoeDamageCommand, EcholocationRevealCommand, RevulsionAoeCommand,
@@ -738,13 +739,13 @@ pub fn process_commands(
                                 // The Clawed (Mice) — Activated abilities
                                 // =============================================
                                 AbilityId::SonicSpit => {
-                                    // Shrieker AoE stun (duration_ticks=0 in def, use tuning)
+                                    // Shrieker AoE stun
                                     commands.queue(AoeCcCommand {
                                         source_entity: entity,
                                         source_pos: WorldPos::zero(),
                                         radius: def.range,
                                         effect: StatusEffectId::Stunned,
-                                        duration: SEISMIC_SLAM_STUN_TICKS,
+                                        duration: SONIC_SPIT_STUN_TICKS,
                                         source_owner: owner_player_id,
                                     });
                                 }
@@ -766,7 +767,7 @@ pub fn process_commands(
                                         source_pos: WorldPos::zero(),
                                         radius: def.range,
                                         effect: StatusEffectId::Silenced,
-                                        duration: def.duration_ticks,
+                                        duration: SHORT_CIRCUIT_SILENCE_TICKS,
                                         source_owner: owner_player_id,
                                     });
                                 }
@@ -917,11 +918,11 @@ pub fn process_commands(
                                     });
                                 }
                                 AbilityId::Omen => {
-                                    // Hootseer AoE Tilted debuff
+                                    // Hootseer AoE Tilted debuff (range=0 in def, use tuning)
                                     commands.queue(AoeCcCommand {
                                         source_entity: entity,
                                         source_pos: WorldPos::zero(),
-                                        radius: def.range,
+                                        radius: OMEN_RADIUS,
                                         effect: StatusEffectId::Tilted,
                                         duration: def.duration_ticks,
                                         source_owner: owner_player_id,
@@ -1023,7 +1024,7 @@ pub fn process_commands(
                                         source_pos: WorldPos::zero(),
                                         radius: def.range,
                                         effect: StatusEffectId::Waterlogged,
-                                        duration: def.duration_ticks,
+                                        duration: VENOMSTRIKE_WATERLOGGED_TICKS,
                                         source_owner: owner_player_id,
                                     });
                                 }
