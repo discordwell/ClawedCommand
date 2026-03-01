@@ -294,10 +294,9 @@ pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
             attack_threshold: 7,
             unit_preferences: vec![
                 (UnitKind::Bandit, 4),
+                (UnitKind::GreaseMonkey, 4), // kiting identity, range 5 + speed 0.13
                 (UnitKind::Wrecker, 3),
-                (UnitKind::GreaseMonkey, 3), // was 2 — GPU-free now, lean into ranged
-                (UnitKind::HeapTitan, 1),
-            ],
+            ],                               // removed HeapTitan (gpu=20, unusable at Basic tier)
             target_workers: 3,
             economy_priority: true,          // was false
             retreat_threshold: 25,

@@ -35,7 +35,8 @@ use crate::systems::{
     cleanup_system::cleanup_system, combat_system::combat_system,
     command_system::process_commands, grid_sync_system::grid_sync_system,
     movement_system::movement_system, production_system::production_system,
-    projectile_system::projectile_system, research_system::research_system,
+    projectile_system::{projectile_system, ProjectileHit},
+    research_system::research_system,
     resource_system::gathering_system, stat_modifier_system::stat_modifier_system,
     status_effect_system::status_effect_system,
     target_acquisition_system::target_acquisition_system, tick_system::tick_system,
@@ -398,6 +399,7 @@ fn make_harness_sim(
     world.insert_resource(ControlGroups::default());
     world.insert_resource(GameState::Playing);
     world.insert_resource(CombatStats::default());
+    world.init_resource::<Messages<ProjectileHit>>();
 
     let mut player_res = PlayerResources::default();
     while player_res.players.len() < 2 {
