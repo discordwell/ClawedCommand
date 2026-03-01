@@ -766,6 +766,10 @@ pub enum AuraType {
     ScrapArmorAura,
     DumpsterRelayAura,
     StenchCloudAura,
+    // Toggle-specific aura types
+    WhiskerWeave,
+    SwarmTremorSense,
+    PanopticGaze,
 }
 
 /// Component for units that emit an area-of-effect aura.

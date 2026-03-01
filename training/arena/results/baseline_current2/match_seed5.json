@@ -1,0 +1,46 @@
+{
+  "seed": 5,
+  "outcome": "Victory(player 1 at tick 3584)",
+  "duration_ticks": 3584,
+  "wall_time_ms": 2199,
+  "player_stats": [
+    {
+      "units_trained": 17,
+      "units_lost": 19,
+      "units_killed": 6,
+      "buildings_built": 4,
+      "buildings_lost": 4,
+      "damage_dealt": 0.0,
+      "damage_taken": 0.0,
+      "resources_gathered": 0
+    },
+    {
+      "units_trained": 16,
+      "units_lost": 6,
+      "units_killed": 19,
+      "buildings_built": 6,
+      "buildings_lost": 5,
+      "damage_dealt": 0.0,
+      "damage_taken": 0.0,
+      "resources_gathered": 0
+    }
+  ],
+  "scripts_loaded": [
+    [],
+    []
+  ],
+  "script_errors": [],
+  "timeline": [
+    {
+      "tick": 2000,
+      "event": "first_combat"
+    },
+    {
+      "tick": 3584,
+      "event": "victory_player_1"
+    }
+  ],
+  "violations_warning": 0,
+  "violations_error": 0,
+  "passed": true
+}

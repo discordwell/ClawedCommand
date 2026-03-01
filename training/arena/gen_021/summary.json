@@ -1,0 +1,16 @@
+{
+  "draws": 0,
+  "matches": 5,
+  "p0_win_rate": 0.4,
+  "p0_wins": 2,
+  "p1_win_rate": 0.2,
+  "p1_wins": 1,
+  "seeds": [
+    42,
+    123,
+    7777,
+    9999,
+    31415
+  ],
+  "timeouts": 2
+}

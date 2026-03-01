@@ -77,16 +77,47 @@
       "p0_effective_dominance": 0.8,
       "scripts": ["activate_abilities", "priority_focus", "push_buildings", "smart_retreat"],
       "notes": "MASSIVE BREAKTHROUGH. Baselines + activate_abilities ONLY (no smart_fill). P0 wins 2 decisive + leads 6/8 timeouts = effectively dominates 8/10 seeds. P0 outscores P1 in kills on ALL 10 seeds. LoafMode/Zoomies/DissonantScreech provide huge combat advantage. Key: abilities > extra units."
+    },
+    {
+      "id": 21,
+      "timestamp": "2026-03-01T16:00:00Z",
+      "scripted_player": 0,
+      "matches_10": {"p0_wins": 5, "p1_wins": 1, "timeouts": 4, "p0_leading_timeouts": 0, "p1_leading_timeouts": 4},
+      "matches_5": {"p0_wins": 2, "p1_wins": 1, "timeouts": 2},
+      "combined_15": {"p0_wins": 7, "p1_wins": 2, "timeouts": 6, "p0_win_rate": 0.47},
+      "p0_win_rate": 0.50,
+      "scripts": ["combat_micro"],
+      "notes": "NEW BEST. Pure combat micro: focus fire weakest enemy + retreat wounded when outnumbered + push to enemy buildings when area clear. 0% baseline -> 50% P0 win rate. Focus fire + retreat is the core — push converts timeouts to wins. No production interference (smart_fill now counterproductive since FSM does own production fill)."
+    },
+    {
+      "id": 22,
+      "timestamp": "2026-03-01T17:00:00Z",
+      "scripted_player": 0,
+      "matches_10": {"p0_wins": 0, "p1_wins": 9, "timeouts": 1},
+      "p0_win_rate": 0.0,
+      "scripts": ["combat_micro", "activate_abilities"],
+      "notes": "CATASTROPHIC REGRESSION. Ability commands (especially LoafMode toggle) interfere with combat_micro focus fire. Units stutter between ability and attack commands. DO NOT combine ability activation with combat micro."
+    },
+    {
+      "id": 23,
+      "timestamp": "2026-03-01T17:00:00Z",
+      "scripted_player": 0,
+      "matches_10": {"p0_wins": 0, "p1_wins": 8, "timeouts": 2},
+      "p0_win_rate": 0.0,
+      "scripts": ["combat_micro_per_unit"],
+      "notes": "CATASTROPHIC. Per-unit focus fire (each unit targets weakest in its range) scatters damage across multiple targets. Group centroid-based focus fire (Gen 21) is far superior. Concentrated fire > distributed fire."
     }
   ],
-  "best_generation": "18b",
-  "best_win_rate": 0.2,
-  "best_effective_dominance": 0.8,
-  "best_scripts": ["activate_abilities", "priority_focus", "push_buildings", "smart_retreat"],
+  "best_generation": 21,
+  "best_win_rate": 0.50,
+  "best_scripts": ["combat_micro"],
   "key_insights": [
-    "The FSM leaves production buildings idle for hundreds of ticks — but extra units can feed the enemy.",
-    "Ability activation is the single most impactful script category. Free abilities (LoafMode) + cheap self-buffs (Zoomies) + AoE CC (DissonantScreech) dominate combat.",
-    "smart_fill is counterproductive when combined with abilities — extra units dilute army quality and feed enemy kills.",
+    "GROUP focus fire (centroid-based, all units target same enemy) is the single most impactful script behavior. 0% -> 50% win rate.",
+    "Retreat wounded units when outnumbered preserves army for attrition advantage.",
+    "Push to enemy buildings when area is clear converts timeouts to wins.",
+    "smart_fill is counterproductive on current FSM (FSM does own production fill). Extra units feed enemy kills.",
+    "Ability commands interfere with attack commands — DO NOT combine ability and combat scripts for same units.",
+    "Per-unit focus fire scatters damage. Group focus fire concentrates it. Always prefer group.",
     "Script combinations matter: fewer focused scripts beat more scripts that conflict."
   ],
   "seeds_5": [42, 123, 7777, 9999, 31415],

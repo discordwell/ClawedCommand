@@ -427,6 +427,15 @@ impl Default for AiState {
     }
 }
 
+/// Configuration for a bot player in headless/arena matches.
+#[derive(Debug, Clone)]
+pub struct BotConfig {
+    pub player_id: u8,
+    pub difficulty: AiDifficulty,
+    pub profile: AiPersonalityProfile,
+    pub faction: Faction,
+}
+
 /// Main AI decision system — runs in FixedUpdate after cleanup.
 /// Controls the single-player AI (player 1) for normal games.
 pub fn ai_decision_system(
@@ -499,26 +508,26 @@ struct UnitCensus {
     pending_builds: Vec<(BuildingKind, GridPos)>,
 }
 
-/// Census of the AI player's buildings.
+/// Census of the AI player's buildings (role-based field names, faction-agnostic).
 struct BuildingCensus {
-    has_box: bool,
-    has_cat_tree: bool,
-    has_fish_market: bool,
-    has_server_rack: bool,
-    has_scratching_post: bool,
-    has_laser_pointer: bool,
-    box_entity: Option<Entity>,
-    box_pos: Option<GridPos>,
-    cat_tree_entity: Option<Entity>,
-    server_rack_entity: Option<Entity>,
-    scratching_post_entity: Option<Entity>,
+    has_hq: bool,
+    has_barracks: bool,
+    has_resource_depot: bool,
+    has_tech: bool,
+    has_research: bool,
+    has_defense_tower: bool,
+    hq_entity: Option<Entity>,
+    hq_pos: Option<GridPos>,
+    barracks_entity: Option<Entity>,
+    tech_entity: Option<Entity>,
+    research_entity: Option<Entity>,
     building_positions: Vec<(GridPos, BuildingKind)>,
-    box_queue_len: usize,
-    cat_tree_queue_len: usize,
-    server_rack_queue_len: usize,
-    pending_litter_box_count: u32,
-    /// Total number of ServerRack buildings (for tier computation).
-    server_rack_count: u32,
+    hq_queue_len: usize,
+    barracks_queue_len: usize,
+    tech_queue_len: usize,
+    pending_supply_count: u32,
+    /// Total number of tech buildings (for tier computation).
+    tech_count: u32,
 }
 
 /// Scan all units and classify them as workers, army, or enemy army.
@@ -537,57 +546,56 @@ fn take_unit_census(
     };
     for (entity, _, owner, unit_type, gathering, move_target, build_order) in units.iter() {
         if owner.player_id != ai_player {
-            if !matches!(unit_type.kind, UnitKind::Pawdler | UnitKind::Scrounger | UnitKind::MurderScrounger | UnitKind::Delver | UnitKind::Nibblet | UnitKind::Ponderer) {
+            if !is_worker(unit_type.kind) {
                 census.enemy_army_count += 1;
             }
             continue;
         }
-        match unit_type.kind {
-            UnitKind::Pawdler | UnitKind::Scrounger | UnitKind::MurderScrounger | UnitKind::Delver | UnitKind::Nibblet | UnitKind::Ponderer => {
-                census.worker_count += 1;
-                // Workers with active BuildOrders are busy building — exclude from
-                // both idle and available-builder lists to prevent reassignment.
-                if let Some(bo) = build_order {
-                    census.pending_builds.push((bo.building_kind, bo.position));
-                } else {
-                    census.all_workers.push(entity);
-                    if gathering.is_none() && move_target.is_none() {
-                        census.idle_workers.push(entity);
-                    }
+        if is_worker(unit_type.kind) {
+            census.worker_count += 1;
+            // Workers with active BuildOrders are busy building — exclude from
+            // both idle and available-builder lists to prevent reassignment.
+            if let Some(bo) = build_order {
+                census.pending_builds.push((bo.building_kind, bo.position));
+            } else {
+                census.all_workers.push(entity);
+                if gathering.is_none() && move_target.is_none() {
+                    census.idle_workers.push(entity);
                 }
             }
-            _ => {
-                census.army_count += 1;
-                census.army_entities.push(entity);
-            }
+        } else {
+            census.army_count += 1;
+            census.army_entities.push(entity);
         }
     }
     census
 }
 
 /// Scan all buildings owned by the AI player.
+/// Uses FactionMap to identify building roles instead of enumerating all faction variants.
 fn take_building_census(
     ai_player: u8,
+    fmap: &FactionMap,
     buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>, Option<&ProductionQueue>)>,
 ) -> BuildingCensus {
     let mut census = BuildingCensus {
-        has_box: false,
-        has_cat_tree: false,
-        has_fish_market: false,
-        has_server_rack: false,
-        has_scratching_post: false,
-        has_laser_pointer: false,
-        box_entity: None,
-        box_pos: None,
-        cat_tree_entity: None,
-        server_rack_entity: None,
-        scratching_post_entity: None,
+        has_hq: false,
+        has_barracks: false,
+        has_resource_depot: false,
+        has_tech: false,
+        has_research: false,
+        has_defense_tower: false,
+        hq_entity: None,
+        hq_pos: None,
+        barracks_entity: None,
+        tech_entity: None,
+        research_entity: None,
         building_positions: Vec::new(),
-        box_queue_len: 0,
-        cat_tree_queue_len: 0,
-        server_rack_queue_len: 0,
-        pending_litter_box_count: 0,
-        server_rack_count: 0,
+        hq_queue_len: 0,
+        barracks_queue_len: 0,
+        tech_queue_len: 0,
+        pending_supply_count: 0,
+        tech_count: 0,
     };
     for (entity, building, owner, pos, producer, prod_queue) in buildings.iter() {
         if owner.player_id != ai_player {
@@ -595,211 +603,28 @@ fn take_building_census(
         }
         census.building_positions.push((pos.world.to_grid(), building.kind));
         let queue_len = prod_queue.map_or(0, |q| q.queue.len());
-        match building.kind {
-            BuildingKind::TheBox => {
-                census.has_box = true;
-                census.box_pos = Some(pos.world.to_grid());
-                census.box_queue_len = queue_len;
-                if producer.is_some() {
-                    census.box_entity = Some(entity);
-                }
-            }
-            BuildingKind::CatTree => {
-                census.has_cat_tree = true;
-                census.cat_tree_queue_len = queue_len;
-                if producer.is_some() {
-                    census.cat_tree_entity = Some(entity);
-                }
-            }
-            BuildingKind::FishMarket => {
-                census.has_fish_market = true;
-            }
-            BuildingKind::ServerRack => {
-                census.has_server_rack = true;
-                census.server_rack_count += 1;
-                census.server_rack_queue_len = queue_len;
-                if producer.is_some() {
-                    census.server_rack_entity = Some(entity);
-                }
-            }
-            BuildingKind::ScratchingPost => {
-                census.has_scratching_post = true;
-                census.scratching_post_entity = Some(entity);
-            }
-            BuildingKind::LaserPointer => {
-                census.has_laser_pointer = true;
-            }
-            // Murder (Corvids)
-            BuildingKind::TheParliament => {
-                census.has_box = true;
-                census.box_pos = Some(pos.world.to_grid());
-                census.box_queue_len = queue_len;
-                if producer.is_some() {
-                    census.box_entity = Some(entity);
-                }
-            }
-            BuildingKind::Rookery => {
-                census.has_cat_tree = true;
-                census.cat_tree_queue_len = queue_len;
-                if producer.is_some() {
-                    census.cat_tree_entity = Some(entity);
-                }
-            }
-            BuildingKind::CarrionCache => {
-                census.has_fish_market = true;
-            }
-            BuildingKind::AntennaArray => {
-                census.has_server_rack = true;
-                census.server_rack_count += 1;
-                census.server_rack_queue_len = queue_len;
-                if producer.is_some() {
-                    census.server_rack_entity = Some(entity);
-                }
-            }
-            BuildingKind::Panopticon => {
-                census.has_scratching_post = true;
-                census.scratching_post_entity = Some(entity);
-            }
-            BuildingKind::Watchtower => {
-                census.has_laser_pointer = true;
-            }
-            // LLAMA (Raccoons)
-            BuildingKind::TheDumpster => {
-                census.has_box = true;
-                census.box_pos = Some(pos.world.to_grid());
-                census.box_queue_len = queue_len;
-                if producer.is_some() {
-                    census.box_entity = Some(entity);
-                }
-            }
-            BuildingKind::ChopShop => {
-                census.has_cat_tree = true;
-                census.cat_tree_queue_len = queue_len;
-                if producer.is_some() {
-                    census.cat_tree_entity = Some(entity);
-                }
-            }
-            BuildingKind::ScrapHeap => {
-                census.has_fish_market = true;
-            }
-            BuildingKind::JunkServer => {
-                census.has_server_rack = true;
-                census.server_rack_count += 1;
-                census.server_rack_queue_len = queue_len;
-                if producer.is_some() {
-                    census.server_rack_entity = Some(entity);
-                }
-            }
-            BuildingKind::TinkerBench => {
-                census.has_scratching_post = true;
-                census.scratching_post_entity = Some(entity);
-            }
-            BuildingKind::TetanusTower => {
-                census.has_laser_pointer = true;
-            }
-            // Seekers of the Deep (Badgers)
-            BuildingKind::TheSett => {
-                census.has_box = true;
-                census.box_pos = Some(pos.world.to_grid());
-                census.box_queue_len = queue_len;
-                if producer.is_some() {
-                    census.box_entity = Some(entity);
-                }
-            }
-            BuildingKind::WarHollow => {
-                census.has_cat_tree = true;
-                census.cat_tree_queue_len = queue_len;
-                if producer.is_some() {
-                    census.cat_tree_entity = Some(entity);
-                }
-            }
-            BuildingKind::BurrowDepot => {
-                census.has_fish_market = true;
-            }
-            BuildingKind::CoreTap => {
-                census.has_server_rack = true;
-                census.server_rack_count += 1;
-                census.server_rack_queue_len = queue_len;
-                if producer.is_some() {
-                    census.server_rack_entity = Some(entity);
-                }
-            }
-            BuildingKind::ClawMarks => {
-                census.has_scratching_post = true;
-                census.scratching_post_entity = Some(entity);
-            }
-            BuildingKind::SlagThrower => {
-                census.has_laser_pointer = true;
-            }
-            // Croak (Axolotls)
-            BuildingKind::TheGrotto => {
-                census.has_box = true;
-                census.box_pos = Some(pos.world.to_grid());
-                census.box_queue_len = queue_len;
-                if producer.is_some() {
-                    census.box_entity = Some(entity);
-                }
-            }
-            BuildingKind::SpawningPools => {
-                census.has_cat_tree = true;
-                census.cat_tree_queue_len = queue_len;
-                if producer.is_some() {
-                    census.cat_tree_entity = Some(entity);
-                }
-            }
-            BuildingKind::LilyMarket => {
-                census.has_fish_market = true;
-            }
-            BuildingKind::SunkenServer => {
-                census.has_server_rack = true;
-                census.server_rack_count += 1;
-                census.server_rack_queue_len = queue_len;
-                if producer.is_some() {
-                    census.server_rack_entity = Some(entity);
-                }
-            }
-            BuildingKind::FossilStones => {
-                census.has_scratching_post = true;
-                census.scratching_post_entity = Some(entity);
-            }
-            BuildingKind::SporeTower => {
-                census.has_laser_pointer = true;
-            }
-            // Clawed (Mice)
-            BuildingKind::TheBurrow => {
-                census.has_box = true;
-                census.box_pos = Some(pos.world.to_grid());
-                census.box_queue_len = queue_len;
-                if producer.is_some() {
-                    census.box_entity = Some(entity);
-                }
-            }
-            BuildingKind::NestingBox => {
-                census.has_cat_tree = true;
-                census.cat_tree_queue_len = queue_len;
-                if producer.is_some() {
-                    census.cat_tree_entity = Some(entity);
-                }
-            }
-            BuildingKind::SeedVault => {
-                census.has_fish_market = true;
-            }
-            BuildingKind::JunkTransmitter => {
-                census.has_server_rack = true;
-                census.server_rack_count += 1;
-                census.server_rack_queue_len = queue_len;
-                if producer.is_some() {
-                    census.server_rack_entity = Some(entity);
-                }
-            }
-            BuildingKind::GnawLab => {
-                census.has_scratching_post = true;
-                census.scratching_post_entity = Some(entity);
-            }
-            BuildingKind::SqueakTower => {
-                census.has_laser_pointer = true;
-            }
-            _ => {}
+        let kind = building.kind;
+        if kind == fmap.hq {
+            census.has_hq = true;
+            census.hq_pos = Some(pos.world.to_grid());
+            census.hq_queue_len = queue_len;
+            if producer.is_some() { census.hq_entity = Some(entity); }
+        } else if kind == fmap.barracks {
+            census.has_barracks = true;
+            census.barracks_queue_len = queue_len;
+            if producer.is_some() { census.barracks_entity = Some(entity); }
+        } else if kind == fmap.resource_depot {
+            census.has_resource_depot = true;
+        } else if kind == fmap.tech {
+            census.has_tech = true;
+            census.tech_count += 1;
+            census.tech_queue_len = queue_len;
+            if producer.is_some() { census.tech_entity = Some(entity); }
+        } else if kind == fmap.research {
+            census.has_research = true;
+            census.research_entity = Some(entity);
+        } else if kind == fmap.defense_tower {
+            census.has_defense_tower = true;
         }
     }
     census
@@ -852,10 +677,10 @@ fn food_reserve_for_buildings(phase: AiPhase, bc: &BuildingCensus, gpu_cores: u3
     match phase {
         AiPhase::BuildUp => {
             let mut reserve = 0u32;
-            if !bc.has_fish_market {
+            if !bc.has_resource_depot {
                 reserve += cc_core::building_stats::building_stats(fmap.resource_depot).food_cost;
             }
-            if !bc.has_cat_tree {
+            if !bc.has_barracks {
                 reserve += cc_core::building_stats::building_stats(fmap.barracks).food_cost;
             }
             reserve
@@ -863,11 +688,11 @@ fn food_reserve_for_buildings(phase: AiPhase, bc: &BuildingCensus, gpu_cores: u3
         AiPhase::MidGame => {
             let mut reserve = 0u32;
             let tech_bstats = cc_core::building_stats::building_stats(fmap.tech);
-            if !bc.has_server_rack && gpu_cores >= tech_bstats.gpu_cost {
+            if !bc.has_tech && gpu_cores >= tech_bstats.gpu_cost {
                 reserve += tech_bstats.food_cost;
             }
             let research_bstats = cc_core::building_stats::building_stats(fmap.research);
-            if !bc.has_scratching_post && gpu_cores >= research_bstats.gpu_cost {
+            if !bc.has_research && gpu_cores >= research_bstats.gpu_cost {
                 reserve += research_bstats.food_cost;
             }
             reserve
@@ -900,35 +725,33 @@ fn run_ai_fsm(
         return;
     };
 
+    let fmap = ai_state.fmap.clone();
+
     let uc = take_unit_census(ai_player, units);
-    let mut bc = take_building_census(ai_player, buildings);
+    let mut bc = take_building_census(ai_player, &fmap, buildings);
 
     // Merge in-flight BuildOrders so the AI treats pending builds
     // as if the buildings already exist (prevents duplicate orders).
     for (kind, pos) in &uc.pending_builds {
         bc.building_positions.push((*pos, *kind));
-        match kind {
-            BuildingKind::FishMarket | BuildingKind::ScrapHeap | BuildingKind::BurrowDepot
-                | BuildingKind::LilyMarket | BuildingKind::SeedVault | BuildingKind::CarrionCache => bc.has_fish_market = true,
-            BuildingKind::CatTree | BuildingKind::ChopShop | BuildingKind::WarHollow
-                | BuildingKind::SpawningPools | BuildingKind::NestingBox | BuildingKind::Rookery => bc.has_cat_tree = true,
-            BuildingKind::ServerRack | BuildingKind::JunkServer | BuildingKind::CoreTap
-                | BuildingKind::SunkenServer | BuildingKind::JunkTransmitter | BuildingKind::AntennaArray => {
-                bc.has_server_rack = true;
-                bc.server_rack_count += 1;
-            }
-            BuildingKind::ScratchingPost | BuildingKind::TinkerBench | BuildingKind::ClawMarks
-                | BuildingKind::FossilStones | BuildingKind::GnawLab | BuildingKind::Panopticon => bc.has_scratching_post = true,
-            BuildingKind::LaserPointer | BuildingKind::TetanusTower | BuildingKind::SlagThrower
-                | BuildingKind::SporeTower | BuildingKind::SqueakTower | BuildingKind::Watchtower => bc.has_laser_pointer = true,
-            BuildingKind::LitterBox | BuildingKind::TrashPile | BuildingKind::DeepWarren
-                | BuildingKind::ReedBed | BuildingKind::WarrenExpansion | BuildingKind::NestBox => bc.pending_litter_box_count += 1,
-            _ => {}
+        if *kind == fmap.resource_depot {
+            bc.has_resource_depot = true;
+        } else if *kind == fmap.barracks {
+            bc.has_barracks = true;
+        } else if *kind == fmap.tech {
+            bc.has_tech = true;
+            bc.tech_count += 1;
+        } else if *kind == fmap.research {
+            bc.has_research = true;
+        } else if *kind == fmap.defense_tower {
+            bc.has_defense_tower = true;
+        } else if *kind == fmap.supply {
+            bc.pending_supply_count += 1;
         }
     }
 
-    // Update AI tier from ServerRack count, clamped by profile max_tier
-    let natural_tier = AiTier::from_rack_count(bc.server_rack_count);
+    // Update AI tier from tech building count, clamped by profile max_tier
+    let natural_tier = AiTier::from_rack_count(bc.tech_count);
     ai_state.tier = match ai_state.profile.max_tier {
         Some(cap) => natural_tier.min(cap),
         None => natural_tier,
@@ -947,7 +770,6 @@ fn run_ai_fsm(
     let attack_threshold = ai_state.profile.attack_threshold;
     let target_workers = ai_state.profile.target_workers;
 
-    let fmap = ai_state.fmap.clone();
     let supply_kind = fmap.supply;
     let barracks_kind = fmap.barracks;
 
@@ -957,9 +779,9 @@ fn run_ai_fsm(
             // Train workers until target count
             let worker_cost = cc_core::unit_stats::base_stats(fmap.worker).food_cost;
             if uc.worker_count < target_workers {
-                if let Some(box_e) = bc.box_entity {
+                if let Some(box_e) = bc.hq_entity {
                     if pres.food >= worker_cost && pres.supply < pres.supply_cap
-                        && bc.box_queue_len < AI_MAX_QUEUE_DEPTH
+                        && bc.hq_queue_len < AI_MAX_QUEUE_DEPTH
                     {
                         cmd_queue.push(GameCommand::TrainUnit {
                             building: EntityId(box_e.to_bits()),
@@ -981,9 +803,9 @@ fn run_ai_fsm(
             let depot_cost = cc_core::building_stats::building_stats(fmap.resource_depot);
             let barracks_cost = cc_core::building_stats::building_stats(barracks_kind);
 
-            if builder_used.is_none() && !bc.has_fish_market && pres.food >= depot_cost.food_cost && bc.has_box {
+            if builder_used.is_none() && !bc.has_resource_depot && pres.food >= depot_cost.food_cost && bc.has_hq {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
-                    let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
+                    let build_pos = find_build_position(bc.hq_pos, map, &bc.building_positions);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: fmap.resource_depot,
@@ -993,9 +815,9 @@ fn run_ai_fsm(
                 }
             }
 
-            if builder_used.is_none() && !bc.has_cat_tree && pres.food >= barracks_cost.food_cost && bc.has_box {
+            if builder_used.is_none() && !bc.has_barracks && pres.food >= barracks_cost.food_cost && bc.has_hq {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
-                    let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
+                    let build_pos = find_build_position(bc.hq_pos, map, &bc.building_positions);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: fmap.barracks,
@@ -1006,17 +828,17 @@ fn run_ai_fsm(
             }
 
             if builder_used.is_none() {
-                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue, bc.pending_litter_box_count, supply_kind) {
+                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.hq_pos, map, &bc.building_positions, cmd_queue, bc.pending_supply_count, supply_kind) {
                     builder_used = Some(b);
                 }
             }
 
-            if let Some(ct_e) = bc.cat_tree_entity {
+            if let Some(ct_e) = bc.barracks_entity {
                 let barracks_producible = cc_core::building_stats::building_stats(barracks_kind).can_produce;
                 let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick, barracks_producible);
                 let unit_cost = cc_core::unit_stats::base_stats(kind).food_cost;
                 if pres.food >= unit_cost + reserve && pres.supply < pres.supply_cap
-                    && bc.cat_tree_queue_len < AI_MAX_QUEUE_DEPTH
+                    && bc.barracks_queue_len < AI_MAX_QUEUE_DEPTH
                 {
                     cmd_queue.push(GameCommand::TrainUnit {
                         building: EntityId(ct_e.to_bits()),
@@ -1028,9 +850,9 @@ fn run_ai_fsm(
             let worker_cost = cc_core::unit_stats::base_stats(fmap.worker).food_cost;
             let buildup_worker_cap = (target_workers + 1).min(6);
             if uc.worker_count < buildup_worker_cap {
-                if let Some(box_e) = bc.box_entity {
+                if let Some(box_e) = bc.hq_entity {
                     if pres.food >= worker_cost + reserve && pres.supply < pres.supply_cap
-                        && bc.box_queue_len < AI_MAX_QUEUE_DEPTH
+                        && bc.hq_queue_len < AI_MAX_QUEUE_DEPTH
                     {
                         cmd_queue.push(GameCommand::TrainUnit {
                             building: EntityId(box_e.to_bits()),
@@ -1040,9 +862,9 @@ fn run_ai_fsm(
                 }
             }
 
-            let defense_pos = bc.box_pos.map(|p| defense_offset(p, map))
+            let defense_pos = bc.hq_pos.map(|p| defense_offset(p, map))
                 .unwrap_or(map_center(map));
-            if let Some(ct_e) = bc.cat_tree_entity {
+            if let Some(ct_e) = bc.barracks_entity {
                 cmd_queue.push(GameCommand::SetRallyPoint {
                     building: EntityId(ct_e.to_bits()),
                     target: defense_pos,
@@ -1058,9 +880,9 @@ fn run_ai_fsm(
             let research_stats = cc_core::building_stats::building_stats(fmap.research);
             let tower_stats = cc_core::building_stats::building_stats(fmap.defense_tower);
 
-            if builder_used.is_none() && !bc.has_server_rack && pres.food >= tech_stats.food_cost && pres.gpu_cores >= tech_stats.gpu_cost && bc.has_box {
+            if builder_used.is_none() && !bc.has_tech && pres.food >= tech_stats.food_cost && pres.gpu_cores >= tech_stats.gpu_cost && bc.has_hq {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
-                    let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
+                    let build_pos = find_build_position(bc.hq_pos, map, &bc.building_positions);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: fmap.tech,
@@ -1070,9 +892,9 @@ fn run_ai_fsm(
                 }
             }
 
-            if builder_used.is_none() && !bc.has_scratching_post && pres.food >= research_stats.food_cost && pres.gpu_cores >= research_stats.gpu_cost && bc.has_box {
+            if builder_used.is_none() && !bc.has_research && pres.food >= research_stats.food_cost && pres.gpu_cores >= research_stats.gpu_cost && bc.has_hq {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
-                    let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
+                    let build_pos = find_build_position(bc.hq_pos, map, &bc.building_positions);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: fmap.research,
@@ -1082,9 +904,9 @@ fn run_ai_fsm(
                 }
             }
 
-            if builder_used.is_none() && !bc.has_laser_pointer && pres.food >= tower_stats.food_cost && pres.gpu_cores >= tower_stats.gpu_cost && bc.has_box {
+            if builder_used.is_none() && !bc.has_defense_tower && pres.food >= tower_stats.food_cost && pres.gpu_cores >= tower_stats.gpu_cost && bc.has_hq {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
-                    let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
+                    let build_pos = find_build_position(bc.hq_pos, map, &bc.building_positions);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: fmap.defense_tower,
@@ -1094,7 +916,7 @@ fn run_ai_fsm(
                 }
             }
 
-            if let Some(sp_e) = bc.scratching_post_entity {
+            if let Some(sp_e) = bc.research_entity {
                 for upgrade in &fmap.research_upgrades {
                     if !pres.completed_upgrades.contains(upgrade) {
                         let ustats = cc_core::upgrade_stats::upgrade_stats(*upgrade);
@@ -1109,8 +931,8 @@ fn run_ai_fsm(
                 }
             }
 
-            if let Some(sr_e) = bc.server_rack_entity {
-                if pres.supply < pres.supply_cap && bc.server_rack_queue_len < AI_MAX_QUEUE_DEPTH {
+            if let Some(sr_e) = bc.tech_entity {
+                if pres.supply < pres.supply_cap && bc.tech_queue_len < AI_MAX_QUEUE_DEPTH {
                     let tech_producible = cc_core::building_stats::building_stats(fmap.tech).can_produce;
                     let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick, tech_producible);
                     let stats = cc_core::unit_stats::base_stats(kind);
@@ -1123,8 +945,8 @@ fn run_ai_fsm(
                 }
             }
 
-            if let Some(ct_e) = bc.cat_tree_entity {
-                if pres.supply < pres.supply_cap && bc.cat_tree_queue_len < AI_MAX_QUEUE_DEPTH {
+            if let Some(ct_e) = bc.barracks_entity {
+                if pres.supply < pres.supply_cap && bc.barracks_queue_len < AI_MAX_QUEUE_DEPTH {
                     let barracks_producible = cc_core::building_stats::building_stats(barracks_kind).can_produce;
                     let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick, barracks_producible);
                     let stats = cc_core::unit_stats::base_stats(kind);
@@ -1138,16 +960,16 @@ fn run_ai_fsm(
             }
 
             if builder_used.is_none() {
-                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue, bc.pending_litter_box_count, supply_kind) {
+                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.hq_pos, map, &bc.building_positions, cmd_queue, bc.pending_supply_count, supply_kind) {
                     builder_used = Some(b);
                 }
             }
 
             let worker_cost_mid = cc_core::unit_stats::base_stats(fmap.worker).food_cost;
             if uc.worker_count < 6 {
-                if let Some(box_e) = bc.box_entity {
+                if let Some(box_e) = bc.hq_entity {
                     if pres.food >= worker_cost_mid + reserve && pres.supply < pres.supply_cap
-                        && bc.box_queue_len < AI_MAX_QUEUE_DEPTH
+                        && bc.hq_queue_len < AI_MAX_QUEUE_DEPTH
                     {
                         cmd_queue.push(GameCommand::TrainUnit {
                             building: EntityId(box_e.to_bits()),
@@ -1157,15 +979,15 @@ fn run_ai_fsm(
                 }
             }
 
-            let defense_pos = bc.box_pos.map(|p| defense_offset(p, map))
+            let defense_pos = bc.hq_pos.map(|p| defense_offset(p, map))
                 .unwrap_or(map_center(map));
-            if let Some(ct_e) = bc.cat_tree_entity {
+            if let Some(ct_e) = bc.barracks_entity {
                 cmd_queue.push(GameCommand::SetRallyPoint {
                     building: EntityId(ct_e.to_bits()),
                     target: defense_pos,
                 });
             }
-            if let Some(sr_e) = bc.server_rack_entity {
+            if let Some(sr_e) = bc.tech_entity {
                 cmd_queue.push(GameCommand::SetRallyPoint {
                     building: EntityId(sr_e.to_bits()),
                     target: defense_pos,
@@ -1191,14 +1013,14 @@ fn run_ai_fsm(
                             tier, tick, ai_state, &uc.army_entities,
                             ai_player, retreat_threshold,
                             units, health_query, cmd_queue,
-                            bc.box_pos, target, map,
+                            bc.hq_pos, target, map,
                         );
                     }
                 }
             }
 
-            if let Some(ct_e) = bc.cat_tree_entity {
-                if pres.supply < pres.supply_cap && bc.cat_tree_queue_len < AI_MAX_QUEUE_DEPTH {
+            if let Some(ct_e) = bc.barracks_entity {
+                if pres.supply < pres.supply_cap && bc.barracks_queue_len < AI_MAX_QUEUE_DEPTH {
                     let barracks_producible = cc_core::building_stats::building_stats(barracks_kind).can_produce;
                     let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick, barracks_producible);
                     let stats = cc_core::unit_stats::base_stats(kind);
@@ -1211,18 +1033,18 @@ fn run_ai_fsm(
                 }
             }
 
-            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue, bc.pending_litter_box_count, supply_kind) {
+            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.hq_pos, map, &bc.building_positions, cmd_queue, bc.pending_supply_count, supply_kind) {
                 builder_used = Some(b);
             }
 
             if let Some(enemy_pos) = ai_state.enemy_spawn {
-                if let Some(ct_e) = bc.cat_tree_entity {
+                if let Some(ct_e) = bc.barracks_entity {
                     cmd_queue.push(GameCommand::SetRallyPoint {
                         building: EntityId(ct_e.to_bits()),
                         target: enemy_pos,
                     });
                 }
-                if let Some(sr_e) = bc.server_rack_entity {
+                if let Some(sr_e) = bc.tech_entity {
                     cmd_queue.push(GameCommand::SetRallyPoint {
                         building: EntityId(sr_e.to_bits()),
                         target: enemy_pos,
@@ -1241,7 +1063,7 @@ fn run_ai_fsm(
         }
 
         AiPhase::Defend => {
-            let rally_pos = bc.box_pos.unwrap_or(map_center(map));
+            let rally_pos = bc.hq_pos.unwrap_or(map_center(map));
             if !uc.army_entities.is_empty() {
                 issue_defend_commands(
                     tier, &uc.army_entities, rally_pos,
@@ -1249,8 +1071,8 @@ fn run_ai_fsm(
                 );
             }
 
-            if let Some(ct_e) = bc.cat_tree_entity {
-                if pres.supply < pres.supply_cap && bc.cat_tree_queue_len < AI_MAX_QUEUE_DEPTH {
+            if let Some(ct_e) = bc.barracks_entity {
+                if pres.supply < pres.supply_cap && bc.barracks_queue_len < AI_MAX_QUEUE_DEPTH {
                     let barracks_producible = cc_core::building_stats::building_stats(barracks_kind).can_produce;
                     let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick, barracks_producible);
                     let stats = cc_core::unit_stats::base_stats(kind);
@@ -1263,19 +1085,19 @@ fn run_ai_fsm(
                 }
             }
 
-            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue, bc.pending_litter_box_count, supply_kind) {
+            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.hq_pos, map, &bc.building_positions, cmd_queue, bc.pending_supply_count, supply_kind) {
                 builder_used = Some(b);
             }
 
-            let defense_pos = bc.box_pos.map(|p| defense_offset(p, map))
+            let defense_pos = bc.hq_pos.map(|p| defense_offset(p, map))
                 .unwrap_or(map_center(map));
-            if let Some(ct_e) = bc.cat_tree_entity {
+            if let Some(ct_e) = bc.barracks_entity {
                 cmd_queue.push(GameCommand::SetRallyPoint {
                     building: EntityId(ct_e.to_bits()),
                     target: defense_pos,
                 });
             }
-            if let Some(sr_e) = bc.server_rack_entity {
+            if let Some(sr_e) = bc.tech_entity {
                 cmd_queue.push(GameCommand::SetRallyPoint {
                     building: EntityId(sr_e.to_bits()),
                     target: defense_pos,
@@ -1419,10 +1241,27 @@ fn find_build_position(
     let base = box_pos.unwrap_or(GridPos::new(32, 32));
     let mut fallback: Option<GridPos> = None;
 
+    // Compute ring scan start offset so buildings expand toward map center,
+    // ensuring rotationally symmetric placement for all spawn positions.
+    let map_cx = map.width as i32 / 2;
+    let map_cy = map.height as i32 / 2;
+    let toward_center_x = (map_cx - base.x).signum() > 0;
+    let toward_center_y = (map_cy - base.y).signum() > 0;
+
     // Search concentric rings at increasing distances from the base
     for dist in AI_BUILD_SPACING..AI_BUILD_SPACING + 12 {
+        let perimeter = dist * 8;
+        // Start from the ring corner that faces toward map center
+        let ring_start = match (toward_center_x, toward_center_y) {
+            (true, true) => dist * 4,    // center is bottom-right
+            (true, false) => dist * 2,   // center is top-right
+            (false, false) => 0,         // center is top-left
+            (false, true) => dist * 6,   // center is bottom-left
+        };
+
         // Walk the perimeter of a square at Chebyshev distance `dist`
-        for offset in 0..(dist * 8) {
+        for i in 0..perimeter {
+            let offset = (ring_start + i) % perimeter;
             let (dx, dy) = ring_offset(dist, offset);
             let candidate = GridPos::new(base.x + dx, base.y + dy);
 

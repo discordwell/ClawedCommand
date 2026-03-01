@@ -19,7 +19,7 @@ use cc_core::map::GameMap;
 use cc_core::map_gen::{self, MapGenParams};
 use cc_core::unit_stats::base_stats;
 
-use cc_sim::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState, AiTier};
+use cc_sim::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState, AiTier, BotConfig};
 use cc_sim::ai::MultiAiState;
 use cc_sim::harness::invariants::{InvariantChecker, InvariantViolation, Severity};
 use cc_sim::harness::MatchOutcome;
@@ -62,15 +62,6 @@ use crate::tool_tier::FactionToolStates;
 pub enum ScriptSource {
     File(PathBuf),
     Inline { name: String, source: String },
-}
-
-/// Configuration for a single bot player.
-#[derive(Debug, Clone)]
-pub struct BotConfig {
-    pub player_id: u8,
-    pub difficulty: AiDifficulty,
-    pub profile: AiPersonalityProfile,
-    pub faction: cc_core::components::Faction,
 }
 
 /// Configuration for an arena match.

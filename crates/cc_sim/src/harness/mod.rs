@@ -21,7 +21,7 @@ use cc_core::map::GameMap;
 use cc_core::map_gen::{self, MapGenParams};
 use cc_core::unit_stats::base_stats;
 
-use crate::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState};
+use crate::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState, BotConfig};
 use crate::ai::MultiAiState;
 use crate::resources::{
     CombatStats, CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock,
@@ -47,15 +47,6 @@ use snapshot::GameStateSnapshot;
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
-
-/// Configuration for a single bot player.
-#[derive(Debug, Clone)]
-pub struct BotConfig {
-    pub player_id: u8,
-    pub difficulty: AiDifficulty,
-    pub profile: AiPersonalityProfile,
-    pub faction: cc_core::components::Faction,
-}
 
 /// A synthetic voice command to inject at a specific tick.
 #[derive(Debug, Clone)]

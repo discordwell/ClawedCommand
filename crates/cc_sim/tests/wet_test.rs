@@ -844,4 +844,158 @@ mod wet {
             snaps.iter().map(|s| s.ranged_attack_count).max().unwrap_or(0)
         );
     }
+
+    // ── Faction Balance: each faction vs CatGPT at Basic tier ──────────────
+
+    /// Run a faction matchup capped at Basic AiTier (no focus-fire, flanking, etc.).
+    fn run_basic_tier_match(
+        faction_a: cc_core::components::Faction,
+        faction_b: cc_core::components::Faction,
+        seed: u64,
+    ) -> MatchResult {
+        use cc_sim::ai::fsm::{AiTier, faction_personality};
+
+        let mut profile_a = faction_personality(faction_a);
+        profile_a.max_tier = Some(AiTier::Basic);
+        let mut profile_b = faction_personality(faction_b);
+        profile_b.max_tier = Some(AiTier::Basic);
+
+        let config = HarnessConfig {
+            seed,
+            max_ticks: 9000,
+            snapshot_interval: 200,
+            bots: [
+                BotConfig {
+                    player_id: 0,
+                    difficulty: AiDifficulty::Hard,
+                    profile: profile_a,
+                    faction: faction_a,
+                },
+                BotConfig {
+                    player_id: 1,
+                    difficulty: AiDifficulty::Hard,
+                    profile: profile_b,
+                    faction: faction_b,
+                },
+            ],
+            ..Default::default()
+        };
+        run_match(&config)
+    }
+
+    struct FactionReport {
+        name: &'static str,
+        wins: u32,
+        losses: u32,
+        draws: u32,
+        total_ticks: u64,
+        games: u32,
+    }
+
+    impl FactionReport {
+        fn new(name: &'static str) -> Self {
+            Self { name, wins: 0, losses: 0, draws: 0, total_ticks: 0, games: 0 }
+        }
+        fn avg_ticks(&self) -> u64 {
+            if self.games == 0 { 0 } else { self.total_ticks / self.games as u64 }
+        }
+    }
+
+    /// Test all 5 non-CatGPT factions against CatGPT at Basic tier across 5 seeds.
+    /// Prints a balance report and asserts no faction is completely dominated.
+    #[test]
+    fn wet_faction_vs_catgpt_basic_tier() {
+        use cc_core::components::Faction;
+        use cc_sim::harness::MatchOutcome;
+
+        let opponents: [(&str, Faction); 5] = [
+            ("TheClawed", Faction::TheClawed),
+            ("SeekersOfTheDeep", Faction::SeekersOfTheDeep),
+            ("TheMurder", Faction::TheMurder),
+            ("Llama", Faction::Llama),
+            ("Croak", Faction::Croak),
+        ];
+        let seeds = [42, 123, 456, 789, 999];
+
+        let mut reports: Vec<FactionReport> = opponents
+            .iter()
+            .map(|(name, _)| FactionReport::new(name))
+            .collect();
+
+        for (i, (name, faction)) in opponents.iter().enumerate() {
+            let mut timeouts = 0u32;
+            for &seed in &seeds {
+                let result = run_basic_tier_match(Faction::CatGpt, *faction, seed);
+
+                let (p0_won, p1_won, draw) = match &result.outcome {
+                    MatchOutcome::Victory { winner, .. } => {
+                        (*winner == 0, *winner == 1, false)
+                    }
+                    MatchOutcome::Timeout { leading_player, .. } => {
+                        match leading_player {
+                            Some(0) => (true, false, false),
+                            Some(1) => (false, true, false),
+                            _ => (false, false, true),
+                        }
+                    }
+                    MatchOutcome::Draw { .. } => (false, false, true),
+                    MatchOutcome::Error { .. } => (false, false, true),
+                };
+
+                if draw {
+                    reports[i].draws += 1;
+                } else if p1_won {
+                    reports[i].wins += 1; // opponent (faction) won
+                } else if p0_won {
+                    reports[i].losses += 1; // CatGPT won
+                }
+
+                if matches!(&result.outcome, MatchOutcome::Timeout { .. }) {
+                    timeouts += 1;
+                }
+
+                reports[i].total_ticks += result.final_tick;
+                reports[i].games += 1;
+
+                assert!(
+                    result.passed(),
+                    "CatGpt vs {} (seed {}) had fatal violations: {:?}",
+                    name, seed, result.fatal_violations()
+                );
+
+                println!(
+                    "  CatGpt vs {:18} seed {:3}: {:40} ticks: {:5} wall: {}ms",
+                    name, seed, format!("{}", result.outcome), result.final_tick, result.wall_time_ms,
+                );
+            }
+
+            // No matchup should have ALL 5 games timeout
+            assert!(
+                timeouts < seeds.len() as u32,
+                "{} vs CatGPT: all {} games timed out — factions can't finish games",
+                name, seeds.len()
+            );
+        }
+
+        // ── Balance report ──
+        println!("\n╔══════════════════════╦══════╦══════╦══════╦════════════╗");
+        println!("║ Faction vs CatGPT    ║ Wins ║ Loss ║ Draw ║  Avg Ticks ║");
+        println!("╠══════════════════════╬══════╬══════╬══════╬════════════╣");
+        for r in &reports {
+            println!(
+                "║ {:20} ║ {:4} ║ {:4} ║ {:4} ║ {:10} ║",
+                r.name, r.wins, r.losses, r.draws, r.avg_ticks()
+            );
+        }
+        println!("╚══════════════════════╩══════╩══════╩══════╩════════════╝");
+
+        // Each faction must win at least 1 of 5 games (not completely dominated)
+        for r in &reports {
+            assert!(
+                r.wins + r.draws > 0,
+                "{} won 0 out of {} games vs CatGPT — faction is too weak at Basic tier",
+                r.name, r.games
+            );
+        }
+    }
 }
