@@ -10,7 +10,8 @@
 use bevy::prelude::*;
 
 use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::UnitKind;
+use cc_core::components::{Building, Dead, Owner, Position, UnitKind};
+use cc_core::coords::GridPos;
 
 use crate::events::VoiceCommandEvent;
 
@@ -322,9 +323,13 @@ pub fn resolve_agent_command(
 pub fn voice_intent_system(
     mut voice_events: MessageReader<VoiceCommandEvent>,
     // All player-owned units on screen (default target set)
-    all_units: Query<(Entity, &cc_core::components::UnitType), With<cc_core::components::Owner>>,
+    all_units: Query<(Entity, &cc_core::components::UnitType), With<Owner>>,
     // Selected units (fallback when "selected" keyword used)
     selected_units: Query<Entity, (With<cc_core::components::UnitType>, With<cc_core::components::Selected>)>,
+    // Enemy units for attack targeting
+    enemy_units: Query<(Entity, &Position, &Owner), Without<Dead>>,
+    // Player buildings for retreat targeting
+    player_buildings: Query<(&Position, &Owner, &Building)>,
     mut cmd_queue: ResMut<cc_sim::resources::CommandQueue>,
     mut pending_filter: Local<Option<UnitKind>>,
     mut pending_selector: Local<Option<SelectorKind>>,
@@ -375,8 +380,18 @@ pub fn voice_intent_system(
                     }
                 };
 
-                if let Some(cmd) = resolve_agent_command(action, &unit_ids) {
-                    cmd_queue.push(cmd);
+                // Attack/Retreat/Siege use ECS queries for targeting
+                let cmd = match action {
+                    AgentAction::Attack | AgentAction::Siege => {
+                        resolve_voice_attack(&unit_ids, &enemy_units)
+                    }
+                    AgentAction::Retreat => {
+                        resolve_voice_retreat(&unit_ids, &player_buildings)
+                    }
+                    _ => resolve_agent_command(action, &unit_ids),
+                };
+                if let Some(c) = cmd {
+                    cmd_queue.push(c);
                 }
 
                 // Clear pending state after command execution
@@ -405,6 +420,77 @@ pub fn voice_intent_system(
             _ => {}
         }
     }
+}
+
+/// Attack: attack-move selected units toward the centroid of visible enemies.
+/// Falls back to map center (32,32) if no enemies are visible.
+fn resolve_voice_attack(
+    unit_ids: &[EntityId],
+    enemy_units: &Query<(Entity, &Position, &Owner), Without<Dead>>,
+) -> Option<GameCommand> {
+    if unit_ids.is_empty() {
+        return None;
+    }
+    let ids = unit_ids.to_vec();
+
+    // Compute centroid of enemy units (player_id != 0)
+    let mut sum_x: i64 = 0;
+    let mut sum_y: i64 = 0;
+    let mut count: i64 = 0;
+    for (_, pos, owner) in enemy_units.iter() {
+        if owner.player_id == 0 {
+            continue; // skip player's own units
+        }
+        let gp = pos.world.to_grid();
+        sum_x += gp.x as i64;
+        sum_y += gp.y as i64;
+        count += 1;
+    }
+
+    let target = if count > 0 {
+        GridPos::new((sum_x / count) as i32, (sum_y / count) as i32)
+    } else {
+        GridPos::new(32, 32) // fallback: map center
+    };
+
+    Some(GameCommand::AttackMove {
+        unit_ids: ids,
+        target,
+    })
+}
+
+/// Retreat: move selected units toward player's base (TheBox, or any owned building).
+/// Falls back to (5,5) if no buildings found.
+fn resolve_voice_retreat(
+    unit_ids: &[EntityId],
+    player_buildings: &Query<(&Position, &Owner, &Building)>,
+) -> Option<GameCommand> {
+    if unit_ids.is_empty() {
+        return None;
+    }
+    let ids = unit_ids.to_vec();
+
+    // Find player's TheBox first, fall back to any owned building
+    let mut base_pos: Option<GridPos> = None;
+    for (pos, owner, building) in player_buildings.iter() {
+        if owner.player_id != 0 {
+            continue;
+        }
+        let gp = pos.world.to_grid();
+        if building.kind == cc_core::components::BuildingKind::TheBox {
+            base_pos = Some(gp);
+            break;
+        }
+        if base_pos.is_none() {
+            base_pos = Some(gp);
+        }
+    }
+
+    let target = base_pos.unwrap_or(GridPos::new(5, 5));
+    Some(GameCommand::Move {
+        unit_ids: ids,
+        target,
+    })
 }
 
 #[cfg(test)]

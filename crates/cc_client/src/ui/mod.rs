@@ -1,3 +1,5 @@
+pub mod build_menu;
+pub mod building_info;
 pub mod resource_hud;
 
 #[cfg(feature = "native")]
@@ -27,7 +29,7 @@ use bevy::prelude::*;
 #[cfg(feature = "native")]
 use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
-/// Shared UI state — notifications, etc.
+/// Shared UI state -- notifications, etc.
 #[derive(Resource, Default)]
 pub struct UiState {
     /// Active toast notifications: (message, remaining_seconds).
@@ -39,8 +41,22 @@ pub struct UiPlugin;
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<UiState>()
-            .add_systems(Startup, resource_hud::spawn_resource_hud)
-            .add_systems(Update, resource_hud::update_resource_hud);
+            .add_systems(
+                Startup,
+                (
+                    resource_hud::spawn_resource_hud,
+                    build_menu::spawn_build_menu,
+                    building_info::spawn_building_info,
+                ),
+            )
+            .add_systems(
+                Update,
+                (
+                    resource_hud::update_resource_hud,
+                    build_menu::update_build_menu,
+                    building_info::update_building_info,
+                ),
+            );
 
         #[cfg(feature = "native")]
         {

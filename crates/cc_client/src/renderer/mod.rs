@@ -93,6 +93,17 @@ impl Plugin for RenderPlugin {
                     minimap::update_minimap,
                 ),
             )
+            // Construction visuals (separate block to avoid tuple size limit)
+            .add_systems(
+                Update,
+                (
+                    buildings::spawn_construction_bars
+                        .after(buildings::spawn_building_visuals),
+                    buildings::update_construction_bars,
+                    buildings::remove_construction_bars,
+                    buildings::update_construction_alpha,
+                ),
+            )
             .add_systems(
                 Update,
                 (

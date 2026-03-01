@@ -78,6 +78,18 @@
 - [ ] EcholocationPulse client-side fog reveal rendering
 - [ ] ShapedCharge explosion VFX
 - [ ] GravitationalChonk: don't pull through buildings (needs pathfinding query for line-of-sight)
+- [ ] GravitationalPullCommand: add map bounds clamping (unlike RevulsionAoeCommand, currently can pull units off-map)
+- [ ] Corroded stack decay guard: add `remaining_ticks > 0` check before `% 80 == 0` (fires spuriously on expiry tick)
+- [ ] Supply cap should be granted on construction completion, not on build start (LitterBox +10 cap immediately on placement)
+- [ ] ScratchingPost research queue not shown in building_info panel (only shows generic text)
+
+## Code Quality (from code review)
+
+- [ ] Extract `ensure_effect`/`refresh_or_add` into `StatusEffects::refresh_or_insert()` method (3 duplicate copies)
+- [ ] Add `UnderConstruction::progress_f32()` method (construction progress computed 4× in different files)
+- [ ] Add `BuildingKind::display_name()` method in cc_core (duplicated in build_menu.rs and building_info.rs)
+- [ ] Move LaserPointer combat stats to tuning.rs constants (hardcoded in production_system.rs)
+- [ ] Extract `BUILDING_SPRITE_SIZE: f32 = 28.0` constant (repeated in 4 renderer locations)
 
 ## Campaign Missions (Remaining RON Files)
 

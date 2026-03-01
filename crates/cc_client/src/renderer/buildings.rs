@@ -2,13 +2,45 @@ use bevy::prelude::*;
 
 use crate::input::PlacementPreview;
 use crate::setup::{BuildingMesh, building_color};
-use cc_core::components::{Building, Owner, Position};
+use cc_core::components::{Building, BuildingKind, Owner, Position, UnderConstruction};
 use cc_core::coords::{depth_z, world_to_screen};
 use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
 use cc_sim::resources::MapResource;
 
+// ---------------------------------------------------------------------------
+// Construction bar components
+// ---------------------------------------------------------------------------
+
+/// Marker added to a building once its construction bar has been spawned.
+#[derive(Component)]
+pub struct HasConstructionBar;
+
+/// Marker for construction bar foreground sprite.
+#[derive(Component)]
+pub struct ConstructionBarFg;
+
+/// Marker for construction bar background sprite.
+#[derive(Component)]
+pub struct ConstructionBarBg;
+
+const CONSTRUCTION_BAR_HEIGHT: f32 = 4.0;
+const CONSTRUCTION_BAR_Y_OFFSET: f32 = 22.0;
+
+/// Bar width for buildings by kind.
+fn construction_bar_width(kind: BuildingKind) -> f32 {
+    match kind {
+        BuildingKind::TheBox => 30.0,
+        BuildingKind::CatTree | BuildingKind::ServerRack => 28.0,
+        BuildingKind::FishMarket | BuildingKind::ScratchingPost | BuildingKind::CatFlap => 24.0,
+        BuildingKind::LitterBox | BuildingKind::LaserPointer => 20.0,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Existing systems
+// ---------------------------------------------------------------------------
+
 /// Spawn visual components for buildings that lack a BuildingMesh marker.
-/// (production_system in cc_sim spawns buildings engine-agnostically without visuals)
 pub fn spawn_building_visuals(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -90,3 +122,130 @@ pub fn render_placement_preview(
 /// Marker for the placement preview ghost entity.
 #[derive(Component)]
 pub struct PlacementGhost;
+
+// ---------------------------------------------------------------------------
+// Construction progress bar
+// ---------------------------------------------------------------------------
+
+/// Spawn construction bar child entities for buildings under construction.
+pub fn spawn_construction_bars(
+    mut commands: Commands,
+    buildings: Query<
+        (Entity, &Building),
+        (With<UnderConstruction>, With<BuildingMesh>, Without<HasConstructionBar>),
+    >,
+) {
+    for (entity, building) in buildings.iter() {
+        let bar_width = construction_bar_width(building.kind);
+
+        // Background (dark)
+        let bg = commands
+            .spawn((
+                ConstructionBarBg,
+                Sprite {
+                    color: Color::srgba(0.1, 0.1, 0.1, 0.8),
+                    custom_size: Some(Vec2::new(bar_width, CONSTRUCTION_BAR_HEIGHT)),
+                    ..default()
+                },
+                Transform::from_xyz(0.0, CONSTRUCTION_BAR_Y_OFFSET, 0.3),
+            ))
+            .id();
+
+        // Foreground (yellow/orange fill)
+        let fg = commands
+            .spawn((
+                ConstructionBarFg,
+                Sprite {
+                    color: Color::srgb(0.9, 0.7, 0.1),
+                    custom_size: Some(Vec2::new(0.0, CONSTRUCTION_BAR_HEIGHT)),
+                    ..default()
+                },
+                Transform::from_xyz(0.0, CONSTRUCTION_BAR_Y_OFFSET, 0.4),
+            ))
+            .id();
+
+        commands
+            .entity(entity)
+            .insert(HasConstructionBar)
+            .add_children(&[bg, fg]);
+    }
+}
+
+/// Update construction bar fill width based on progress.
+pub fn update_construction_bars(
+    buildings: Query<(&Building, &UnderConstruction, &Children), With<HasConstructionBar>>,
+    mut fg_bars: Query<(&mut Sprite, &mut Transform), With<ConstructionBarFg>>,
+) {
+    for (building, uc, children) in buildings.iter() {
+        let bar_width = construction_bar_width(building.kind);
+        let progress = if uc.total_ticks > 0 {
+            1.0 - (uc.remaining_ticks as f32 / uc.total_ticks as f32)
+        } else {
+            1.0
+        };
+        let fill_width = bar_width * progress;
+
+        for child in children.iter() {
+            if let Ok((mut sprite, mut transform)) = fg_bars.get_mut(child) {
+                sprite.custom_size = Some(Vec2::new(fill_width, CONSTRUCTION_BAR_HEIGHT));
+                // Left-align the fill bar
+                transform.translation.x = (fill_width - bar_width) / 2.0;
+            }
+        }
+    }
+}
+
+/// Remove construction bars when building finishes construction.
+pub fn remove_construction_bars(
+    mut commands: Commands,
+    finished: Query<
+        (Entity, &Children),
+        (With<HasConstructionBar>, Without<UnderConstruction>),
+    >,
+    bg_bars: Query<Entity, With<ConstructionBarBg>>,
+    fg_bars: Query<Entity, With<ConstructionBarFg>>,
+) {
+    for (entity, children) in finished.iter() {
+        for child in children.iter() {
+            if bg_bars.get(child).is_ok() || fg_bars.get(child).is_ok() {
+                commands.entity(child).despawn();
+            }
+        }
+        commands.entity(entity).remove::<HasConstructionBar>();
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Construction alpha (semi-transparent during build)
+// ---------------------------------------------------------------------------
+
+/// Make buildings semi-transparent while under construction, solid when complete.
+pub fn update_construction_alpha(
+    buildings: Query<
+        (Option<&UnderConstruction>, &MeshMaterial2d<ColorMaterial>),
+        With<BuildingMesh>,
+    >,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    for (uc, mat_handle) in buildings.iter() {
+        let Some(mat) = materials.get_mut(&mat_handle.0) else {
+            continue;
+        };
+
+        if let Some(uc) = uc {
+            let progress = if uc.total_ticks > 0 {
+                1.0 - (uc.remaining_ticks as f32 / uc.total_ticks as f32)
+            } else {
+                1.0
+            };
+            let alpha = 0.4 + 0.6 * progress;
+            mat.color = mat.color.with_alpha(alpha);
+        } else {
+            // Ensure fully opaque when not under construction
+            let current_alpha = mat.color.alpha();
+            if current_alpha < 1.0 {
+                mat.color = mat.color.with_alpha(1.0);
+            }
+        }
+    }
+}

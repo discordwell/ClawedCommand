@@ -7,6 +7,7 @@ use cc_core::components::{
     UnderConstruction, Velocity,
 };
 use cc_core::coords::WorldPos;
+use cc_core::math::Fixed;
 use cc_core::tuning::BUILDER_PROXIMITY;
 
 /// Checks each builder with a `BuildOrder` for adjacency to the build site.
@@ -28,6 +29,13 @@ pub fn builder_system(
             let bstats = building_stats(build_order.building_kind);
             let world = WorldPos::from_grid(build_order.position);
 
+            // Start at 10% HP during construction, full HP if pre-built
+            let starting_hp = if bstats.build_time > 0 {
+                bstats.health * Fixed::from_num(0.1f32)
+            } else {
+                bstats.health
+            };
+
             let mut building = commands.spawn((
                 Position { world },
                 Velocity::zero(),
@@ -41,7 +49,7 @@ pub fn builder_system(
                     kind: build_order.building_kind,
                 },
                 Health {
-                    current: bstats.health,
+                    current: starting_hp,
                     max: bstats.health,
                 },
             ));
