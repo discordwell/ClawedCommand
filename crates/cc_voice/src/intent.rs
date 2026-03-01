@@ -813,7 +813,7 @@ fn resolve_voice_retreat(
             continue;
         }
         let gp = pos.world.to_grid();
-        if building.kind == cc_core::components::BuildingKind::TheBox {
+        if building.kind.is_hq() {
             base_pos = Some(gp);
             break;
         }
