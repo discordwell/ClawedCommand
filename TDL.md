@@ -42,19 +42,6 @@
 - [ ] Replace 4,096 fog overlay entities with a single full-screen quad + 64x64 fog texture (write pixel alpha directly, use shader for isometric diamond mask). Eliminates all entity queries and material swaps for fog. Priority increases at 128x128+ map sizes.
 - [ ] Consider replacing Gizmos terrain borders with spawned static Mesh2d line entities for 128x128+ maps (Gizmos are immediate-mode, rebuilt every frame)
 
-## From Campaign System Code Review
-
-- [ ] Fix `pack_leader_hurt` trigger in prologue.ron: condition `All([TriggerFired("spawn_pack_leader"), EnemyKillCount(8)])` fires immediately after pack_leader spawns since EnemyKillCount(8) is already true at that point. Should use HeroHpBelow or a higher kill count threshold.
-- [ ] Implement `WaveEliminated` trigger condition (currently always returns false in triggers.rs)
-- [ ] Auto-evaluate `EliminateAll`, `Survive`, and `HeroReachesPos` objective conditions directly in `mission_objective_system` instead of requiring matching triggers
-- [ ] Refactor `run_ai_fsm` (~450 lines): extract census, per-phase handlers, enemy discovery helpers
-- [ ] Consolidate hero.rs four parallel match blocks into single `HeroData` struct
-- [ ] Replace `Vec<String>` with `HashSet<String>` for `flags`, `fired_triggers`, `spawned_waves`, `completed_missions` in CampaignState
-- [ ] Wrap `MissionDefinition` in `Arc` to avoid cloning every tick in trigger/objective systems
-- [ ] Add `Faction` enum to replace raw string faction identifiers
-- [ ] Merge `validate()` three trigger iteration passes into single pass
-- [ ] Unify `BotPersonality` and `AiPersonalityProfile` into single abstraction
-
 ## From Voice Pipeline Implementation
 
 - [ ] Run Python voice training tests after setting up PyTorch environment (`cd training/voice && python test_model.py`)

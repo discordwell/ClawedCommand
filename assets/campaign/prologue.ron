@@ -142,12 +142,15 @@
             ],
             once: true,
         ),
-        // T7: Pack Leader at 50% HP — Grok dialogue
+        // T7: Pack Leader taking damage — Grok dialogue
+        // Uses kill count 10 (2 kills after pack_leader spawns at 8) to ensure delay.
+        // Previous condition EnemyKillCount(8) fired immediately since it was already
+        // true when spawn_pack_leader triggered.
         (
             id: "pack_leader_hurt",
             condition: All([
                 TriggerFired("spawn_pack_leader"),
-                EnemyKillCount(8),
+                EnemyKillCount(10),
             ]),
             actions: [ShowDialogue([16, 17])],
             once: true,

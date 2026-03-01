@@ -2,8 +2,8 @@ use bevy::prelude::*;
 
 use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::{
-    Building, BuildingKind, Gathering, MoveTarget, Owner, Position, Producer, ResourceDeposit,
-    UnitKind, UnitType, UpgradeType,
+    Building, BuildingKind, Faction, Gathering, MoveTarget, Owner, Position, Producer,
+    ResourceDeposit, UnitKind, UnitType, UpgradeType,
 };
 use cc_core::coords::GridPos;
 use cc_core::tuning::{ATTACK_REISSUE_INTERVAL, BASE_THREAT_RADIUS};
@@ -28,39 +28,12 @@ impl AiDifficulty {
     }
 }
 
-/// Bot personality — controls attack timing thresholds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BotPersonality {
-    /// Attacks at army_count >= 8 (default).
-    Balanced,
-    /// Attacks at army_count >= 6 (rush).
-    Aggressive,
-    /// Attacks at army_count >= 12 (turtle).
-    Defensive,
-}
-
-impl BotPersonality {
-    fn attack_threshold(&self) -> u32 {
-        match self {
-            BotPersonality::Balanced => 8,
-            BotPersonality::Aggressive => 6,
-            BotPersonality::Defensive => 12,
-        }
-    }
-}
-
-impl Default for BotPersonality {
-    fn default() -> Self {
-        BotPersonality::Balanced
-    }
-}
-
-/// Faction-specific AI personality profile for campaign and skirmish.
-/// When present on AiState, overrides BotPersonality behavior with richer,
-/// faction-flavored decision-making.
+/// Unified AI personality profile for campaign and skirmish.
+/// Replaces the previous split between `BotPersonality` (simple enum) and
+/// `AiPersonalityProfile` (rich struct). All AI agents now use this single type.
 #[derive(Debug, Clone)]
 pub struct AiPersonalityProfile {
-    /// Display name (e.g. "Minstral").
+    /// Display name (e.g. "Minstral", "Balanced").
     pub name: String,
     /// Army size before transitioning to Attack phase.
     pub attack_threshold: u32,
@@ -80,10 +53,72 @@ pub struct AiPersonalityProfile {
     pub leak_chance: u32,
 }
 
-/// Returns the AI personality profile for a given faction name.
-pub fn faction_personality(faction: &str) -> AiPersonalityProfile {
+impl AiPersonalityProfile {
+    /// Balanced preset (default) — attacks at army_count >= 8.
+    pub fn balanced() -> Self {
+        Self {
+            name: "Balanced".into(),
+            attack_threshold: 8,
+            unit_preferences: vec![
+                (UnitKind::Nuisance, 2),
+                (UnitKind::Hisser, 2),
+            ],
+            target_workers: 4,
+            economy_priority: false,
+            retreat_threshold: 30,
+            eval_speed_mult: 1.0,
+            chaos_factor: 5,
+            leak_chance: 0,
+        }
+    }
+
+    /// Aggressive preset — attacks at army_count >= 6 (rush).
+    pub fn aggressive() -> Self {
+        Self {
+            name: "Aggressive".into(),
+            attack_threshold: 6,
+            unit_preferences: vec![
+                (UnitKind::Nuisance, 3),
+                (UnitKind::Hisser, 1),
+            ],
+            target_workers: 3,
+            economy_priority: false,
+            retreat_threshold: 20,
+            eval_speed_mult: 0.8,
+            chaos_factor: 10,
+            leak_chance: 0,
+        }
+    }
+
+    /// Defensive preset — attacks at army_count >= 12 (turtle).
+    pub fn defensive() -> Self {
+        Self {
+            name: "Defensive".into(),
+            attack_threshold: 12,
+            unit_preferences: vec![
+                (UnitKind::Chonk, 3),
+                (UnitKind::Hisser, 2),
+            ],
+            target_workers: 5,
+            economy_priority: true,
+            retreat_threshold: 50,
+            eval_speed_mult: 1.2,
+            chaos_factor: 0,
+            leak_chance: 0,
+        }
+    }
+}
+
+impl Default for AiPersonalityProfile {
+    fn default() -> Self {
+        Self::balanced()
+    }
+}
+
+/// Returns the AI personality profile for a given Faction enum value.
+pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
     match faction {
-        "catGPT" => AiPersonalityProfile {
+        Faction::CatGpt => AiPersonalityProfile {
             name: "Minstral".into(),
             attack_threshold: 8,
             unit_preferences: vec![
@@ -99,7 +134,7 @@ pub fn faction_personality(faction: &str) -> AiPersonalityProfile {
             chaos_factor: 10,
             leak_chance: 0,
         },
-        "The Clawed" => AiPersonalityProfile {
+        Faction::TheClawed => AiPersonalityProfile {
             name: "Geppity".into(),
             attack_threshold: 6,
             unit_preferences: vec![
@@ -114,7 +149,7 @@ pub fn faction_personality(faction: &str) -> AiPersonalityProfile {
             chaos_factor: 15,
             leak_chance: 0,
         },
-        "Seekers of the Deep" => AiPersonalityProfile {
+        Faction::SeekersOfTheDeep => AiPersonalityProfile {
             name: "Deepseek".into(),
             attack_threshold: 12,
             unit_preferences: vec![
@@ -129,7 +164,7 @@ pub fn faction_personality(faction: &str) -> AiPersonalityProfile {
             chaos_factor: 0,
             leak_chance: 0,
         },
-        "The Murder" => AiPersonalityProfile {
+        Faction::TheMurder => AiPersonalityProfile {
             name: "Gemineye".into(),
             attack_threshold: 7,
             unit_preferences: vec![
@@ -144,7 +179,7 @@ pub fn faction_personality(faction: &str) -> AiPersonalityProfile {
             chaos_factor: 20,
             leak_chance: 0,
         },
-        "LLAMA" => AiPersonalityProfile {
+        Faction::Llama => AiPersonalityProfile {
             name: "Llhama".into(),
             attack_threshold: 5,
             unit_preferences: vec![
@@ -159,7 +194,7 @@ pub fn faction_personality(faction: &str) -> AiPersonalityProfile {
             chaos_factor: 25,
             leak_chance: 30,
         },
-        "Croak" => AiPersonalityProfile {
+        Faction::Croak => AiPersonalityProfile {
             name: "Grok".into(),
             attack_threshold: 10,
             unit_preferences: vec![
@@ -174,9 +209,8 @@ pub fn faction_personality(faction: &str) -> AiPersonalityProfile {
             chaos_factor: 10,
             leak_chance: 0,
         },
-        // Unknown faction → balanced defaults
-        _ => AiPersonalityProfile {
-            name: "Unknown".into(),
+        Faction::Neutral => AiPersonalityProfile {
+            name: "Neutral".into(),
             attack_threshold: 8,
             unit_preferences: vec![
                 (UnitKind::Nuisance, 2),
@@ -190,6 +224,13 @@ pub fn faction_personality(faction: &str) -> AiPersonalityProfile {
             leak_chance: 0,
         },
     }
+}
+
+/// Returns the AI personality profile for a faction name string.
+/// Falls back to Neutral for unknown faction names.
+pub fn faction_personality_by_name(faction: &str) -> AiPersonalityProfile {
+    let f = Faction::from_faction_str(faction).unwrap_or(Faction::Neutral);
+    faction_personality(f)
 }
 
 /// FSM states for the scripted AI.
@@ -213,9 +254,8 @@ pub struct AiState {
     pub player_id: u8,
     pub phase: AiPhase,
     pub difficulty: AiDifficulty,
-    pub personality: BotPersonality,
-    /// Faction-specific personality profile. When Some, overrides BotPersonality behavior.
-    pub profile: Option<AiPersonalityProfile>,
+    /// Unified personality profile controlling all AI behavior parameters.
+    pub profile: AiPersonalityProfile,
     /// Enemy player spawn position (target for attacks).
     pub enemy_spawn: Option<GridPos>,
     /// True if the attack order has already been issued this Attack phase.
@@ -230,8 +270,7 @@ impl Default for AiState {
             player_id: 1,
             phase: AiPhase::EarlyGame,
             difficulty: AiDifficulty::Medium,
-            personality: BotPersonality::Balanced,
-            profile: None,
+            profile: AiPersonalityProfile::default(),
             enemy_spawn: None,
             attack_ordered: false,
             last_attack_tick: 0,
@@ -285,6 +324,150 @@ pub fn multi_ai_decision_system(
     }
 }
 
+/// Census of the AI player's units.
+struct UnitCensus {
+    worker_count: u32,
+    army_count: u32,
+    enemy_army_count: u32,
+    idle_workers: Vec<Entity>,
+    all_workers: Vec<Entity>,
+    army_entities: Vec<Entity>,
+}
+
+/// Census of the AI player's buildings.
+struct BuildingCensus {
+    has_box: bool,
+    has_cat_tree: bool,
+    has_fish_market: bool,
+    has_server_rack: bool,
+    has_scratching_post: bool,
+    has_laser_pointer: bool,
+    box_entity: Option<Entity>,
+    box_pos: Option<GridPos>,
+    cat_tree_entity: Option<Entity>,
+    server_rack_entity: Option<Entity>,
+    scratching_post_entity: Option<Entity>,
+    building_count: u32,
+}
+
+/// Scan all units and classify them as workers, army, or enemy army.
+fn take_unit_census(
+    ai_player: u8,
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
+) -> UnitCensus {
+    let mut census = UnitCensus {
+        worker_count: 0,
+        army_count: 0,
+        enemy_army_count: 0,
+        idle_workers: Vec::new(),
+        all_workers: Vec::new(),
+        army_entities: Vec::new(),
+    };
+    for (entity, _, owner, unit_type, gathering, move_target) in units.iter() {
+        if owner.player_id != ai_player {
+            if unit_type.kind != UnitKind::Pawdler {
+                census.enemy_army_count += 1;
+            }
+            continue;
+        }
+        match unit_type.kind {
+            UnitKind::Pawdler => {
+                census.worker_count += 1;
+                census.all_workers.push(entity);
+                if gathering.is_none() && move_target.is_none() {
+                    census.idle_workers.push(entity);
+                }
+            }
+            _ => {
+                census.army_count += 1;
+                census.army_entities.push(entity);
+            }
+        }
+    }
+    census
+}
+
+/// Scan all buildings owned by the AI player.
+fn take_building_census(
+    ai_player: u8,
+    buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
+) -> BuildingCensus {
+    let mut census = BuildingCensus {
+        has_box: false,
+        has_cat_tree: false,
+        has_fish_market: false,
+        has_server_rack: false,
+        has_scratching_post: false,
+        has_laser_pointer: false,
+        box_entity: None,
+        box_pos: None,
+        cat_tree_entity: None,
+        server_rack_entity: None,
+        scratching_post_entity: None,
+        building_count: 0,
+    };
+    for (entity, building, owner, pos, producer) in buildings.iter() {
+        if owner.player_id != ai_player {
+            continue;
+        }
+        census.building_count += 1;
+        match building.kind {
+            BuildingKind::TheBox => {
+                census.has_box = true;
+                census.box_pos = Some(pos.world.to_grid());
+                if producer.is_some() {
+                    census.box_entity = Some(entity);
+                }
+            }
+            BuildingKind::CatTree => {
+                census.has_cat_tree = true;
+                if producer.is_some() {
+                    census.cat_tree_entity = Some(entity);
+                }
+            }
+            BuildingKind::FishMarket => {
+                census.has_fish_market = true;
+            }
+            BuildingKind::ServerRack => {
+                census.has_server_rack = true;
+                if producer.is_some() {
+                    census.server_rack_entity = Some(entity);
+                }
+            }
+            BuildingKind::ScratchingPost => {
+                census.has_scratching_post = true;
+                census.scratching_post_entity = Some(entity);
+            }
+            BuildingKind::LaserPointer => {
+                census.has_laser_pointer = true;
+            }
+            _ => {}
+        }
+    }
+    census
+}
+
+/// Discover the enemy base position. Prefers enemy TheBox, falls back to any enemy unit.
+fn discover_enemy_spawn(
+    ai_player: u8,
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
+    buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
+) -> Option<GridPos> {
+    // First: look for enemy TheBox
+    for (_, building, owner, pos, _) in buildings.iter() {
+        if owner.player_id != ai_player && building.kind == BuildingKind::TheBox {
+            return Some(pos.world.to_grid());
+        }
+    }
+    // Fallback: any enemy unit
+    for (_, pos, owner, _, _, _) in units.iter() {
+        if owner.player_id != ai_player {
+            return Some(pos.world.to_grid());
+        }
+    }
+    None
+}
+
 /// Core FSM logic shared between single-AI and multi-AI systems.
 fn run_ai_fsm(
     tick: u64,
@@ -296,12 +479,8 @@ fn run_ai_fsm(
     deposits: &Query<(Entity, &Position, &ResourceDeposit)>,
 ) {
     let base_interval = ai_state.difficulty.eval_interval();
-    let interval = if let Some(profile) = &ai_state.profile {
-        // Apply eval_speed_mult: higher = slower decisions
-        ((base_interval as f32) * profile.eval_speed_mult).max(1.0) as u64
-    } else {
-        base_interval
-    };
+    // Apply eval_speed_mult from profile: higher = slower decisions
+    let interval = ((base_interval as f32) * ai_state.profile.eval_speed_mult).max(1.0) as u64;
     if tick % interval != 0 || tick == 0 {
         return;
     }
@@ -311,130 +490,26 @@ fn run_ai_fsm(
         return;
     };
 
-    // Count AI's units and buildings
-    let mut worker_count = 0u32;
-    let mut army_count = 0u32;
-    let mut enemy_army_count = 0u32;
-    let mut idle_workers: Vec<Entity> = Vec::new();
-    let mut all_workers: Vec<Entity> = Vec::new();
-    let mut army_entities: Vec<Entity> = Vec::new();
+    let uc = take_unit_census(ai_player, units);
+    let bc = take_building_census(ai_player, buildings);
 
-    for (entity, _, owner, unit_type, gathering, move_target) in units.iter() {
-        if owner.player_id != ai_player {
-            if unit_type.kind != UnitKind::Pawdler {
-                enemy_army_count += 1;
-            }
-            continue;
-        }
-        match unit_type.kind {
-            UnitKind::Pawdler => {
-                worker_count += 1;
-                all_workers.push(entity);
-                if gathering.is_none() && move_target.is_none() {
-                    idle_workers.push(entity);
-                }
-            }
-            _ => {
-                army_count += 1;
-                army_entities.push(entity);
-            }
-        }
-    }
-
-    let mut has_box = false;
-    let mut has_cat_tree = false;
-    let mut has_fish_market = false;
-    let mut has_server_rack = false;
-    let mut has_scratching_post = false;
-    let mut has_laser_pointer = false;
-    let mut box_entity = None;
-    let mut box_pos: Option<GridPos> = None;
-    let mut cat_tree_entity = None;
-    let mut server_rack_entity = None;
-    let mut scratching_post_entity = None;
-    let mut building_count: u32 = 0;
-
-    for (entity, building, owner, pos, producer) in buildings.iter() {
-        if owner.player_id != ai_player {
-            continue;
-        }
-        building_count += 1;
-        match building.kind {
-            BuildingKind::TheBox => {
-                has_box = true;
-                box_pos = Some(pos.world.to_grid());
-                if producer.is_some() {
-                    box_entity = Some(entity);
-                }
-            }
-            BuildingKind::CatTree => {
-                has_cat_tree = true;
-                if producer.is_some() {
-                    cat_tree_entity = Some(entity);
-                }
-            }
-            BuildingKind::FishMarket => {
-                has_fish_market = true;
-            }
-            BuildingKind::ServerRack => {
-                has_server_rack = true;
-                if producer.is_some() {
-                    server_rack_entity = Some(entity);
-                }
-            }
-            BuildingKind::ScratchingPost => {
-                has_scratching_post = true;
-                // ScratchingPost entity tracked even without Producer (uses Researcher)
-                scratching_post_entity = Some(entity);
-            }
-            BuildingKind::LaserPointer => {
-                has_laser_pointer = true;
-            }
-            _ => {}
-        }
-    }
-
-    // Find enemy base — prefer enemy TheBox building, fall back to any enemy unit
+    // Discover enemy base if not yet known
     if ai_state.enemy_spawn.is_none() {
-        // First: look for enemy TheBox
-        for (_, building, owner, pos, _) in buildings.iter() {
-            if owner.player_id != ai_player && building.kind == BuildingKind::TheBox {
-                ai_state.enemy_spawn = Some(pos.world.to_grid());
-                break;
-            }
-        }
-        // Fallback: any enemy unit
-        if ai_state.enemy_spawn.is_none() {
-            for (_, pos, owner, _, _, _) in units.iter() {
-                if owner.player_id != ai_player {
-                    ai_state.enemy_spawn = Some(pos.world.to_grid());
-                    break;
-                }
-            }
-        }
+        ai_state.enemy_spawn = discover_enemy_spawn(ai_player, units, buildings);
     }
 
     // Track which worker was used as a builder this tick (excluded from gather)
     let mut builder_used: Option<Entity> = None;
 
-    let attack_threshold = if let Some(profile) = &ai_state.profile {
-        profile.attack_threshold
-    } else {
-        ai_state.personality.attack_threshold()
-    };
-
-    let target_workers = if let Some(profile) = &ai_state.profile {
-        profile.target_workers
-    } else {
-        4 // default
-    };
+    let attack_threshold = ai_state.profile.attack_threshold;
+    let target_workers = ai_state.profile.target_workers;
 
     // FSM transitions
     let new_phase = match ai_state.phase {
         AiPhase::EarlyGame => {
             // Train workers until target count
-            if worker_count < target_workers {
-                if let Some(box_e) = box_entity {
+            if uc.worker_count < target_workers {
+                if let Some(box_e) = bc.box_entity {
                     if pres.food >= 50 && pres.supply < pres.supply_cap {
                         cmd_queue.push(GameCommand::TrainUnit {
                             building: EntityId(box_e.to_bits()),
@@ -443,7 +518,7 @@ fn run_ai_fsm(
                     }
                 }
             }
-            if worker_count >= target_workers {
+            if uc.worker_count >= target_workers {
                 AiPhase::BuildUp
             } else {
                 AiPhase::EarlyGame
@@ -452,9 +527,9 @@ fn run_ai_fsm(
 
         AiPhase::BuildUp => {
             // Build one structure per tick to avoid same-worker conflicts
-            if builder_used.is_none() && !has_fish_market && pres.food >= 100 && has_box {
-                if let Some(builder) = pick_builder(&idle_workers, &all_workers) {
-                    let build_pos = find_build_position(box_pos, building_count);
+            if builder_used.is_none() && !bc.has_fish_market && pres.food >= 100 && bc.has_box {
+                if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
+                    let build_pos = find_build_position(bc.box_pos, bc.building_count);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: BuildingKind::FishMarket,
@@ -464,9 +539,9 @@ fn run_ai_fsm(
                 }
             }
 
-            if builder_used.is_none() && !has_cat_tree && pres.food >= 150 && has_box {
-                if let Some(builder) = pick_builder(&idle_workers, &all_workers) {
-                    let build_pos = find_build_position(box_pos, building_count + 1);
+            if builder_used.is_none() && !bc.has_cat_tree && pres.food >= 150 && bc.has_box {
+                if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
+                    let build_pos = find_build_position(bc.box_pos, bc.building_count + 1);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: BuildingKind::CatTree,
@@ -477,13 +552,13 @@ fn run_ai_fsm(
             }
 
             if builder_used.is_none() {
-                if let Some(b) = maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue) {
+                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, bc.building_count, cmd_queue) {
                     builder_used = Some(b);
                 }
             }
 
             // Train army from CatTree
-            if let Some(ct_e) = cat_tree_entity {
+            if let Some(ct_e) = bc.cat_tree_entity {
                 let nuisance_cost = cc_core::unit_stats::base_stats(UnitKind::Nuisance).food_cost;
                 if pres.food >= nuisance_cost && pres.supply < pres.supply_cap {
                     cmd_queue.push(GameCommand::TrainUnit {
@@ -493,7 +568,7 @@ fn run_ai_fsm(
                 }
             }
 
-            if army_count >= 4 {
+            if uc.army_count >= 4 {
                 AiPhase::MidGame
             } else {
                 AiPhase::BuildUp
@@ -502,9 +577,9 @@ fn run_ai_fsm(
 
         AiPhase::MidGame => {
             // Build one structure per tick to avoid same-worker conflicts
-            if builder_used.is_none() && !has_server_rack && pres.food >= 100 && pres.gpu_cores >= 75 && has_box {
-                if let Some(builder) = pick_builder(&idle_workers, &all_workers) {
-                    let build_pos = find_build_position(box_pos, building_count);
+            if builder_used.is_none() && !bc.has_server_rack && pres.food >= 100 && pres.gpu_cores >= 75 && bc.has_box {
+                if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
+                    let build_pos = find_build_position(bc.box_pos, bc.building_count);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: BuildingKind::ServerRack,
@@ -514,9 +589,9 @@ fn run_ai_fsm(
                 }
             }
 
-            if builder_used.is_none() && !has_scratching_post && pres.food >= 100 && pres.gpu_cores >= 50 && has_box {
-                if let Some(builder) = pick_builder(&idle_workers, &all_workers) {
-                    let build_pos = find_build_position(box_pos, building_count + 1);
+            if builder_used.is_none() && !bc.has_scratching_post && pres.food >= 100 && pres.gpu_cores >= 50 && bc.has_box {
+                if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
+                    let build_pos = find_build_position(bc.box_pos, bc.building_count + 1);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: BuildingKind::ScratchingPost,
@@ -526,9 +601,9 @@ fn run_ai_fsm(
                 }
             }
 
-            if builder_used.is_none() && !has_laser_pointer && pres.food >= 75 && pres.gpu_cores >= 25 && has_box {
-                if let Some(builder) = pick_builder(&idle_workers, &all_workers) {
-                    let build_pos = find_build_position(box_pos, building_count + 2);
+            if builder_used.is_none() && !bc.has_laser_pointer && pres.food >= 75 && pres.gpu_cores >= 25 && bc.has_box {
+                if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
+                    let build_pos = find_build_position(bc.box_pos, bc.building_count + 2);
                     cmd_queue.push(GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: BuildingKind::LaserPointer,
@@ -539,7 +614,7 @@ fn run_ai_fsm(
             }
 
             // Queue research at ScratchingPost
-            if let Some(sp_e) = scratching_post_entity {
+            if let Some(sp_e) = bc.scratching_post_entity {
                 let research_priority = [
                     UpgradeType::SharperClaws,
                     UpgradeType::ThickerFur,
@@ -560,10 +635,10 @@ fn run_ai_fsm(
             }
 
             // Train advanced units from ServerRack
-            if let Some(sr_e) = server_rack_entity {
+            if let Some(sr_e) = bc.server_rack_entity {
                 if pres.supply < pres.supply_cap {
                     let kind = if pres.completed_upgrades.contains(&UpgradeType::SiegeTraining)
-                        && army_count % 4 == 0
+                        && uc.army_count % 4 == 0
                     {
                         UnitKind::Catnapper
                     } else {
@@ -580,9 +655,9 @@ fn run_ai_fsm(
             }
 
             // Keep training basic units from CatTree — use profile preferences if available
-            if let Some(ct_e) = cat_tree_entity {
+            if let Some(ct_e) = bc.cat_tree_entity {
                 if pres.supply < pres.supply_cap {
-                    let kind = pick_unit_kind(&ai_state.profile, army_count, tick);
+                    let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick);
                     let stats = cc_core::unit_stats::base_stats(kind);
                     if pres.food >= stats.food_cost {
                         cmd_queue.push(GameCommand::TrainUnit {
@@ -594,14 +669,14 @@ fn run_ai_fsm(
             }
 
             if builder_used.is_none() {
-                if let Some(b) = maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue) {
+                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, bc.building_count, cmd_queue) {
                     builder_used = Some(b);
                 }
             }
 
             // Continue training workers (cap at 6 to reserve supply for army)
-            if worker_count < 6 {
-                if let Some(box_e) = box_entity {
+            if uc.worker_count < 6 {
+                if let Some(box_e) = bc.box_entity {
                     if pres.food >= 50 && pres.supply < pres.supply_cap {
                         cmd_queue.push(GameCommand::TrainUnit {
                             building: EntityId(box_e.to_bits()),
@@ -612,8 +687,8 @@ fn run_ai_fsm(
             }
 
             // Attack when army is ready, OR when enemy has no army (cleanup mode).
-            let enemy_defenseless = enemy_army_count == 0 && army_count >= 2;
-            if army_count >= attack_threshold || enemy_defenseless {
+            let enemy_defenseless = uc.enemy_army_count == 0 && uc.army_count >= 2;
+            if uc.army_count >= attack_threshold || enemy_defenseless {
                 AiPhase::Attack
             } else {
                 AiPhase::MidGame
@@ -628,8 +703,8 @@ fn run_ai_fsm(
 
             if should_reissue {
                 if let Some(target) = ai_state.enemy_spawn {
-                    if !army_entities.is_empty() {
-                        let ids: Vec<EntityId> = army_entities
+                    if !uc.army_entities.is_empty() {
+                        let ids: Vec<EntityId> = uc.army_entities
                             .iter()
                             .map(|e| EntityId(e.to_bits()))
                             .collect();
@@ -644,9 +719,9 @@ fn run_ai_fsm(
             }
 
             // Keep economy running during attack — train reinforcements
-            if let Some(ct_e) = cat_tree_entity {
+            if let Some(ct_e) = bc.cat_tree_entity {
                 if pres.supply < pres.supply_cap {
-                    let kind = if army_count % 3 == 0 {
+                    let kind = if uc.army_count % 3 == 0 {
                         UnitKind::Hisser
                     } else {
                         UnitKind::Nuisance
@@ -661,7 +736,7 @@ fn run_ai_fsm(
                 }
             }
 
-            if let Some(b) = maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue) {
+            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, bc.building_count, cmd_queue) {
                 builder_used = Some(b);
             }
 
@@ -669,7 +744,7 @@ fn run_ai_fsm(
             let base_threatened = is_base_threatened(ai_player, units, buildings);
             if base_threatened {
                 AiPhase::Defend
-            } else if army_count < 4 && enemy_army_count > 0 {
+            } else if uc.army_count < 4 && uc.enemy_army_count > 0 {
                 // Lost most of army and enemy still has forces — rebuild
                 AiPhase::MidGame
             } else {
@@ -680,9 +755,9 @@ fn run_ai_fsm(
 
         AiPhase::Defend => {
             // Rally army back to base (use actual building position)
-            let rally_pos = box_pos.unwrap_or(GridPos::new(55, 55));
-            if !army_entities.is_empty() {
-                let ids: Vec<EntityId> = army_entities
+            let rally_pos = bc.box_pos.unwrap_or(GridPos::new(55, 55));
+            if !uc.army_entities.is_empty() {
+                let ids: Vec<EntityId> = uc.army_entities
                     .iter()
                     .map(|e| EntityId(e.to_bits()))
                     .collect();
@@ -693,7 +768,7 @@ fn run_ai_fsm(
             }
 
             // Keep training reinforcements while defending
-            if let Some(ct_e) = cat_tree_entity {
+            if let Some(ct_e) = bc.cat_tree_entity {
                 if pres.supply < pres.supply_cap {
                     let stats = cc_core::unit_stats::base_stats(UnitKind::Nuisance);
                     if pres.food >= stats.food_cost {
@@ -705,7 +780,7 @@ fn run_ai_fsm(
                 }
             }
 
-            if let Some(b) = maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue) {
+            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, bc.building_count, cmd_queue) {
                 builder_used = Some(b);
             }
 
@@ -719,7 +794,7 @@ fn run_ai_fsm(
     };
 
     // Send idle workers to gather (after FSM so builder_used is set)
-    for &worker in &idle_workers {
+    for &worker in &uc.idle_workers {
         if Some(worker) == builder_used {
             continue;
         }
@@ -739,36 +814,26 @@ fn run_ai_fsm(
     ai_state.phase = new_phase;
 }
 
-/// Pick a unit kind to train, using personality profile weighted preferences if available.
-/// Falls back to alternating Nuisance/Hisser when no profile is set.
-fn pick_unit_kind(profile: &Option<AiPersonalityProfile>, army_count: u32, tick: u64) -> UnitKind {
-    if let Some(p) = profile {
-        if p.unit_preferences.is_empty() {
-            return UnitKind::Nuisance;
-        }
-        // Deterministic weighted selection using tick + army_count as pseudo-random seed
-        let total_weight: u32 = p.unit_preferences.iter().map(|(_, w)| w).sum();
-        if total_weight == 0 {
-            return UnitKind::Nuisance;
-        }
-        let hash = tick.wrapping_mul(6364136223846793005).wrapping_add(army_count as u64);
-        let pick = (hash >> 33) as u32 % total_weight;
-        let mut cumulative = 0u32;
-        for &(kind, weight) in &p.unit_preferences {
-            cumulative += weight;
-            if pick < cumulative {
-                return kind;
-            }
-        }
-        p.unit_preferences.last().map_or(UnitKind::Nuisance, |&(k, _)| k)
-    } else {
-        // Default: alternate Nuisance and Hisser
-        if army_count % 3 == 0 {
-            UnitKind::Hisser
-        } else {
-            UnitKind::Nuisance
+/// Pick a unit kind to train using the profile's weighted preferences.
+fn pick_unit_kind(profile: &AiPersonalityProfile, army_count: u32, tick: u64) -> UnitKind {
+    if profile.unit_preferences.is_empty() {
+        return UnitKind::Nuisance;
+    }
+    // Deterministic weighted selection using tick + army_count as pseudo-random seed
+    let total_weight: u32 = profile.unit_preferences.iter().map(|(_, w)| w).sum();
+    if total_weight == 0 {
+        return UnitKind::Nuisance;
+    }
+    let hash = tick.wrapping_mul(6364136223846793005).wrapping_add(army_count as u64);
+    let pick = (hash >> 33) as u32 % total_weight;
+    let mut cumulative = 0u32;
+    for &(kind, weight) in &profile.unit_preferences {
+        cumulative += weight;
+        if pick < cumulative {
+            return kind;
         }
     }
+    profile.unit_preferences.last().map_or(UnitKind::Nuisance, |&(k, _)| k)
 }
 
 /// Pick a builder: prefer an idle worker, fall back to any worker.
@@ -906,42 +971,42 @@ mod tests {
         assert_eq!(state.player_id, 1);
         assert_eq!(state.phase, AiPhase::EarlyGame);
         assert_eq!(state.difficulty, AiDifficulty::Medium);
-        assert_eq!(state.personality, BotPersonality::Balanced);
+        assert_eq!(state.profile.attack_threshold, 8);
     }
 
     #[test]
-    fn bot_personality_thresholds() {
-        assert_eq!(BotPersonality::Aggressive.attack_threshold(), 6);
-        assert_eq!(BotPersonality::Balanced.attack_threshold(), 8);
-        assert_eq!(BotPersonality::Defensive.attack_threshold(), 12);
+    fn personality_preset_thresholds() {
+        assert_eq!(AiPersonalityProfile::aggressive().attack_threshold, 6);
+        assert_eq!(AiPersonalityProfile::balanced().attack_threshold, 8);
+        assert_eq!(AiPersonalityProfile::defensive().attack_threshold, 12);
     }
 
     #[test]
     fn all_factions_have_personality_profiles() {
         let factions = [
-            "catGPT",
-            "The Clawed",
-            "Seekers of the Deep",
-            "The Murder",
-            "LLAMA",
-            "Croak",
+            Faction::CatGpt,
+            Faction::TheClawed,
+            Faction::SeekersOfTheDeep,
+            Faction::TheMurder,
+            Faction::Llama,
+            Faction::Croak,
         ];
         for faction in factions {
             let profile = faction_personality(faction);
-            assert!(!profile.name.is_empty(), "{faction} has empty name");
-            assert!(profile.attack_threshold > 0, "{faction} attack_threshold is 0");
-            assert!(!profile.unit_preferences.is_empty(), "{faction} has no unit preferences");
-            assert!(profile.target_workers > 0, "{faction} target_workers is 0");
-            assert!(profile.chaos_factor <= 100, "{faction} chaos_factor > 100");
-            assert!(profile.leak_chance <= 100, "{faction} leak_chance > 100");
+            assert!(!profile.name.is_empty(), "{faction:?} has empty name");
+            assert!(profile.attack_threshold > 0, "{faction:?} attack_threshold is 0");
+            assert!(!profile.unit_preferences.is_empty(), "{faction:?} has no unit preferences");
+            assert!(profile.target_workers > 0, "{faction:?} target_workers is 0");
+            assert!(profile.chaos_factor <= 100, "{faction:?} chaos_factor > 100");
+            assert!(profile.leak_chance <= 100, "{faction:?} leak_chance > 100");
         }
     }
 
     #[test]
     fn personality_profiles_differ_between_factions() {
-        let minstral = faction_personality("catGPT");
-        let deepseek = faction_personality("Seekers of the Deep");
-        let llhama = faction_personality("LLAMA");
+        let minstral = faction_personality(Faction::CatGpt);
+        let deepseek = faction_personality(Faction::SeekersOfTheDeep);
+        let llhama = faction_personality(Faction::Llama);
 
         // Deepseek is more cautious
         assert!(deepseek.attack_threshold > minstral.attack_threshold);
@@ -953,18 +1018,18 @@ mod tests {
     }
 
     #[test]
-    fn unknown_faction_returns_default_profile() {
-        let unknown = faction_personality("nonexistent");
-        assert_eq!(unknown.name, "Unknown");
+    fn unknown_faction_string_returns_neutral_profile() {
+        let unknown = faction_personality_by_name("nonexistent");
+        assert_eq!(unknown.name, "Neutral");
         assert_eq!(unknown.attack_threshold, 8);
     }
 
     #[test]
-    fn ai_state_with_profile_is_backward_compatible() {
+    fn ai_state_unified_profile() {
         let state = AiState::default();
-        assert!(state.profile.is_none());
-        // Can still use personality field
-        assert_eq!(state.personality.attack_threshold(), 8);
+        // Profile is always present — no more Option<> or separate personality field
+        assert_eq!(state.profile.attack_threshold, 8);
+        assert_eq!(state.profile.name, "Balanced");
     }
 
     #[test]

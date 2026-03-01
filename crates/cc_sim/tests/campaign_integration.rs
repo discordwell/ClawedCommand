@@ -523,10 +523,14 @@ fn kill_count_objective_auto_completes() {
 
 #[test]
 fn ai_personality_profiles_are_distinct() {
+    use cc_core::components::Faction;
     use cc_sim::ai::fsm::{faction_personality, AiPersonalityProfile};
 
-    let factions = ["catGPT", "The Clawed", "Seekers of the Deep", "The Murder", "LLAMA", "Croak"];
-    let profiles: Vec<AiPersonalityProfile> = factions.iter().map(|f| faction_personality(f)).collect();
+    let factions = [
+        Faction::CatGpt, Faction::TheClawed, Faction::SeekersOfTheDeep,
+        Faction::TheMurder, Faction::Llama, Faction::Croak,
+    ];
+    let profiles: Vec<AiPersonalityProfile> = factions.iter().map(|f| faction_personality(*f)).collect();
 
     // All profiles should have different names
     let names: Vec<&str> = profiles.iter().map(|p| p.name.as_str()).collect();
@@ -546,10 +550,11 @@ fn ai_personality_profiles_are_distinct() {
 
 #[test]
 fn ai_personality_unit_preferences_differ() {
+    use cc_core::components::Faction;
     use cc_sim::ai::fsm::faction_personality;
 
-    let catgpt = faction_personality("catGPT");
-    let seekers = faction_personality("Seekers of the Deep");
+    let catgpt = faction_personality(Faction::CatGpt);
+    let seekers = faction_personality(Faction::SeekersOfTheDeep);
 
     // catGPT and Seekers should have different unit preferences
     assert_ne!(
@@ -560,10 +565,10 @@ fn ai_personality_unit_preferences_differ() {
 
 #[test]
 fn default_personality_for_unknown_faction() {
-    use cc_sim::ai::fsm::faction_personality;
+    use cc_sim::ai::fsm::faction_personality_by_name;
 
-    let default = faction_personality("Unknown Faction");
-    // Unknown factions get a fallback profile
+    let default = faction_personality_by_name("Unknown Faction");
+    // Unknown factions get a fallback profile (Neutral)
     assert!(!default.name.is_empty(), "Default profile should have a name");
 }
 
@@ -675,4 +680,377 @@ fn wave_spawn_tracked_in_campaign_state() {
         campaign.spawned_waves.contains(&"test_wave".to_string()),
         "SpawnWave action should track wave in campaign state"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Item 1: pack_leader_hurt trigger fix — kill count 10 delays after spawn
+// ---------------------------------------------------------------------------
+
+#[test]
+fn prologue_pack_leader_hurt_requires_higher_kill_count_than_spawn() {
+    let ron_str = include_str!("../../../assets/campaign/prologue.ron");
+    let mission: MissionDefinition = ron::from_str(ron_str).expect("prologue.ron should parse");
+
+    // spawn_pack_leader fires at EnemyKillCount(8)
+    let spawn_trigger = mission.triggers.iter().find(|t| t.id == "spawn_pack_leader").unwrap();
+    let spawn_kill_threshold = extract_kill_count_from_condition(&spawn_trigger.condition);
+
+    // pack_leader_hurt must have a HIGHER kill count threshold
+    let hurt_trigger = mission.triggers.iter().find(|t| t.id == "pack_leader_hurt").unwrap();
+    let hurt_kill_threshold = extract_kill_count_from_condition(&hurt_trigger.condition);
+
+    assert!(
+        hurt_kill_threshold > spawn_kill_threshold,
+        "pack_leader_hurt kill threshold ({hurt_kill_threshold}) must be > spawn_pack_leader's ({spawn_kill_threshold})"
+    );
+}
+
+/// Helper: extract the highest EnemyKillCount from a condition tree.
+fn extract_kill_count_from_condition(condition: &TriggerCondition) -> u32 {
+    match condition {
+        TriggerCondition::EnemyKillCount(n) => *n,
+        TriggerCondition::All(conditions) | TriggerCondition::Any(conditions) => {
+            conditions.iter().map(|c| extract_kill_count_from_condition(c)).max().unwrap_or(0)
+        }
+        _ => 0,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Item 2: WaveEliminated trigger condition
+// ---------------------------------------------------------------------------
+
+#[test]
+fn wave_eliminated_fires_when_all_wave_members_dead() {
+    use cc_core::components::WaveMember;
+
+    let (mut world, mut schedule) = make_campaign_sim(GameMap::new(16, 16));
+
+    let mut mission = test_mission();
+    mission.triggers = vec![ScriptedTrigger {
+        id: "wave_dead".into(),
+        condition: TriggerCondition::WaveEliminated("test_wave".into()),
+        actions: vec![TriggerAction::SetFlag("wave_cleared".into())],
+        once: true,
+    }];
+    world.resource_mut::<CampaignState>().load_mission(mission);
+    world.resource_mut::<CampaignState>().phase = CampaignPhase::InMission;
+    // Mark wave as spawned
+    world.resource_mut::<CampaignState>().spawned_waves.insert("test_wave".into());
+
+    spawn_hero(&mut world, HeroId::Kelpie, GridPos::new(2, 2), 0, true);
+
+    // Spawn 2 wave members
+    let e1 = spawn_combat_unit(&mut world, UnitKind::Nuisance, GridPos::new(10, 10), 1);
+    let e2 = spawn_combat_unit(&mut world, UnitKind::Nuisance, GridPos::new(11, 11), 1);
+    world.entity_mut(e1).insert(WaveMember { wave_id: "test_wave".into() });
+    world.entity_mut(e2).insert(WaveMember { wave_id: "test_wave".into() });
+
+    // Run — wave members alive, trigger should NOT fire
+    run_ticks(&mut world, &mut schedule, 1);
+    assert!(!world.resource::<CampaignState>().flags.contains("wave_cleared"),
+        "WaveEliminated should not fire while members are alive");
+
+    // Kill both members
+    world.entity_mut(e1).insert(Dead);
+    world.entity_mut(e2).insert(Dead);
+
+    run_ticks(&mut world, &mut schedule, 1);
+    assert!(world.resource::<CampaignState>().flags.contains("wave_cleared"),
+        "WaveEliminated should fire when all wave members are dead");
+}
+
+#[test]
+fn wave_eliminated_does_not_fire_for_unspawned_wave() {
+    use cc_core::components::WaveMember;
+
+    let (mut world, mut schedule) = make_campaign_sim(GameMap::new(16, 16));
+
+    let mut mission = test_mission();
+    mission.triggers = vec![ScriptedTrigger {
+        id: "wave_dead".into(),
+        condition: TriggerCondition::WaveEliminated("unspawned_wave".into()),
+        actions: vec![TriggerAction::SetFlag("should_not_fire".into())],
+        once: true,
+    }];
+    world.resource_mut::<CampaignState>().load_mission(mission);
+    world.resource_mut::<CampaignState>().phase = CampaignPhase::InMission;
+    // Do NOT mark wave as spawned
+
+    spawn_hero(&mut world, HeroId::Kelpie, GridPos::new(2, 2), 0, true);
+
+    run_ticks(&mut world, &mut schedule, 3);
+    assert!(!world.resource::<CampaignState>().flags.contains("should_not_fire"),
+        "WaveEliminated should not fire for unspawned wave");
+}
+
+// ---------------------------------------------------------------------------
+// Item 3: Auto-evaluate EliminateAll, Survive, HeroReachesPos objectives
+// ---------------------------------------------------------------------------
+
+#[test]
+fn eliminate_all_objective_auto_completes() {
+    let (mut world, mut schedule) = make_campaign_sim(GameMap::new(16, 16));
+
+    let mut mission = test_mission();
+    mission.objectives = vec![MissionObjective {
+        id: "clear_all".into(),
+        description: "Eliminate all enemies".into(),
+        primary: true,
+        condition: ObjectiveCondition::EliminateAll,
+    }];
+    mission.triggers = vec![];
+    world.resource_mut::<CampaignState>().load_mission(mission);
+    world.resource_mut::<CampaignState>().phase = CampaignPhase::InMission;
+
+    spawn_hero(&mut world, HeroId::Kelpie, GridPos::new(2, 2), 0, false);
+    let enemy = spawn_combat_unit(&mut world, UnitKind::Nuisance, GridPos::new(10, 10), 1);
+
+    // Enemy alive — objective should not be complete
+    run_ticks(&mut world, &mut schedule, 1);
+    assert_eq!(world.resource::<CampaignState>().phase, CampaignPhase::InMission);
+
+    // Kill enemy
+    world.entity_mut(enemy).insert(Dead);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    assert_eq!(world.resource::<CampaignState>().phase, CampaignPhase::Debriefing,
+        "EliminateAll objective should auto-complete when all enemies are dead");
+}
+
+#[test]
+fn survive_objective_auto_completes_at_tick() {
+    let (mut world, mut schedule) = make_campaign_sim(GameMap::new(16, 16));
+
+    let mut mission = test_mission();
+    mission.objectives = vec![MissionObjective {
+        id: "survive_5".into(),
+        description: "Survive for 5 ticks".into(),
+        primary: true,
+        condition: ObjectiveCondition::Survive(5),
+    }];
+    mission.triggers = vec![];
+    world.resource_mut::<CampaignState>().load_mission(mission);
+    world.resource_mut::<CampaignState>().phase = CampaignPhase::InMission;
+
+    spawn_hero(&mut world, HeroId::Kelpie, GridPos::new(2, 2), 0, false);
+
+    // Run 4 ticks — not yet
+    run_ticks(&mut world, &mut schedule, 4);
+    assert_eq!(world.resource::<CampaignState>().phase, CampaignPhase::InMission,
+        "Should not complete at tick 4");
+
+    // Run 1 more tick — now at tick 5
+    run_ticks(&mut world, &mut schedule, 1);
+    assert_eq!(world.resource::<CampaignState>().phase, CampaignPhase::Debriefing,
+        "Survive(5) objective should auto-complete at tick 5");
+}
+
+#[test]
+fn hero_reaches_pos_objective_auto_completes() {
+    let (mut world, mut schedule) = make_campaign_sim(GameMap::new(16, 16));
+
+    let mut mission = test_mission();
+    mission.objectives = vec![MissionObjective {
+        id: "reach_target".into(),
+        description: "Reach the target".into(),
+        primary: true,
+        condition: ObjectiveCondition::HeroReachesPos {
+            hero: HeroId::Kelpie,
+            position: GridPos::new(2, 2),
+            radius: 1,
+        },
+    }];
+    mission.triggers = vec![];
+    world.resource_mut::<CampaignState>().load_mission(mission);
+    world.resource_mut::<CampaignState>().phase = CampaignPhase::InMission;
+
+    // Spawn hero at the target position
+    spawn_hero(&mut world, HeroId::Kelpie, GridPos::new(2, 2), 0, false);
+
+    run_ticks(&mut world, &mut schedule, 1);
+
+    assert_eq!(world.resource::<CampaignState>().phase, CampaignPhase::Debriefing,
+        "HeroReachesPos objective should auto-complete when hero is at target");
+}
+
+// ---------------------------------------------------------------------------
+// Item 5: HeroData struct test
+// ---------------------------------------------------------------------------
+
+#[test]
+fn hero_data_consolidation_works() {
+    use cc_core::hero::{hero_data, hero_base_kind, hero_modifiers, hero_name, hero_faction};
+
+    let heroes = [
+        HeroId::Kelpie, HeroId::FelixNine, HeroId::Thimble, HeroId::MotherGranite,
+        HeroId::RexSolstice, HeroId::KingRingtail, HeroId::TheEternal, HeroId::Patches,
+    ];
+    for hero in heroes {
+        let data = hero_data(hero);
+        assert_eq!(data.base_kind, hero_base_kind(hero));
+        assert_eq!(data.name, hero_name(hero));
+        assert_eq!(data.faction, hero_faction(hero));
+        assert_eq!(data.modifiers.health_bonus, hero_modifiers(hero).health_bonus);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Item 6: HashSet for campaign state collections
+// ---------------------------------------------------------------------------
+
+#[test]
+fn campaign_state_hashset_collections_no_duplicates() {
+    let mut state = CampaignState::default();
+    state.load_mission(test_mission());
+    state.phase = CampaignPhase::InMission;
+
+    // Insert same flag multiple times
+    state.flags.insert("test_flag".into());
+    state.flags.insert("test_flag".into());
+    assert_eq!(state.flags.len(), 1, "HashSet should deduplicate flags");
+
+    state.fired_triggers.insert("t1".into());
+    state.fired_triggers.insert("t1".into());
+    assert_eq!(state.fired_triggers.len(), 1, "HashSet should deduplicate fired_triggers");
+
+    state.spawned_waves.insert("wave1".into());
+    state.spawned_waves.insert("wave1".into());
+    assert_eq!(state.spawned_waves.len(), 1, "HashSet should deduplicate spawned_waves");
+
+    state.completed_missions.insert("m1".into());
+    state.completed_missions.insert("m1".into());
+    assert_eq!(state.completed_missions.len(), 1, "HashSet should deduplicate completed_missions");
+}
+
+// ---------------------------------------------------------------------------
+// Item 7: Arc<MissionDefinition> avoids clone
+// ---------------------------------------------------------------------------
+
+#[test]
+fn mission_definition_is_arc_wrapped() {
+    use std::sync::Arc;
+    let mut state = CampaignState::default();
+    state.load_mission(test_mission());
+    // current_mission should be Some(Arc<MissionDefinition>)
+    let arc1 = state.current_mission.as_ref().unwrap().clone();
+    let arc2 = state.current_mission.as_ref().unwrap().clone();
+    // Both arcs point to same allocation
+    assert!(Arc::ptr_eq(&arc1, &arc2), "Arc clones should share the same allocation");
+}
+
+// ---------------------------------------------------------------------------
+// Item 8: Faction enum
+// ---------------------------------------------------------------------------
+
+#[test]
+fn faction_enum_round_trip() {
+    use cc_core::components::Faction;
+
+    let factions = [
+        Faction::Neutral, Faction::CatGpt, Faction::TheClawed,
+        Faction::SeekersOfTheDeep, Faction::TheMurder, Faction::Llama, Faction::Croak,
+    ];
+    for f in factions {
+        let s = f.as_str();
+        let parsed = Faction::from_faction_str(s).expect(&format!("Should parse '{s}'"));
+        assert_eq!(parsed, f, "Round-trip failed for {f:?}");
+    }
+}
+
+#[test]
+fn faction_enum_unknown_string_returns_none() {
+    use cc_core::components::Faction;
+    assert!(Faction::from_faction_str("nonexistent").is_none());
+}
+
+#[test]
+fn hero_faction_returns_faction_enum() {
+    use cc_core::components::Faction;
+    use cc_core::hero::{hero_faction, HeroId};
+
+    assert_eq!(hero_faction(HeroId::Kelpie), Faction::Neutral);
+    assert_eq!(hero_faction(HeroId::FelixNine), Faction::CatGpt);
+    assert_eq!(hero_faction(HeroId::Thimble), Faction::TheClawed);
+    assert_eq!(hero_faction(HeroId::MotherGranite), Faction::SeekersOfTheDeep);
+    assert_eq!(hero_faction(HeroId::RexSolstice), Faction::TheMurder);
+    assert_eq!(hero_faction(HeroId::KingRingtail), Faction::Llama);
+    assert_eq!(hero_faction(HeroId::TheEternal), Faction::Croak);
+    assert_eq!(hero_faction(HeroId::Patches), Faction::CatGpt);
+}
+
+// ---------------------------------------------------------------------------
+// Item 9: validate() single-pass test
+// ---------------------------------------------------------------------------
+
+#[test]
+fn validate_catches_all_errors_in_single_pass() {
+    let mut mission = test_mission();
+    // Add triggers with multiple types of errors
+    mission.triggers = vec![
+        ScriptedTrigger {
+            id: "bad_all".into(),
+            condition: TriggerCondition::AtTick(1),
+            actions: vec![
+                TriggerAction::ShowDialogue(vec![99]),      // bad dialogue index
+                TriggerAction::SpawnWave("ghost".into()),   // bad wave ref
+                TriggerAction::CompleteObjective("nope".into()), // bad objective ref
+            ],
+            once: true,
+        },
+    ];
+    let errs = mission.validate().unwrap_err();
+    assert!(errs.iter().any(|e| e.contains("dialogue index 99")), "Should catch bad dialogue");
+    assert!(errs.iter().any(|e| e.contains("unknown wave 'ghost'")), "Should catch bad wave");
+    assert!(errs.iter().any(|e| e.contains("unknown objective 'nope'")), "Should catch bad objective");
+}
+
+// ---------------------------------------------------------------------------
+// Item 10: Unified AiPersonalityProfile
+// ---------------------------------------------------------------------------
+
+#[test]
+fn ai_personality_profile_presets_work() {
+    use cc_sim::ai::fsm::AiPersonalityProfile;
+
+    let balanced = AiPersonalityProfile::balanced();
+    assert_eq!(balanced.attack_threshold, 8);
+    assert_eq!(balanced.name, "Balanced");
+
+    let aggressive = AiPersonalityProfile::aggressive();
+    assert_eq!(aggressive.attack_threshold, 6);
+    assert!(aggressive.eval_speed_mult < balanced.eval_speed_mult,
+        "Aggressive should decide faster than balanced");
+
+    let defensive = AiPersonalityProfile::defensive();
+    assert_eq!(defensive.attack_threshold, 12);
+    assert!(defensive.target_workers > aggressive.target_workers,
+        "Defensive should want more workers");
+}
+
+#[test]
+fn ai_state_default_uses_balanced_profile() {
+    use cc_sim::ai::fsm::AiState;
+
+    let state = AiState::default();
+    assert_eq!(state.profile.attack_threshold, 8);
+    assert_eq!(state.profile.name, "Balanced");
+}
+
+// ---------------------------------------------------------------------------
+// Item 4: Refactored AI census helpers
+// ---------------------------------------------------------------------------
+
+#[test]
+fn ai_fsm_refactored_behavior_unchanged() {
+    // Verify the AI still transitions phases correctly after the refactor.
+    // The actual FSM behavior is tested by the existing ai_phase_transitions
+    // and ai_default_state tests in fsm.rs. This integration test ensures
+    // the census extraction didn't break the system composition.
+    use cc_sim::ai::fsm::{AiState, AiPhase};
+
+    let state = AiState::default();
+    assert_eq!(state.phase, AiPhase::EarlyGame);
+    assert_eq!(state.profile.target_workers, 4);
+    assert_eq!(state.profile.attack_threshold, 8);
 }

@@ -21,7 +21,7 @@ use cc_core::map::GameMap;
 use cc_core::map_gen::{self, MapGenParams};
 use cc_core::unit_stats::base_stats;
 
-use crate::ai::fsm::{AiDifficulty, AiPhase, AiState, BotPersonality};
+use crate::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState};
 use crate::ai::MultiAiState;
 use crate::resources::{
     CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock,
@@ -51,7 +51,7 @@ use snapshot::GameStateSnapshot;
 pub struct BotConfig {
     pub player_id: u8,
     pub difficulty: AiDifficulty,
-    pub personality: BotPersonality,
+    pub profile: AiPersonalityProfile,
 }
 
 /// A synthetic voice command to inject at a specific tick.
@@ -91,12 +91,12 @@ impl Default for HarnessConfig {
                 BotConfig {
                     player_id: 0,
                     difficulty: AiDifficulty::Medium,
-                    personality: BotPersonality::Balanced,
+                    profile: AiPersonalityProfile::balanced(),
                 },
                 BotConfig {
                     player_id: 1,
                     difficulty: AiDifficulty::Medium,
-                    personality: BotPersonality::Balanced,
+                    profile: AiPersonalityProfile::balanced(),
                 },
             ],
             voice_script: None,
@@ -412,8 +412,7 @@ fn make_harness_sim(
                 player_id: bot.player_id,
                 phase: AiPhase::EarlyGame,
                 difficulty: bot.difficulty,
-                personality: bot.personality,
-                profile: None,
+                profile: bot.profile.clone(),
                 enemy_spawn: None,
                 attack_ordered: false,
                 last_attack_tick: 0,

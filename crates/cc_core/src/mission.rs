@@ -281,6 +281,8 @@ pub enum VoiceStyle {
 
 impl MissionDefinition {
     /// Validate internal consistency of the mission definition.
+    /// All trigger action checks (dialogue indices, wave refs, objective refs)
+    /// are performed in a single pass over triggers.
     pub fn validate(&self) -> Result<(), Vec<String>> {
         let mut errors = Vec::new();
 
@@ -313,50 +315,43 @@ impl MissionDefinition {
             }
         }
 
-        // Check dialogue indices in triggers
+        // Build lookup sets once
+        let wave_ids: Vec<&str> = self.enemy_waves.iter().map(|w| w.wave_id.as_str()).collect();
+        let obj_ids: Vec<&str> = self.objectives.iter().map(|o| o.id.as_str()).collect();
+
+        // Single pass over triggers: check dialogue indices, wave refs, and objective refs
         for trigger in &self.triggers {
             for action in &trigger.actions {
-                if let TriggerAction::ShowDialogue(indices) = action {
-                    for &idx in indices {
-                        if idx >= self.dialogue.len() {
+                match action {
+                    TriggerAction::ShowDialogue(indices) => {
+                        for &idx in indices {
+                            if idx >= self.dialogue.len() {
+                                errors.push(format!(
+                                    "Trigger '{}' references dialogue index {} but only {} lines exist",
+                                    trigger.id,
+                                    idx,
+                                    self.dialogue.len()
+                                ));
+                            }
+                        }
+                    }
+                    TriggerAction::SpawnWave(wave_id) => {
+                        if !wave_ids.contains(&wave_id.as_str()) {
                             errors.push(format!(
-                                "Trigger '{}' references dialogue index {} but only {} lines exist",
-                                trigger.id,
-                                idx,
-                                self.dialogue.len()
+                                "Trigger '{}' references unknown wave '{}'",
+                                trigger.id, wave_id
                             ));
                         }
                     }
-                }
-            }
-        }
-
-        // Check wave references in triggers
-        let wave_ids: Vec<&str> = self.enemy_waves.iter().map(|w| w.wave_id.as_str()).collect();
-        for trigger in &self.triggers {
-            for action in &trigger.actions {
-                if let TriggerAction::SpawnWave(wave_id) = action {
-                    if !wave_ids.contains(&wave_id.as_str()) {
-                        errors.push(format!(
-                            "Trigger '{}' references unknown wave '{}'",
-                            trigger.id, wave_id
-                        ));
+                    TriggerAction::CompleteObjective(obj_id) => {
+                        if !obj_ids.contains(&obj_id.as_str()) {
+                            errors.push(format!(
+                                "Trigger '{}' references unknown objective '{}'",
+                                trigger.id, obj_id
+                            ));
+                        }
                     }
-                }
-            }
-        }
-
-        // Check objective references in triggers
-        let obj_ids: Vec<&str> = self.objectives.iter().map(|o| o.id.as_str()).collect();
-        for trigger in &self.triggers {
-            for action in &trigger.actions {
-                if let TriggerAction::CompleteObjective(obj_id) = action {
-                    if !obj_ids.contains(&obj_id.as_str()) {
-                        errors.push(format!(
-                            "Trigger '{}' references unknown objective '{}'",
-                            trigger.id, obj_id
-                        ));
-                    }
+                    TriggerAction::SetFlag(_) | TriggerAction::PanCamera(_) => {}
                 }
             }
         }
@@ -509,5 +504,28 @@ mod tests {
         let ron_str = ron::to_string(&line).unwrap();
         let parsed: DialogueLine = ron::from_str(&ron_str).unwrap();
         assert_eq!(parsed.voice_style, VoiceStyle::AiVoice);
+    }
+
+    #[test]
+    fn validate_single_pass_catches_all_action_errors() {
+        // Verify all three error types (dialogue, wave, objective) are caught
+        // in a single pass rather than requiring separate iterations.
+        let mut mission = minimal_mission();
+        mission.triggers = vec![ScriptedTrigger {
+            id: "multi_error".into(),
+            condition: TriggerCondition::AtTick(1),
+            actions: vec![
+                TriggerAction::ShowDialogue(vec![42]),           // bad dialogue
+                TriggerAction::SpawnWave("phantom_wave".into()), // bad wave
+                TriggerAction::CompleteObjective("phantom_obj".into()), // bad objective
+            ],
+            once: true,
+        }];
+        let errs = mission.validate().unwrap_err();
+        // All three errors should be caught
+        assert!(errs.iter().any(|e| e.contains("dialogue index 42")));
+        assert!(errs.iter().any(|e| e.contains("unknown wave 'phantom_wave'")));
+        assert!(errs.iter().any(|e| e.contains("unknown objective 'phantom_obj'")));
+        assert_eq!(errs.len(), 3, "Should find exactly 3 errors from the single trigger");
     }
 }
