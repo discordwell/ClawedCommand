@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::input::{InputMode, PlacementPreview};
-use crate::renderer::building_gen::{BuildingSprites, building_kind_index, building_scale};
+use crate::renderer::building_gen::{BuildingRole, BuildingSprites, building_kind_index, building_role, building_scale};
 use crate::setup::{BuildingMesh, building_color, team_color};
 use cc_core::components::{Building, BuildingKind, Health, Owner, Position, UnderConstruction};
 use cc_core::coords::{depth_z, world_to_screen};
@@ -31,14 +31,13 @@ pub struct SpriteBuilding;
 const CONSTRUCTION_BAR_HEIGHT: f32 = 4.0;
 const CONSTRUCTION_BAR_Y_OFFSET: f32 = 22.0;
 
-/// Bar width for buildings by kind.
+/// Bar width for buildings by role (works for all factions).
 fn construction_bar_width(kind: BuildingKind) -> f32 {
-    match kind {
-        BuildingKind::TheBox => 30.0,
-        BuildingKind::CatTree | BuildingKind::ServerRack => 28.0,
-        BuildingKind::FishMarket | BuildingKind::ScratchingPost | BuildingKind::CatFlap => 24.0,
-        BuildingKind::LitterBox | BuildingKind::LaserPointer => 20.0,
-        _ => 24.0,
+    match building_role(kind) {
+        BuildingRole::Hq => 30.0,
+        BuildingRole::Barracks | BuildingRole::TechBuilding => 28.0,
+        BuildingRole::ResourceDepot | BuildingRole::Garrison | BuildingRole::Research => 24.0,
+        BuildingRole::SupplyDepot | BuildingRole::DefenseTower => 20.0,
     }
 }
 
@@ -65,7 +64,8 @@ pub fn spawn_building_visuals(
         if let Some(ref sprites) = building_sprites {
             let idx = building_kind_index(building.kind);
             let image = sprites.sprites[idx].clone();
-            let scale = building_scale(building.kind, sprites.art_loaded);
+            let has_art = sprites.has_art.get(idx).copied().unwrap_or(false);
+            let scale = building_scale(building.kind, has_art);
             let tint = team_color(owner.player_id);
 
             commands.entity(entity).insert((
@@ -151,7 +151,8 @@ pub fn render_placement_preview(
     if let (Some(kind), Some(sprites)) = (placement_kind, &building_sprites) {
         let idx = building_kind_index(kind);
         let image = sprites.sprites[idx].clone();
-        let scale = building_scale(kind, sprites.art_loaded);
+        let has_art = sprites.has_art.get(idx).copied().unwrap_or(false);
+        let scale = building_scale(kind, has_art);
 
         commands.spawn((
             PlacementGhost,
@@ -363,9 +364,10 @@ pub fn update_building_damage_tint(
             // Darken by up to 40% and add red cast
             let darken = 1.0 - 0.4 * damage;
             let red_boost = 0.3 * damage;
-            let r = (base.to_srgba().red * darken + red_boost).min(1.0);
-            let g = (base.to_srgba().green * darken * (1.0 - 0.3 * damage)).min(1.0);
-            let b = (base.to_srgba().blue * darken * (1.0 - 0.3 * damage)).min(1.0);
+            let base_srgba = base.to_srgba();
+            let r = (base_srgba.red * darken + red_boost).min(1.0);
+            let g = (base_srgba.green * darken * (1.0 - 0.3 * damage)).min(1.0);
+            let b = (base_srgba.blue * darken * (1.0 - 0.3 * damage)).min(1.0);
             sprite.color = Color::srgba(r, g, b, sprite.color.alpha());
         } else {
             // Reset to base team color, preserving alpha
