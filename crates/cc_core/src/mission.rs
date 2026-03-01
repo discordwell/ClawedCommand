@@ -962,4 +962,170 @@ mod tests {
         assert_eq!(parsed.player_id, 1);
         assert_eq!(parsed.hero_id, HeroId::KingRingtail);
     }
+
+    // -----------------------------------------------------------------------
+    // Campaign map tests: Prologue + Pond Defense
+    // -----------------------------------------------------------------------
+
+    /// Helper: check that a position's terrain is passable (not Rock or Water).
+    fn assert_passable(tiles: &[TerrainType], width: u32, x: i32, y: i32, label: &str) {
+        let idx = (y as u32 * width + x as u32) as usize;
+        let t = tiles[idx];
+        assert!(
+            t != TerrainType::Rock && t != TerrainType::Water,
+            "{label}: position ({x},{y}) is on impassable {t:?}"
+        );
+    }
+
+    fn load_prologue() -> MissionDefinition {
+        let ron_str = include_str!("../../../assets/campaign/prologue.ron");
+        ron::from_str(ron_str).expect("Failed to parse prologue.ron")
+    }
+
+    fn load_pond_defense() -> MissionDefinition {
+        let ron_str = include_str!("../../../assets/campaign/act1_m1_pond_defense.ron");
+        ron::from_str(ron_str).expect("Failed to parse act1_m1_pond_defense.ron")
+    }
+
+    /// Assert all heroes, player units, and wave positions are on passable terrain.
+    fn assert_all_positions_passable(mission: &MissionDefinition) {
+        let MissionMap::Inline { width, tiles, .. } = &mission.map else {
+            panic!("Expected Inline map");
+        };
+        let w = *width;
+        for hero in &mission.player_setup.heroes {
+            assert_passable(tiles, w, hero.position.x, hero.position.y,
+                &format!("hero {:?}", hero.hero_id));
+        }
+        for unit in &mission.player_setup.units {
+            assert_passable(tiles, w, unit.position.x, unit.position.y,
+                &format!("player unit {:?}", unit.kind));
+        }
+        for wave in &mission.enemy_waves {
+            for unit in &wave.units {
+                assert_passable(tiles, w, unit.position.x, unit.position.y,
+                    &format!("wave '{}' unit", wave.wave_id));
+            }
+            if let WaveAiBehavior::AttackMove(pos) = &wave.ai_behavior {
+                assert_passable(tiles, w, pos.x, pos.y,
+                    &format!("wave '{}' attack_move target", wave.wave_id));
+            }
+        }
+    }
+
+    #[test]
+    fn parse_prologue_ron() {
+        let mission = load_prologue();
+        assert_eq!(mission.id, "prologue");
+        assert_eq!(mission.act, 0);
+        assert_eq!(mission.mission_index, 0);
+        assert_eq!(mission.player_setup.heroes.len(), 1);
+        assert_eq!(mission.player_setup.heroes[0].hero_id, HeroId::Kelpie);
+        assert!(mission.player_setup.heroes[0].mission_critical);
+        assert_eq!(mission.enemy_waves.len(), 3);
+        assert_eq!(mission.enemy_waves[0].wave_id, "initial_ferals");
+        assert_eq!(mission.enemy_waves[1].wave_id, "flanking_wave");
+        assert_eq!(mission.enemy_waves[2].wave_id, "pack_leader");
+        assert_eq!(mission.objectives.len(), 3);
+        assert_eq!(mission.dialogue.len(), 30);
+        assert_eq!(mission.triggers.len(), 11);
+        mission.validate().expect("Prologue validation failed");
+    }
+
+    #[test]
+    fn prologue_has_inline_map() {
+        let mission = load_prologue();
+        match &mission.map {
+            MissionMap::Inline { width, height, tiles, elevation } => {
+                assert_eq!(*width, 48);
+                assert_eq!(*height, 48);
+                assert_eq!(tiles.len(), 48 * 48);
+                assert_eq!(elevation.len(), 48 * 48);
+            }
+            _ => panic!("Expected Inline map for prologue"),
+        }
+    }
+
+    #[test]
+    fn prologue_terrain_distribution() {
+        let mission = load_prologue();
+        let MissionMap::Inline { tiles, elevation, .. } = &mission.map else {
+            panic!("Expected Inline map");
+        };
+        let rock_count = tiles.iter().filter(|t| **t == TerrainType::Rock).count();
+        assert!(rock_count > 300, "Should have rock border, got {rock_count}");
+        let water_count = tiles.iter().filter(|t| **t == TerrainType::Water).count();
+        assert!(water_count > 50, "Should have river water, got {water_count}");
+        let shallows_count = tiles.iter().filter(|t| **t == TerrainType::Shallows).count();
+        assert!(shallows_count > 40, "Should have ford crossings, got {shallows_count}");
+        let ruins_count = tiles.iter().filter(|t| **t == TerrainType::TechRuins).count();
+        assert!(ruins_count >= 6, "Should have tech ruins, got {ruins_count}");
+        let max_elev = *elevation.iter().max().unwrap();
+        assert_eq!(max_elev, 2, "Should have elevation 2 for rock walls");
+        let elev_1_count = elevation.iter().filter(|e| **e == 1).count();
+        assert!(elev_1_count > 400, "East bank should be elevation 1, got {elev_1_count}");
+    }
+
+    #[test]
+    fn prologue_positions_on_passable_terrain() {
+        let mission = load_prologue();
+        assert_all_positions_passable(&mission);
+    }
+
+    #[test]
+    fn parse_pond_defense_ron() {
+        let mission = load_pond_defense();
+        assert_eq!(mission.id, "act1_m1_pond_defense");
+        assert_eq!(mission.act, 1);
+        assert_eq!(mission.mission_index, 1);
+        assert_eq!(mission.player_setup.heroes.len(), 2);
+        assert_eq!(mission.player_setup.units.len(), 6);
+        assert_eq!(mission.enemy_waves.len(), 3);
+        assert_eq!(mission.objectives.len(), 2);
+        assert_eq!(mission.dialogue.len(), 18);
+        assert_eq!(mission.player_setup.starting_food, 100);
+        mission.validate().expect("Pond defense validation failed");
+    }
+
+    #[test]
+    fn pond_defense_has_inline_map() {
+        let mission = load_pond_defense();
+        match &mission.map {
+            MissionMap::Inline { width, height, tiles, elevation } => {
+                assert_eq!(*width, 48);
+                assert_eq!(*height, 48);
+                assert_eq!(tiles.len(), 48 * 48);
+                assert_eq!(elevation.len(), 48 * 48);
+            }
+            _ => panic!("Expected Inline map for pond defense"),
+        }
+    }
+
+    #[test]
+    fn pond_defense_terrain_distribution() {
+        let mission = load_pond_defense();
+        let MissionMap::Inline { tiles, elevation, .. } = &mission.map else {
+            panic!("Expected Inline map");
+        };
+        let rock_count = tiles.iter().filter(|t| **t == TerrainType::Rock).count();
+        assert!(rock_count > 300, "Should have rock border, got {rock_count}");
+        let water_count = tiles.iter().filter(|t| **t == TerrainType::Water).count();
+        assert!(water_count >= 18, "Should have pond water, got {water_count}");
+        let shallows_count = tiles.iter().filter(|t| **t == TerrainType::Shallows).count();
+        assert!(shallows_count > 20, "Should have shallows rings, got {shallows_count}");
+        let forest_count = tiles.iter().filter(|t| **t == TerrainType::Forest).count();
+        assert!(forest_count > 200, "Should have forest corridors, got {forest_count}");
+        let ruins_count = tiles.iter().filter(|t| **t == TerrainType::TechRuins).count();
+        assert!(ruins_count >= 9, "Should have tech ruins, got {ruins_count}");
+        let max_elev = *elevation.iter().max().unwrap();
+        assert_eq!(max_elev, 2, "Should have elevation 2 for rock walls");
+        let elev_1_count = elevation.iter().filter(|e| **e == 1).count();
+        assert!(elev_1_count > 200, "Player base should be elevation 1, got {elev_1_count}");
+    }
+
+    #[test]
+    fn pond_defense_positions_on_passable_terrain() {
+        let mission = load_pond_defense();
+        assert_all_positions_passable(&mission);
+    }
 }
