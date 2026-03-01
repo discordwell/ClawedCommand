@@ -5,6 +5,8 @@ use cc_agent::construct_mode::{ConstructModeState, LuaScript, ScriptLibrary, Scr
 use cc_agent::llm_client::ChatMessage;
 use cc_agent::tool_tier::FactionToolStates;
 
+use super::LocalPlayer;
+
 /// System prompt for construct mode.
 const CONSTRUCT_MODE_SYSTEM_PROMPT: &str = r#"You are Minstral, an AI assistant in the RTS game ClawedCommand. The player is asking you to create or modify a Lua script for army automation.
 
@@ -16,7 +18,7 @@ Queries:
 - ctx:my_buildings(kind?) -> [{id, kind, x, y, under_construction}]
 - ctx:enemy_buildings() -> same format
 - ctx:get_resources() -> {food, gpu_cores, nfts, supply, supply_cap}
-- ctx:resource_deposits() -> [{id, x, y, remaining, resource_type}]
+- ctx:resource_deposits() -> [{id, x, y, remaining, kind}]
 
 Commands:
 - ctx:move_units(ids_table, x, y)
@@ -310,6 +312,7 @@ pub fn construct_mode_keys(
     keys: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<ConstructModeState>,
     library: Res<ScriptLibrary>,
+    local_player: Res<LocalPlayer>,
 ) {
     if !state.active {
         return;
@@ -341,7 +344,7 @@ pub fn construct_mode_keys(
     // T = test script (native only)
     #[cfg(not(target_arch = "wasm32"))]
     if keys.just_pressed(KeyCode::KeyT) && !state.editable_source.is_empty() {
-        match cc_agent::lua_runtime::execute_script(&state.editable_source, 0) {
+        match cc_agent::lua_runtime::execute_script(&state.editable_source, local_player.0) {
             Ok(commands) => {
                 state.test_result = Some(ScriptTestResult {
                     success: true,

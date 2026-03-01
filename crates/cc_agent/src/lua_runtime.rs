@@ -1243,15 +1243,15 @@ pub fn execute_script_with_context_tiered(
             let cell = &ctx_cell;
             let f = scope
                 .create_function(|lua, _self: LuaValue| {
-                    let ctx = cell.borrow();
+                    let mut ctx = cell.borrow_mut();
+                    let deposits = ctx.resource_deposits();
                     let tbl = lua.create_table()?;
-                    for (i, dep) in ctx.state.resource_deposits.iter().enumerate() {
+                    for (i, dep) in deposits.iter().enumerate() {
                         let d = lua.create_table()?;
                         d.set("id", dep.id.0)?;
                         d.set("x", dep.pos.x)?;
                         d.set("y", dep.pos.y)?;
                         d.set("remaining", dep.remaining as f64)?;
-                        d.set("resource_type", dep.resource_type.to_string())?;
                         d.set("kind", dep.resource_type.to_string())?;
                         tbl.set(i + 1, d)?;
                     }

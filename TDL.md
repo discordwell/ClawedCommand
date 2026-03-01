@@ -153,12 +153,12 @@
 
 ## From LLM Runner + Construct Mode Code Review
 
-- [ ] `resource_deposits` Lua binding bypasses compute budget — should route through `ScriptContext` method with `budget.spend(COST_SIMPLE)` like other query bindings
+- [x] `resource_deposits` Lua binding bypasses compute budget — now routes through `ScriptContext::resource_deposits()` with `budget.spend(COST_SIMPLE)`
 - [x] LLM pipeline disconnected: `AgentBridge::default()` creates dead channels, `spawn_llm_runner()` never called — need startup wiring in `AgentPlugin::build()` or game setup
 - [x] Dead snapshot path: `process_request`'s `snapshot: Option<&GameStateSnapshot>` always called with `None` from `spawn_llm_runner` — either pass snapshot through channel or remove parameter
 - [x] `ToolRegistry::build_default()` rebuilt on every call (already tracked above)
-- [ ] Hardcoded `player_id: 0` in construct mode UI and agent chat quick commands — should use `LocalPlayer` resource
-- [ ] `deposit_to_lua_table` uses `"kind"` field name vs `resource_deposits` binding using both `"kind"` and `"resource_type"` — standardize across all deposit APIs
+- [x] Hardcoded `player_id: 0` in construct mode UI and agent chat quick commands — now uses `LocalPlayer` resource
+- [x] `deposit_to_lua_table` uses `"kind"` field name vs `resource_deposits` binding using both `"kind"` and `"resource_type"` — standardized to `"kind"` only
 
 ## From Voice Pipeline Implementation
 

@@ -294,6 +294,48 @@ impl Default for LlmConfig {
     }
 }
 
+impl LlmConfig {
+    /// Build config from environment variables, falling back to defaults (Mock backend).
+    ///
+    /// - `CLAWED_LLM_BACKEND`: "openai" | "anthropic" | "mock" | "fallback"
+    /// - `CLAWED_LLM_URL`: base URL (default: "http://localhost:11434")
+    /// - `CLAWED_API_KEY`: API key (default: empty)
+    /// - `CLAWED_LLM_MODEL`: model ID (default: "devstral-small-2-2512")
+    /// - `CLAWED_LLM_TEMP`: temperature (default: 0.2)
+    pub fn from_env() -> Self {
+        let mut config = Self::default();
+
+        if let Ok(backend) = std::env::var("CLAWED_LLM_BACKEND") {
+            config.backend = match backend.to_lowercase().as_str() {
+                "openai" => LlmBackend::OpenAiCompatible,
+                "anthropic" => LlmBackend::Anthropic,
+                "fallback" => LlmBackend::Fallback,
+                _ => LlmBackend::Mock,
+            };
+        }
+
+        if let Ok(url) = std::env::var("CLAWED_LLM_URL") {
+            config.base_url = url;
+        }
+
+        if let Ok(key) = std::env::var("CLAWED_API_KEY") {
+            config.api_key = key;
+        }
+
+        if let Ok(model) = std::env::var("CLAWED_LLM_MODEL") {
+            config.model = model;
+        }
+
+        if let Ok(temp) = std::env::var("CLAWED_LLM_TEMP") {
+            if let Ok(t) = temp.parse::<f32>() {
+                config.temperature = t;
+            }
+        }
+
+        config
+    }
+}
+
 /// Agent readiness status, used by UI to show initialization progress.
 #[derive(Debug, Clone, Resource)]
 pub enum AgentStatus {
@@ -306,5 +348,42 @@ pub enum AgentStatus {
 impl Default for AgentStatus {
     fn default() -> Self {
         Self::Unconfigured
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_env_defaults_to_mock() {
+        // SAFETY: Tests run single-threaded with --test-threads=1 or are
+        // isolated by unique env var names that no other test uses.
+        unsafe {
+            std::env::remove_var("CLAWED_LLM_BACKEND");
+            std::env::remove_var("CLAWED_LLM_URL");
+            std::env::remove_var("CLAWED_API_KEY");
+            std::env::remove_var("CLAWED_LLM_MODEL");
+            std::env::remove_var("CLAWED_LLM_TEMP");
+        }
+
+        let config = LlmConfig::from_env();
+        assert_eq!(config.backend, LlmBackend::Mock);
+        assert_eq!(config.base_url, "http://localhost:11434");
+        assert_eq!(config.model, "devstral-small-2-2512");
+        assert!((config.temperature - 0.2).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn from_env_reads_backend() {
+        // SAFETY: Unique env var name, no concurrent mutation.
+        unsafe {
+            std::env::set_var("CLAWED_LLM_BACKEND", "openai");
+        }
+        let config = LlmConfig::from_env();
+        assert_eq!(config.backend, LlmBackend::OpenAiCompatible);
+        unsafe {
+            std::env::remove_var("CLAWED_LLM_BACKEND");
+        }
     }
 }

@@ -18,6 +18,16 @@ pub mod construct_mode;
 
 use bevy::prelude::*;
 
+/// Identifies which player the local client controls.
+#[derive(Resource)]
+pub struct LocalPlayer(pub u8);
+
+impl Default for LocalPlayer {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
 /// Shared UI state -- notifications, etc.
 #[derive(Resource, Default)]
 pub struct UiState {
@@ -29,7 +39,8 @@ pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<UiState>()
+        app.init_resource::<LocalPlayer>()
+            .init_resource::<UiState>()
             .init_resource::<dialogue::DialogueState>()
             .init_resource::<campaign_menu::AvailableMissions>()
             .init_resource::<campaign_menu::CampaignMenuOpen>()

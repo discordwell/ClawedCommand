@@ -640,6 +640,14 @@ impl<'a> ScriptContext<'a> {
         &self.state.my_resources
     }
 
+    /// All resource deposits on the map.
+    pub fn resource_deposits(&mut self) -> Vec<&ResourceSnapshot> {
+        if !self.budget.spend(COST_SIMPLE) {
+            return vec![];
+        }
+        self.state.resource_deposits.iter().collect()
+    }
+
     pub fn nearest_deposit(
         &mut self,
         from: GridPos,
@@ -1217,5 +1225,38 @@ mod tests {
         assert_eq!(ctx.count_units(Some(UnitKind::Hisser)), 2);
         assert_eq!(ctx.count_units(Some(UnitKind::Chonk)), 1);
         assert_eq!(ctx.count_units(Some(UnitKind::Pawdler)), 0);
+    }
+
+    #[test]
+    fn resource_deposits_budget_gated() {
+        let snap = GameStateSnapshot {
+            tick: 0,
+            map_width: 64,
+            map_height: 64,
+            player_id: 0,
+            my_units: vec![],
+            enemy_units: vec![],
+            my_buildings: vec![],
+            enemy_buildings: vec![],
+            resource_deposits: vec![
+                ResourceSnapshot {
+                    id: EntityId(100),
+                    resource_type: ResourceType::Food,
+                    pos: GridPos::new(5, 5),
+                    remaining: 200,
+                },
+            ],
+            my_resources: PlayerResourceState::default(),
+        };
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let deposits = ctx.resource_deposits();
+        assert_eq!(deposits.len(), 1);
+        assert_eq!(deposits[0].id, EntityId(100));
+
+        ctx.budget = ComputeBudget::new(0);
+        let empty = ctx.resource_deposits();
+        assert!(empty.is_empty());
     }
 }

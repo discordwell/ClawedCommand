@@ -4,6 +4,8 @@ use cc_agent::agent_bridge::{AgentBridge, AgentChatLog, AgentRequest, AgentSourc
 use cc_agent::llm_client::AgentStatus;
 use cc_agent::tool_tier::FactionToolStates;
 
+use super::LocalPlayer;
+
 /// Marker for agent chat panel root.
 #[derive(Component)]
 pub struct AgentChatRoot;
@@ -136,13 +138,15 @@ pub fn agent_quick_commands(
     keys: Res<ButtonInput<KeyCode>>,
     bridge: Res<AgentBridge>,
     tool_states: Res<FactionToolStates>,
+    local_player: Res<LocalPlayer>,
 ) {
-    let tier = tool_states.tier_for(0);
+    let player_id = local_player.0;
+    let tier = tool_states.tier_for(player_id);
 
     // F5=Scout, F6=Defend, F7=Attack
     if keys.just_pressed(KeyCode::F5) {
         let _ = bridge.request_tx.try_send(AgentRequest {
-            player_id: 0,
+            player_id,
             prompt: "Scout the map and report enemy positions".into(),
             tier,
             source: AgentSource::QuickCommand,
@@ -152,7 +156,7 @@ pub fn agent_quick_commands(
     }
     if keys.just_pressed(KeyCode::F6) {
         let _ = bridge.request_tx.try_send(AgentRequest {
-            player_id: 0,
+            player_id,
             prompt: "Defend our base from incoming threats".into(),
             tier,
             source: AgentSource::QuickCommand,
@@ -162,7 +166,7 @@ pub fn agent_quick_commands(
     }
     if keys.just_pressed(KeyCode::F7) {
         let _ = bridge.request_tx.try_send(AgentRequest {
-            player_id: 0,
+            player_id,
             prompt: "Launch an attack on the enemy base".into(),
             tier,
             source: AgentSource::QuickCommand,

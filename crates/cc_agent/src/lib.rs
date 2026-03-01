@@ -52,7 +52,7 @@ impl Plugin for AgentPlugin {
             let (bridge, channels) = agent_bridge::AgentBridge::new();
             app.insert_resource(bridge);
             app.insert_resource(llm_runner::LlmRunnerChannels(Some(channels)));
-            app.init_resource::<llm_client::LlmConfig>();
+            app.insert_resource(llm_client::LlmConfig::from_env());
             app.add_plugins(runner::ScriptRunnerPlugin);
             app.add_systems(Startup, llm_runner::startup_llm_runner);
         }
