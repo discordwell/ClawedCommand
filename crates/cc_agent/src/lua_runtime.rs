@@ -1220,6 +1220,45 @@ pub fn execute_script_with_context_tiered(
             ctx_table.set("rally", f)?;
         }
 
+        // ctx:get_resources()
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, _self: LuaValue| {
+                    let ctx = cell.borrow();
+                    let res = ctx.resources();
+                    let tbl = lua.create_table()?;
+                    tbl.set("food", res.food as f64)?;
+                    tbl.set("gpu_cores", res.gpu_cores as f64)?;
+                    tbl.set("nfts", res.nfts as f64)?;
+                    tbl.set("supply", res.supply as f64)?;
+                    tbl.set("supply_cap", res.supply_cap as f64)?;
+                    Ok(tbl)
+                })?;
+            ctx_table.set("get_resources", f)?;
+        }
+
+        // ctx:resource_deposits()
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, _self: LuaValue| {
+                    let ctx = cell.borrow();
+                    let tbl = lua.create_table()?;
+                    for (i, dep) in ctx.state.resource_deposits.iter().enumerate() {
+                        let d = lua.create_table()?;
+                        d.set("id", dep.id.0)?;
+                        d.set("x", dep.pos.x)?;
+                        d.set("y", dep.pos.y)?;
+                        d.set("remaining", dep.remaining as f64)?;
+                        d.set("resource_type", format!("{:?}", dep.resource_type))?;
+                        tbl.set(i + 1, d)?;
+                    }
+                    Ok(tbl)
+                })?;
+            ctx_table.set("resource_deposits", f)?;
+        }
+
         // Set ctx as global
         lua.globals()
             .set("ctx", ctx_table)

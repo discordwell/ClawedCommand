@@ -3,8 +3,10 @@ pub mod agent_bridge;
 pub mod arena;
 pub mod behaviors;
 pub mod construct_mode;
+pub mod decision;
 pub mod events;
 pub mod llm_client;
+pub mod llm_runner;
 pub mod lua_runtime;
 pub mod mcp_tools;
 pub mod runner;
@@ -23,12 +25,21 @@ pub struct AgentPlugin;
 impl Plugin for AgentPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<construct_mode::ConstructModeState>()
-            .init_resource::<construct_mode::ScriptLibrary>()
+            .insert_resource(construct_mode::ScriptLibrary::with_starters())
             .init_resource::<agent_bridge::AgentBridge>()
+            .init_resource::<agent_bridge::AgentChatLog>()
             .init_resource::<tool_tier::ToolRegistry>()
             .init_resource::<tool_tier::FactionToolStates>()
+            .init_resource::<decision::AgentDecisionState>()
             .add_plugins(runner::ScriptRunnerPlugin)
-            .add_systems(Update, agent_bridge::poll_agent_responses)
+            .add_systems(
+                Update,
+                (
+                    agent_bridge::poll_agent_responses,
+                    decision::agent_decision_system,
+                    decision::clear_in_flight.after(agent_bridge::poll_agent_responses),
+                ),
+            )
             .add_systems(FixedUpdate, tool_tier::update_tool_tiers);
     }
 }
