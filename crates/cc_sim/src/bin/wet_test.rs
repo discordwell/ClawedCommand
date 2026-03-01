@@ -34,11 +34,13 @@ fn main() {
                         player_id: 0,
                         difficulty: AiDifficulty::Hard,
                         profile: AiPersonalityProfile::aggressive(),
+                        faction: cc_core::components::Faction::CatGpt,
                     },
                     BotConfig {
                         player_id: 1,
                         difficulty: AiDifficulty::Medium,
                         profile: AiPersonalityProfile::defensive(),
+                        faction: cc_core::components::Faction::CatGpt,
                     },
                 ],
                 ..Default::default()
