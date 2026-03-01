@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::{
-    Building, BuildingKind, Faction, Gathering, MoveTarget, Owner, Position, Producer,
+    BuildOrder, Building, BuildingKind, Faction, Gathering, MoveTarget, Owner, Position, Producer,
     ResourceDeposit, UnitKind, UnitType, UpgradeType,
 };
 use cc_core::coords::GridPos;
@@ -285,7 +285,7 @@ pub fn ai_decision_system(
     mut ai_state: ResMut<AiState>,
     mut cmd_queue: ResMut<CommandQueue>,
     player_resources: Res<PlayerResources>,
-    units: Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
+    units: Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
     buildings: Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
     deposits: Query<(Entity, &Position, &ResourceDeposit)>,
 ) {
@@ -307,7 +307,7 @@ pub fn multi_ai_decision_system(
     mut multi_ai: ResMut<super::MultiAiState>,
     mut cmd_queue: ResMut<CommandQueue>,
     player_resources: Res<PlayerResources>,
-    units: Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
+    units: Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
     buildings: Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
     deposits: Query<(Entity, &Position, &ResourceDeposit)>,
 ) {
@@ -353,7 +353,7 @@ struct BuildingCensus {
 /// Scan all units and classify them as workers, army, or enemy army.
 fn take_unit_census(
     ai_player: u8,
-    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
 ) -> UnitCensus {
     let mut census = UnitCensus {
         worker_count: 0,
@@ -363,7 +363,7 @@ fn take_unit_census(
         all_workers: Vec::new(),
         army_entities: Vec::new(),
     };
-    for (entity, _, owner, unit_type, gathering, move_target) in units.iter() {
+    for (entity, _, owner, unit_type, gathering, move_target, build_order) in units.iter() {
         if owner.player_id != ai_player {
             if unit_type.kind != UnitKind::Pawdler {
                 census.enemy_army_count += 1;
@@ -373,9 +373,15 @@ fn take_unit_census(
         match unit_type.kind {
             UnitKind::Pawdler => {
                 census.worker_count += 1;
-                census.all_workers.push(entity);
-                if gathering.is_none() && move_target.is_none() {
-                    census.idle_workers.push(entity);
+                // Workers with active BuildOrders are busy building — exclude from
+                // both idle and available-builder lists to prevent reassignment.
+                if build_order.is_some() {
+                    // Still count as a worker, but not available for tasks
+                } else {
+                    census.all_workers.push(entity);
+                    if gathering.is_none() && move_target.is_none() {
+                        census.idle_workers.push(entity);
+                    }
                 }
             }
             _ => {
@@ -450,7 +456,7 @@ fn take_building_census(
 /// Discover the enemy base position. Prefers enemy TheBox, falls back to any enemy unit.
 fn discover_enemy_spawn(
     ai_player: u8,
-    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
     buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
 ) -> Option<GridPos> {
     // First: look for enemy TheBox
@@ -460,7 +466,7 @@ fn discover_enemy_spawn(
         }
     }
     // Fallback: any enemy unit
-    for (_, pos, owner, _, _, _) in units.iter() {
+    for (_, pos, owner, _, _, _, _) in units.iter() {
         if owner.player_id != ai_player {
             return Some(pos.world.to_grid());
         }
@@ -474,7 +480,7 @@ fn run_ai_fsm(
     ai_state: &mut AiState,
     cmd_queue: &mut CommandQueue,
     player_resources: &PlayerResources,
-    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
     buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
     deposits: &Query<(Entity, &Position, &ResourceDeposit)>,
 ) {
@@ -847,7 +853,7 @@ fn pick_builder(idle_workers: &[Entity], all_workers: &[Entity]) -> Option<Entit
 /// Find nearest resource deposit to a worker (skips depleted deposits).
 fn find_nearest_deposit(
     worker: Entity,
-    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
     deposits: &Query<(Entity, &Position, &ResourceDeposit)>,
 ) -> Option<(Entity, GridPos)> {
     let worker_pos = units.get(worker).ok()?.1.world;
@@ -915,7 +921,7 @@ fn find_build_position(box_pos: Option<GridPos>, building_count: u32) -> GridPos
 /// Check if enemy units are within 8 tiles of any of the AI's buildings.
 fn is_base_threatened(
     ai_player: u8,
-    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>)>,
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
     buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>)>,
 ) -> bool {
     // Collect AI building positions as the actual base locations
@@ -932,7 +938,7 @@ fn is_base_threatened(
     }
 
     // Check if any enemy unit is within 8 tiles of any of our buildings
-    for (_, pos, owner, _, _, _) in units.iter() {
+    for (_, pos, owner, _, _, _, _) in units.iter() {
         if owner.player_id == ai_player {
             continue;
         }

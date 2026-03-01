@@ -40,6 +40,7 @@ pub fn process_commands(
     deposits: Query<&Position, With<ResourceDeposit>>,
     mut ability_query: Query<(&mut AbilitySlots, Option<&StatModifiers>)>,
     mut research_queues: Query<(&Owner, &mut ResearchQueue), With<Researcher>>,
+    build_orders: Query<(&BuildOrder, &Owner)>,
 ) {
     let pending = cmd_queue.drain();
 
@@ -105,6 +106,14 @@ pub fn process_commands(
                     commands.entity(entity).remove::<AttackMoveTarget>();
                     commands.entity(entity).remove::<HoldPosition>();
                     commands.entity(entity).remove::<Gathering>();
+                    // Refund building cost if cancelling a build order
+                    if let Ok((build_order, owner)) = build_orders.get(entity) {
+                        let bstats = building_stats(build_order.building_kind);
+                        if let Some(pres) = player_resources.players.get_mut(owner.player_id as usize) {
+                            pres.food += bstats.food_cost;
+                            pres.gpu_cores += bstats.gpu_cost;
+                        }
+                    }
                     commands.entity(entity).remove::<BuildOrder>();
                     // Velocity will be zeroed by movement_system when no MoveTarget
                 }

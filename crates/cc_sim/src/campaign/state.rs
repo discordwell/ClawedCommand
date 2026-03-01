@@ -351,6 +351,8 @@ mod tests {
             dialogue: vec![],
             briefing_text: "Go!".into(),
             debrief_text: "Done!".into(),
+            ai_tool_tier: None,
+            next_mission: NextMission::default(),
         }
     }
 
