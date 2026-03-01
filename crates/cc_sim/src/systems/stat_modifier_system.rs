@@ -22,7 +22,7 @@ pub fn stat_modifier_system(
                 StatusEffectId::Zoomies => {
                     // +100% speed, invulnerable, can't attack
                     modifiers.speed_multiplier =
-                        modifiers.speed_multiplier + FIXED_ONE;
+                        modifiers.speed_multiplier * Fixed::from_num(2);
                     modifiers.invulnerable = true;
                     modifiers.cannot_attack = true;
                 }

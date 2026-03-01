@@ -41,7 +41,7 @@ impl MatchReport {
             .map(|b| BotReport {
                 player_id: b.player_id,
                 difficulty: format!("{:?}", b.difficulty),
-                personality: format!("{:?}", b.personality),
+                personality: format!("{:?}", b.profile),
             })
             .collect();
 

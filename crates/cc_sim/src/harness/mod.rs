@@ -28,7 +28,9 @@ use crate::resources::{
     SpawnPositions,
 };
 use crate::systems::{
+    ability_effect_system::ability_effect_system,
     ability_system::ability_cooldown_system, aura_system::aura_system,
+    builder_system::builder_system,
     cleanup_system::cleanup_system, combat_system::combat_system,
     command_system::process_commands, grid_sync_system::grid_sync_system,
     movement_system::movement_system, production_system::production_system,
@@ -438,6 +440,7 @@ fn make_harness_sim(
             crate::ai::fsm::multi_ai_decision_system,
             process_commands,
             ability_cooldown_system,
+            ability_effect_system,
             status_effect_system,
             aura_system,
             stat_modifier_system,
@@ -449,6 +452,7 @@ fn make_harness_sim(
             tower_combat_system,
             projectile_system,
             movement_system,
+            builder_system,
             grid_sync_system,
             cleanup_system,
             headless_despawn_system,

@@ -2289,4 +2289,7 @@ fn test_move_cancels_build_order() {
         world.get::<BuildOrder>(builder).is_none(),
         "Move should clear BuildOrder"
     );
+    // CatTree costs 150 food — should be refunded
+    let food_after = world.resource::<PlayerResources>().players[0].food;
+    assert_eq!(food_after, 300, "Move should refund CatTree's 150 food cost, got {food_after}");
 }

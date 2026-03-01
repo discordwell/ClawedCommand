@@ -105,12 +105,17 @@ impl Command for AoeCcCommand {
                 if is_cc(self.effect) && effects.is_cc_immune() {
                     continue;
                 }
-                effects.effects.push(StatusInstance {
-                    effect: self.effect,
-                    remaining_ticks: self.duration,
-                    stacks: 1,
-                    source: EntityId(self.source_entity.to_bits()),
-                });
+                // Refresh existing effect instead of stacking duplicates
+                if let Some(existing) = effects.effects.iter_mut().find(|e| e.effect == self.effect) {
+                    existing.remaining_ticks = existing.remaining_ticks.max(self.duration);
+                } else {
+                    effects.effects.push(StatusInstance {
+                        effect: self.effect,
+                        remaining_ticks: self.duration,
+                        stacks: 1,
+                        source: EntityId(self.source_entity.to_bits()),
+                    });
+                }
             }
         }
     }
@@ -157,8 +162,8 @@ impl Command for RevulsionAoeCommand {
         let map_max_y = Fixed::from_num(map_h - 1);
 
         for (target, target_pos) in targets {
-            let dx = target_pos.x - self.source_pos.x;
-            let dy = target_pos.y - self.source_pos.y;
+            let dx = target_pos.x - source_pos.x;
+            let dy = target_pos.y - source_pos.y;
 
             // Normalize direction
             let dist_sq = dx * dx + dy * dy;

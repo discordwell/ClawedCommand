@@ -59,6 +59,14 @@ pub fn process_commands(
                     commands.entity(entity).remove::<AttackMoveTarget>();
                     commands.entity(entity).remove::<HoldPosition>();
                     commands.entity(entity).remove::<Gathering>();
+                    // Refund building cost if cancelling a build order
+                    if let Ok((bo, bo_owner)) = build_orders.get(entity) {
+                        let bstats = building_stats(bo.building_kind);
+                        if let Some(pres) = player_resources.players.get_mut(bo_owner.player_id as usize) {
+                            pres.food += bstats.food_cost;
+                            pres.gpu_cores += bstats.gpu_cost;
+                        }
+                    }
                     commands.entity(entity).remove::<BuildOrder>();
 
                     // Determine faction from owner (default to CatGPT for unowned units)
@@ -555,14 +563,6 @@ pub fn process_commands(
                                         radius: def.range,
                                         active: is_now_active,
                                     });
-                                    // If activating, also deactivate Lullaby aura
-                                    if is_now_active {
-                                        commands.entity(entity).insert(Aura {
-                                            aura_type: AuraType::HarmonicResonance,
-                                            radius: def.range,
-                                            active: true,
-                                        });
-                                    }
                                 }
                                 AbilityId::Lullaby => {
                                     commands.entity(entity).insert(Aura {

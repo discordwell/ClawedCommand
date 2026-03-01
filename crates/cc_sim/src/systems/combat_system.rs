@@ -59,8 +59,9 @@ pub fn combat_system(
             continue;
         };
 
-        // Skip if target is invulnerable
+        // Skip if target is invulnerable — clear target so acquisition finds a new one
         if target_mods.is_some_and(|m| m.invulnerable) {
+            commands.entity(entity).remove::<AttackTarget>();
             continue;
         }
 
