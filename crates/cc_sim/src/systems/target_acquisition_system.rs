@@ -80,14 +80,14 @@ pub fn target_acquisition_system(
 
         if let Some(target_entity) = best_target {
             commands.entity(entity).insert(AttackTarget {
-                target: EntityId(target_entity.to_bits()),
+                target: EntityId::from_entity(target_entity),
             });
             // For AttackMove units, also chase the target (clear stale path first)
             if atk_move.is_some() && hold.is_none() {
                 if let Ok((_, target_pos, _)) = potential_targets.get(target_entity) {
                     commands.entity(entity).remove::<Path>();
                     commands.entity(entity).insert(ChasingTarget {
-                        target: EntityId(target_entity.to_bits()),
+                        target: EntityId::from_entity(target_entity),
                     });
                     commands.entity(entity).insert(MoveTarget {
                         target: target_pos.world,

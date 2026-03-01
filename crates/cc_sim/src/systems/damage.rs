@@ -105,17 +105,11 @@ impl Command for AoeCcCommand {
                 if is_cc(self.effect) && effects.is_cc_immune() {
                     continue;
                 }
-                // Refresh existing effect instead of stacking duplicates
-                if let Some(existing) = effects.effects.iter_mut().find(|e| e.effect == self.effect) {
-                    existing.remaining_ticks = existing.remaining_ticks.max(self.duration);
-                } else {
-                    effects.effects.push(StatusInstance {
-                        effect: self.effect,
-                        remaining_ticks: self.duration,
-                        stacks: 1,
-                        source: EntityId(self.source_entity.to_bits()),
-                    });
-                }
+                effects.refresh_or_insert(
+                    self.effect,
+                    self.duration,
+                    EntityId::from_entity(self.source_entity),
+                );
             }
         }
     }

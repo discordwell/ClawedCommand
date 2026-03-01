@@ -168,3 +168,61 @@ pub const BASE_THREAT_RADIUS: i32 = 8;
 
 /// Minimum Chebyshev distance between AI building placements (tiles).
 pub const AI_BUILD_SPACING: i32 = 3;
+
+/// Maximum workers the AI trains during MidGame phase.
+pub const AI_MAX_MIDGAME_WORKERS: u32 = 6;
+
+/// Chebyshev distance (tiles) for AI focus-fire target search.
+pub const AI_FOCUS_FIRE_RADIUS: i32 = 15;
+
+/// Flanking perpendicular offset (tiles) for AI attack maneuvers.
+pub const AI_FLANK_OFFSET_TILES: i32 = 5;
+
+/// Forward offset (tiles) for melee units during Rally positioning.
+pub const AI_MELEE_FORWARD_OFFSET: i32 = 2;
+
+// ---------------------------------------------------------------------------
+// Tower Defense Building Combat Stats
+// ---------------------------------------------------------------------------
+
+/// LaserPointer (catGPT) tower damage.
+pub const TOWER_DAMAGE_LASER_POINTER: Fixed = Fixed::from_bits(10 << 16);
+/// LaserPointer (catGPT) tower range.
+pub const TOWER_RANGE_LASER_POINTER: Fixed = Fixed::from_bits(6 << 16);
+/// LaserPointer (catGPT) tower attack speed (ticks between attacks).
+pub const TOWER_ATTACK_SPEED_LASER_POINTER: u32 = 15;
+
+/// SporeTower (Croak) tower damage.
+pub const TOWER_DAMAGE_SPORE_TOWER: Fixed = Fixed::from_bits(8 << 16);
+/// SporeTower (Croak) tower range.
+pub const TOWER_RANGE_SPORE_TOWER: Fixed = Fixed::from_bits(5 << 16);
+/// SporeTower (Croak) tower attack speed.
+pub const TOWER_ATTACK_SPEED_SPORE_TOWER: u32 = 15;
+
+/// TetanusTower (LLAMA) tower damage.
+pub const TOWER_DAMAGE_TETANUS_TOWER: Fixed = Fixed::from_bits(8 << 16);
+/// TetanusTower (LLAMA) tower range.
+pub const TOWER_RANGE_TETANUS_TOWER: Fixed = Fixed::from_bits(5 << 16);
+/// TetanusTower (LLAMA) tower attack speed.
+pub const TOWER_ATTACK_SPEED_TETANUS_TOWER: u32 = 12;
+
+/// Watchtower (Murder) tower damage.
+pub const TOWER_DAMAGE_WATCHTOWER: Fixed = Fixed::from_bits(12 << 16);
+/// Watchtower (Murder) tower range.
+pub const TOWER_RANGE_WATCHTOWER: Fixed = Fixed::from_bits(7 << 16);
+/// Watchtower (Murder) tower attack speed.
+pub const TOWER_ATTACK_SPEED_WATCHTOWER: u32 = 18;
+
+/// SqueakTower (Clawed) tower damage.
+pub const TOWER_DAMAGE_SQUEAK_TOWER: Fixed = Fixed::from_bits(8 << 16);
+/// SqueakTower (Clawed) tower range.
+pub const TOWER_RANGE_SQUEAK_TOWER: Fixed = Fixed::from_bits(5 << 16);
+/// SqueakTower (Clawed) tower attack speed.
+pub const TOWER_ATTACK_SPEED_SQUEAK_TOWER: u32 = 15;
+
+/// SlagThrower (Seekers) tower damage.
+pub const TOWER_DAMAGE_SLAG_THROWER: Fixed = Fixed::from_bits(15 << 16);
+/// SlagThrower (Seekers) tower range.
+pub const TOWER_RANGE_SLAG_THROWER: Fixed = Fixed::from_bits(7 << 16);
+/// SlagThrower (Seekers) tower attack speed (slow AoE).
+pub const TOWER_ATTACK_SPEED_SLAG_THROWER: u32 = 30;

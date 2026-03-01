@@ -98,7 +98,7 @@ pub fn tower_combat_system(
                 speed: TOWER_PROJECTILE_SPEED,
             },
             ProjectileTarget {
-                target: EntityId(target_entity.to_bits()),
+                target: EntityId::from_entity(target_entity),
             },
             ProjectileKind::LaserBeam,
         ));

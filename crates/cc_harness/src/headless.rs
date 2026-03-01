@@ -288,7 +288,7 @@ impl HeadlessSim {
                     });
 
                 let snap = UnitSnapshot {
-                    id: EntityId(entity.to_bits()),
+                    id: EntityId::from_entity(entity),
                     kind: unit_type.kind,
                     pos: pos.world.to_grid(),
                     world_pos: pos.world,
@@ -331,11 +331,7 @@ impl HeadlessSim {
                 in query.iter(&self.world)
             {
                 let (is_constructing, progress) = under_construction
-                    .map(|uc| {
-                        let total = uc.total_ticks as f32;
-                        let remaining = uc.remaining_ticks as f32;
-                        (true, if total > 0.0 { 1.0 - remaining / total } else { 1.0 })
-                    })
+                    .map(|uc| (true, uc.progress_f32()))
                     .unwrap_or((false, 1.0));
 
                 let queue = production_queue
@@ -347,7 +343,7 @@ impl HeadlessSim {
                     .unwrap_or_default();
 
                 let snap = BuildingSnapshot {
-                    id: EntityId(entity.to_bits()),
+                    id: EntityId::from_entity(entity),
                     kind: building.kind,
                     pos: pos.world.to_grid(),
                     owner: owner.player_id,
@@ -372,7 +368,7 @@ impl HeadlessSim {
             let mut query = self.world.query::<(Entity, &Position, &ResourceDeposit)>();
             query.iter(&self.world)
                 .map(|(entity, pos, deposit)| ResourceSnapshot {
-                    id: EntityId(entity.to_bits()),
+                    id: EntityId::from_entity(entity),
                     resource_type: deposit.resource_type,
                     pos: pos.world.to_grid(),
                     remaining: deposit.remaining,

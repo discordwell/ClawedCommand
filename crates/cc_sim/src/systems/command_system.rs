@@ -83,7 +83,7 @@ pub fn process_commands(
         match cmd {
             GameCommand::Move { unit_ids, target } => {
                 for (entity, pos, owner, move_target, path) in query.iter_mut() {
-                    let eid = EntityId(entity.to_bits());
+                    let eid = EntityId::from_entity(entity);
                     if !unit_ids.contains(&eid) {
                         continue;
                     }
@@ -137,7 +137,7 @@ pub fn process_commands(
             }
             GameCommand::Stop { unit_ids } => {
                 for (entity, _, _, _, _) in query.iter_mut() {
-                    let eid = EntityId(entity.to_bits());
+                    let eid = EntityId::from_entity(entity);
                     if !unit_ids.contains(&eid) {
                         continue;
                     }
@@ -163,7 +163,7 @@ pub fn process_commands(
             }
             GameCommand::Select { unit_ids } => {
                 for (entity, _, _, _, _) in query.iter() {
-                    let eid = EntityId(entity.to_bits());
+                    let eid = EntityId::from_entity(entity);
                     if unit_ids.contains(&eid) {
                         commands.entity(entity).insert(Selected);
                     }
@@ -179,7 +179,7 @@ pub fn process_commands(
                 target: attack_target,
             } => {
                 for (entity, _, _, _, _) in query.iter_mut() {
-                    let eid = EntityId(entity.to_bits());
+                    let eid = EntityId::from_entity(entity);
                     if !unit_ids.contains(&eid) {
                         continue;
                     }
@@ -201,7 +201,7 @@ pub fn process_commands(
             }
             GameCommand::AttackMove { unit_ids, target } => {
                 for (entity, pos, owner, move_target, path) in query.iter_mut() {
-                    let eid = EntityId(entity.to_bits());
+                    let eid = EntityId::from_entity(entity);
                     if !unit_ids.contains(&eid) {
                         continue;
                     }
@@ -248,7 +248,7 @@ pub fn process_commands(
             }
             GameCommand::HoldPosition { unit_ids } => {
                 for (entity, _, _, _, _) in query.iter_mut() {
-                    let eid = EntityId(entity.to_bits());
+                    let eid = EntityId::from_entity(entity);
                     if !unit_ids.contains(&eid) {
                         continue;
                     }
@@ -268,7 +268,7 @@ pub fn process_commands(
                 let deposit_pos = deposits.get(deposit_entity).ok().map(|p| p.world.to_grid());
 
                 for (entity, pos, owner, move_target, path) in query.iter_mut() {
-                    let eid = EntityId(entity.to_bits());
+                    let eid = EntityId::from_entity(entity);
                     if !unit_ids.contains(&eid) {
                         continue;
                     }
@@ -521,7 +521,7 @@ pub fn process_commands(
                             commands.entity(entity).remove::<Selected>();
                         }
                         for (entity, _, _, _, _) in query.iter() {
-                            let eid = EntityId(entity.to_bits());
+                            let eid = EntityId::from_entity(entity);
                             if group_ids.contains(&eid) {
                                 commands.entity(entity).insert(Selected);
                             }

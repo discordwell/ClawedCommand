@@ -35,7 +35,7 @@ const CONSTRUCTION_BAR_Y_OFFSET: f32 = 22.0;
 fn construction_bar_width(kind: BuildingKind) -> f32 {
     match building_role(kind) {
         BuildingRole::Hq => 30.0,
-        BuildingRole::Barracks | BuildingRole::TechBuilding => 28.0,
+        BuildingRole::Barracks | BuildingRole::TechBuilding => super::BUILDING_SPRITE_SIZE,
         BuildingRole::ResourceDepot | BuildingRole::Garrison | BuildingRole::Research => 24.0,
         BuildingRole::SupplyDepot | BuildingRole::DefenseTower => 20.0,
     }
@@ -81,7 +81,7 @@ pub fn spawn_building_visuals(
             ));
         } else {
             // Fallback: colored rectangle mesh
-            let mesh = meshes.add(Rectangle::new(28.0, 28.0));
+            let mesh = meshes.add(Rectangle::new(super::BUILDING_SPRITE_SIZE, super::BUILDING_SPRITE_SIZE));
             let mat = materials.add(ColorMaterial::from_color(building_color(owner.player_id)));
 
             commands.entity(entity).insert((
@@ -167,7 +167,7 @@ pub fn render_placement_preview(
     } else {
         // Fallback: colored rectangle mesh
         let color = Color::srgba(gr, gg, gb, ghost_alpha);
-        let mesh = meshes.add(Rectangle::new(28.0, 28.0));
+        let mesh = meshes.add(Rectangle::new(super::BUILDING_SPRITE_SIZE, super::BUILDING_SPRITE_SIZE));
         let mat = materials.add(ColorMaterial::from_color(color));
 
         commands.spawn((
@@ -238,11 +238,7 @@ pub fn update_construction_bars(
 ) {
     for (building, uc, children) in buildings.iter() {
         let bar_width = construction_bar_width(building.kind);
-        let progress = if uc.total_ticks > 0 {
-            1.0 - (uc.remaining_ticks as f32 / uc.total_ticks as f32)
-        } else {
-            1.0
-        };
+        let progress = uc.progress_f32();
         let fill_width = bar_width * progress;
 
         for child in children.iter() {
@@ -289,12 +285,7 @@ pub fn update_construction_alpha_sprite(
     for (uc, mut sprite, owner) in buildings.iter_mut() {
         let base_tint = team_color(owner.player_id);
         if let Some(uc) = uc {
-            let progress = if uc.total_ticks > 0 {
-                1.0 - (uc.remaining_ticks as f32 / uc.total_ticks as f32)
-            } else {
-                1.0
-            };
-            let alpha = 0.4 + 0.6 * progress;
+            let alpha = 0.4 + 0.6 * uc.progress_f32();
             sprite.color = base_tint.with_alpha(alpha);
         } else if sprite.color.alpha() < 1.0 {
             sprite.color = base_tint.with_alpha(1.0);
@@ -316,12 +307,7 @@ pub fn update_construction_alpha_mesh(
         };
 
         if let Some(uc) = uc {
-            let progress = if uc.total_ticks > 0 {
-                1.0 - (uc.remaining_ticks as f32 / uc.total_ticks as f32)
-            } else {
-                1.0
-            };
-            let alpha = 0.4 + 0.6 * progress;
+            let alpha = 0.4 + 0.6 * uc.progress_f32();
             mat.color = mat.color.with_alpha(alpha);
         } else {
             let current_alpha = mat.color.alpha();

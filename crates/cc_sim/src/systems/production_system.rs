@@ -16,6 +16,7 @@ use cc_core::components::{
 use cc_core::coords::WorldPos;
 use cc_core::math::Fixed;
 use cc_core::status_effects::StatusEffects;
+use cc_core::tuning;
 use cc_core::unit_stats::base_stats;
 
 use crate::resources::PlayerResources;
@@ -49,9 +50,7 @@ pub fn production_system(
             // Scale HP proportionally to construction progress (10% to 100%)
             // Use min() so combat damage is preserved — never heal above the formula value
             if uc.remaining_ticks > 0 && uc.total_ticks > 0 {
-                let progress = Fixed::from_num(1.0f32)
-                    - Fixed::from_num(uc.remaining_ticks as f32)
-                        / Fixed::from_num(uc.total_ticks as f32);
+                let progress = Fixed::from_num(uc.progress_f32());
                 let formula_hp =
                     health.max * (Fixed::from_num(0.1f32) + Fixed::from_num(0.9f32) * progress);
                 if health.current < formula_hp {
@@ -89,9 +88,9 @@ pub fn production_system(
                 if building.kind == BuildingKind::LaserPointer {
                     commands.entity(entity).insert((
                         AttackStats {
-                            damage: Fixed::from_bits(10 << 16), // 10 damage
-                            range: Fixed::from_bits(6 << 16),   // 6 range
-                            attack_speed: 15,                    // 1.5s between attacks
+                            damage: tuning::TOWER_DAMAGE_LASER_POINTER,
+                            range: tuning::TOWER_RANGE_LASER_POINTER,
+                            attack_speed: tuning::TOWER_ATTACK_SPEED_LASER_POINTER,
                             cooldown_remaining: 0,
                         },
                         AttackTypeMarker {
@@ -104,9 +103,9 @@ pub fn production_system(
                 if building.kind == BuildingKind::SporeTower {
                     commands.entity(entity).insert((
                         AttackStats {
-                            damage: Fixed::from_bits(8 << 16), // 8 damage
-                            range: Fixed::from_bits(5 << 16),  // 5 range
-                            attack_speed: 15,                   // 1.5s between attacks
+                            damage: tuning::TOWER_DAMAGE_SPORE_TOWER,
+                            range: tuning::TOWER_RANGE_SPORE_TOWER,
+                            attack_speed: tuning::TOWER_ATTACK_SPEED_SPORE_TOWER,
                             cooldown_remaining: 0,
                         },
                         AttackTypeMarker {
@@ -126,9 +125,9 @@ pub fn production_system(
                 if building.kind == BuildingKind::TetanusTower {
                     commands.entity(entity).insert((
                         AttackStats {
-                            damage: Fixed::from_bits(8 << 16),  // 8 damage
-                            range: Fixed::from_bits(5 << 16),   // 5 range
-                            attack_speed: 12,                    // 1.2s between attacks
+                            damage: tuning::TOWER_DAMAGE_TETANUS_TOWER,
+                            range: tuning::TOWER_RANGE_TETANUS_TOWER,
+                            attack_speed: tuning::TOWER_ATTACK_SPEED_TETANUS_TOWER,
                             cooldown_remaining: 0,
                         },
                         AttackTypeMarker {
@@ -161,9 +160,9 @@ pub fn production_system(
                 if building.kind == BuildingKind::Watchtower {
                     commands.entity(entity).insert((
                         AttackStats {
-                            damage: Fixed::from_bits(12 << 16), // 12 damage
-                            range: Fixed::from_bits(7 << 16),   // 7 range (longer than LaserPointer)
-                            attack_speed: 18,                    // 1.8s between attacks
+                            damage: tuning::TOWER_DAMAGE_WATCHTOWER,
+                            range: tuning::TOWER_RANGE_WATCHTOWER,
+                            attack_speed: tuning::TOWER_ATTACK_SPEED_WATCHTOWER,
                             cooldown_remaining: 0,
                         },
                         AttackTypeMarker {
@@ -190,9 +189,9 @@ pub fn production_system(
                 if building.kind == BuildingKind::SqueakTower {
                     commands.entity(entity).insert((
                         AttackStats {
-                            damage: Fixed::from_bits(8 << 16), // 8 damage
-                            range: Fixed::from_bits(5 << 16),  // 5 range
-                            attack_speed: 15,                   // 1.5s between attacks
+                            damage: tuning::TOWER_DAMAGE_SQUEAK_TOWER,
+                            range: tuning::TOWER_RANGE_SQUEAK_TOWER,
+                            attack_speed: tuning::TOWER_ATTACK_SPEED_SQUEAK_TOWER,
                             cooldown_remaining: 0,
                         },
                         AttackTypeMarker {
@@ -205,9 +204,9 @@ pub fn production_system(
                 if building.kind == BuildingKind::SlagThrower {
                     commands.entity(entity).insert((
                         AttackStats {
-                            damage: Fixed::from_bits(15 << 16), // 15 damage
-                            range: Fixed::from_bits(7 << 16),   // 7 range
-                            attack_speed: 30,                    // 3s between attacks (slower, AoE)
+                            damage: tuning::TOWER_DAMAGE_SLAG_THROWER,
+                            range: tuning::TOWER_RANGE_SLAG_THROWER,
+                            attack_speed: tuning::TOWER_ATTACK_SPEED_SLAG_THROWER,
                             cooldown_remaining: 0,
                         },
                         AttackTypeMarker {
@@ -503,7 +502,7 @@ pub fn production_system(
                             let dep_resource = deposits.get(dep_entity).unwrap().2.resource_type;
                             commands.entity(new_entity).insert((
                                 Gathering {
-                                    deposit_entity: EntityId(dep_entity.to_bits()),
+                                    deposit_entity: EntityId::from_entity(dep_entity),
                                     carried_type: dep_resource,
                                     carried_amount: 0,
                                     state: GatherState::MovingToDeposit,

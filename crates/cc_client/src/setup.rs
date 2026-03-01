@@ -290,7 +290,10 @@ pub fn setup_game(
                     .with_scale(Vec3::splat(scale)),
             ));
         } else {
-            let box_mesh = meshes.add(Rectangle::new(28.0, 28.0));
+            let box_mesh = meshes.add(Rectangle::new(
+                crate::renderer::BUILDING_SPRITE_SIZE,
+                crate::renderer::BUILDING_SPRITE_SIZE,
+            ));
             let box_mat = materials.add(ColorMaterial::from_color(building_color(sp.player)));
             commands.spawn((
                 Position { world: box_world },
@@ -503,7 +506,7 @@ pub fn unit_scale(kind: UnitKind, art_loaded: bool) -> f32 {
             UnitKind::Catnapper => 0.28,
             UnitKind::Chonk => 0.30,
             UnitKind::MechCommander => 0.38,
-            // Clawed (mice) units — slightly smaller than cats
+            // Clawed (mice) units
             UnitKind::Nibblet => 0.17,
             UnitKind::Swarmer => 0.16,
             UnitKind::Gnawer => 0.18,
@@ -514,7 +517,50 @@ pub fn unit_scale(kind: UnitKind, art_loaded: bool) -> f32 {
             UnitKind::Whiskerwitch => 0.22,
             UnitKind::Plaguetail => 0.22,
             UnitKind::WarrenMarshal => 0.34,
-            _ => 0.20,
+            // Murder (corvids) — aerial, fragile
+            UnitKind::MurderScrounger => 0.17,
+            UnitKind::Sentinel => 0.18,
+            UnitKind::Rookclaw => 0.19,
+            UnitKind::Magpike => 0.18,
+            UnitKind::Magpyre => 0.18,
+            UnitKind::Jaycaller => 0.20,
+            UnitKind::Jayflicker => 0.20,
+            UnitKind::Dusktalon => 0.22,
+            UnitKind::Hootseer => 0.25,
+            UnitKind::CorvusRex => 0.36,
+            // Seekers (badgers) — heavy, slow
+            UnitKind::Delver => 0.19,
+            UnitKind::Ironhide => 0.24,
+            UnitKind::Cragback => 0.28,
+            UnitKind::Warden => 0.22,
+            UnitKind::Sapjaw => 0.22,
+            UnitKind::Wardenmother => 0.30,
+            UnitKind::SeekerTunneler => 0.20,
+            UnitKind::Embermaw => 0.24,
+            UnitKind::Dustclaw => 0.20,
+            UnitKind::Gutripper => 0.28,
+            // Croak (axolotls) — medium, regenerating
+            UnitKind::Ponderer => 0.18,
+            UnitKind::Regeneron => 0.19,
+            UnitKind::Broodmother => 0.24,
+            UnitKind::Gulper => 0.26,
+            UnitKind::Eftsaber => 0.19,
+            UnitKind::Croaker => 0.22,
+            UnitKind::Leapfrog => 0.21,
+            UnitKind::Shellwarden => 0.26,
+            UnitKind::Bogwhisper => 0.22,
+            UnitKind::MurkCommander => 0.34,
+            // LLAMA (raccoons) — medium, scrappy
+            UnitKind::Scrounger => 0.17,
+            UnitKind::Bandit => 0.18,
+            UnitKind::HeapTitan => 0.28,
+            UnitKind::GlitchRat => 0.18,
+            UnitKind::PatchPossum => 0.20,
+            UnitKind::GreaseMonkey => 0.22,
+            UnitKind::DeadDropUnit => 0.19,
+            UnitKind::Wrecker => 0.25,
+            UnitKind::DumpsterDiver => 0.22,
+            UnitKind::JunkyardKing => 0.36,
         }
     } else {
         match kind {
@@ -529,7 +575,7 @@ pub fn unit_scale(kind: UnitKind, art_loaded: bool) -> f32 {
             UnitKind::Catnapper => 0.65,
             UnitKind::Chonk => 0.7,
             UnitKind::MechCommander => 0.8,
-            // Clawed (mice) units — slightly smaller than cats
+            // Clawed (mice) units
             UnitKind::Nibblet => 0.30,
             UnitKind::Swarmer => 0.40,
             UnitKind::Gnawer => 0.40,
@@ -540,7 +586,50 @@ pub fn unit_scale(kind: UnitKind, art_loaded: bool) -> f32 {
             UnitKind::Whiskerwitch => 0.50,
             UnitKind::Plaguetail => 0.50,
             UnitKind::WarrenMarshal => 0.70,
-            _ => 0.5,
+            // Murder (corvids) — aerial, fragile
+            UnitKind::MurderScrounger => 0.35,
+            UnitKind::Sentinel => 0.40,
+            UnitKind::Rookclaw => 0.42,
+            UnitKind::Magpike => 0.40,
+            UnitKind::Magpyre => 0.40,
+            UnitKind::Jaycaller => 0.45,
+            UnitKind::Jayflicker => 0.45,
+            UnitKind::Dusktalon => 0.48,
+            UnitKind::Hootseer => 0.55,
+            UnitKind::CorvusRex => 0.75,
+            // Seekers (badgers) — heavy, slow
+            UnitKind::Delver => 0.38,
+            UnitKind::Ironhide => 0.55,
+            UnitKind::Cragback => 0.60,
+            UnitKind::Warden => 0.50,
+            UnitKind::Sapjaw => 0.50,
+            UnitKind::Wardenmother => 0.65,
+            UnitKind::SeekerTunneler => 0.42,
+            UnitKind::Embermaw => 0.50,
+            UnitKind::Dustclaw => 0.42,
+            UnitKind::Gutripper => 0.60,
+            // Croak (axolotls) — medium, regenerating
+            UnitKind::Ponderer => 0.38,
+            UnitKind::Regeneron => 0.40,
+            UnitKind::Broodmother => 0.52,
+            UnitKind::Gulper => 0.55,
+            UnitKind::Eftsaber => 0.42,
+            UnitKind::Croaker => 0.48,
+            UnitKind::Leapfrog => 0.45,
+            UnitKind::Shellwarden => 0.55,
+            UnitKind::Bogwhisper => 0.48,
+            UnitKind::MurkCommander => 0.72,
+            // LLAMA (raccoons) — medium, scrappy
+            UnitKind::Scrounger => 0.35,
+            UnitKind::Bandit => 0.40,
+            UnitKind::HeapTitan => 0.60,
+            UnitKind::GlitchRat => 0.40,
+            UnitKind::PatchPossum => 0.42,
+            UnitKind::GreaseMonkey => 0.48,
+            UnitKind::DeadDropUnit => 0.42,
+            UnitKind::Wrecker => 0.55,
+            UnitKind::DumpsterDiver => 0.48,
+            UnitKind::JunkyardKing => 0.75,
         }
     }
 }

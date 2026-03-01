@@ -70,7 +70,7 @@ pub fn cleanup_system(
                         duration: NINE_LIVES_REVIVE_TICKS,
                         stacks: 1,
                         max_stacks: 1,
-                        source: EntityId(entity.to_bits()),
+                        source: EntityId::from_entity(entity),
                     });
                     true
                 } else {

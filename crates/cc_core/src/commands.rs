@@ -9,6 +9,14 @@ use crate::coords::GridPos;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EntityId(pub u64);
 
+#[cfg(feature = "bevy")]
+impl EntityId {
+    /// Create an EntityId from a Bevy Entity.
+    pub fn from_entity(entity: bevy_ecs::entity::Entity) -> Self {
+        Self(entity.to_bits())
+    }
+}
+
 /// Where a command originated — used by control restriction mutators
 /// to filter commands by input source.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]

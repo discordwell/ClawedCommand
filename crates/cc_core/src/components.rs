@@ -175,6 +175,66 @@ pub enum BuildingKind {
 }
 
 impl BuildingKind {
+    /// Returns a human-readable display name for this building kind.
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            // catGPT
+            BuildingKind::TheBox => "The Box",
+            BuildingKind::CatTree => "Cat Tree",
+            BuildingKind::FishMarket => "Fish Market",
+            BuildingKind::LitterBox => "Litter Box",
+            BuildingKind::ServerRack => "Server Rack",
+            BuildingKind::ScratchingPost => "Scratching Post",
+            BuildingKind::CatFlap => "Cat Flap",
+            BuildingKind::LaserPointer => "Laser Pointer",
+            // The Murder (Corvids)
+            BuildingKind::TheParliament => "The Parliament",
+            BuildingKind::Rookery => "Rookery",
+            BuildingKind::CarrionCache => "Carrion Cache",
+            BuildingKind::AntennaArray => "Antenna Array",
+            BuildingKind::Panopticon => "Panopticon",
+            BuildingKind::NestBox => "Nest Box",
+            BuildingKind::ThornHedge => "Thorn Hedge",
+            BuildingKind::Watchtower => "Watchtower",
+            // The Clawed (Mice)
+            BuildingKind::TheBurrow => "The Burrow",
+            BuildingKind::NestingBox => "Nesting Box",
+            BuildingKind::SeedVault => "Seed Vault",
+            BuildingKind::JunkTransmitter => "Junk Transmitter",
+            BuildingKind::GnawLab => "Gnaw Lab",
+            BuildingKind::WarrenExpansion => "Warren Expansion",
+            BuildingKind::Mousehole => "Mousehole",
+            BuildingKind::SqueakTower => "Squeak Tower",
+            // Seekers of the Deep (Badgers)
+            BuildingKind::TheSett => "The Sett",
+            BuildingKind::WarHollow => "War Hollow",
+            BuildingKind::BurrowDepot => "Burrow Depot",
+            BuildingKind::CoreTap => "Core Tap",
+            BuildingKind::ClawMarks => "Claw Marks",
+            BuildingKind::DeepWarren => "Deep Warren",
+            BuildingKind::BulwarkGate => "Bulwark Gate",
+            BuildingKind::SlagThrower => "Slag Thrower",
+            // Croak (Axolotls)
+            BuildingKind::TheGrotto => "The Grotto",
+            BuildingKind::SpawningPools => "Spawning Pools",
+            BuildingKind::LilyMarket => "Lily Market",
+            BuildingKind::SunkenServer => "Sunken Server",
+            BuildingKind::FossilStones => "Fossil Stones",
+            BuildingKind::ReedBed => "Reed Bed",
+            BuildingKind::TidalGate => "Tidal Gate",
+            BuildingKind::SporeTower => "Spore Tower",
+            // LLAMA (Raccoons)
+            BuildingKind::TheDumpster => "The Dumpster",
+            BuildingKind::ScrapHeap => "Scrap Heap",
+            BuildingKind::ChopShop => "Chop Shop",
+            BuildingKind::JunkServer => "Junk Server",
+            BuildingKind::TinkerBench => "Tinker Bench",
+            BuildingKind::TrashPile => "Trash Pile",
+            BuildingKind::DumpsterRelay => "Dumpster Relay",
+            BuildingKind::TetanusTower => "Tetanus Tower",
+        }
+    }
+
     /// Returns true if this building is a faction HQ (victory condition target).
     pub fn is_hq(&self) -> bool {
         matches!(
@@ -663,6 +723,17 @@ pub struct Building {
 pub struct UnderConstruction {
     pub remaining_ticks: u32,
     pub total_ticks: u32,
+}
+
+impl UnderConstruction {
+    /// Returns construction progress as 0.0 (just started) to 1.0 (complete).
+    pub fn progress_f32(&self) -> f32 {
+        if self.total_ticks > 0 {
+            1.0 - (self.remaining_ticks as f32 / self.total_ticks as f32)
+        } else {
+            1.0
+        }
+    }
 }
 
 /// Production queue for a building that can train units.

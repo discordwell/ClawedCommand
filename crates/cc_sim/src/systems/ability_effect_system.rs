@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use cc_core::abilities::{self, AbilityId};
 use cc_core::commands::EntityId;
 use cc_core::components::{AbilitySlots, Dead, DreamSiegeTimer, Health, Owner};
-use cc_core::status_effects::{StatusEffectId, StatusEffects, StatusInstance};
+use cc_core::status_effects::{StatusEffectId, StatusEffects};
 use cc_core::tuning::POWER_NAP_GPU_INTERVAL;
 
 use crate::resources::PlayerResources;
@@ -45,11 +45,10 @@ pub fn ability_effect_system(
 
             // PowerNap is special: it generates GPU as a side-effect
             if slot.id == AbilityId::PowerNap {
-                ensure_effect(
-                    &mut effects,
+                effects.refresh_or_insert(
                     StatusEffectId::PowerNapping,
                     slot.duration_remaining.max(1),
-                    entity,
+                    EntityId::from_entity(entity),
                 );
                 if slot.duration_remaining > 0
                     && slot.duration_remaining % POWER_NAP_GPU_INTERVAL == 0
@@ -73,21 +72,9 @@ pub fn ability_effect_system(
                 } else {
                     2
                 };
-                ensure_effect(&mut effects, effect_id, duration, entity);
+                effects.refresh_or_insert(effect_id, duration, EntityId::from_entity(entity));
             }
         }
     }
 }
 
-fn ensure_effect(effects: &mut StatusEffects, id: StatusEffectId, duration: u32, entity: Entity) {
-    if let Some(existing) = effects.effects.iter_mut().find(|e| e.effect == id) {
-        existing.remaining_ticks = existing.remaining_ticks.max(duration);
-    } else {
-        effects.effects.push(StatusInstance {
-            effect: id,
-            remaining_ticks: duration,
-            stacks: 1,
-            source: EntityId(entity.to_bits()),
-        });
-    }
-}

@@ -178,7 +178,7 @@ fn resolve_voice_keyword(
 ) -> Option<GameCommand> {
     let unit_ids: Vec<EntityId> = player_units
         .iter()
-        .map(|(e, _)| EntityId(e.to_bits()))
+        .map(|(e, _)| EntityId::from_entity(*e))
         .collect();
 
     if unit_ids.is_empty() {
@@ -192,7 +192,7 @@ fn resolve_voice_keyword(
             let worker_ids: Vec<EntityId> = player_units
                 .iter()
                 .filter(|(_, kind)| kind.is_worker())
-                .map(|(e, _)| EntityId(e.to_bits()))
+                .map(|(e, _)| EntityId::from_entity(*e))
                 .collect();
             if worker_ids.is_empty() {
                 None

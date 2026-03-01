@@ -29,6 +29,9 @@ pub mod zoom_lod;
 
 use bevy::prelude::*;
 
+/// Default building sprite/mesh size in pixels (width and height).
+pub const BUILDING_SPRITE_SIZE: f32 = 28.0;
+
 /// Check whether an asset file exists on disk relative to the workspace assets/ directory.
 /// Returns `false` on WASM (no filesystem access).
 #[cfg(not(target_arch = "wasm32"))]
