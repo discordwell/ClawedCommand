@@ -1,15 +1,34 @@
 use bevy::prelude::*;
 
+use cc_core::abilities::unit_abilities;
 use cc_core::commands::EntityId;
 use cc_core::components::{
-    AttackMoveTarget, AttackStats, AttackTarget, AttackType, AttackTypeMarker, Building,
-    BuildingKind, ChasingTarget, Dead, Gathering, Health, MoveTarget, MovementSpeed, Owner, Path,
-    Position, ProductionQueue, ResourceDeposit, ResourceType, UnitKind, UnitType,
-    UnderConstruction,
+    AbilitySlots, AttackMoveTarget, AttackStats, AttackTarget, AttackType, AttackTypeMarker,
+    Building, BuildingKind, ChasingTarget, Dead, Gathering, Health, MoveTarget, MovementSpeed,
+    Owner, Path, Position, ProductionQueue, ResearchQueue, ResourceDeposit, ResourceType, UnitKind,
+    UnitType, UnderConstruction,
 };
 use cc_core::coords::{GridPos, WorldPos};
 use cc_core::math::Fixed;
+use cc_core::status_effects::StatusEffects;
 use cc_sim::resources::{PlayerResourceState, PlayerResources};
+
+/// Read-only snapshot of a status effect on a unit.
+#[derive(Debug, Clone)]
+pub struct StatusEffectSnapshot {
+    pub effect_type: String,
+    pub remaining_ticks: u32,
+    pub stacks: u32,
+}
+
+/// Read-only snapshot of an ability slot on a unit.
+#[derive(Debug, Clone)]
+pub struct AbilitySnapshot {
+    pub slot: u8,
+    pub id: String,
+    pub cooldown_remaining: u32,
+    pub ready: bool,
+}
 
 /// Read-only snapshot of a unit's state. Pure data, no ECS references.
 #[derive(Debug, Clone)]
@@ -31,6 +50,8 @@ pub struct UnitSnapshot {
     pub is_idle: bool,
     pub is_dead: bool,
     pub is_gathering: bool,
+    pub status_effects: Vec<StatusEffectSnapshot>,
+    pub abilities: Vec<AbilitySnapshot>,
 }
 
 /// Read-only snapshot of a building's state.
@@ -45,6 +66,7 @@ pub struct BuildingSnapshot {
     pub under_construction: bool,
     pub construction_progress: f32,
     pub production_queue: Vec<UnitKind>,
+    pub research_queue: Vec<String>,
 }
 
 /// Read-only snapshot of a resource deposit.
@@ -90,6 +112,7 @@ impl GameStateSnapshot {
 }
 
 /// Build a complete game state snapshot from the ECS World for a given player.
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn build_snapshot(
     tick: u64,
     map_width: u32,
@@ -100,9 +123,11 @@ pub fn build_snapshot(
               Option<&AttackStats>, Option<&AttackTypeMarker>,
               Option<&MoveTarget>, Option<&AttackTarget>, Option<&Path>,
               Option<&Gathering>, Option<&ChasingTarget>,
-              Option<&AttackMoveTarget>, Option<&Dead>)],
+              Option<&AttackMoveTarget>, Option<&Dead>,
+              Option<&StatusEffects>, Option<&AbilitySlots>)],
     buildings: &[(Entity, &Position, &Owner, &Building, &Health,
-                  Option<&UnderConstruction>, Option<&ProductionQueue>)],
+                  Option<&UnderConstruction>, Option<&ProductionQueue>,
+                  Option<&ResearchQueue>)],
     deposits: &[(Entity, &Position, &ResourceDeposit)],
 ) -> GameStateSnapshot {
     let mut my_units = Vec::new();
@@ -111,7 +136,8 @@ pub fn build_snapshot(
     for &(entity, pos, owner, unit_type, health, speed,
           attack_stats, attack_type_marker,
           move_target, attack_target, path,
-          gathering, chasing, attack_move, dead) in units
+          gathering, chasing, attack_move, dead,
+          status_effects, ability_slots) in units
     {
         let is_moving = move_target.is_some() || path.is_some() || chasing.is_some();
         let is_attacking = attack_target.is_some() || attack_move.is_some();
@@ -125,6 +151,44 @@ pub fn build_snapshot(
         let atk_type = attack_type_marker
             .map(|m| m.attack_type)
             .unwrap_or(AttackType::Melee);
+
+        let se_snaps = status_effects
+            .map(|se| {
+                se.effects
+                    .iter()
+                    .filter(|e| e.remaining_ticks > 0)
+                    .map(|e| StatusEffectSnapshot {
+                        effect_type: format!("{:?}", e.effect),
+                        remaining_ticks: e.remaining_ticks,
+                        stacks: e.stacks,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let ability_snaps = ability_slots
+            .map(|slots| {
+                slots.slots.iter().enumerate().map(|(i, state)| {
+                    AbilitySnapshot {
+                        slot: i as u8,
+                        id: format!("{:?}", state.id),
+                        cooldown_remaining: state.cooldown_remaining,
+                        ready: state.cooldown_remaining == 0,
+                    }
+                }).collect()
+            })
+            .unwrap_or_else(|| {
+                // Fall back to unit_abilities lookup for units without AbilitySlots component
+                let ids = unit_abilities(unit_type.kind);
+                ids.iter().enumerate().map(|(i, id)| {
+                    AbilitySnapshot {
+                        slot: i as u8,
+                        id: format!("{:?}", id),
+                        cooldown_remaining: 0,
+                        ready: true,
+                    }
+                }).collect()
+            });
 
         let snap = UnitSnapshot {
             id: EntityId(entity.to_bits()),
@@ -144,6 +208,8 @@ pub fn build_snapshot(
             is_idle,
             is_dead,
             is_gathering: gathering.is_some(),
+            status_effects: se_snaps,
+            abilities: ability_snaps,
         };
 
         if owner.player_id == player_id {
@@ -156,7 +222,7 @@ pub fn build_snapshot(
     let mut my_buildings = Vec::new();
     let mut enemy_buildings = Vec::new();
 
-    for &(entity, pos, owner, building, health, under_construction, production_queue) in buildings {
+    for &(entity, pos, owner, building, health, under_construction, production_queue, research_queue) in buildings {
         let (is_constructing, progress) = under_construction
             .map(|uc| {
                 let total = uc.total_ticks as f32;
@@ -169,6 +235,10 @@ pub fn build_snapshot(
             .map(|pq| pq.queue.iter().map(|(kind, _)| *kind).collect())
             .unwrap_or_default();
 
+        let rq = research_queue
+            .map(|rq| rq.queue.iter().map(|(upgrade, _)| format!("{}", upgrade)).collect())
+            .unwrap_or_default();
+
         let snap = BuildingSnapshot {
             id: EntityId(entity.to_bits()),
             kind: building.kind,
@@ -179,6 +249,7 @@ pub fn build_snapshot(
             under_construction: is_constructing,
             construction_progress: progress,
             production_queue: queue,
+            research_queue: rq,
         };
 
         if owner.player_id == player_id {
@@ -359,5 +430,110 @@ mod tests {
         unit.is_moving = true;
         unit.is_idle = false;
         assert!(!unit.is_idle);
+    }
+
+    #[test]
+    fn unit_snapshot_captures_status_effects() {
+        let mut unit = make_unit_snapshot(1, UnitKind::Hisser, 5, 5, 0);
+        unit.status_effects = vec![
+            StatusEffectSnapshot {
+                effect_type: "Corroded".into(),
+                remaining_ticks: 30,
+                stacks: 2,
+            },
+            StatusEffectSnapshot {
+                effect_type: "Stunned".into(),
+                remaining_ticks: 10,
+                stacks: 1,
+            },
+        ];
+
+        assert_eq!(unit.status_effects.len(), 2);
+        assert_eq!(unit.status_effects[0].effect_type, "Corroded");
+        assert_eq!(unit.status_effects[0].remaining_ticks, 30);
+        assert_eq!(unit.status_effects[0].stacks, 2);
+        assert_eq!(unit.status_effects[1].effect_type, "Stunned");
+    }
+
+    #[test]
+    fn unit_snapshot_empty_status_effects_when_missing() {
+        let unit = make_unit_snapshot(1, UnitKind::Hisser, 5, 5, 0);
+        assert!(unit.status_effects.is_empty());
+    }
+
+    #[test]
+    fn unit_snapshot_captures_ability_cooldowns() {
+        let mut unit = make_unit_snapshot(1, UnitKind::Hisser, 5, 5, 0);
+        unit.abilities = vec![
+            AbilitySnapshot {
+                slot: 0,
+                id: "CorrosiveSpit".into(),
+                cooldown_remaining: 0,
+                ready: true,
+            },
+            AbilitySnapshot {
+                slot: 1,
+                id: "DisgustMortar".into(),
+                cooldown_remaining: 15,
+                ready: false,
+            },
+            AbilitySnapshot {
+                slot: 2,
+                id: "Misinformation".into(),
+                cooldown_remaining: 0,
+                ready: true,
+            },
+        ];
+
+        assert_eq!(unit.abilities.len(), 3);
+        assert!(unit.abilities[0].ready);
+        assert_eq!(unit.abilities[0].id, "CorrosiveSpit");
+        assert!(!unit.abilities[1].ready);
+        assert_eq!(unit.abilities[1].cooldown_remaining, 15);
+        assert!(unit.abilities[2].ready);
+    }
+
+    #[test]
+    fn unit_snapshot_empty_abilities_when_missing() {
+        let unit = make_unit_snapshot(1, UnitKind::Hisser, 5, 5, 0);
+        assert!(unit.abilities.is_empty());
+    }
+
+    #[test]
+    fn building_snapshot_captures_research_queue() {
+        let building = BuildingSnapshot {
+            id: EntityId(10),
+            kind: BuildingKind::ScratchingPost,
+            pos: GridPos::new(5, 5),
+            owner: 0,
+            health_current: cc_core::math::fixed_from_i32(500),
+            health_max: cc_core::math::fixed_from_i32(500),
+            under_construction: false,
+            construction_progress: 1.0,
+            production_queue: vec![],
+            research_queue: vec!["SharperClaws".into(), "ThickerFur".into()],
+        };
+
+        assert_eq!(building.research_queue.len(), 2);
+        assert_eq!(building.research_queue[0], "SharperClaws");
+        assert_eq!(building.research_queue[1], "ThickerFur");
+    }
+
+    #[test]
+    fn building_snapshot_empty_research_queue() {
+        let building = BuildingSnapshot {
+            id: EntityId(10),
+            kind: BuildingKind::ScratchingPost,
+            pos: GridPos::new(5, 5),
+            owner: 0,
+            health_current: cc_core::math::fixed_from_i32(500),
+            health_max: cc_core::math::fixed_from_i32(500),
+            under_construction: false,
+            construction_progress: 1.0,
+            production_queue: vec![],
+            research_queue: vec![],
+        };
+
+        assert!(building.research_queue.is_empty());
     }
 }

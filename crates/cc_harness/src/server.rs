@@ -175,6 +175,12 @@ struct ResearchParams {
 }
 
 #[derive(Deserialize, Serialize, JsonSchema)]
+struct PlayerUnitId {
+    player_id: u8,
+    unit_id: u64,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
 struct FocusFireParams {
     player_id: u8,
     attacker_ids: Vec<u64>,
@@ -611,6 +617,73 @@ impl HarnessServer {
             "width": w, "height": h,
             "tick": sim.tick(),
             "game_state": format!("{:?}", sim.game_state()),
+        });
+        Ok(CallToolResult::success(vec![Content::text(json.to_string())]))
+    }
+
+    #[tool(description = "Get full details for a specific unit including status effects and abilities.")]
+    async fn get_unit_details(
+        &self,
+        Parameters(params): Parameters<PlayerUnitId>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let unit = snap.unit_by_id(EntityId(params.unit_id));
+        match unit {
+            Some(u) => {
+                let json = serde_json::json!({
+                    "id": u.id.0,
+                    "kind": format!("{:?}", u.kind),
+                    "x": u.pos.x, "y": u.pos.y,
+                    "hp": u.health_current.to_num::<f64>(),
+                    "hp_max": u.health_max.to_num::<f64>(),
+                    "speed": u.speed.to_num::<f64>(),
+                    "attack_damage": u.attack_damage.to_num::<f64>(),
+                    "attack_range": u.attack_range.to_num::<f64>(),
+                    "attack_speed": u.attack_speed,
+                    "attack_type": format!("{:?}", u.attack_type),
+                    "owner": u.owner,
+                    "moving": u.is_moving,
+                    "attacking": u.is_attacking,
+                    "idle": u.is_idle,
+                    "dead": u.is_dead,
+                    "gathering": u.is_gathering,
+                    "status_effects": u.status_effects.iter().map(|se| {
+                        serde_json::json!({
+                            "effect_type": se.effect_type,
+                            "remaining_ticks": se.remaining_ticks,
+                            "stacks": se.stacks,
+                        })
+                    }).collect::<Vec<_>>(),
+                    "abilities": u.abilities.iter().map(|a| {
+                        serde_json::json!({
+                            "slot": a.slot,
+                            "id": a.id,
+                            "cooldown_remaining": a.cooldown_remaining,
+                            "ready": a.ready,
+                        })
+                    }).collect::<Vec<_>>(),
+                });
+                Ok(CallToolResult::success(vec![Content::text(json.to_string())]))
+            }
+            None => Err(McpError::invalid_params(
+                format!("Unit {} not found for player {}", params.unit_id, params.player_id),
+                None,
+            )),
+        }
+    }
+
+    #[tool(description = "Get completed upgrades for a player. Returns list of upgrade names.")]
+    async fn get_completed_upgrades(
+        &self,
+        Parameters(params): Parameters<PlayerOnly>,
+    ) -> Result<CallToolResult, McpError> {
+        let sim = self.sim.lock().await;
+        let res = sim.player_resources(params.player_id);
+        let upgrades: Vec<String> = res.completed_upgrades.iter().map(|u| format!("{}", u)).collect();
+        let json = serde_json::json!({
+            "player_id": params.player_id,
+            "completed_upgrades": upgrades,
         });
         Ok(CallToolResult::success(vec![Content::text(json.to_string())]))
     }

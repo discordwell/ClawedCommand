@@ -29,6 +29,8 @@ pub fn make_unit(id: u64, kind: UnitKind, x: i32, y: i32, owner: u8) -> UnitSnap
         is_idle: true,
         is_dead: false,
         is_gathering: false,
+        status_effects: vec![],
+        abilities: vec![],
     }
 }
 
