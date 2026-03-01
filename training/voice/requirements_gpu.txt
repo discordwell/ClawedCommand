@@ -1,0 +1,29 @@
+# GPU training dependencies for knowledge distillation pipeline
+# Install on NVIDIA instance: pip install -r requirements_gpu.txt
+
+# Core ML (CUDA 12.4)
+torch>=2.5.0
+torchaudio>=2.5.0
+
+# Audio processing
+numpy
+soundfile
+audiomentations[extras]>=0.35.0
+
+# TTS engines
+piper-tts
+bark
+
+# Training utilities
+pyyaml
+tensorboard
+tqdm
+
+# Evaluation & export
+onnx
+onnxruntime-gpu
+matplotlib
+
+# Data
+gdown
+requests

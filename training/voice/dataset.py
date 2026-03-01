@@ -24,7 +24,7 @@ def load_labels(config_path="config.yaml"):
     vocab = cfg["vocabulary"]
     labels = []
     for category in vocab:
-        labels.extend(vocab[category])
+        labels.extend(str(w) for w in vocab[category])
     return labels
 
 
@@ -223,4 +223,30 @@ class VoiceCommandDataset(Dataset):
         # To tensor: [1, n_mels, num_frames]
         mel_tensor = torch.from_numpy(mel).unsqueeze(0)
 
+        return mel_tensor, label_idx
+
+
+class NoAugDataset(Dataset):
+    """Wrapper that disables augmentation for a subset of a VoiceCommandDataset.
+
+    Used to create validation loaders from augmented training datasets.
+    """
+
+    def __init__(self, subset, original_dataset):
+        self.subset = subset
+        self.original = original_dataset
+
+    def __len__(self):
+        return len(self.subset)
+
+    def __getitem__(self, idx):
+        real_idx = self.subset.indices[idx]
+        wav_path, label_idx = self.original.samples[real_idx]
+        audio = load_wav(wav_path, self.original.sr, self.original.target_samples)
+        mel = compute_mel_spectrogram(
+            audio, self.original.sr, self.original.n_fft,
+            self.original.hop_length, self.original.n_mels,
+            self.original.fmin, self.original.fmax, self.original.num_frames,
+        )
+        mel_tensor = torch.from_numpy(mel).unsqueeze(0)
         return mel_tensor, label_idx

@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader, random_split
 import yaml
 
 from model import TCResNet8, export_onnx
-from dataset import VoiceCommandDataset, load_labels
+from dataset import VoiceCommandDataset, NoAugDataset, load_labels
 
 
 def load_config(config_path="config.yaml"):
@@ -90,6 +90,10 @@ def main():
                         help="Output ONNX model path")
     parser.add_argument("--config", type=str, default="config.yaml")
     parser.add_argument("--epochs", type=int, default=None)
+    parser.add_argument("--lr", type=float, default=None,
+                        help="Override learning rate")
+    parser.add_argument("--pretrained", type=Path, default=None,
+                        help="Load pretrained weights (e.g. from distillation)")
     parser.add_argument("--device", type=str, default=None)
     args = parser.parse_args()
 
@@ -133,29 +137,7 @@ def main():
     )
 
     # Disable augmentation for validation
-    # (We use the same dataset object, so we create a wrapper)
-    class NoAugWrapper(torch.utils.data.Dataset):
-        def __init__(self, subset, original_dataset):
-            self.subset = subset
-            self.original = original_dataset
-
-        def __len__(self):
-            return len(self.subset)
-
-        def __getitem__(self, idx):
-            real_idx = self.subset.indices[idx]
-            wav_path, label_idx = self.original.samples[real_idx]
-            from dataset import load_wav, compute_mel_spectrogram
-            audio = load_wav(wav_path, self.original.sr, self.original.target_samples)
-            mel = compute_mel_spectrogram(
-                audio, self.original.sr, self.original.n_fft,
-                self.original.hop_length, self.original.n_mels,
-                self.original.fmin, self.original.fmax, self.original.num_frames,
-            )
-            mel_tensor = torch.from_numpy(mel).unsqueeze(0)
-            return mel_tensor, label_idx
-
-    val_no_aug = NoAugWrapper(val_dataset, dataset)
+    val_no_aug = NoAugDataset(val_dataset, dataset)
 
     train_loader = DataLoader(
         train_dataset, batch_size=train_cfg["batch_size"],
@@ -174,16 +156,25 @@ def main():
         n_mels=audio_cfg["n_mels"],
         num_classes=num_classes,
         channels=channels,
-    ).to(device)
+    )
+
+    # Load pretrained weights if provided (e.g. from distillation)
+    if args.pretrained:
+        checkpoint = torch.load(args.pretrained, map_location="cpu", weights_only=True)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        print(f"Loaded pretrained weights from {args.pretrained}")
+
+    model = model.to(device)
 
     param_count = sum(p.numel() for p in model.parameters())
     print(f"Model params: {param_count:,}")
 
     # Training setup
+    lr = args.lr or train_cfg["learning_rate"]
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(
         model.parameters(),
-        lr=train_cfg["learning_rate"],
+        lr=lr,
         weight_decay=train_cfg["weight_decay"],
     )
 
@@ -192,8 +183,8 @@ def main():
 
     def lr_lambda(epoch):
         if epoch < warmup_epochs:
-            return epoch / warmup_epochs
-        progress = (epoch - warmup_epochs) / (epochs - warmup_epochs)
+            return max(epoch, 1) / warmup_epochs
+        progress = (epoch - warmup_epochs) / max(epochs - warmup_epochs, 1)
         return 0.5 * (1.0 + np.cos(np.pi * progress))
 
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
