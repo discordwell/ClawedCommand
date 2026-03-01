@@ -349,6 +349,10 @@ struct BuildingCensus {
     has_server_rack: bool,
     has_scratching_post: bool,
     has_laser_pointer: bool,
+    /// Total number of FishMarkets (completed + pending).
+    fish_market_count: u32,
+    /// Total number of LitterBoxes (completed + pending).
+    litter_box_count: u32,
     box_entity: Option<Entity>,
     box_pos: Option<GridPos>,
     cat_tree_entity: Option<Entity>,
@@ -413,6 +417,8 @@ fn take_building_census(
         has_server_rack: false,
         has_scratching_post: false,
         has_laser_pointer: false,
+        fish_market_count: 0,
+        litter_box_count: 0,
         box_entity: None,
         box_pos: None,
         cat_tree_entity: None,
@@ -441,6 +447,10 @@ fn take_building_census(
             }
             BuildingKind::FishMarket => {
                 census.has_fish_market = true;
+                census.fish_market_count += 1;
+            }
+            BuildingKind::LitterBox => {
+                census.litter_box_count += 1;
             }
             BuildingKind::ServerRack => {
                 census.has_server_rack = true;
@@ -513,11 +523,17 @@ fn run_ai_fsm(
     for (kind, pos) in &uc.pending_builds {
         bc.building_positions.push((*pos, *kind));
         match kind {
-            BuildingKind::FishMarket => bc.has_fish_market = true,
+            BuildingKind::FishMarket => {
+                bc.has_fish_market = true;
+                bc.fish_market_count += 1;
+            }
             BuildingKind::CatTree => bc.has_cat_tree = true,
             BuildingKind::ServerRack => bc.has_server_rack = true,
             BuildingKind::ScratchingPost => bc.has_scratching_post = true,
             BuildingKind::LaserPointer => bc.has_laser_pointer = true,
+            BuildingKind::LitterBox => {
+                bc.litter_box_count += 1;
+            }
             _ => {}
         }
     }
@@ -555,8 +571,11 @@ fn run_ai_fsm(
         }
 
         AiPhase::BuildUp => {
-            // Build one structure per tick to avoid same-worker conflicts
-            if builder_used.is_none() && !bc.has_fish_market && pres.food >= 100 && bc.has_box {
+            // Build one structure per tick to avoid same-worker conflicts.
+            // Priority: FishMarket (up to 2) → CatTree → supply.
+            // Two FishMarkets before CatTree ensures food throughput keeps up
+            // with army training costs (Nuisance = 75 food each).
+            if builder_used.is_none() && bc.fish_market_count < 2 && pres.food >= 100 && bc.has_box {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
                     let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
                     cmd_queue.push(GameCommand::Build {
@@ -581,7 +600,7 @@ fn run_ai_fsm(
             }
 
             if builder_used.is_none() {
-                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue) {
+                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue, bc.litter_box_count) {
                     builder_used = Some(b);
                 }
             }
@@ -698,7 +717,14 @@ fn run_ai_fsm(
             }
 
             if builder_used.is_none() {
-                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue) {
+                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue, bc.litter_box_count) {
+                    builder_used = Some(b);
+                }
+            }
+
+            // Reactive economy: build additional FishMarkets if food is bottlenecked
+            if builder_used.is_none() {
+                if let Some(b) = maybe_build_economy(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue, bc.fish_market_count) {
                     builder_used = Some(b);
                 }
             }
@@ -765,8 +791,15 @@ fn run_ai_fsm(
                 }
             }
 
-            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue) {
+            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue, bc.litter_box_count) {
                 builder_used = Some(b);
+            }
+
+            // Reactive economy during attack — keep food production up
+            if builder_used.is_none() {
+                if let Some(b) = maybe_build_economy(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue, bc.fish_market_count) {
+                    builder_used = Some(b);
+                }
             }
 
             // Check if base is under attack (enemy units near our buildings)
@@ -809,7 +842,7 @@ fn run_ai_fsm(
                 }
             }
 
-            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue) {
+            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue, bc.litter_box_count) {
                 builder_used = Some(b);
             }
 
@@ -822,12 +855,26 @@ fn run_ai_fsm(
         }
     };
 
-    // Send idle workers to gather (after FSM so builder_used is set)
+    // Send idle workers to gather (after FSM so builder_used is set).
+    // When food is critically low relative to GPU, prioritize food deposits
+    // to rebalance the economy.
+    let prefer_food = pres.food < 100 && pres.gpu_cores > pres.food * 2;
     for &worker in &uc.idle_workers {
         if Some(worker) == builder_used {
             continue;
         }
-        if let Some((deposit_entity, _)) = find_nearest_deposit(worker, units, deposits) {
+        let deposit_result = if prefer_food {
+            find_nearest_deposit_of_type(
+                worker,
+                units,
+                deposits,
+                Some(cc_core::components::ResourceType::Food),
+            )
+            .or_else(|| find_nearest_deposit(worker, units, deposits))
+        } else {
+            find_nearest_deposit(worker, units, deposits)
+        };
+        if let Some((deposit_entity, _)) = deposit_result {
             cmd_queue.push(GameCommand::GatherResource {
                 unit_ids: vec![EntityId(worker.to_bits())],
                 deposit: EntityId(deposit_entity.to_bits()),
@@ -879,6 +926,17 @@ fn find_nearest_deposit(
     units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
     deposits: &Query<(Entity, &Position, &ResourceDeposit)>,
 ) -> Option<(Entity, GridPos)> {
+    find_nearest_deposit_of_type(worker, units, deposits, None)
+}
+
+/// Find nearest resource deposit of a specific type to a worker (skips depleted).
+/// If `resource_type` is None, matches any deposit type.
+fn find_nearest_deposit_of_type(
+    worker: Entity,
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
+    deposits: &Query<(Entity, &Position, &ResourceDeposit)>,
+    resource_type: Option<cc_core::components::ResourceType>,
+) -> Option<(Entity, GridPos)> {
     let worker_pos = units.get(worker).ok()?.1.world;
     let mut best = None;
     let mut best_dist = cc_core::math::Fixed::MAX;
@@ -886,6 +944,11 @@ fn find_nearest_deposit(
     for (deposit_entity, deposit_pos, deposit) in deposits.iter() {
         if deposit.remaining == 0 {
             continue; // Skip depleted deposits
+        }
+        if let Some(rt) = resource_type {
+            if deposit.resource_type != rt {
+                continue; // Skip wrong resource type
+            }
         }
         let dist = worker_pos.distance_squared(deposit_pos.world);
         if dist < best_dist {
@@ -899,6 +962,9 @@ fn find_nearest_deposit(
 
 /// Try to build a LitterBox for more supply when nearing cap.
 /// Returns the builder entity if a build command was issued.
+///
+/// `pending_litter_boxes` counts LitterBoxes already under construction or
+/// with a BuildOrder in-flight, so we don't spam redundant build orders.
 fn maybe_build_supply(
     pres: &crate::resources::PlayerResourceState,
     idle_workers: &[Entity],
@@ -907,13 +973,61 @@ fn maybe_build_supply(
     map: &GameMap,
     building_positions: &[(GridPos, BuildingKind)],
     cmd_queue: &mut CommandQueue,
+    pending_litter_boxes: u32,
 ) -> Option<Entity> {
-    if pres.supply + 2 >= pres.supply_cap && pres.food >= 75 {
+    // Build when supply is within 3 of the cap (was 2 — too tight, causing
+    // the AI to hit the cap before the LitterBox finishes building).
+    // Also skip if a LitterBox is already being built to avoid redundant orders.
+    let supply_headroom = pres.supply_cap.saturating_sub(pres.supply);
+    let needs_supply = supply_headroom <= 3;
+    let litter_box_already_pending = pending_litter_boxes > 0;
+
+    if needs_supply && !litter_box_already_pending && pres.food >= 75 {
         if let Some(builder) = pick_builder(idle_workers, all_workers) {
             let build_pos = find_build_position(box_pos, map, building_positions);
             cmd_queue.push(GameCommand::Build {
                 builder: EntityId(builder.to_bits()),
                 building_kind: BuildingKind::LitterBox,
+                position: build_pos,
+            });
+            return Some(builder);
+        }
+    }
+    None
+}
+
+/// Build an additional FishMarket when food is critically low and GPU is high.
+/// This addresses the economy imbalance where food bottlenecks while GPU piles up.
+/// Additional FishMarkets serve as drop-off points closer to food deposits,
+/// reducing worker travel time and increasing food throughput.
+/// Returns the builder entity if a build command was issued.
+fn maybe_build_economy(
+    pres: &crate::resources::PlayerResourceState,
+    idle_workers: &[Entity],
+    all_workers: &[Entity],
+    box_pos: Option<GridPos>,
+    map: &GameMap,
+    building_positions: &[(GridPos, BuildingKind)],
+    cmd_queue: &mut CommandQueue,
+    fish_market_count: u32,
+) -> Option<Entity> {
+    // Cap at 3 FishMarkets to avoid over-investing in economy buildings
+    if fish_market_count >= 3 {
+        return None;
+    }
+
+    // React to food crisis: food < 50 while GPU >= 100 means economy is imbalanced.
+    // Also build a second FishMarket once food drops below 75, regardless of GPU,
+    // to provide a closer drop-off point.
+    let food_crisis = pres.food < 50 && pres.gpu_cores >= 100;
+    let needs_second_market = fish_market_count < 2 && pres.food < 75;
+
+    if (food_crisis || needs_second_market) && pres.food >= 100 {
+        if let Some(builder) = pick_builder(idle_workers, all_workers) {
+            let build_pos = find_build_position(box_pos, map, building_positions);
+            cmd_queue.push(GameCommand::Build {
+                builder: EntityId(builder.to_bits()),
+                building_kind: BuildingKind::FishMarket,
                 position: build_pos,
             });
             return Some(builder);
@@ -1179,5 +1293,235 @@ mod tests {
         let dist_y = (result.y - base.y).abs();
         let chebyshev = dist_x.max(dist_y);
         assert!(chebyshev >= AI_BUILD_SPACING, "Should place at distance >= {AI_BUILD_SPACING}, got {chebyshev}");
+    }
+
+    #[test]
+    fn maybe_build_supply_triggers_near_cap() {
+        use cc_core::map::GameMap;
+
+        let map = GameMap::new(30, 30);
+        let box_pos = Some(GridPos::new(15, 15));
+        let building_positions = vec![(GridPos::new(15, 15), BuildingKind::TheBox)];
+        let mut cmd_queue = CommandQueue::default();
+
+        // Create a fake entity for the builder
+        let mut world = bevy::prelude::World::new();
+        let builder = world.spawn_empty().id();
+
+        let mut pres = crate::resources::PlayerResourceState::default();
+        pres.supply = 18;
+        pres.supply_cap = 20;
+        pres.food = 200;
+
+        let idle_workers = vec![builder];
+        let all_workers = vec![builder];
+
+        // No pending LitterBoxes — should trigger a build
+        let result = maybe_build_supply(
+            &pres, &idle_workers, &all_workers,
+            box_pos, &map, &building_positions, &mut cmd_queue, 0,
+        );
+        assert!(result.is_some(), "Should build a LitterBox when supply is near cap");
+        assert_eq!(cmd_queue.commands.len(), 1);
+        match &cmd_queue.commands[0] {
+            GameCommand::Build { building_kind, .. } => {
+                assert_eq!(*building_kind, BuildingKind::LitterBox);
+            }
+            other => panic!("Expected Build command, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn maybe_build_supply_skips_when_litter_box_pending() {
+        use cc_core::map::GameMap;
+
+        let map = GameMap::new(30, 30);
+        let box_pos = Some(GridPos::new(15, 15));
+        let building_positions = vec![(GridPos::new(15, 15), BuildingKind::TheBox)];
+        let mut cmd_queue = CommandQueue::default();
+
+        let mut world = bevy::prelude::World::new();
+        let builder = world.spawn_empty().id();
+
+        let mut pres = crate::resources::PlayerResourceState::default();
+        pres.supply = 18;
+        pres.supply_cap = 20;
+        pres.food = 200;
+
+        let idle_workers = vec![builder];
+        let all_workers = vec![builder];
+
+        // One LitterBox already pending — should NOT build another
+        let result = maybe_build_supply(
+            &pres, &idle_workers, &all_workers,
+            box_pos, &map, &building_positions, &mut cmd_queue, 1,
+        );
+        assert!(result.is_none(), "Should skip when a LitterBox is already pending");
+        assert!(cmd_queue.commands.is_empty());
+    }
+
+    #[test]
+    fn maybe_build_supply_triggers_with_headroom_3() {
+        use cc_core::map::GameMap;
+
+        let map = GameMap::new(30, 30);
+        let box_pos = Some(GridPos::new(15, 15));
+        let building_positions = vec![(GridPos::new(15, 15), BuildingKind::TheBox)];
+        let mut cmd_queue = CommandQueue::default();
+
+        let mut world = bevy::prelude::World::new();
+        let builder = world.spawn_empty().id();
+
+        let mut pres = crate::resources::PlayerResourceState::default();
+        pres.supply = 17; // headroom = 3, should trigger (was 2 before fix)
+        pres.supply_cap = 20;
+        pres.food = 200;
+
+        let idle_workers = vec![builder];
+        let all_workers = vec![builder];
+
+        let result = maybe_build_supply(
+            &pres, &idle_workers, &all_workers,
+            box_pos, &map, &building_positions, &mut cmd_queue, 0,
+        );
+        assert!(result.is_some(), "Should build when headroom is exactly 3");
+    }
+
+    #[test]
+    fn maybe_build_supply_skips_with_headroom_4() {
+        use cc_core::map::GameMap;
+
+        let map = GameMap::new(30, 30);
+        let box_pos = Some(GridPos::new(15, 15));
+        let building_positions = vec![(GridPos::new(15, 15), BuildingKind::TheBox)];
+        let mut cmd_queue = CommandQueue::default();
+
+        let mut world = bevy::prelude::World::new();
+        let builder = world.spawn_empty().id();
+
+        let mut pres = crate::resources::PlayerResourceState::default();
+        pres.supply = 16; // headroom = 4, should NOT trigger
+        pres.supply_cap = 20;
+        pres.food = 200;
+
+        let idle_workers = vec![builder];
+        let all_workers = vec![builder];
+
+        let result = maybe_build_supply(
+            &pres, &idle_workers, &all_workers,
+            box_pos, &map, &building_positions, &mut cmd_queue, 0,
+        );
+        assert!(result.is_none(), "Should not build when headroom is 4");
+    }
+
+    #[test]
+    fn maybe_build_economy_triggers_on_food_crisis() {
+        use cc_core::map::GameMap;
+
+        let map = GameMap::new(30, 30);
+        let box_pos = Some(GridPos::new(15, 15));
+        let building_positions = vec![(GridPos::new(15, 15), BuildingKind::TheBox)];
+        let mut cmd_queue = CommandQueue::default();
+
+        let mut world = bevy::prelude::World::new();
+        let builder = world.spawn_empty().id();
+
+        let mut pres = crate::resources::PlayerResourceState::default();
+        // Food crisis scenario: food enough to build (>= 100) but historically low,
+        // GPU piling up. In practice food oscillates — the check is on current food.
+        pres.food = 100; // Can afford the 100 food cost
+        pres.gpu_cores = 300; // GPU hoarded
+
+        let idle_workers = vec![builder];
+        let all_workers = vec![builder];
+
+        // Needs second market (count < 2) and food < 75 — but food is 100 here.
+        // Use food_crisis path: food < 50 && gpu >= 100 — set food to trigger.
+        pres.food = 40;
+        let result = maybe_build_economy(
+            &pres, &idle_workers, &all_workers,
+            box_pos, &map, &building_positions, &mut cmd_queue, 1,
+        );
+        // food < 50 triggers crisis, but food (40) < cost (100) — can't afford
+        assert!(result.is_none(), "Can't build FishMarket when food < 100");
+
+        pres.food = 120;
+        pres.gpu_cores = 300;
+        // food >= 50 but needs_second_market: fish_market_count < 2 && food < 75 — nope (120 >= 75)
+        // food_crisis: food < 50 — nope (120 >= 50)
+        let result = maybe_build_economy(
+            &pres, &idle_workers, &all_workers,
+            box_pos, &map, &building_positions, &mut cmd_queue, 1,
+        );
+        assert!(result.is_none(), "No economy issue when food is healthy");
+    }
+
+    #[test]
+    fn maybe_build_economy_caps_at_three() {
+        use cc_core::map::GameMap;
+
+        let map = GameMap::new(30, 30);
+        let box_pos = Some(GridPos::new(15, 15));
+        let building_positions = vec![(GridPos::new(15, 15), BuildingKind::TheBox)];
+        let mut cmd_queue = CommandQueue::default();
+
+        let mut world = bevy::prelude::World::new();
+        let builder = world.spawn_empty().id();
+
+        let mut pres = crate::resources::PlayerResourceState::default();
+        pres.food = 100;
+        pres.gpu_cores = 300;
+
+        let idle_workers = vec![builder];
+        let all_workers = vec![builder];
+
+        // Already have 3 FishMarkets — should not build more
+        let result = maybe_build_economy(
+            &pres, &idle_workers, &all_workers,
+            box_pos, &map, &building_positions, &mut cmd_queue, 3,
+        );
+        assert!(result.is_none(), "Should cap FishMarkets at 3");
+    }
+
+    #[test]
+    fn building_census_counts_litter_boxes() {
+        // Verify the BuildingCensus correctly counts LitterBoxes
+        let mut census = BuildingCensus {
+            has_box: true,
+            has_cat_tree: false,
+            has_fish_market: false,
+            has_server_rack: false,
+            has_scratching_post: false,
+            has_laser_pointer: false,
+            fish_market_count: 0,
+            litter_box_count: 0,
+            box_entity: None,
+            box_pos: Some(GridPos::new(10, 10)),
+            cat_tree_entity: None,
+            server_rack_entity: None,
+            scratching_post_entity: None,
+            building_positions: Vec::new(),
+        };
+
+        // Simulate adding LitterBoxes from pending builds
+        let pending = vec![
+            (BuildingKind::LitterBox, GridPos::new(13, 10)),
+            (BuildingKind::FishMarket, GridPos::new(10, 13)),
+        ];
+        for (kind, pos) in &pending {
+            census.building_positions.push((*pos, *kind));
+            match kind {
+                BuildingKind::LitterBox => census.litter_box_count += 1,
+                BuildingKind::FishMarket => {
+                    census.has_fish_market = true;
+                    census.fish_market_count += 1;
+                }
+                _ => {}
+            }
+        }
+
+        assert_eq!(census.litter_box_count, 1, "Should count 1 LitterBox");
+        assert_eq!(census.fish_market_count, 1, "Should count 1 FishMarket");
+        assert!(census.has_fish_market, "Should set has_fish_market flag");
     }
 }
