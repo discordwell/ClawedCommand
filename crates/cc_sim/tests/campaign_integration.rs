@@ -32,6 +32,8 @@ fn make_campaign_sim(map: GameMap) -> (World, Schedule) {
     world.insert_resource(SimRng::default());
     world.insert_resource(MapResource { map });
     world.init_resource::<CampaignState>();
+    world.init_resource::<WaveTracker>();
+    world.init_resource::<MissionStarted>();
 
     // Register all message types used by campaign systems
     world.init_resource::<Messages<DialogueEvent>>();
