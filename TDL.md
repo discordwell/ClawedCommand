@@ -78,8 +78,8 @@
 - [ ] EcholocationPulse client-side fog reveal rendering
 - [ ] ShapedCharge explosion VFX
 - [ ] GravitationalChonk: don't pull through buildings (needs pathfinding query for line-of-sight)
-- [ ] GravitationalPullCommand: add map bounds clamping (unlike RevulsionAoeCommand, currently can pull units off-map)
-- [ ] Corroded stack decay guard: add `remaining_ticks > 0` check before `% 80 == 0` (fires spuriously on expiry tick)
+- [x] GravitationalPullCommand: add map bounds clamping (unlike RevulsionAoeCommand, currently can pull units off-map)
+- [x] Corroded stack decay guard: add `remaining_ticks > 0` check before `% 80 == 0` (fires spuriously on expiry tick)
 - [ ] Supply cap should be granted on construction completion, not on build start (LitterBox +10 cap immediately on placement)
 - [ ] ScratchingPost research queue not shown in building_info panel (only shows generic text)
 
@@ -152,7 +152,7 @@
 
 ## From LLM Runner + Construct Mode Code Review
 
-- [ ] `resource_deposits` Lua binding bypasses compute budget — should route through `ScriptContext` method with `budget.spend(COST_SIMPLE)` like other query bindings
+- [x] `resource_deposits` Lua binding bypasses compute budget — should route through `ScriptContext` method with `budget.spend(COST_SIMPLE)` like other query bindings
 - [ ] LLM pipeline disconnected: `AgentBridge::default()` creates dead channels, `spawn_llm_runner()` never called — need startup wiring in `AgentPlugin::build()` or game setup
 - [ ] Dead snapshot path: `process_request`'s `snapshot: Option<&GameStateSnapshot>` always called with `None` from `spawn_llm_runner` — either pass snapshot through channel or remove parameter
 - [x] `ToolRegistry::build_default()` rebuilt on every call (already tracked above)

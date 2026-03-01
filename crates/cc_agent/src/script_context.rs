@@ -640,6 +640,14 @@ impl<'a> ScriptContext<'a> {
         &self.state.my_resources
     }
 
+    /// All resource deposits on the map.
+    pub fn resource_deposits(&mut self) -> Vec<&ResourceSnapshot> {
+        if !self.budget.spend(COST_SIMPLE) {
+            return vec![];
+        }
+        self.state.resource_deposits.iter().collect()
+    }
+
     pub fn nearest_deposit(
         &mut self,
         from: GridPos,
@@ -983,6 +991,67 @@ mod tests {
             );
         }
         assert!(!safe.is_empty());
+    }
+
+    #[test]
+    fn resource_deposits_spends_budget() {
+        let snap = GameStateSnapshot {
+            tick: 0,
+            map_width: 64,
+            map_height: 64,
+            player_id: 0,
+            my_units: vec![],
+            enemy_units: vec![],
+            my_buildings: vec![],
+            enemy_buildings: vec![],
+            resource_deposits: vec![
+                ResourceSnapshot {
+                    id: EntityId(100),
+                    resource_type: ResourceType::Food,
+                    pos: GridPos::new(3, 3),
+                    remaining: 200,
+                },
+            ],
+            my_resources: PlayerResourceState::default(),
+        };
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let budget_before = ctx.budget.remaining();
+        let deposit_count = ctx.resource_deposits().len();
+        let budget_after = ctx.budget.remaining();
+
+        assert_eq!(deposit_count, 1);
+        assert_eq!(budget_after, budget_before - 1, "resource_deposits should spend COST_SIMPLE (1)");
+    }
+
+    #[test]
+    fn resource_deposits_returns_empty_when_budget_exhausted() {
+        let snap = GameStateSnapshot {
+            tick: 0,
+            map_width: 64,
+            map_height: 64,
+            player_id: 0,
+            my_units: vec![],
+            enemy_units: vec![],
+            my_buildings: vec![],
+            enemy_buildings: vec![],
+            resource_deposits: vec![
+                ResourceSnapshot {
+                    id: EntityId(100),
+                    resource_type: ResourceType::Food,
+                    pos: GridPos::new(3, 3),
+                    remaining: 200,
+                },
+            ],
+            my_resources: PlayerResourceState::default(),
+        };
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+        ctx.budget = ComputeBudget::new(0); // exhausted
+
+        let deposits = ctx.resource_deposits();
+        assert!(deposits.is_empty(), "resource_deposits should return empty when budget is exhausted");
     }
 
     #[test]

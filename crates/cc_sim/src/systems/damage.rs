@@ -213,6 +213,12 @@ pub struct GravitationalPullCommand {
 
 impl Command for GravitationalPullCommand {
     fn apply(self, world: &mut World) {
+        // Get map bounds for clamping
+        let (map_w, map_h) = {
+            let map_res = world.resource::<crate::resources::MapResource>();
+            (map_res.map.width as i32, map_res.map.height as i32)
+        };
+
         let Some(mut pos) = world.get_mut::<cc_core::components::Position>(self.target) else {
             return;
         };
@@ -231,8 +237,15 @@ impl Command for GravitationalPullCommand {
         let norm_dx = dx / max_component;
         let norm_dy = dy / max_component;
 
-        pos.world.x += norm_dx * self.pull_per_tick;
-        pos.world.y += norm_dy * self.pull_per_tick;
+        let map_max_x = Fixed::from_num(map_w - 1);
+        let map_max_y = Fixed::from_num(map_h - 1);
+
+        pos.world.x = (pos.world.x + norm_dx * self.pull_per_tick)
+            .max(FIXED_ZERO)
+            .min(map_max_x);
+        pos.world.y = (pos.world.y + norm_dy * self.pull_per_tick)
+            .max(FIXED_ZERO)
+            .min(map_max_y);
     }
 }
 

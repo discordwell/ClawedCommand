@@ -661,6 +661,109 @@ fn test_shaped_charge_building_bonus() {
     }
 }
 
+/// Corroded stack decay guard: no spurious decay on expiry tick (remaining_ticks == 0)
+#[test]
+fn test_corroded_no_spurious_decay_on_expiry() {
+    let (mut world, mut schedule) = make_sim();
+    let target = spawn_unit(&mut world, GridPos::new(10, 10), 1, UnitKind::Chonk);
+    // Give target massive HP so it doesn't die
+    world.get_mut::<Health>(target).unwrap().current = Fixed::from_num(5000);
+    world.get_mut::<Health>(target).unwrap().max = Fixed::from_num(5000);
+
+    // Inject Corroded with 1 tick remaining and 3 stacks.
+    // On the next tick, remaining_ticks goes from 1 to 0.
+    // Without the guard, 0 % 80 == 0 would spuriously decay a stack before removal.
+    {
+        let mut effects = world.get_mut::<StatusEffects>(target).unwrap();
+        effects.effects.push(cc_core::status_effects::StatusInstance {
+            effect: StatusEffectId::Corroded,
+            remaining_ticks: 1,
+            stacks: 3,
+            source: EntityId(0),
+        });
+    }
+
+    // Run one tick — effect expires (remaining_ticks goes 1→0) and gets removed
+    run_ticks(&mut world, &mut schedule, 1);
+
+    // Corroded should be completely removed (expired), NOT have stacks decremented first
+    let effects = world.get::<StatusEffects>(target).unwrap();
+    let has_corroded = effects
+        .effects
+        .iter()
+        .any(|e| e.effect == StatusEffectId::Corroded);
+    assert!(!has_corroded, "Corroded should be removed on expiry, not spuriously decayed");
+}
+
+/// Corroded stack decay: legitimate decay at 80-tick intervals still works
+#[test]
+fn test_corroded_legitimate_decay_at_80_ticks() {
+    let (mut world, mut schedule) = make_sim();
+    let target = spawn_unit(&mut world, GridPos::new(10, 10), 1, UnitKind::Chonk);
+    world.get_mut::<Health>(target).unwrap().current = Fixed::from_num(5000);
+    world.get_mut::<Health>(target).unwrap().max = Fixed::from_num(5000);
+
+    // Inject Corroded with 161 ticks and 3 stacks.
+    // After 1 tick: remaining_ticks = 160, which is 160 % 80 == 0 → decay to 2 stacks
+    {
+        let mut effects = world.get_mut::<StatusEffects>(target).unwrap();
+        effects.effects.push(cc_core::status_effects::StatusInstance {
+            effect: StatusEffectId::Corroded,
+            remaining_ticks: 161,
+            stacks: 3,
+            source: EntityId(0),
+        });
+    }
+
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let effects = world.get::<StatusEffects>(target).unwrap();
+    let corroded = effects
+        .effects
+        .iter()
+        .find(|e| e.effect == StatusEffectId::Corroded);
+    assert!(corroded.is_some(), "Corroded should still be active");
+    assert_eq!(corroded.unwrap().stacks, 2, "Corroded should decay from 3 to 2 stacks at 160-tick boundary");
+}
+
+/// GravitationalPullCommand: pulled units are clamped to map bounds
+#[test]
+fn test_gravitational_pull_clamps_to_map_bounds() {
+    let (mut world, mut schedule) = make_sim();
+    // Chonk at map corner (0, 0) — will pull enemy toward (0,0)
+    let _chonk = spawn_unit(&mut world, GridPos::new(0, 0), 0, UnitKind::Chonk);
+    // Enemy at (1, 1), very close to edge
+    let enemy = spawn_unit(&mut world, GridPos::new(1, 1), 1, UnitKind::Nuisance);
+
+    // Run lots of ticks to let the pull drag the enemy fully toward (0,0)
+    // Without bounds clamping, repeated pulling could push x/y below 0
+    run_ticks(&mut world, &mut schedule, 200);
+
+    let pos = world.get::<Position>(enemy).unwrap().world;
+    assert!(
+        pos.x >= Fixed::ZERO,
+        "Enemy X should not go below 0 after gravitational pull: x={}",
+        pos.x,
+    );
+    assert!(
+        pos.y >= Fixed::ZERO,
+        "Enemy Y should not go below 0 after gravitational pull: y={}",
+        pos.y,
+    );
+
+    let map_max = Fixed::from_num(31); // 32x32 map, max coord = 31
+    assert!(
+        pos.x <= map_max,
+        "Enemy X should not exceed map bounds: x={}",
+        pos.x,
+    );
+    assert!(
+        pos.y <= map_max,
+        "Enemy Y should not exceed map bounds: y={}",
+        pos.y,
+    );
+}
+
 /// EcholocationPulse: reveals enemies with VisibleThroughFog
 #[test]
 fn test_echolocation_reveals_enemies() {
