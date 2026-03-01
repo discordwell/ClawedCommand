@@ -236,7 +236,7 @@ fn execute_behavior(
         return (serde_json::json!({"error": "no game state available"}), vec![]);
     };
     let map = GameMap::new(snap.map_width, snap.map_height);
-    let faction = FactionId::from_u8(player_id).unwrap_or(FactionId::CatGPT);
+    let faction = FactionId::for_player(player_id);
     let mut ctx = ScriptContext::new(snap, &map, player_id, faction);
 
     let result = match name {

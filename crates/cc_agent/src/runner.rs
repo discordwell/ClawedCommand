@@ -130,7 +130,7 @@ pub fn script_runner_system(
             prev_snapshots.snapshots.get(&player_id),
         );
 
-        let faction = FactionId::from_u8(player_id).unwrap_or(FactionId::CatGPT);
+        let faction = FactionId::for_player(player_id);
 
         // Run scripts that match fired events
         for script in registry.scripts.iter_mut() {

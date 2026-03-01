@@ -44,15 +44,15 @@
 
 ## From Agent Harness Code Review
 
-- [ ] Extract `run_behavior` helper in `cc_harness/src/server.rs` to de-duplicate ~18 behavior tools (~200 lines of boilerplate: lock sim, snapshot, create ScriptContext, take commands, inject, return result)
-- [ ] Extract `run_query` helper in `cc_harness/src/server.rs` to de-duplicate ~11 query tools (lock sim, snapshot, create ScriptContext, return JSON)
+- [x] Extract `run_behavior` helper in `cc_harness/src/server.rs` to de-duplicate ~18 behavior tools (~200 lines of boilerplate: lock sim, snapshot, create ScriptContext, take commands, inject, return result)
+- [x] Extract `run_query` helper in `cc_harness/src/server.rs` to de-duplicate ~11 query tools (lock sim, snapshot, create ScriptContext, return JSON)
 
 
 ## From Code Review (Agent Harness + Gameplay Fixes)
 
 - [ ] `ToolRegistry::build_default()` called on every `execute_tool()` invocation — should use `OnceLock` or pass registry as parameter
 - [ ] Hardcoded `ToolTier::Advanced` in `cc_client/src/ui/agent_chat.rs` — should read from `FactionToolStates` resource
-- [ ] `FactionId::from_u8(player_id).unwrap_or(CatGPT)` duplicated 19× in `cc_harness/src/server.rs` — extract to `FactionId::for_player(id)` method
+- [x] `FactionId::from_u8(player_id).unwrap_or(CatGPT)` duplicated 19× in `cc_harness/src/server.rs` — extract to `FactionId::for_player(id)` method
 - [ ] Lua behavior binding registration boilerplate (~18 blocks) in `lua_runtime.rs` — consider a macro
 - [x] `test_dream_siege_resets_on_target_change` was flaky — fixed by zeroing target damage in test (T2 damage-reset was interfering)
 - [ ] Update training data scripts (`validate_data.py`, `generate_synthetic.py`, `evaluate.py`) to match current tool list after `execute_strategy` removal

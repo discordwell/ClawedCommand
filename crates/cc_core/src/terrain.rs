@@ -208,6 +208,11 @@ impl FactionId {
             _ => None,
         }
     }
+
+    /// Convert a player ID to a faction, defaulting to CatGPT for unknown IDs.
+    pub fn for_player(player_id: u8) -> Self {
+        Self::from_u8(player_id).unwrap_or(Self::CatGPT)
+    }
 }
 
 /// Check if a terrain type is passable for a given faction.
@@ -421,5 +426,21 @@ mod tests {
         assert_ne!(flags & FLAG_TEMP_BLOCKED, 0);
         assert_ne!(flags & FLAG_WATER_CONVERTED, 0);
         assert_eq!(FLAG_TEMP_BLOCKED & FLAG_WATER_CONVERTED, 0); // no overlap
+    }
+
+    #[test]
+    fn for_player_returns_correct_faction() {
+        assert_eq!(FactionId::for_player(0), FactionId::CatGPT);
+        assert_eq!(FactionId::for_player(1), FactionId::TheClawed);
+        assert_eq!(FactionId::for_player(2), FactionId::SeekersOfTheDeep);
+        assert_eq!(FactionId::for_player(3), FactionId::TheMurder);
+        assert_eq!(FactionId::for_player(4), FactionId::LLAMA);
+        assert_eq!(FactionId::for_player(5), FactionId::Croak);
+    }
+
+    #[test]
+    fn for_player_defaults_to_catgpt_for_unknown() {
+        assert_eq!(FactionId::for_player(6), FactionId::CatGPT);
+        assert_eq!(FactionId::for_player(255), FactionId::CatGPT);
     }
 }
