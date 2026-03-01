@@ -168,5 +168,14 @@ fn building_display_name(kind: BuildingKind) -> &'static str {
         BuildingKind::ScratchingPost => "Scratching Post",
         BuildingKind::CatFlap => "Cat Flap",
         BuildingKind::LaserPointer => "Laser Pointer",
+        BuildingKind::TheBurrow => "The Burrow",
+        BuildingKind::NestingBox => "Nesting Box",
+        BuildingKind::SeedVault => "Seed Vault",
+        BuildingKind::JunkTransmitter => "Junk Transmitter",
+        BuildingKind::GnawLab => "Gnaw Lab",
+        BuildingKind::WarrenExpansion => "Warren Expansion",
+        BuildingKind::Mousehole => "Mousehole",
+        BuildingKind::SqueakTower => "Squeak Tower",
+        _ => "Building",
     }
 }

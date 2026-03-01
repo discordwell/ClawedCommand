@@ -141,31 +141,35 @@ pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
         },
         Faction::TheClawed => AiPersonalityProfile {
             name: "Claudeus Maximus".into(),
-            attack_threshold: 6,
+            attack_threshold: 12,
             unit_preferences: vec![
-                (UnitKind::Nuisance, 5),
-                (UnitKind::Mouser, 2),
-                (UnitKind::Hisser, 1),
+                (UnitKind::Swarmer, 6),
+                (UnitKind::Shrieker, 3),
+                (UnitKind::Gnawer, 2),
+                (UnitKind::Sparks, 2),
+                (UnitKind::Quillback, 1),
             ],
-            target_workers: 6,
+            target_workers: 8,
             economy_priority: true,
-            retreat_threshold: 20,
-            eval_speed_mult: 0.8,
-            chaos_factor: 15,
+            retreat_threshold: 15,
+            eval_speed_mult: 0.5,
+            chaos_factor: 12,
             leak_chance: 0,
         },
         Faction::SeekersOfTheDeep => AiPersonalityProfile {
             name: "Deepseek".into(),
             attack_threshold: 12,
             unit_preferences: vec![
-                (UnitKind::Chonk, 4),
-                (UnitKind::Hisser, 3),
-                (UnitKind::Catnapper, 2),
+                (UnitKind::Ironhide, 4),
+                (UnitKind::Embermaw, 3),
+                (UnitKind::Cragback, 2),
+                (UnitKind::Warden, 2),
+                (UnitKind::Sapjaw, 1),
             ],
             target_workers: 5,
-            economy_priority: false,
+            economy_priority: true,
             retreat_threshold: 50,
-            eval_speed_mult: 1.5,
+            eval_speed_mult: 3.0,
             chaos_factor: 0,
             leak_chance: 0,
         },
@@ -188,9 +192,10 @@ pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
             name: "Llhama".into(),
             attack_threshold: 5,
             unit_preferences: vec![
-                (UnitKind::FerretSapper, 4),
-                (UnitKind::Nuisance, 3),
-                (UnitKind::Mouser, 2),
+                (UnitKind::Bandit, 4),
+                (UnitKind::Wrecker, 3),
+                (UnitKind::GreaseMonkey, 2),
+                (UnitKind::HeapTitan, 1),
             ],
             target_workers: 3,
             economy_priority: false,
@@ -203,9 +208,12 @@ pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
             name: "Grok".into(),
             attack_threshold: 10,
             unit_preferences: vec![
-                (UnitKind::Chonk, 5),
-                (UnitKind::Yowler, 3),
-                (UnitKind::Hisser, 2),
+                (UnitKind::Shellwarden, 4),  // tank/anchor
+                (UnitKind::Regeneron, 3),    // skirmisher
+                (UnitKind::Croaker, 3),      // ranged/terrain creation
+                (UnitKind::Broodmother, 2),  // support/healing
+                (UnitKind::Gulper, 2),       // heavy bruiser
+                (UnitKind::Leapfrog, 1),     // harasser
             ],
             target_workers: 5,
             economy_priority: true,
@@ -414,13 +422,13 @@ fn take_unit_census(
     };
     for (entity, _, owner, unit_type, gathering, move_target, build_order) in units.iter() {
         if owner.player_id != ai_player {
-            if unit_type.kind != UnitKind::Pawdler {
+            if !matches!(unit_type.kind, UnitKind::Pawdler | UnitKind::Scrounger | UnitKind::MurderScrounger | UnitKind::Delver) {
                 census.enemy_army_count += 1;
             }
             continue;
         }
         match unit_type.kind {
-            UnitKind::Pawdler => {
+            UnitKind::Pawdler | UnitKind::Scrounger | UnitKind::MurderScrounger | UnitKind::Delver => {
                 census.worker_count += 1;
                 // Workers with active BuildOrders are busy building — exclude from
                 // both idle and available-builder lists to prevent reassignment.
@@ -506,6 +514,74 @@ fn take_building_census(
             BuildingKind::LaserPointer => {
                 census.has_laser_pointer = true;
             }
+            // Murder (Corvids)
+            BuildingKind::TheParliament => {
+                census.has_box = true;
+                census.box_pos = Some(pos.world.to_grid());
+                census.box_queue_len = queue_len;
+                if producer.is_some() {
+                    census.box_entity = Some(entity);
+                }
+            }
+            BuildingKind::Rookery => {
+                census.has_cat_tree = true;
+                census.cat_tree_queue_len = queue_len;
+                if producer.is_some() {
+                    census.cat_tree_entity = Some(entity);
+                }
+            }
+            BuildingKind::CarrionCache => {
+                census.has_fish_market = true;
+            }
+            BuildingKind::AntennaArray => {
+                census.has_server_rack = true;
+                census.server_rack_count += 1;
+                census.server_rack_queue_len = queue_len;
+                if producer.is_some() {
+                    census.server_rack_entity = Some(entity);
+                }
+            }
+            BuildingKind::Panopticon => {
+                census.has_scratching_post = true;
+                census.scratching_post_entity = Some(entity);
+            }
+            BuildingKind::Watchtower => {
+                census.has_laser_pointer = true;
+            }
+            // LLAMA (Raccoons)
+            BuildingKind::TheDumpster => {
+                census.has_box = true;
+                census.box_pos = Some(pos.world.to_grid());
+                census.box_queue_len = queue_len;
+                if producer.is_some() {
+                    census.box_entity = Some(entity);
+                }
+            }
+            BuildingKind::ChopShop => {
+                census.has_cat_tree = true;
+                census.cat_tree_queue_len = queue_len;
+                if producer.is_some() {
+                    census.cat_tree_entity = Some(entity);
+                }
+            }
+            BuildingKind::ScrapHeap => {
+                census.has_fish_market = true;
+            }
+            BuildingKind::JunkServer => {
+                census.has_server_rack = true;
+                census.server_rack_count += 1;
+                census.server_rack_queue_len = queue_len;
+                if producer.is_some() {
+                    census.server_rack_entity = Some(entity);
+                }
+            }
+            BuildingKind::TinkerBench => {
+                census.has_scratching_post = true;
+                census.scratching_post_entity = Some(entity);
+            }
+            BuildingKind::TetanusTower => {
+                census.has_laser_pointer = true;
+            }
             _ => {}
         }
     }
@@ -518,9 +594,13 @@ fn discover_enemy_spawn(
     units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
     buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>, Option<&ProductionQueue>)>,
 ) -> Option<GridPos> {
-    // First: look for enemy TheBox
+    // First: look for enemy command center (any faction HQ)
     for (_, building, owner, pos, _, _) in buildings.iter() {
-        if owner.player_id != ai_player && building.kind == BuildingKind::TheBox {
+        if owner.player_id != ai_player && matches!(building.kind,
+            BuildingKind::TheBox | BuildingKind::TheDumpster |
+            BuildingKind::TheParliament | BuildingKind::TheBurrow |
+            BuildingKind::TheSett | BuildingKind::TheGrotto
+        ) {
             return Some(pos.world.to_grid());
         }
     }
@@ -585,15 +665,15 @@ fn run_ai_fsm(
     for (kind, pos) in &uc.pending_builds {
         bc.building_positions.push((*pos, *kind));
         match kind {
-            BuildingKind::FishMarket => bc.has_fish_market = true,
-            BuildingKind::CatTree => bc.has_cat_tree = true,
-            BuildingKind::ServerRack => {
+            BuildingKind::FishMarket | BuildingKind::ScrapHeap => bc.has_fish_market = true,
+            BuildingKind::CatTree | BuildingKind::ChopShop => bc.has_cat_tree = true,
+            BuildingKind::ServerRack | BuildingKind::JunkServer => {
                 bc.has_server_rack = true;
                 bc.server_rack_count += 1;
             }
-            BuildingKind::ScratchingPost => bc.has_scratching_post = true,
-            BuildingKind::LaserPointer => bc.has_laser_pointer = true,
-            BuildingKind::LitterBox => bc.pending_litter_box_count += 1,
+            BuildingKind::ScratchingPost | BuildingKind::TinkerBench => bc.has_scratching_post = true,
+            BuildingKind::LaserPointer | BuildingKind::TetanusTower => bc.has_laser_pointer = true,
+            BuildingKind::LitterBox | BuildingKind::TrashPile => bc.pending_litter_box_count += 1,
             _ => {}
         }
     }
@@ -1142,7 +1222,19 @@ fn is_base_threatened(
 
 /// Returns true if the unit kind is ranged (fights from distance).
 fn is_ranged_unit(kind: UnitKind) -> bool {
-    matches!(kind, UnitKind::Hisser | UnitKind::FlyingFox | UnitKind::Catnapper | UnitKind::Yowler)
+    matches!(kind,
+        UnitKind::Hisser | UnitKind::FlyingFox | UnitKind::Catnapper | UnitKind::Yowler
+        | UnitKind::Shrieker | UnitKind::Sparks | UnitKind::Whiskerwitch
+        | UnitKind::Plaguetail | UnitKind::WarrenMarshal
+    )
+}
+
+/// Returns true if the unit kind is a worker (gathers resources, builds).
+fn is_worker(kind: UnitKind) -> bool {
+    matches!(kind,
+        UnitKind::Pawdler | UnitKind::Nibblet | UnitKind::MurderScrounger
+        | UnitKind::Ponderer | UnitKind::Delver
+    )
 }
 
 /// Find the weakest (lowest HP) enemy unit near a centroid position.
@@ -1155,7 +1247,7 @@ fn find_weakest_enemy_near(
 ) -> Option<(Entity, GridPos)> {
     let mut best: Option<(Entity, GridPos, Fixed)> = None;
     for (entity, pos, owner, unit_type, _, _, _) in units.iter() {
-        if owner.player_id == ai_player || unit_type.kind == UnitKind::Pawdler {
+        if owner.player_id == ai_player || is_worker(unit_type.kind) {
             continue;
         }
         let grid = pos.world.to_grid();

@@ -114,6 +114,9 @@ pub fn stat_modifier_system(
                 StatusEffectId::Tagged | StatusEffectId::CcImmune => {
                     // These don't affect stats
                 }
+                _ => {
+                    // Non-cat faction status effects — no stat modifiers yet
+                }
             }
         }
     }

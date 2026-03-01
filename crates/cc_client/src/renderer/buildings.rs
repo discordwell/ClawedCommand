@@ -33,6 +33,7 @@ fn construction_bar_width(kind: BuildingKind) -> f32 {
         BuildingKind::CatTree | BuildingKind::ServerRack => 28.0,
         BuildingKind::FishMarket | BuildingKind::ScratchingPost | BuildingKind::CatFlap => 24.0,
         BuildingKind::LitterBox | BuildingKind::LaserPointer => 20.0,
+        _ => 24.0,
     }
 }
 

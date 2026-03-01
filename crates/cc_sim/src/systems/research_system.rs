@@ -82,7 +82,30 @@ pub fn apply_upgrade_to_existing_units(
             UpgradeType::SiegeTraining | UpgradeType::MechPrototype => {
                 // These are unlock gates, not stat bonuses
             }
-            // Non-cat faction upgrades — no effect in cat game loop yet
+            // --- The Clawed (Mice) upgrades ---
+            UpgradeType::SharperTeeth => {
+                // +2 damage for Clawed combat units (not Nibblet worker)
+                if !matches!(unit_type.kind, UnitKind::Pawdler | UnitKind::Nibblet) {
+                    attack_stats.damage += Fixed::from_bits(2 << 16);
+                }
+            }
+            UpgradeType::ThickerHide => {
+                // +20 HP for Clawed combat units (not Nibblet worker)
+                if !matches!(unit_type.kind, UnitKind::Pawdler | UnitKind::Nibblet) {
+                    let bonus = Fixed::from_bits(20 << 16);
+                    health.max += bonus;
+                    health.current += bonus;
+                }
+            }
+            UpgradeType::QuickPaws => {
+                // +10% speed for all units
+                speed.speed = speed.speed
+                    + speed.speed * Fixed::from_bits((1 << 16) * 10 / 100);
+            }
+            UpgradeType::AdvancedGnawing | UpgradeType::WarrenProtocol => {
+                // These are unlock gates, not stat bonuses
+            }
+            // Non-cat/clawed faction upgrades — no effect yet
             _ => {}
         }
     }
@@ -96,17 +119,31 @@ pub fn apply_upgrades_to_new_unit(
     attack_stats: &mut AttackStats,
     speed: &mut MovementSpeed,
 ) {
-    let is_combat = kind != UnitKind::Pawdler;
+    let is_worker = matches!(kind, UnitKind::Pawdler | UnitKind::Nibblet);
 
-    if is_combat && completed.contains(&UpgradeType::SharperClaws) {
+    // --- catGPT upgrades ---
+    if !is_worker && completed.contains(&UpgradeType::SharperClaws) {
         attack_stats.damage += Fixed::from_bits(2 << 16);
     }
-    if is_combat && completed.contains(&UpgradeType::ThickerFur) {
+    if !is_worker && completed.contains(&UpgradeType::ThickerFur) {
         let bonus = Fixed::from_bits(25 << 16);
         health.max += bonus;
         health.current += bonus;
     }
     if completed.contains(&UpgradeType::NimblePaws) {
+        speed.speed = speed.speed + speed.speed * Fixed::from_bits((1 << 16) * 10 / 100);
+    }
+
+    // --- The Clawed (Mice) upgrades ---
+    if !is_worker && completed.contains(&UpgradeType::SharperTeeth) {
+        attack_stats.damage += Fixed::from_bits(2 << 16);
+    }
+    if !is_worker && completed.contains(&UpgradeType::ThickerHide) {
+        let bonus = Fixed::from_bits(20 << 16);
+        health.max += bonus;
+        health.current += bonus;
+    }
+    if completed.contains(&UpgradeType::QuickPaws) {
         speed.speed = speed.speed + speed.speed * Fixed::from_bits((1 << 16) * 10 / 100);
     }
 }

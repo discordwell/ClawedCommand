@@ -163,6 +163,15 @@ pub enum BuildingKind {
     TidalGate,
     /// Defense Tower (Croak) — applies Waterlogged, DoT.
     SporeTower,
+    // --- LLAMA (Raccoons) ---
+    TheDumpster,     // HQ (LLAMA) — pre-built, produces Scrounger
+    ScrapHeap,       // Resource Depot (LLAMA) — food/scrap storage
+    ChopShop,        // Barracks (LLAMA) — trains Bandit, Wrecker, HeapTitan, GreaseMonkey
+    JunkServer,      // Tech Building (LLAMA) — produces GlitchRat, PatchPossum
+    TinkerBench,     // Research (LLAMA) — produces DeadDropUnit, DumpsterDiver, JunkyardKing
+    TrashPile,       // Supply Depot (LLAMA) — increases supply cap
+    DumpsterRelay,   // Comms Tower (LLAMA) — reduces leak chance, +3 vision
+    TetanusTower,    // Defense Tower (LLAMA) — shoots rusty nails, applies Corroded
 }
 
 impl std::fmt::Display for BuildingKind {
@@ -219,6 +228,15 @@ impl std::str::FromStr for BuildingKind {
             "ReedBed" => Ok(Self::ReedBed),
             "TidalGate" => Ok(Self::TidalGate),
             "SporeTower" => Ok(Self::SporeTower),
+            // LLAMA (Raccoons)
+            "TheDumpster" => Ok(Self::TheDumpster),
+            "ScrapHeap" => Ok(Self::ScrapHeap),
+            "ChopShop" => Ok(Self::ChopShop),
+            "JunkServer" => Ok(Self::JunkServer),
+            "TinkerBench" => Ok(Self::TinkerBench),
+            "TrashPile" => Ok(Self::TrashPile),
+            "DumpsterRelay" => Ok(Self::DumpsterRelay),
+            "TetanusTower" => Ok(Self::TetanusTower),
             _ => Err(()),
         }
     }
@@ -318,6 +336,17 @@ pub enum UnitKind {
     Shellwarden,    // Tank/Defender (Croak) — Hunker, Ancient Moss aura
     Bogwhisper,     // Support/Caster (Croak) — Mire Curse, Prophecy
     MurkCommander,  // Hero/Heavy (Croak) — Grok Protocol, Murk Uplink
+    // --- LLAMA (Raccoons) ---
+    Scrounger,      // Worker (Raccoon) — gathers, scavenges, builds
+    Bandit,         // Light Harasser (Raccoon) — sticky fingers, jury rig
+    HeapTitan,      // Heavy Tank (Raccoon) — scrap armor, wreck ball
+    GlitchRat,      // Saboteur (Raccoon) — cable gnaw, signal scramble
+    PatchPossum,    // Support/Healer (Possum) — duct tape fix, feign death
+    GreaseMonkey,   // Ranged (Raccoon) — junk launcher, salvage turret
+    DeadDropUnit,   // Stealth Scout (Raccoon) — eavesdrop, trash heap ambush
+    Wrecker,        // Anti-Structure (Raccoon) — disassemble, pry bar
+    DumpsterDiver,  // Area Denial (Raccoon) — treasure trash, refuse shield
+    JunkyardKing,   // Hero/Heavy (Raccoon) — open source uplink, overclock cascade
 }
 
 impl std::fmt::Display for UnitKind {
@@ -384,6 +413,17 @@ impl std::str::FromStr for UnitKind {
             "Shellwarden" => Ok(Self::Shellwarden),
             "Bogwhisper" => Ok(Self::Bogwhisper),
             "MurkCommander" => Ok(Self::MurkCommander),
+            // LLAMA (Raccoons)
+            "Scrounger" => Ok(Self::Scrounger),
+            "Bandit" => Ok(Self::Bandit),
+            "HeapTitan" => Ok(Self::HeapTitan),
+            "GlitchRat" => Ok(Self::GlitchRat),
+            "PatchPossum" => Ok(Self::PatchPossum),
+            "GreaseMonkey" => Ok(Self::GreaseMonkey),
+            "DeadDropUnit" => Ok(Self::DeadDropUnit),
+            "Wrecker" => Ok(Self::Wrecker),
+            "DumpsterDiver" => Ok(Self::DumpsterDiver),
+            "JunkyardKing" => Ok(Self::JunkyardKing),
             _ => Err(()),
         }
     }
@@ -706,6 +746,11 @@ pub enum AuraType {
     BogSong,
     UndyingPresence,
     MurkUplinkAura,
+    // LLAMA (Raccoons)
+    OpenSourceUplinkAura,
+    ScrapArmorAura,
+    DumpsterRelayAura,
+    StenchCloudAura,
 }
 
 /// Component for units that emit an area-of-effect aura.
@@ -776,6 +821,72 @@ pub struct HairballObstacle {
 }
 
 // ---------------------------------------------------------------------------
+// LLAMA-specific components
+// ---------------------------------------------------------------------------
+
+/// Scrounger's personal scrap inventory (PocketStash ability).
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+#[derive(Debug, Clone, Copy)]
+pub struct PocketStashInventory {
+    pub count: u32,
+    pub max: u32,
+}
+
+impl Default for PocketStashInventory {
+    fn default() -> Self {
+        Self { count: 0, max: 3 }
+    }
+}
+
+/// Tracks Patch Possum's FeignDeath cooldown (passive auto-trigger).
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+#[derive(Debug, Clone, Copy)]
+pub struct FeignDeathTracker {
+    pub last_triggered_tick: u64,
+}
+
+impl Default for FeignDeathTracker {
+    fn default() -> Self {
+        Self { last_triggered_tick: 0 }
+    }
+}
+
+/// Tracks Grease Monkey's JunkLauncher attack count for crit calculation.
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+#[derive(Debug, Clone, Copy)]
+pub struct JunkLauncherState {
+    pub attack_count: u32,
+}
+
+impl Default for JunkLauncherState {
+    fn default() -> Self {
+        Self { attack_count: 0 }
+    }
+}
+
+/// Tracks Junkyard King's active Frankenstein Protocol summons.
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+#[derive(Debug, Clone, Copy)]
+pub struct FrankensteinTracker {
+    pub active_count: u32,
+    pub max: u32,
+}
+
+impl Default for FrankensteinTracker {
+    fn default() -> Self {
+        Self { active_count: 0, max: 3 }
+    }
+}
+
+/// Applied to units that deal Corroded stacks (TetanusTower, Wrecker).
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+#[derive(Debug, Clone, Copy)]
+pub struct CorrodedApplicator {
+    pub stacks_per_hit: u32,
+    pub max_stacks: u32,
+}
+
+// ---------------------------------------------------------------------------
 // Research / Upgrade components
 // ---------------------------------------------------------------------------
 
@@ -827,6 +938,17 @@ pub enum UpgradeType {
     SiegeEvolution,
     /// Unlocks MurkCommander training at SunkenServer.
     MurkPrototype,
+    // --- LLAMA (Raccoons) ---
+    /// +2 damage for LLAMA combat units.
+    RustyFangs,
+    /// +25 HP for LLAMA combat units.
+    ScrapPlating,
+    /// +10% speed for LLAMA units.
+    TrashRunning,
+    /// Unlocks advanced Grease Monkey mode at Chop Shop.
+    SiegeWelding,
+    /// Unlocks Junkyard King training at TinkerBench.
+    MechSalvage,
 }
 
 impl std::fmt::Display for UpgradeType {
@@ -842,6 +964,11 @@ impl std::fmt::Display for UpgradeType {
             Self::SwiftWings => write!(f, "SwiftWings"),
             Self::AssassinTraining => write!(f, "AssassinTraining"),
             Self::RexPrototype => write!(f, "RexPrototype"),
+            Self::SharperFangs => write!(f, "SharperFangs"),
+            Self::ReinforcedHide => write!(f, "ReinforcedHide"),
+            Self::SteadyStance => write!(f, "SteadyStance"),
+            Self::SiegeEngineering => write!(f, "SiegeEngineering"),
+            Self::ExosuitPrototype => write!(f, "ExosuitPrototype"),
             Self::SharperTeeth => write!(f, "SharperTeeth"),
             Self::ThickerHide => write!(f, "ThickerHide"),
             Self::QuickPaws => write!(f, "QuickPaws"),
@@ -852,6 +979,11 @@ impl std::fmt::Display for UpgradeType {
             Self::AmphibianAgility => write!(f, "AmphibianAgility"),
             Self::SiegeEvolution => write!(f, "SiegeEvolution"),
             Self::MurkPrototype => write!(f, "MurkPrototype"),
+            Self::RustyFangs => write!(f, "RustyFangs"),
+            Self::ScrapPlating => write!(f, "ScrapPlating"),
+            Self::TrashRunning => write!(f, "TrashRunning"),
+            Self::SiegeWelding => write!(f, "SiegeWelding"),
+            Self::MechSalvage => write!(f, "MechSalvage"),
         }
     }
 }
@@ -870,6 +1002,11 @@ impl std::str::FromStr for UpgradeType {
             "SwiftWings" => Ok(Self::SwiftWings),
             "AssassinTraining" => Ok(Self::AssassinTraining),
             "RexPrototype" => Ok(Self::RexPrototype),
+            "SharperFangs" => Ok(Self::SharperFangs),
+            "ReinforcedHide" => Ok(Self::ReinforcedHide),
+            "SteadyStance" => Ok(Self::SteadyStance),
+            "SiegeEngineering" => Ok(Self::SiegeEngineering),
+            "ExosuitPrototype" => Ok(Self::ExosuitPrototype),
             "SharperTeeth" => Ok(Self::SharperTeeth),
             "ThickerHide" => Ok(Self::ThickerHide),
             "QuickPaws" => Ok(Self::QuickPaws),
@@ -880,6 +1017,12 @@ impl std::str::FromStr for UpgradeType {
             "AmphibianAgility" => Ok(Self::AmphibianAgility),
             "SiegeEvolution" => Ok(Self::SiegeEvolution),
             "MurkPrototype" => Ok(Self::MurkPrototype),
+            // LLAMA (Raccoons)
+            "RustyFangs" => Ok(Self::RustyFangs),
+            "ScrapPlating" => Ok(Self::ScrapPlating),
+            "TrashRunning" => Ok(Self::TrashRunning),
+            "SiegeWelding" => Ok(Self::SiegeWelding),
+            "MechSalvage" => Ok(Self::MechSalvage),
             _ => Err(()),
         }
     }
@@ -1019,6 +1162,27 @@ pub struct PanopticGazeCone {
 pub struct UniqueBuildingLimit;
 
 // ---------------------------------------------------------------------------
+// Seekers of the Deep faction components
+// ---------------------------------------------------------------------------
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct StationaryTimer { pub ticks_stationary: u32, pub dug_in: bool }
+impl Default for StationaryTimer { fn default() -> Self { Self { ticks_stationary: 0, dug_in: false } } }
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct HeavyUnit;
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct Entrenched;
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct FrenzyStacks { pub current_stacks: u32, pub frozen_until_tick: u64 }
+impl Default for FrenzyStacks { fn default() -> Self { Self { current_stacks: 0, frozen_until_tick: 0 } } }
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct BloodgreedTracker { pub lifesteal_fraction: Fixed }
+
+// ---------------------------------------------------------------------------
 // Croak faction components
 // ---------------------------------------------------------------------------
 
@@ -1116,6 +1280,10 @@ mod tests {
             BuildingKind::TheGrotto, BuildingKind::SpawningPools, BuildingKind::LilyMarket,
             BuildingKind::SunkenServer, BuildingKind::FossilStones, BuildingKind::ReedBed,
             BuildingKind::TidalGate, BuildingKind::SporeTower,
+            // LLAMA (Raccoons)
+            BuildingKind::TheDumpster, BuildingKind::ScrapHeap, BuildingKind::ChopShop,
+            BuildingKind::JunkServer, BuildingKind::TinkerBench, BuildingKind::TrashPile,
+            BuildingKind::DumpsterRelay, BuildingKind::TetanusTower,
         ] {
             let s = kind.to_string();
             let parsed: BuildingKind = s.parse().unwrap();
@@ -1138,6 +1306,10 @@ mod tests {
             UnitKind::Ponderer, UnitKind::Regeneron, UnitKind::Broodmother, UnitKind::Gulper,
             UnitKind::Eftsaber, UnitKind::Croaker, UnitKind::Leapfrog, UnitKind::Shellwarden,
             UnitKind::Bogwhisper, UnitKind::MurkCommander,
+            // LLAMA (Raccoons)
+            UnitKind::Scrounger, UnitKind::Bandit, UnitKind::HeapTitan, UnitKind::GlitchRat,
+            UnitKind::PatchPossum, UnitKind::GreaseMonkey, UnitKind::DeadDropUnit,
+            UnitKind::Wrecker, UnitKind::DumpsterDiver, UnitKind::JunkyardKing,
         ] {
             let s = kind.to_string();
             let parsed: UnitKind = s.parse().unwrap();
@@ -1205,4 +1377,31 @@ mod tests {
         let wm = WaveMember { wave_id: "wave_1".into() };
         assert_eq!(wm.wave_id, "wave_1");
     }
+
+    #[test]
+    fn structural_weakness_timer_default() {
+        let timer = StructuralWeaknessTimer::default();
+        assert_eq!(timer.stacks, 0);
+        assert!(timer.target_entity.is_none());
+    }
+
+    #[test]
+    fn static_charge_stacks_default() {
+        let stacks = StaticChargeStacks::default();
+        assert_eq!(stacks.stacks, 0);
+    }
+
+    #[test]
+    fn upgrade_type_clawed_round_trip() {
+        for ut in [
+            UpgradeType::SharperTeeth, UpgradeType::ThickerHide,
+            UpgradeType::QuickPaws, UpgradeType::AdvancedGnawing,
+            UpgradeType::WarrenProtocol,
+        ] {
+            let s = ut.to_string();
+            let parsed: UpgradeType = s.parse().unwrap();
+            assert_eq!(parsed, ut);
+        }
+    }
 }
+

@@ -307,6 +307,7 @@ pub fn unit_scale(kind: UnitKind, art_loaded: bool) -> f32 {
             UnitKind::Catnapper => 0.28,
             UnitKind::Chonk => 0.30,
             UnitKind::MechCommander => 0.38,
+            _ => 0.20,
         }
     } else {
         match kind {
@@ -320,6 +321,7 @@ pub fn unit_scale(kind: UnitKind, art_loaded: bool) -> f32 {
             UnitKind::Catnapper => 0.65,
             UnitKind::Chonk => 0.7,
             UnitKind::MechCommander => 0.8,
+            _ => 0.5,
         }
     }
 }

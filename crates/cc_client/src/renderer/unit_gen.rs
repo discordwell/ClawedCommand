@@ -25,6 +25,7 @@ pub fn kind_index(kind: UnitKind) -> usize {
         UnitKind::Catnapper => 7,
         UnitKind::FerretSapper => 8,
         UnitKind::MechCommander => 9,
+        _ => 0,
     }
 }
 
@@ -41,6 +42,7 @@ fn draw_size(kind: UnitKind) -> (usize, usize) {
         UnitKind::Catnapper => (20, 16),
         UnitKind::FerretSapper => (16, 18),
         UnitKind::MechCommander => (28, 28),
+        _ => (16, 16),
     }
 }
 
@@ -64,6 +66,7 @@ pub fn sprite_file_path(kind: UnitKind) -> String {
         UnitKind::Catnapper => "catnapper",
         UnitKind::FerretSapper => "ferret_sapper",
         UnitKind::MechCommander => "mech_commander",
+        _ => "pawdler",
     };
     format!("sprites/units/{name}_idle.png")
 }
@@ -135,6 +138,7 @@ fn generate_unit_image(kind: UnitKind) -> Image {
         UnitKind::Catnapper => draw_catnapper(&mut draw_data, dw, dh),
         UnitKind::FerretSapper => draw_ferret_sapper(&mut draw_data, dw, dh),
         UnitKind::MechCommander => draw_mech_commander(&mut draw_data, dw, dh),
+        _ => draw_pawdler(&mut draw_data, dw, dh),
     }
 
     // Upscale 2× with nearest-neighbor

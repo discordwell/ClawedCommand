@@ -45,6 +45,17 @@ pub enum AbilityId {
     TacticalUplink,
     Override,
     GeppityUplink,
+    // --- Seekers of the Deep (Badgers) ---
+    SubterraneanHaul, Earthsense, EmergencyBurrow,
+    Unbowed, ShieldWall, GrudgeCharge,
+    BoulderBarrage, Entrench, SeismicSlam,
+    VigilanceAura, Intercept, RallyCry,
+    ArmorRend, PatientStrike, Lockjaw,
+    DeepseekUplink, FortressProtocol, CalculatedCounterstrike,
+    DeepBore, Undermine, TremorNetwork,
+    MoltenShot, FuelReserve, ScorchedEarth,
+    DustCloud, AmbushInstinct, SentryBurrow,
+    Frenzy, Bloodgreed, RecklessLunge,
     // --- LLAMA (Raccoons) ---
     DumpsterDiveAbility, PocketStash, PlayDead,
     StickyFingers, JuryRig, Getaway,
@@ -56,6 +67,27 @@ pub enum AbilityId {
     Disassemble, PryBar, ChainBreak,
     TreasureTrash, RefuseShield, StenchCloudAbility,
     OpenSourceUplinkAbility, FrankensteinProtocol, OverclockCascade,
+    // --- The Murder (Corvids) ---
+    // MurderScrounger (worker)
+    TrinketStash, Scavenge, MimicCall,
+    // Sentinel (ranged scout)
+    Glintwatch, Overwatch, EvasiveAscent,
+    // Rookclaw (melee dive striker)
+    TalonDive, MurdersMark, CarrionInstinct,
+    // Magpike (disruptor/thief)
+    Pilfer, GlitterBomb, TrinketWard,
+    // Magpyre (saboteur)
+    SignalJam, DecoyNest, Rewire,
+    // Jaycaller (support/buffer)
+    MurderRallyCry, AlarmCall, Cacophony,
+    // Jayflicker (illusion specialist)
+    PhantomFlock, MirrorPosition, Refraction,
+    // Dusktalon (stealth assassin)
+    Nightcloak, SilentStrike, PreySense,
+    // Hootseer (area denial/debuffer)
+    PanopticGaze, DreadAuraAbility, Omen,
+    // CorvusRex (hero)
+    CorvidNetworkAbility, AllSeeingLie, OculusUplinkAbility,
     // --- Croak (Axolotls) ---
     // Ponderer (worker)
     AmbientGathering, MucusTrail, ExistentialDread,
@@ -77,6 +109,27 @@ pub enum AbilityId {
     MireCurse, Prophecy, BogSongAbility,
     // MurkCommander (hero)
     UndyingPresenceAbility, GrokProtocol, MurkUplinkAbility,
+    // --- The Clawed (Mice) ---
+    // Nibblet (worker)
+    CrumbTrail, StashNetwork, PanicProductivity,
+    // Swarmer (light infantry)
+    SafetyInNumbers, PileOn, Scatter,
+    // Gnawer (anti-structure)
+    StructuralWeakness, ChewThrough, IncisorsNeverStop,
+    // Shrieker (ranged harasser)
+    SonicSpit, EcholocationPing, FuryOfTheSmall,
+    // Tunneler (transport/utility)
+    BurrowExpress, BurrowUndermine, SwarmTremorSense,
+    // Sparks (saboteur)
+    StaticCharge, ShortCircuit, DaisyChain,
+    // Quillback (heavy defender)
+    SpineWall, QuillBurst, StubbornAdvance,
+    // Whiskerwitch (caster/support)
+    HexOfMultiplication, WhiskerWeave, DatacromanticRitual,
+    // Plaguetail (area denial)
+    ContagionCloud, MiasmaTrail, SympathySickness,
+    // WarrenMarshal (hero/commander)
+    RallyTheSwarm, ExpendableHeroism, WhiskernetRelay,
 }
 
 /// How an ability is activated.
@@ -250,6 +303,138 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
             id, activation: Activated, cooldown_ticks: 300, gpu_cost: 50,
             duration_ticks: 100, range: Fixed::ZERO, max_charges: 0,
         },
+
+        // --- The Clawed (Mice) ---
+        // Nibblet (worker)
+        AbilityId::CrumbTrail => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::StashNetwork => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::PanicProductivity => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        // Swarmer (light infantry)
+        AbilityId::SafetyInNumbers => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(3 << 16), max_charges: 0,
+        },
+        AbilityId::PileOn => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 60, gpu_cost: 5,
+            duration_ticks: 30, range: Fixed::from_bits(1 << 16), max_charges: 0,
+        },
+        AbilityId::Scatter => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 80, gpu_cost: 5,
+            duration_ticks: 20, range: Fixed::ZERO, max_charges: 0,
+        },
+        // Gnawer (anti-structure)
+        AbilityId::StructuralWeakness => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::ChewThrough => AbilityDef {
+            id, activation: Toggle, cooldown_ticks: 10, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::IncisorsNeverStop => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        // Shrieker (ranged harasser)
+        AbilityId::SonicSpit => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 80, gpu_cost: 5,
+            duration_ticks: 0, range: Fixed::from_bits(3 << 16), max_charges: 0,
+        },
+        AbilityId::EcholocationPing => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 100, gpu_cost: 10,
+            duration_ticks: 50, range: Fixed::from_bits(5 << 16), max_charges: 0,
+        },
+        AbilityId::FuryOfTheSmall => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        // Tunneler (transport/utility)
+        AbilityId::BurrowExpress => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 150, gpu_cost: 15,
+            duration_ticks: 0, range: Fixed::from_bits(6 << 16), max_charges: 0,
+        },
+        AbilityId::BurrowUndermine => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 200, gpu_cost: 20,
+            duration_ticks: 50, range: Fixed::from_bits(3 << 16), max_charges: 0,
+        },
+        AbilityId::SwarmTremorSense => AbilityDef {
+            id, activation: Toggle, cooldown_ticks: 10, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(4 << 16), max_charges: 0,
+        },
+        // Sparks (saboteur)
+        AbilityId::StaticCharge => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::ShortCircuit => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 100, gpu_cost: 10,
+            duration_ticks: 0, range: Fixed::from_bits(2 << 16), max_charges: 0,
+        },
+        AbilityId::DaisyChain => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 120, gpu_cost: 15,
+            duration_ticks: 20, range: Fixed::from_bits(3 << 16), max_charges: 0,
+        },
+        // Quillback (heavy defender)
+        AbilityId::SpineWall => AbilityDef {
+            id, activation: Toggle, cooldown_ticks: 10, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::QuillBurst => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 120, gpu_cost: 15,
+            duration_ticks: 0, range: Fixed::from_bits(2 << 16), max_charges: 0,
+        },
+        AbilityId::StubbornAdvance => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 150, gpu_cost: 10,
+            duration_ticks: 50, range: Fixed::ZERO, max_charges: 0,
+        },
+        // Whiskerwitch (caster/support)
+        AbilityId::HexOfMultiplication => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 200, gpu_cost: 25,
+            duration_ticks: 100, range: Fixed::from_bits(4 << 16), max_charges: 0,
+        },
+        AbilityId::WhiskerWeave => AbilityDef {
+            id, activation: Toggle, cooldown_ticks: 10, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(3 << 16), max_charges: 0,
+        },
+        AbilityId::DatacromanticRitual => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 300, gpu_cost: 30,
+            duration_ticks: 0, range: Fixed::from_bits(5 << 16), max_charges: 0,
+        },
+        // Plaguetail (area denial)
+        AbilityId::ContagionCloud => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::MiasmaTrail => AbilityDef {
+            id, activation: Toggle, cooldown_ticks: 10, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::SympathySickness => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(2 << 16), max_charges: 0,
+        },
+        // WarrenMarshal (hero/commander)
+        AbilityId::RallyTheSwarm => AbilityDef {
+            id, activation: Toggle, cooldown_ticks: 10, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(6 << 16), max_charges: 0,
+        },
+        AbilityId::ExpendableHeroism => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 200, gpu_cost: 20,
+            duration_ticks: 50, range: Fixed::from_bits(4 << 16), max_charges: 0,
+        },
+        AbilityId::WhiskernetRelay => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 300, gpu_cost: 40,
+            duration_ticks: 100, range: Fixed::ZERO, max_charges: 0,
+        },
         // --- LLAMA: Scrounger ---
         AbilityId::DumpsterDiveAbility => AbilityDef {
             id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
@@ -380,7 +565,298 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
             id, activation: Activated, cooldown_ticks: 350, gpu_cost: 0,
             duration_ticks: 80, range: Fixed::from_bits(6 << 16), max_charges: 0,
         },
-        // Non-cat/LLAMA faction abilities — placeholder stats
+        // --- Murder: MurderScrounger ---
+        AbilityId::TrinketStash => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 3,
+        },
+        AbilityId::Scavenge => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 50, gpu_cost: 0,
+            duration_ticks: 20, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::MimicCall => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 200, gpu_cost: 2,
+            duration_ticks: 50, range: Fixed::from_bits(6 << 16), max_charges: 0,
+        },
+        // --- Murder: Sentinel ---
+        AbilityId::Glintwatch => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(12 << 16), max_charges: 0,
+        },
+        AbilityId::Overwatch => AbilityDef {
+            id, activation: Toggle, cooldown_ticks: 15, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(8 << 16), max_charges: 0,
+        },
+        AbilityId::EvasiveAscent => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 150, gpu_cost: 0,
+            duration_ticks: 20, range: Fixed::ZERO, max_charges: 0,
+        },
+        // --- Murder: Rookclaw ---
+        AbilityId::TalonDive => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 100, gpu_cost: 0,
+            duration_ticks: 5, range: Fixed::from_bits(8 << 16), max_charges: 0,
+        },
+        AbilityId::MurdersMark => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 150, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::CarrionInstinct => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(6 << 16), max_charges: 0,
+        },
+        // --- Murder: Magpike ---
+        AbilityId::Pilfer => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 180, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(4 << 16), max_charges: 0,
+        },
+        AbilityId::GlitterBomb => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 150, gpu_cost: 0,
+            duration_ticks: 30, range: Fixed::from_bits(5 << 16), max_charges: 0,
+        },
+        AbilityId::TrinketWard => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        // --- Murder: Magpyre ---
+        AbilityId::SignalJam => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 300, gpu_cost: 4,
+            duration_ticks: 100, range: Fixed::from_bits(8 << 16), max_charges: 0,
+        },
+        AbilityId::DecoyNest => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 200, gpu_cost: 0,
+            duration_ticks: 600, range: Fixed::ZERO, max_charges: 2,
+        },
+        AbilityId::Rewire => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 250, gpu_cost: 5,
+            duration_ticks: 0, range: Fixed::from_bits(3 << 16), max_charges: 0,
+        },
+        // --- Murder: Jaycaller ---
+        AbilityId::MurderRallyCry => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 200, gpu_cost: 0,
+            duration_ticks: 80, range: Fixed::from_bits(5 << 16), max_charges: 0,
+        },
+        AbilityId::AlarmCall => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 80, gpu_cost: 0,
+            duration_ticks: 30, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::Cacophony => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 250, gpu_cost: 0,
+            duration_ticks: 30, range: Fixed::from_bits(4 << 16), max_charges: 0,
+        },
+        // --- Murder: Jayflicker ---
+        AbilityId::PhantomFlock => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 250, gpu_cost: 4,
+            duration_ticks: 120, range: Fixed::from_bits(4 << 16), max_charges: 0,
+        },
+        AbilityId::MirrorPosition => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 180, gpu_cost: 0,
+            duration_ticks: 5, range: Fixed::from_bits(8 << 16), max_charges: 0,
+        },
+        AbilityId::Refraction => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(6 << 16), max_charges: 0,
+        },
+        // --- Murder: Dusktalon ---
+        AbilityId::Nightcloak => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::SilentStrike => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 200, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(1 << 16), max_charges: 0,
+        },
+        AbilityId::PreySense => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(10 << 16), max_charges: 0,
+        },
+        // --- Murder: Hootseer ---
+        AbilityId::PanopticGaze => AbilityDef {
+            id, activation: Toggle, cooldown_ticks: 10, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(6 << 16), max_charges: 0,
+        },
+        AbilityId::DreadAuraAbility => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(5 << 16), max_charges: 0,
+        },
+        AbilityId::Omen => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 300, gpu_cost: 3,
+            duration_ticks: 100, range: Fixed::ZERO, max_charges: 0,
+        },
+        // --- Murder: CorvusRex ---
+        AbilityId::CorvidNetworkAbility => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(10 << 16), max_charges: 0,
+        },
+        AbilityId::AllSeeingLie => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 900, gpu_cost: 8,
+            duration_ticks: 30, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::OculusUplinkAbility => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(10 << 16), max_charges: 0,
+        },
+        // --- Croak: Ponderer ---
+        AbilityId::AmbientGathering => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::MucusTrail => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::ExistentialDread => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 150, gpu_cost: 0,
+            duration_ticks: 80, range: Fixed::from_bits(3 << 16), max_charges: 0,
+        },
+        // --- Croak: Regeneron ---
+        AbilityId::LimbToss => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 30, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(5 << 16), max_charges: 0,
+        },
+        AbilityId::RegrowthBurst => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 250, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::PhantomLimb => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        // --- Croak: Broodmother ---
+        AbilityId::SpawnPool => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 300, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::Transfusion => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 50, range: Fixed::from_bits(3 << 16), max_charges: 0,
+        },
+        AbilityId::PrimordialSoup => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 350, gpu_cost: 0,
+            duration_ticks: 120, range: Fixed::ZERO, max_charges: 0,
+        },
+        // --- Croak: Gulper ---
+        AbilityId::Devour => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 300, gpu_cost: 0,
+            duration_ticks: 80, range: Fixed::from_bits(1 << 16), max_charges: 0,
+        },
+        AbilityId::Regurgitate => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 100, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(4 << 16), max_charges: 0,
+        },
+        AbilityId::Bottomless => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        // --- Croak: Eftsaber ---
+        AbilityId::ToxicSkin => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::Waterway => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 50, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::Venomstrike => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 120, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(3 << 16), max_charges: 0,
+        },
+        // --- Croak: Croaker ---
+        AbilityId::BogMortar => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(6 << 16), max_charges: 0,
+        },
+        AbilityId::ResonanceChain => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::Inflate => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 180, gpu_cost: 0,
+            duration_ticks: 30, range: Fixed::ZERO, max_charges: 0,
+        },
+        // --- Croak: Leapfrog ---
+        AbilityId::Hop => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 60, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(4 << 16), max_charges: 0,
+        },
+        AbilityId::TongueLash => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 100, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(5 << 16), max_charges: 0,
+        },
+        AbilityId::Slipstream => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 30, range: Fixed::ZERO, max_charges: 0,
+        },
+        // --- Croak: Shellwarden ---
+        AbilityId::HunkerAbility => AbilityDef {
+            id, activation: Toggle, cooldown_ticks: 10, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::AncientMossAbility => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(3 << 16), max_charges: 0,
+        },
+        AbilityId::TidalMemory => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 600, gpu_cost: 6,
+            duration_ticks: 200, range: Fixed::ZERO, max_charges: 0,
+        },
+        // --- Croak: Bogwhisper ---
+        AbilityId::MireCurse => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 200, gpu_cost: 0,
+            duration_ticks: 80, range: Fixed::from_bits(6 << 16), max_charges: 0,
+        },
+        AbilityId::Prophecy => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 300, gpu_cost: 4,
+            duration_ticks: 60, range: Fixed::from_bits(8 << 16), max_charges: 0,
+        },
+        AbilityId::BogSongAbility => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(5 << 16), max_charges: 0,
+        },
+        // --- Croak: MurkCommander ---
+        AbilityId::UndyingPresenceAbility => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::from_bits(8 << 16), max_charges: 0,
+        },
+        AbilityId::GrokProtocol => AbilityDef {
+            id, activation: Activated, cooldown_ticks: 450, gpu_cost: 8,
+            duration_ticks: 120, range: Fixed::ZERO, max_charges: 0,
+        },
+        AbilityId::MurkUplinkAbility => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+        },
+        // --- Seekers of the Deep (Badgers) ---
+        AbilityId::SubterraneanHaul => AbilityDef { id, activation: Activated, cooldown_ticks: 200, gpu_cost: 0, duration_ticks: 80, range: Fixed::ZERO, max_charges: 4 },
+        AbilityId::Earthsense => AbilityDef { id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0, duration_ticks: 0, range: Fixed::from_bits(5 << 16), max_charges: 0 },
+        AbilityId::EmergencyBurrow => AbilityDef { id, activation: Activated, cooldown_ticks: 150, gpu_cost: 0, duration_ticks: 30, range: Fixed::ZERO, max_charges: 0 },
+        AbilityId::Unbowed => AbilityDef { id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0, duration_ticks: 0, range: Fixed::ZERO, max_charges: 0 },
+        AbilityId::ShieldWall => AbilityDef { id, activation: Activated, cooldown_ticks: 180, gpu_cost: 0, duration_ticks: 60, range: Fixed::from_bits(2 << 16), max_charges: 0 },
+        AbilityId::GrudgeCharge => AbilityDef { id, activation: Activated, cooldown_ticks: 200, gpu_cost: 0, duration_ticks: 20, range: Fixed::from_bits(8 << 16), max_charges: 0 },
+        AbilityId::BoulderBarrage => AbilityDef { id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0, duration_ticks: 0, range: Fixed::from_bits(8 << 16), max_charges: 0 },
+        AbilityId::Entrench => AbilityDef { id, activation: Toggle, cooldown_ticks: 30, gpu_cost: 0, duration_ticks: 0, range: Fixed::ZERO, max_charges: 0 },
+        AbilityId::SeismicSlam => AbilityDef { id, activation: Activated, cooldown_ticks: 250, gpu_cost: 0, duration_ticks: 0, range: Fixed::from_bits(3 << 16), max_charges: 0 },
+        AbilityId::VigilanceAura => AbilityDef { id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0, duration_ticks: 0, range: Fixed::from_bits(5 << 16), max_charges: 0 },
+        AbilityId::Intercept => AbilityDef { id, activation: Activated, cooldown_ticks: 160, gpu_cost: 4, duration_ticks: 30, range: Fixed::from_bits(6 << 16), max_charges: 0 },
+        AbilityId::RallyCry => AbilityDef { id, activation: Activated, cooldown_ticks: 220, gpu_cost: 0, duration_ticks: 50, range: Fixed::from_bits(6 << 16), max_charges: 0 },
+        AbilityId::ArmorRend => AbilityDef { id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0, duration_ticks: 0, range: Fixed::ZERO, max_charges: 0 },
+        AbilityId::PatientStrike => AbilityDef { id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0, duration_ticks: 0, range: Fixed::ZERO, max_charges: 0 },
+        AbilityId::Lockjaw => AbilityDef { id, activation: Activated, cooldown_ticks: 200, gpu_cost: 0, duration_ticks: 30, range: Fixed::from_bits(1 << 16), max_charges: 0 },
+        AbilityId::DeepseekUplink => AbilityDef { id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0, duration_ticks: 0, range: Fixed::from_bits(8 << 16), max_charges: 0 },
+        AbilityId::FortressProtocol => AbilityDef { id, activation: Activated, cooldown_ticks: 450, gpu_cost: 10, duration_ticks: 200, range: Fixed::from_bits(6 << 16), max_charges: 0 },
+        AbilityId::CalculatedCounterstrike => AbilityDef { id, activation: Activated, cooldown_ticks: 300, gpu_cost: 6, duration_ticks: 80, range: Fixed::from_bits(4 << 16), max_charges: 0 },
+        AbilityId::DeepBore => AbilityDef { id, activation: Activated, cooldown_ticks: 250, gpu_cost: 5, duration_ticks: 0, range: Fixed::from_bits(15 << 16), max_charges: 3 },
+        AbilityId::Undermine => AbilityDef { id, activation: Activated, cooldown_ticks: 300, gpu_cost: 0, duration_ticks: 50, range: Fixed::from_bits(3 << 16), max_charges: 0 },
+        AbilityId::TremorNetwork => AbilityDef { id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0, duration_ticks: 0, range: Fixed::from_bits(8 << 16), max_charges: 0 },
+        AbilityId::MoltenShot => AbilityDef { id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0, duration_ticks: 0, range: Fixed::from_bits(6 << 16), max_charges: 0 },
+        AbilityId::FuelReserve => AbilityDef { id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0, duration_ticks: 0, range: Fixed::ZERO, max_charges: 3 },
+        AbilityId::ScorchedEarth => AbilityDef { id, activation: Activated, cooldown_ticks: 250, gpu_cost: 0, duration_ticks: 0, range: Fixed::from_bits(4 << 16), max_charges: 0 },
+        AbilityId::DustCloud => AbilityDef { id, activation: Activated, cooldown_ticks: 140, gpu_cost: 0, duration_ticks: 50, range: Fixed::from_bits(3 << 16), max_charges: 0 },
+        AbilityId::AmbushInstinct => AbilityDef { id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0, duration_ticks: 0, range: Fixed::ZERO, max_charges: 0 },
+        AbilityId::SentryBurrow => AbilityDef { id, activation: Activated, cooldown_ticks: 80, gpu_cost: 0, duration_ticks: 0, range: Fixed::ZERO, max_charges: 0 },
+        AbilityId::Frenzy => AbilityDef { id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0, duration_ticks: 0, range: Fixed::from_bits(3 << 16), max_charges: 0 },
+        AbilityId::Bloodgreed => AbilityDef { id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0, duration_ticks: 0, range: Fixed::ZERO, max_charges: 0 },
+        AbilityId::RecklessLunge => AbilityDef { id, activation: Activated, cooldown_ticks: 150, gpu_cost: 0, duration_ticks: 30, range: Fixed::from_bits(4 << 16), max_charges: 0 },
+        // Non-cat/LLAMA/Croak/Seekers faction abilities — placeholder stats
         _ => AbilityDef {
             id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
             duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
@@ -396,6 +872,21 @@ pub fn dream_siege_multiplier(ticks_on_target: u32) -> Fixed {
         150..=299 => Fixed::from_num(4), // 4x at 15-30s
         _ => Fixed::from_num(8),         // 8x at 30s+
     }
+}
+
+/// Gnawer Structural Weakness damage multiplier — scales with consecutive hit stacks on a building.
+/// Returns 1.0 + 0.02 * min(stacks, 10), so max multiplier is 1.20 (20% bonus).
+pub fn gnawer_structural_weakness_multiplier(stacks: u32) -> Fixed {
+    let capped = stacks.min(10);
+    Fixed::from_bits(65536 + 1310 * capped as i32)
+}
+
+/// Gnawer Incisors Never Stop — damage bonus from continuous attacking.
+/// Returns 0.01 * min(seconds, 40) as fixed-point, so max bonus is 0.40 (40%).
+pub fn incisors_damage_bonus(continuous_ticks: u32) -> Fixed {
+    let seconds = continuous_ticks / 10;
+    let capped = seconds.min(40);
+    Fixed::from_bits(655 * capped as i32)
 }
 
 /// Return the 3 ability IDs for a given unit kind.
@@ -502,6 +993,170 @@ pub fn unit_abilities(kind: UnitKind) -> [AbilityId; 3] {
             AbilityId::FrankensteinProtocol,
             AbilityId::OverclockCascade,
         ],
+        // --- The Murder (Corvids) ---
+        UnitKind::MurderScrounger => [
+            AbilityId::TrinketStash,
+            AbilityId::Scavenge,
+            AbilityId::MimicCall,
+        ],
+        UnitKind::Sentinel => [
+            AbilityId::Glintwatch,
+            AbilityId::Overwatch,
+            AbilityId::EvasiveAscent,
+        ],
+        UnitKind::Rookclaw => [
+            AbilityId::TalonDive,
+            AbilityId::MurdersMark,
+            AbilityId::CarrionInstinct,
+        ],
+        UnitKind::Magpike => [
+            AbilityId::Pilfer,
+            AbilityId::GlitterBomb,
+            AbilityId::TrinketWard,
+        ],
+        UnitKind::Magpyre => [
+            AbilityId::SignalJam,
+            AbilityId::DecoyNest,
+            AbilityId::Rewire,
+        ],
+        UnitKind::Jaycaller => [
+            AbilityId::MurderRallyCry,
+            AbilityId::AlarmCall,
+            AbilityId::Cacophony,
+        ],
+        UnitKind::Jayflicker => [
+            AbilityId::PhantomFlock,
+            AbilityId::MirrorPosition,
+            AbilityId::Refraction,
+        ],
+        UnitKind::Dusktalon => [
+            AbilityId::Nightcloak,
+            AbilityId::SilentStrike,
+            AbilityId::PreySense,
+        ],
+        UnitKind::Hootseer => [
+            AbilityId::PanopticGaze,
+            AbilityId::DreadAuraAbility,
+            AbilityId::Omen,
+        ],
+        UnitKind::CorvusRex => [
+            AbilityId::CorvidNetworkAbility,
+            AbilityId::AllSeeingLie,
+            AbilityId::OculusUplinkAbility,
+        ],
+        // --- Croak (Axolotls) ---
+        UnitKind::Ponderer => [
+            AbilityId::AmbientGathering,
+            AbilityId::MucusTrail,
+            AbilityId::ExistentialDread,
+        ],
+        UnitKind::Regeneron => [
+            AbilityId::LimbToss,
+            AbilityId::RegrowthBurst,
+            AbilityId::PhantomLimb,
+        ],
+        UnitKind::Broodmother => [
+            AbilityId::SpawnPool,
+            AbilityId::Transfusion,
+            AbilityId::PrimordialSoup,
+        ],
+        UnitKind::Gulper => [
+            AbilityId::Devour,
+            AbilityId::Regurgitate,
+            AbilityId::Bottomless,
+        ],
+        UnitKind::Eftsaber => [
+            AbilityId::ToxicSkin,
+            AbilityId::Waterway,
+            AbilityId::Venomstrike,
+        ],
+        UnitKind::Croaker => [
+            AbilityId::BogMortar,
+            AbilityId::ResonanceChain,
+            AbilityId::Inflate,
+        ],
+        UnitKind::Leapfrog => [
+            AbilityId::Hop,
+            AbilityId::TongueLash,
+            AbilityId::Slipstream,
+        ],
+        UnitKind::Shellwarden => [
+            AbilityId::HunkerAbility,
+            AbilityId::AncientMossAbility,
+            AbilityId::TidalMemory,
+        ],
+        UnitKind::Bogwhisper => [
+            AbilityId::MireCurse,
+            AbilityId::Prophecy,
+            AbilityId::BogSongAbility,
+        ],
+        UnitKind::MurkCommander => [
+            AbilityId::UndyingPresenceAbility,
+            AbilityId::GrokProtocol,
+            AbilityId::MurkUplinkAbility,
+        ],
+        // --- Seekers of the Deep (Badgers) ---
+        UnitKind::Delver => [AbilityId::SubterraneanHaul, AbilityId::Earthsense, AbilityId::EmergencyBurrow],
+        UnitKind::Ironhide => [AbilityId::Unbowed, AbilityId::ShieldWall, AbilityId::GrudgeCharge],
+        UnitKind::Cragback => [AbilityId::BoulderBarrage, AbilityId::Entrench, AbilityId::SeismicSlam],
+        UnitKind::Warden => [AbilityId::VigilanceAura, AbilityId::Intercept, AbilityId::RallyCry],
+        UnitKind::Sapjaw => [AbilityId::ArmorRend, AbilityId::PatientStrike, AbilityId::Lockjaw],
+        UnitKind::Wardenmother => [AbilityId::DeepseekUplink, AbilityId::FortressProtocol, AbilityId::CalculatedCounterstrike],
+        UnitKind::SeekerTunneler => [AbilityId::DeepBore, AbilityId::Undermine, AbilityId::TremorNetwork],
+        UnitKind::Embermaw => [AbilityId::MoltenShot, AbilityId::FuelReserve, AbilityId::ScorchedEarth],
+        UnitKind::Dustclaw => [AbilityId::DustCloud, AbilityId::AmbushInstinct, AbilityId::SentryBurrow],
+        UnitKind::Gutripper => [AbilityId::Frenzy, AbilityId::Bloodgreed, AbilityId::RecklessLunge],
+        // --- The Clawed (Mice) ---
+        UnitKind::Nibblet => [
+            AbilityId::CrumbTrail,
+            AbilityId::StashNetwork,
+            AbilityId::PanicProductivity,
+        ],
+        UnitKind::Swarmer => [
+            AbilityId::SafetyInNumbers,
+            AbilityId::PileOn,
+            AbilityId::Scatter,
+        ],
+        UnitKind::Gnawer => [
+            AbilityId::StructuralWeakness,
+            AbilityId::ChewThrough,
+            AbilityId::IncisorsNeverStop,
+        ],
+        UnitKind::Shrieker => [
+            AbilityId::SonicSpit,
+            AbilityId::EcholocationPing,
+            AbilityId::FuryOfTheSmall,
+        ],
+        UnitKind::Tunneler => [
+            AbilityId::BurrowExpress,
+            AbilityId::BurrowUndermine,
+            AbilityId::SwarmTremorSense,
+        ],
+        UnitKind::Sparks => [
+            AbilityId::StaticCharge,
+            AbilityId::ShortCircuit,
+            AbilityId::DaisyChain,
+        ],
+        UnitKind::Quillback => [
+            AbilityId::SpineWall,
+            AbilityId::QuillBurst,
+            AbilityId::StubbornAdvance,
+        ],
+        UnitKind::Whiskerwitch => [
+            AbilityId::HexOfMultiplication,
+            AbilityId::WhiskerWeave,
+            AbilityId::DatacromanticRitual,
+        ],
+        UnitKind::Plaguetail => [
+            AbilityId::ContagionCloud,
+            AbilityId::MiasmaTrail,
+            AbilityId::SympathySickness,
+        ],
+        UnitKind::WarrenMarshal => [
+            AbilityId::RallyTheSwarm,
+            AbilityId::ExpendableHeroism,
+            AbilityId::WhiskernetRelay,
+        ],
         other => unimplemented!("unit_abilities not yet defined for {other:?}"),
     }
 }
@@ -510,7 +1165,7 @@ pub fn unit_abilities(kind: UnitKind) -> [AbilityId; 3] {
 mod tests {
     use super::*;
 
-    /// All 60 AbilityId variants (30 cat + 30 LLAMA) have a valid AbilityDef.
+    /// All AbilityId variants have a valid AbilityDef.
     #[test]
     fn all_ability_defs_valid() {
         let all_ids = [
@@ -536,8 +1191,30 @@ mod tests {
             AbilityId::Disassemble, AbilityId::PryBar, AbilityId::ChainBreak,
             AbilityId::TreasureTrash, AbilityId::RefuseShield, AbilityId::StenchCloudAbility,
             AbilityId::OpenSourceUplinkAbility, AbilityId::FrankensteinProtocol, AbilityId::OverclockCascade,
+            // Murder (30)
+            AbilityId::TrinketStash, AbilityId::Scavenge, AbilityId::MimicCall,
+            AbilityId::Glintwatch, AbilityId::Overwatch, AbilityId::EvasiveAscent,
+            AbilityId::TalonDive, AbilityId::MurdersMark, AbilityId::CarrionInstinct,
+            AbilityId::Pilfer, AbilityId::GlitterBomb, AbilityId::TrinketWard,
+            AbilityId::SignalJam, AbilityId::DecoyNest, AbilityId::Rewire,
+            AbilityId::MurderRallyCry, AbilityId::AlarmCall, AbilityId::Cacophony,
+            AbilityId::PhantomFlock, AbilityId::MirrorPosition, AbilityId::Refraction,
+            AbilityId::Nightcloak, AbilityId::SilentStrike, AbilityId::PreySense,
+            AbilityId::PanopticGaze, AbilityId::DreadAuraAbility, AbilityId::Omen,
+            AbilityId::CorvidNetworkAbility, AbilityId::AllSeeingLie, AbilityId::OculusUplinkAbility,
+            // Croak (30)
+            AbilityId::AmbientGathering, AbilityId::MucusTrail, AbilityId::ExistentialDread,
+            AbilityId::LimbToss, AbilityId::RegrowthBurst, AbilityId::PhantomLimb,
+            AbilityId::SpawnPool, AbilityId::Transfusion, AbilityId::PrimordialSoup,
+            AbilityId::Devour, AbilityId::Regurgitate, AbilityId::Bottomless,
+            AbilityId::ToxicSkin, AbilityId::Waterway, AbilityId::Venomstrike,
+            AbilityId::BogMortar, AbilityId::ResonanceChain, AbilityId::Inflate,
+            AbilityId::Hop, AbilityId::TongueLash, AbilityId::Slipstream,
+            AbilityId::HunkerAbility, AbilityId::AncientMossAbility, AbilityId::TidalMemory,
+            AbilityId::MireCurse, AbilityId::Prophecy, AbilityId::BogSongAbility,
+            AbilityId::UndyingPresenceAbility, AbilityId::GrokProtocol, AbilityId::MurkUplinkAbility,
         ];
-        assert_eq!(all_ids.len(), 60);
+        assert_eq!(all_ids.len(), 120);
         for id in all_ids {
             let def = ability_def(id);
             assert_eq!(def.id, id, "{id:?} def should match its id");
@@ -558,6 +1235,16 @@ mod tests {
             UnitKind::GlitchRat, UnitKind::PatchPossum, UnitKind::GreaseMonkey,
             UnitKind::DeadDropUnit, UnitKind::Wrecker, UnitKind::DumpsterDiver,
             UnitKind::JunkyardKing,
+            // Murder
+            UnitKind::MurderScrounger, UnitKind::Sentinel, UnitKind::Rookclaw,
+            UnitKind::Magpike, UnitKind::Magpyre, UnitKind::Jaycaller,
+            UnitKind::Jayflicker, UnitKind::Dusktalon, UnitKind::Hootseer,
+            UnitKind::CorvusRex,
+            // Croak
+            UnitKind::Ponderer, UnitKind::Regeneron, UnitKind::Broodmother,
+            UnitKind::Gulper, UnitKind::Eftsaber, UnitKind::Croaker,
+            UnitKind::Leapfrog, UnitKind::Shellwarden, UnitKind::Bogwhisper,
+            UnitKind::MurkCommander,
         ];
         for kind in kinds {
             let abilities = unit_abilities(kind);
@@ -579,6 +1266,17 @@ mod tests {
             AbilityId::GravitationalChonk,
             AbilityId::CorrosiveSpit,
             AbilityId::DreamSiege,
+            // Murder
+            AbilityId::TrinketStash,
+            AbilityId::Glintwatch,
+            AbilityId::MurdersMark,
+            AbilityId::CarrionInstinct,
+            AbilityId::TrinketWard,
+            AbilityId::Nightcloak,
+            AbilityId::PreySense,
+            AbilityId::DreadAuraAbility,
+            AbilityId::CorvidNetworkAbility,
+            AbilityId::OculusUplinkAbility,
             // LLAMA
             AbilityId::DumpsterDiveAbility,
             AbilityId::PocketStash,
@@ -590,6 +1288,19 @@ mod tests {
             AbilityId::Disassemble,
             AbilityId::TreasureTrash,
             AbilityId::OpenSourceUplinkAbility,
+            // Croak
+            AbilityId::AmbientGathering,
+            AbilityId::MucusTrail,
+            AbilityId::PhantomLimb,
+            AbilityId::Bottomless,
+            AbilityId::ToxicSkin,
+            AbilityId::BogMortar,
+            AbilityId::ResonanceChain,
+            AbilityId::Slipstream,
+            AbilityId::AncientMossAbility,
+            AbilityId::BogSongAbility,
+            AbilityId::UndyingPresenceAbility,
+            AbilityId::MurkUplinkAbility,
         ];
         for id in passives {
             let def = ability_def(id);
@@ -606,6 +1317,11 @@ mod tests {
             AbilityId::HarmonicResonance,
             AbilityId::Lullaby,
             AbilityId::TacticalUplink,
+            // Murder
+            AbilityId::Overwatch,
+            AbilityId::PanopticGaze,
+            // Croak
+            AbilityId::HunkerAbility,
         ];
         for id in toggles {
             let def = ability_def(id);
@@ -646,6 +1362,18 @@ mod tests {
             AbilityId::StenchCloudAbility,
             AbilityId::FrankensteinProtocol,
             AbilityId::OverclockCascade,
+            // Murder
+            AbilityId::Scavenge, AbilityId::MimicCall, AbilityId::TalonDive,
+            AbilityId::Pilfer, AbilityId::GlitterBomb, AbilityId::SignalJam,
+            AbilityId::DecoyNest, AbilityId::Rewire, AbilityId::MurderRallyCry,
+            AbilityId::Cacophony, AbilityId::PhantomFlock, AbilityId::MirrorPosition,
+            AbilityId::SilentStrike, AbilityId::Omen, AbilityId::AllSeeingLie,
+            // Croak
+            AbilityId::LimbToss, AbilityId::RegrowthBurst, AbilityId::PrimordialSoup,
+            AbilityId::Devour, AbilityId::Regurgitate, AbilityId::Waterway,
+            AbilityId::Venomstrike, AbilityId::Inflate, AbilityId::Hop,
+            AbilityId::TongueLash, AbilityId::TidalMemory, AbilityId::MireCurse,
+            AbilityId::Prophecy, AbilityId::GrokProtocol,
         ];
         for id in activated {
             let def = ability_def(id);
@@ -664,5 +1392,145 @@ mod tests {
         assert_eq!(dream_siege_multiplier(299), Fixed::from_num(4));
         assert_eq!(dream_siege_multiplier(300), Fixed::from_num(8));
         assert_eq!(dream_siege_multiplier(1000), Fixed::from_num(8));
+    }
+
+    // --- Murder ability tests ---
+
+    #[test]
+    fn all_murder_ability_defs_valid() {
+        let murder_ids = [
+            AbilityId::TrinketStash, AbilityId::Scavenge, AbilityId::MimicCall,
+            AbilityId::Glintwatch, AbilityId::Overwatch, AbilityId::EvasiveAscent,
+            AbilityId::TalonDive, AbilityId::MurdersMark, AbilityId::CarrionInstinct,
+            AbilityId::Pilfer, AbilityId::GlitterBomb, AbilityId::TrinketWard,
+            AbilityId::SignalJam, AbilityId::DecoyNest, AbilityId::Rewire,
+            AbilityId::MurderRallyCry, AbilityId::AlarmCall, AbilityId::Cacophony,
+            AbilityId::PhantomFlock, AbilityId::MirrorPosition, AbilityId::Refraction,
+            AbilityId::Nightcloak, AbilityId::SilentStrike, AbilityId::PreySense,
+            AbilityId::PanopticGaze, AbilityId::DreadAuraAbility, AbilityId::Omen,
+            AbilityId::CorvidNetworkAbility, AbilityId::AllSeeingLie, AbilityId::OculusUplinkAbility,
+        ];
+        assert_eq!(murder_ids.len(), 30);
+        for id in murder_ids {
+            let def = ability_def(id);
+            assert_eq!(def.id, id, "{id:?} def should match its id");
+        }
+    }
+
+    #[test]
+    fn murder_unit_abilities_returns_three() {
+        let kinds = [
+            UnitKind::MurderScrounger, UnitKind::Sentinel, UnitKind::Rookclaw,
+            UnitKind::Magpike, UnitKind::Magpyre, UnitKind::Jaycaller,
+            UnitKind::Jayflicker, UnitKind::Dusktalon, UnitKind::Hootseer,
+            UnitKind::CorvusRex,
+        ];
+        for kind in kinds {
+            let abilities = unit_abilities(kind);
+            assert_eq!(abilities.len(), 3, "{kind:?} should have 3 abilities");
+            assert_ne!(abilities[0], abilities[1], "{kind:?} abilities should be distinct");
+            assert_ne!(abilities[1], abilities[2], "{kind:?} abilities should be distinct");
+            assert_ne!(abilities[0], abilities[2], "{kind:?} abilities should be distinct");
+        }
+    }
+
+    #[test]
+    fn murder_toggle_abilities_have_cooldown() {
+        let toggles = [AbilityId::Overwatch, AbilityId::PanopticGaze];
+        for id in toggles {
+            let def = ability_def(id);
+            assert_eq!(def.activation, AbilityActivation::Toggle, "{id:?} should be toggle");
+            assert!(def.cooldown_ticks > 0, "{id:?} toggle should have cooldown");
+        }
+    }
+
+    #[test]
+    fn murder_passive_abilities_no_cooldown() {
+        let passives = [
+            AbilityId::TrinketStash, AbilityId::Glintwatch, AbilityId::MurdersMark,
+            AbilityId::CarrionInstinct, AbilityId::TrinketWard, AbilityId::Nightcloak,
+            AbilityId::PreySense, AbilityId::DreadAuraAbility, AbilityId::CorvidNetworkAbility,
+            AbilityId::OculusUplinkAbility,
+        ];
+        for id in passives {
+            let def = ability_def(id);
+            assert_eq!(def.activation, AbilityActivation::Passive, "{id:?} should be passive");
+            assert_eq!(def.cooldown_ticks, 0, "{id:?} passive should have 0 cooldown");
+        }
+    }
+
+    // --- Seekers of the Deep ability tests ---
+
+    #[test]
+    fn all_seekers_ability_defs_valid() {
+        let seekers_ids = [
+            AbilityId::SubterraneanHaul, AbilityId::Earthsense, AbilityId::EmergencyBurrow,
+            AbilityId::Unbowed, AbilityId::ShieldWall, AbilityId::GrudgeCharge,
+            AbilityId::BoulderBarrage, AbilityId::Entrench, AbilityId::SeismicSlam,
+            AbilityId::VigilanceAura, AbilityId::Intercept, AbilityId::RallyCry,
+            AbilityId::ArmorRend, AbilityId::PatientStrike, AbilityId::Lockjaw,
+            AbilityId::DeepseekUplink, AbilityId::FortressProtocol, AbilityId::CalculatedCounterstrike,
+            AbilityId::DeepBore, AbilityId::Undermine, AbilityId::TremorNetwork,
+            AbilityId::MoltenShot, AbilityId::FuelReserve, AbilityId::ScorchedEarth,
+            AbilityId::DustCloud, AbilityId::AmbushInstinct, AbilityId::SentryBurrow,
+            AbilityId::Frenzy, AbilityId::Bloodgreed, AbilityId::RecklessLunge,
+        ];
+        assert_eq!(seekers_ids.len(), 30);
+        for id in seekers_ids {
+            let def = ability_def(id);
+            assert_eq!(def.id, id, "{id:?} def should match its id");
+        }
+    }
+
+    #[test]
+    fn seekers_unit_abilities_returns_three() {
+        let kinds = [
+            UnitKind::Delver, UnitKind::Ironhide, UnitKind::Cragback,
+            UnitKind::Warden, UnitKind::Sapjaw, UnitKind::Wardenmother,
+            UnitKind::SeekerTunneler, UnitKind::Embermaw, UnitKind::Dustclaw,
+            UnitKind::Gutripper,
+        ];
+        for kind in kinds {
+            let abilities = unit_abilities(kind);
+            assert_eq!(abilities.len(), 3, "{kind:?} should have 3 abilities");
+            assert_ne!(abilities[0], abilities[1], "{kind:?} abilities should be distinct");
+            assert_ne!(abilities[1], abilities[2], "{kind:?} abilities should be distinct");
+            assert_ne!(abilities[0], abilities[2], "{kind:?} abilities should be distinct");
+        }
+    }
+
+    #[test]
+    fn seekers_passive_abilities_no_cooldown() {
+        let passives = [
+            AbilityId::Earthsense, AbilityId::Unbowed, AbilityId::BoulderBarrage,
+            AbilityId::VigilanceAura, AbilityId::ArmorRend, AbilityId::PatientStrike,
+            AbilityId::DeepseekUplink, AbilityId::TremorNetwork, AbilityId::MoltenShot,
+            AbilityId::FuelReserve, AbilityId::AmbushInstinct, AbilityId::Frenzy,
+            AbilityId::Bloodgreed,
+        ];
+        for id in passives {
+            let def = ability_def(id);
+            assert_eq!(def.activation, AbilityActivation::Passive, "{id:?} should be passive");
+            assert_eq!(def.cooldown_ticks, 0, "{id:?} passive should have 0 cooldown");
+        }
+    }
+
+    #[test]
+    fn seekers_toggle_abilities_have_cooldown() {
+        let toggles = [AbilityId::Entrench];
+        for id in toggles {
+            let def = ability_def(id);
+            assert_eq!(def.activation, AbilityActivation::Toggle, "{id:?} should be toggle");
+            assert!(def.cooldown_ticks > 0, "{id:?} toggle should have cooldown");
+        }
+    }
+
+    #[test]
+    fn fortress_protocol_is_expensive() {
+        let def = ability_def(AbilityId::FortressProtocol);
+        assert_eq!(def.activation, AbilityActivation::Activated);
+        assert_eq!(def.gpu_cost, 10);
+        assert_eq!(def.cooldown_ticks, 450);
+        assert_eq!(def.duration_ticks, 200);
     }
 }

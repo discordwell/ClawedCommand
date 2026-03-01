@@ -52,6 +52,7 @@ fn building_description(kind: BuildingKind) -> &'static str {
         BuildingKind::CatFlap => "garrison",
         BuildingKind::LaserPointer => "tower",
         BuildingKind::TheBox => "HQ",
+        _ => "building",
     }
 }
 

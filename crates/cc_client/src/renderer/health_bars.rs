@@ -37,6 +37,7 @@ fn bar_width_for_kind(kind: UnitKind) -> f32 {
         UnitKind::Catnapper => 26.0,
         UnitKind::Chonk => 30.0,
         UnitKind::MechCommander => 34.0,
+        _ => 18.0,
     }
 }
 
@@ -47,6 +48,7 @@ fn bar_width_for_building(kind: BuildingKind) -> f32 {
         BuildingKind::CatTree | BuildingKind::ServerRack => 28.0,
         BuildingKind::FishMarket | BuildingKind::ScratchingPost | BuildingKind::CatFlap => 24.0,
         BuildingKind::LitterBox | BuildingKind::LaserPointer => 20.0,
+        _ => 24.0,
     }
 }
 

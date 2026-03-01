@@ -37,6 +37,9 @@ pub enum StatusEffectId {
     PowerNapping,
     /// Post-CC immunity window.
     CcImmune,
+    // --- Croak (Axolotls) ---
+    /// Croak debuff — -10% move speed, applied by many Croak abilities.
+    Waterlogged,
 }
 
 /// Returns true if this status effect is crowd control (CC).
