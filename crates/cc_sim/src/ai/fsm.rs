@@ -2,14 +2,18 @@ use bevy::prelude::*;
 
 use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::{
-    BuildOrder, Building, BuildingKind, Faction, Gathering, MoveTarget,
-    Owner, Position, Producer, ResourceDeposit, UnderConstruction, UnitKind, UnitType, UpgradeType,
+    BuildOrder, Building, BuildingKind, Faction, Gathering, Health, MoveTarget,
+    Owner, Position, Producer, ProductionQueue, ResourceDeposit, UnitKind, UnitType, UpgradeType,
 };
 use cc_core::coords::GridPos;
 use cc_core::map::GameMap;
+use cc_core::math::Fixed;
 use cc_core::tuning::{AI_BUILD_SPACING, ATTACK_REISSUE_INTERVAL, BASE_THREAT_RADIUS};
 
 use crate::resources::{CommandQueue, MapResource, PlayerResources, SimClock};
+
+/// Maximum number of items in a building's production queue before the AI stops training.
+const AI_MAX_QUEUE_DEPTH: usize = 2;
 
 /// AI difficulty level — controls decision frequency.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -249,6 +253,30 @@ pub enum AiPhase {
     Defend,
 }
 
+/// AI tier — determines tactical sophistication based on ServerRack count.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AiTier {
+    /// No ServerRacks — plain AttackMove, basic economy.
+    Basic,
+    /// 1 ServerRack — focus-fire weakest, retreat wounded.
+    Tactical,
+    /// 2 ServerRacks — coordinate assault (70/30 split + flank).
+    Strategic,
+    /// 3+ ServerRacks — all of above + adaptive positioning.
+    Advanced,
+}
+
+impl AiTier {
+    fn from_rack_count(count: u32) -> Self {
+        match count {
+            0 => AiTier::Basic,
+            1 => AiTier::Tactical,
+            2 => AiTier::Strategic,
+            _ => AiTier::Advanced,
+        }
+    }
+}
+
 /// AI state resource for the computer player.
 #[derive(Resource)]
 pub struct AiState {
@@ -263,6 +291,8 @@ pub struct AiState {
     pub attack_ordered: bool,
     /// Tick when last attack order was sent — used to periodically re-issue orders.
     pub last_attack_tick: u64,
+    /// Current tactical tier — derived from ServerRack count each tick.
+    pub tier: AiTier,
 }
 
 impl Default for AiState {
@@ -275,6 +305,7 @@ impl Default for AiState {
             enemy_spawn: None,
             attack_ordered: false,
             last_attack_tick: 0,
+            tier: AiTier::Basic,
         }
     }
 }
@@ -288,8 +319,9 @@ pub fn ai_decision_system(
     player_resources: Res<PlayerResources>,
     map_res: Res<MapResource>,
     units: Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
-    buildings: Query<(Entity, &Building, &Owner, &Position, Option<&Producer>, Option<&UnderConstruction>)>,
+    buildings: Query<(Entity, &Building, &Owner, &Position, Option<&Producer>, Option<&ProductionQueue>)>,
     deposits: Query<(Entity, &Position, &ResourceDeposit)>,
+    health_query: Query<&Health>,
 ) {
     run_ai_fsm(
         clock.tick,
@@ -300,6 +332,7 @@ pub fn ai_decision_system(
         &units,
         &buildings,
         &deposits,
+        &health_query,
     );
 }
 
@@ -312,8 +345,9 @@ pub fn multi_ai_decision_system(
     player_resources: Res<PlayerResources>,
     map_res: Res<MapResource>,
     units: Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
-    buildings: Query<(Entity, &Building, &Owner, &Position, Option<&Producer>, Option<&UnderConstruction>)>,
+    buildings: Query<(Entity, &Building, &Owner, &Position, Option<&Producer>, Option<&ProductionQueue>)>,
     deposits: Query<(Entity, &Position, &ResourceDeposit)>,
+    health_query: Query<&Health>,
 ) {
     for ai_state in multi_ai.players.iter_mut() {
         run_ai_fsm(
@@ -325,6 +359,7 @@ pub fn multi_ai_decision_system(
             &units,
             &buildings,
             &deposits,
+            &health_query,
         );
     }
 }
@@ -355,6 +390,12 @@ struct BuildingCensus {
     server_rack_entity: Option<Entity>,
     scratching_post_entity: Option<Entity>,
     building_positions: Vec<(GridPos, BuildingKind)>,
+    box_queue_len: usize,
+    cat_tree_queue_len: usize,
+    server_rack_queue_len: usize,
+    pending_litter_box_count: u32,
+    /// Total number of ServerRack buildings (for tier computation).
+    server_rack_count: u32,
 }
 
 /// Scan all units and classify them as workers, army, or enemy army.
@@ -404,7 +445,7 @@ fn take_unit_census(
 /// Scan all buildings owned by the AI player.
 fn take_building_census(
     ai_player: u8,
-    buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>, Option<&UnderConstruction>)>,
+    buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>, Option<&ProductionQueue>)>,
 ) -> BuildingCensus {
     let mut census = BuildingCensus {
         has_box: false,
@@ -419,23 +460,30 @@ fn take_building_census(
         server_rack_entity: None,
         scratching_post_entity: None,
         building_positions: Vec::new(),
+        box_queue_len: 0,
+        cat_tree_queue_len: 0,
+        server_rack_queue_len: 0,
+        pending_litter_box_count: 0,
+        server_rack_count: 0,
     };
-    for (entity, building, owner, pos, producer, under_construction) in buildings.iter() {
+    for (entity, building, owner, pos, producer, prod_queue) in buildings.iter() {
         if owner.player_id != ai_player {
             continue;
         }
         census.building_positions.push((pos.world.to_grid(), building.kind));
-        let is_complete = under_construction.is_none();
+        let queue_len = prod_queue.map_or(0, |q| q.queue.len());
         match building.kind {
             BuildingKind::TheBox => {
                 census.has_box = true;
                 census.box_pos = Some(pos.world.to_grid());
+                census.box_queue_len = queue_len;
                 if producer.is_some() {
                     census.box_entity = Some(entity);
                 }
             }
             BuildingKind::CatTree => {
                 census.has_cat_tree = true;
+                census.cat_tree_queue_len = queue_len;
                 if producer.is_some() {
                     census.cat_tree_entity = Some(entity);
                 }
@@ -445,16 +493,15 @@ fn take_building_census(
             }
             BuildingKind::ServerRack => {
                 census.has_server_rack = true;
+                census.server_rack_count += 1;
+                census.server_rack_queue_len = queue_len;
                 if producer.is_some() {
                     census.server_rack_entity = Some(entity);
                 }
             }
             BuildingKind::ScratchingPost => {
                 census.has_scratching_post = true;
-                // Only set entity when construction is complete (has Researcher component)
-                if is_complete {
-                    census.scratching_post_entity = Some(entity);
-                }
+                census.scratching_post_entity = Some(entity);
             }
             BuildingKind::LaserPointer => {
                 census.has_laser_pointer = true;
@@ -469,7 +516,7 @@ fn take_building_census(
 fn discover_enemy_spawn(
     ai_player: u8,
     units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
-    buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>, Option<&UnderConstruction>)>,
+    buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>, Option<&ProductionQueue>)>,
 ) -> Option<GridPos> {
     // First: look for enemy TheBox
     for (_, building, owner, pos, _, _) in buildings.iter() {
@@ -486,6 +533,26 @@ fn discover_enemy_spawn(
     None
 }
 
+/// Calculate food to reserve for priority buildings the AI still needs.
+/// GPU-aware: only reserves for buildings the AI can actually afford.
+fn food_reserve_for_buildings(phase: AiPhase, bc: &BuildingCensus, gpu_cores: u32) -> u32 {
+    match phase {
+        AiPhase::BuildUp => {
+            let mut reserve = 0u32;
+            if !bc.has_fish_market { reserve += 100; }
+            if !bc.has_cat_tree { reserve += 150; }
+            reserve
+        }
+        AiPhase::MidGame => {
+            let mut reserve = 0u32;
+            if !bc.has_server_rack && gpu_cores >= 75 { reserve += 100; }
+            if !bc.has_scratching_post && gpu_cores >= 50 { reserve += 100; }
+            reserve
+        }
+        _ => 0,
+    }
+}
+
 /// Core FSM logic shared between single-AI and multi-AI systems.
 fn run_ai_fsm(
     tick: u64,
@@ -494,8 +561,9 @@ fn run_ai_fsm(
     player_resources: &PlayerResources,
     map: &GameMap,
     units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
-    buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>, Option<&UnderConstruction>)>,
+    buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>, Option<&ProductionQueue>)>,
     deposits: &Query<(Entity, &Position, &ResourceDeposit)>,
+    health_query: &Query<&Health>,
 ) {
     let base_interval = ai_state.difficulty.eval_interval();
     // Apply eval_speed_mult from profile: higher = slower decisions
@@ -519,12 +587,21 @@ fn run_ai_fsm(
         match kind {
             BuildingKind::FishMarket => bc.has_fish_market = true,
             BuildingKind::CatTree => bc.has_cat_tree = true,
-            BuildingKind::ServerRack => bc.has_server_rack = true,
+            BuildingKind::ServerRack => {
+                bc.has_server_rack = true;
+                bc.server_rack_count += 1;
+            }
             BuildingKind::ScratchingPost => bc.has_scratching_post = true,
             BuildingKind::LaserPointer => bc.has_laser_pointer = true,
+            BuildingKind::LitterBox => bc.pending_litter_box_count += 1,
             _ => {}
         }
     }
+
+    // Update AI tier from ServerRack count
+    ai_state.tier = AiTier::from_rack_count(bc.server_rack_count);
+    let tier = ai_state.tier;
+    let retreat_threshold = ai_state.profile.retreat_threshold;
 
     // Discover enemy base if not yet known
     if ai_state.enemy_spawn.is_none() {
@@ -543,7 +620,9 @@ fn run_ai_fsm(
             // Train workers until target count
             if uc.worker_count < target_workers {
                 if let Some(box_e) = bc.box_entity {
-                    if pres.food >= 50 && pres.supply < pres.supply_cap {
+                    if pres.food >= 50 && pres.supply < pres.supply_cap
+                        && bc.box_queue_len < AI_MAX_QUEUE_DEPTH
+                    {
                         cmd_queue.push(GameCommand::TrainUnit {
                             building: EntityId(box_e.to_bits()),
                             unit_kind: UnitKind::Pawdler,
@@ -559,6 +638,8 @@ fn run_ai_fsm(
         }
 
         AiPhase::BuildUp => {
+            let reserve = food_reserve_for_buildings(AiPhase::BuildUp, &bc, pres.gpu_cores);
+
             // Build one structure per tick to avoid same-worker conflicts
             if builder_used.is_none() && !bc.has_fish_market && pres.food >= 100 && bc.has_box {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
@@ -585,7 +666,7 @@ fn run_ai_fsm(
             }
 
             if builder_used.is_none() {
-                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue) {
+                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue, bc.pending_litter_box_count) {
                     builder_used = Some(b);
                 }
             }
@@ -593,12 +674,39 @@ fn run_ai_fsm(
             // Train army from CatTree
             if let Some(ct_e) = bc.cat_tree_entity {
                 let nuisance_cost = cc_core::unit_stats::base_stats(UnitKind::Nuisance).food_cost;
-                if pres.food >= nuisance_cost && pres.supply < pres.supply_cap {
+                if pres.food >= nuisance_cost + reserve && pres.supply < pres.supply_cap
+                    && bc.cat_tree_queue_len < AI_MAX_QUEUE_DEPTH
+                {
                     cmd_queue.push(GameCommand::TrainUnit {
                         building: EntityId(ct_e.to_bits()),
                         unit_kind: UnitKind::Nuisance,
                     });
                 }
+            }
+
+            // Train additional workers during BuildUp (economy needs more than EarlyGame count)
+            let buildup_worker_cap = (target_workers + 1).min(6);
+            if uc.worker_count < buildup_worker_cap {
+                if let Some(box_e) = bc.box_entity {
+                    if pres.food >= 50 + reserve && pres.supply < pres.supply_cap
+                        && bc.box_queue_len < AI_MAX_QUEUE_DEPTH
+                    {
+                        cmd_queue.push(GameCommand::TrainUnit {
+                            building: EntityId(box_e.to_bits()),
+                            unit_kind: UnitKind::Pawdler,
+                        });
+                    }
+                }
+            }
+
+            // Rally combat buildings to defensive position near base
+            let defense_pos = bc.box_pos.map(|p| GridPos::new(p.x + 3, p.y + 3))
+                .unwrap_or(GridPos::new(55, 58));
+            if let Some(ct_e) = bc.cat_tree_entity {
+                cmd_queue.push(GameCommand::SetRallyPoint {
+                    building: EntityId(ct_e.to_bits()),
+                    target: defense_pos,
+                });
             }
 
             if uc.army_count >= 4 {
@@ -609,6 +717,8 @@ fn run_ai_fsm(
         }
 
         AiPhase::MidGame => {
+            let reserve = food_reserve_for_buildings(AiPhase::MidGame, &bc, pres.gpu_cores);
+
             // Build one structure per tick to avoid same-worker conflicts
             if builder_used.is_none() && !bc.has_server_rack && pres.food >= 100 && pres.gpu_cores >= 75 && bc.has_box {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
@@ -646,32 +756,67 @@ fn run_ai_fsm(
                 }
             }
 
-            // Queue research at ScratchingPost (saving_for_research = true means
-            // the AI should avoid spending food on unit training)
-            let saving_for_research = maybe_queue_research(&bc, pres, cmd_queue);
-
-            // Train units only when not saving for research
-            if !saving_for_research {
-                // Train advanced units from ServerRack
-                maybe_train_advanced_units(&bc, &uc, pres, cmd_queue);
-
-                // Keep training basic units from CatTree — use profile preferences
-                if let Some(ct_e) = bc.cat_tree_entity {
-                    if pres.supply < pres.supply_cap {
-                        let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick);
-                        let stats = cc_core::unit_stats::base_stats(kind);
-                        if pres.food >= stats.food_cost {
-                            cmd_queue.push(GameCommand::TrainUnit {
-                                building: EntityId(ct_e.to_bits()),
-                                unit_kind: kind,
+            // Queue research at ScratchingPost
+            if let Some(sp_e) = bc.scratching_post_entity {
+                let research_priority = [
+                    UpgradeType::SharperClaws,
+                    UpgradeType::ThickerFur,
+                    UpgradeType::SiegeTraining,
+                ];
+                for upgrade in research_priority {
+                    if !pres.completed_upgrades.contains(&upgrade) {
+                        let ustats = cc_core::upgrade_stats::upgrade_stats(upgrade);
+                        if pres.food >= ustats.food_cost && pres.gpu_cores >= ustats.gpu_cost {
+                            cmd_queue.push(GameCommand::Research {
+                                building: EntityId(sp_e.to_bits()),
+                                upgrade,
                             });
+                            break;
                         }
                     }
                 }
             }
 
+            // Train advanced units from ServerRack
+            if let Some(sr_e) = bc.server_rack_entity {
+                if pres.supply < pres.supply_cap
+                    && bc.server_rack_queue_len < AI_MAX_QUEUE_DEPTH
+                {
+                    let kind = if pres.completed_upgrades.contains(&UpgradeType::SiegeTraining)
+                        && uc.army_count % 4 == 0
+                    {
+                        UnitKind::Catnapper
+                    } else {
+                        UnitKind::FlyingFox
+                    };
+                    let stats = cc_core::unit_stats::base_stats(kind);
+                    if pres.food >= stats.food_cost + reserve && pres.gpu_cores >= stats.gpu_cost {
+                        cmd_queue.push(GameCommand::TrainUnit {
+                            building: EntityId(sr_e.to_bits()),
+                            unit_kind: kind,
+                        });
+                    }
+                }
+            }
+
+            // Keep training basic units from CatTree — use profile preferences if available
+            if let Some(ct_e) = bc.cat_tree_entity {
+                if pres.supply < pres.supply_cap
+                    && bc.cat_tree_queue_len < AI_MAX_QUEUE_DEPTH
+                {
+                    let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick);
+                    let stats = cc_core::unit_stats::base_stats(kind);
+                    if pres.food >= stats.food_cost + reserve {
+                        cmd_queue.push(GameCommand::TrainUnit {
+                            building: EntityId(ct_e.to_bits()),
+                            unit_kind: kind,
+                        });
+                    }
+                }
+            }
+
             if builder_used.is_none() {
-                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue) {
+                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue, bc.pending_litter_box_count) {
                     builder_used = Some(b);
                 }
             }
@@ -679,13 +824,31 @@ fn run_ai_fsm(
             // Continue training workers (cap at 6 to reserve supply for army)
             if uc.worker_count < 6 {
                 if let Some(box_e) = bc.box_entity {
-                    if pres.food >= 50 && pres.supply < pres.supply_cap {
+                    if pres.food >= 50 + reserve && pres.supply < pres.supply_cap
+                        && bc.box_queue_len < AI_MAX_QUEUE_DEPTH
+                    {
                         cmd_queue.push(GameCommand::TrainUnit {
                             building: EntityId(box_e.to_bits()),
                             unit_kind: UnitKind::Pawdler,
                         });
                     }
                 }
+            }
+
+            // Rally combat buildings to defensive position near base
+            let defense_pos = bc.box_pos.map(|p| GridPos::new(p.x + 3, p.y + 3))
+                .unwrap_or(GridPos::new(55, 58));
+            if let Some(ct_e) = bc.cat_tree_entity {
+                cmd_queue.push(GameCommand::SetRallyPoint {
+                    building: EntityId(ct_e.to_bits()),
+                    target: defense_pos,
+                });
+            }
+            if let Some(sr_e) = bc.server_rack_entity {
+                cmd_queue.push(GameCommand::SetRallyPoint {
+                    building: EntityId(sr_e.to_bits()),
+                    target: defense_pos,
+                });
             }
 
             // Attack when army is ready, OR when enemy has no army (cleanup mode).
@@ -706,48 +869,34 @@ fn run_ai_fsm(
             if should_reissue {
                 if let Some(target) = ai_state.enemy_spawn {
                     if !uc.army_entities.is_empty() {
-                        let ids: Vec<EntityId> = uc.army_entities
-                            .iter()
-                            .map(|e| EntityId(e.to_bits()))
-                            .collect();
-                        cmd_queue.push(GameCommand::AttackMove {
-                            unit_ids: ids,
-                            target,
+                        issue_attack_commands(
+                            tier, tick, ai_state, &uc.army_entities, ai_player,
+                            retreat_threshold, units, health_query, cmd_queue,
+                            bc.box_pos, target,
+                        );
+                    }
+                }
+            }
+
+            // Keep economy running during attack — train reinforcements
+            if let Some(ct_e) = bc.cat_tree_entity {
+                if pres.supply < pres.supply_cap {
+                    let kind = if uc.army_count % 3 == 0 {
+                        UnitKind::Hisser
+                    } else {
+                        UnitKind::Nuisance
+                    };
+                    let stats = cc_core::unit_stats::base_stats(kind);
+                    if pres.food >= stats.food_cost {
+                        cmd_queue.push(GameCommand::TrainUnit {
+                            building: EntityId(ct_e.to_bits()),
+                            unit_kind: kind,
                         });
-                        ai_state.attack_ordered = true;
-                        ai_state.last_attack_tick = tick;
                     }
                 }
             }
 
-            // Continue research during attack
-            let saving_for_research = maybe_queue_research(&bc, pres, cmd_queue);
-
-            // Train units only when not saving for research
-            if !saving_for_research {
-                // Train advanced units from ServerRack
-                maybe_train_advanced_units(&bc, &uc, pres, cmd_queue);
-
-                // Keep economy running during attack — train reinforcements
-                if let Some(ct_e) = bc.cat_tree_entity {
-                    if pres.supply < pres.supply_cap {
-                        let kind = if uc.army_count % 3 == 0 {
-                            UnitKind::Hisser
-                        } else {
-                            UnitKind::Nuisance
-                        };
-                        let stats = cc_core::unit_stats::base_stats(kind);
-                        if pres.food >= stats.food_cost {
-                            cmd_queue.push(GameCommand::TrainUnit {
-                                building: EntityId(ct_e.to_bits()),
-                                unit_kind: kind,
-                            });
-                        }
-                    }
-                }
-            }
-
-            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue) {
+            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue, bc.pending_litter_box_count) {
                 builder_used = Some(b);
             }
 
@@ -765,42 +914,28 @@ fn run_ai_fsm(
         }
 
         AiPhase::Defend => {
-            // Rally army back to base (use actual building position)
+            // Rally army back to base with tier-aware positioning
             let rally_pos = bc.box_pos.unwrap_or(GridPos::new(55, 55));
             if !uc.army_entities.is_empty() {
-                let ids: Vec<EntityId> = uc.army_entities
-                    .iter()
-                    .map(|e| EntityId(e.to_bits()))
-                    .collect();
-                cmd_queue.push(GameCommand::AttackMove {
-                    unit_ids: ids,
-                    target: rally_pos,
-                });
+                issue_defend_commands(
+                    tier, &uc.army_entities, rally_pos, units, cmd_queue,
+                );
             }
 
-            // Continue research while defending
-            let saving_for_research = maybe_queue_research(&bc, pres, cmd_queue);
-
-            // Train units only when not saving for research
-            if !saving_for_research {
-                // Train advanced units from ServerRack
-                maybe_train_advanced_units(&bc, &uc, pres, cmd_queue);
-
-                // Keep training reinforcements while defending
-                if let Some(ct_e) = bc.cat_tree_entity {
-                    if pres.supply < pres.supply_cap {
-                        let stats = cc_core::unit_stats::base_stats(UnitKind::Nuisance);
-                        if pres.food >= stats.food_cost {
-                            cmd_queue.push(GameCommand::TrainUnit {
-                                building: EntityId(ct_e.to_bits()),
-                                unit_kind: UnitKind::Nuisance,
-                            });
-                        }
+            // Keep training reinforcements while defending
+            if let Some(ct_e) = bc.cat_tree_entity {
+                if pres.supply < pres.supply_cap {
+                    let stats = cc_core::unit_stats::base_stats(UnitKind::Nuisance);
+                    if pres.food >= stats.food_cost {
+                        cmd_queue.push(GameCommand::TrainUnit {
+                            building: EntityId(ct_e.to_bits()),
+                            unit_kind: UnitKind::Nuisance,
+                        });
                     }
                 }
             }
 
-            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue) {
+            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.box_pos, map, &bc.building_positions, cmd_queue, bc.pending_litter_box_count) {
                 builder_used = Some(b);
             }
 
@@ -832,78 +967,6 @@ fn run_ai_fsm(
         ai_state.last_attack_tick = 0;
     }
     ai_state.phase = new_phase;
-}
-
-/// Queue research at the ScratchingPost if one is available and resources permit.
-/// Prioritizes SharperClaws > ThickerFur > SiegeTraining.
-///
-/// Returns `true` if the AI should avoid non-essential food spending because it
-/// is saving up for an affordable upgrade (has enough GPU but not enough food).
-/// Does NOT suppress spending if all upgrades are complete, queued, or unaffordable
-/// on both axes.
-fn maybe_queue_research(
-    bc: &BuildingCensus,
-    pres: &crate::resources::PlayerResourceState,
-    cmd_queue: &mut CommandQueue,
-) -> bool {
-    if let Some(sp_e) = bc.scratching_post_entity {
-        let research_priority = [
-            UpgradeType::SharperClaws,
-            UpgradeType::ThickerFur,
-            UpgradeType::SiegeTraining,
-        ];
-        for upgrade in research_priority {
-            if !pres.completed_upgrades.contains(&upgrade) {
-                let ustats = cc_core::upgrade_stats::upgrade_stats(upgrade);
-                if pres.food >= ustats.food_cost && pres.gpu_cores >= ustats.gpu_cost {
-                    // Can afford — queue it. The command system will deduct resources
-                    // or silently skip if already queued (duplicate check).
-                    cmd_queue.push(GameCommand::Research {
-                        building: EntityId(sp_e.to_bits()),
-                        upgrade,
-                    });
-                    // Don't suppress unit training — resources are (being) deducted
-                    return false;
-                }
-                // Can't afford yet — save food only if GPU is sufficient
-                // (no point saving food if GPU is also lacking)
-                if pres.gpu_cores >= ustats.gpu_cost {
-                    return true;
-                }
-                // Both resources insufficient — don't suppress unit training
-                return false;
-            }
-        }
-    }
-    false
-}
-
-/// Train advanced units (FlyingFox / Catnapper) from the ServerRack if available.
-/// Catnapper requires SiegeTraining research and is built every 4th army unit.
-fn maybe_train_advanced_units(
-    bc: &BuildingCensus,
-    uc: &UnitCensus,
-    pres: &crate::resources::PlayerResourceState,
-    cmd_queue: &mut CommandQueue,
-) {
-    if let Some(sr_e) = bc.server_rack_entity {
-        if pres.supply < pres.supply_cap {
-            let kind = if pres.completed_upgrades.contains(&UpgradeType::SiegeTraining)
-                && uc.army_count % 4 == 0
-            {
-                UnitKind::Catnapper
-            } else {
-                UnitKind::FlyingFox
-            };
-            let stats = cc_core::unit_stats::base_stats(kind);
-            if pres.food >= stats.food_cost && pres.gpu_cores >= stats.gpu_cost {
-                cmd_queue.push(GameCommand::TrainUnit {
-                    building: EntityId(sr_e.to_bits()),
-                    unit_kind: kind,
-                });
-            }
-        }
-    }
 }
 
 /// Pick a unit kind to train using the profile's weighted preferences.
@@ -970,7 +1033,11 @@ fn maybe_build_supply(
     map: &GameMap,
     building_positions: &[(GridPos, BuildingKind)],
     cmd_queue: &mut CommandQueue,
+    pending_litter_boxes: u32,
 ) -> Option<Entity> {
+    if pending_litter_boxes > 0 {
+        return None;
+    }
     if pres.supply + 2 >= pres.supply_cap && pres.food >= 75 {
         if let Some(builder) = pick_builder(idle_workers, all_workers) {
             let build_pos = find_build_position(box_pos, map, building_positions);
@@ -1045,7 +1112,7 @@ fn ring_offset(dist: i32, offset: i32) -> (i32, i32) {
 fn is_base_threatened(
     ai_player: u8,
     units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
-    buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>, Option<&UnderConstruction>)>,
+    buildings: &Query<(Entity, &Building, &Owner, &Position, Option<&Producer>, Option<&ProductionQueue>)>,
 ) -> bool {
     // Collect AI building positions as the actual base locations
     let mut base_positions: Vec<GridPos> = Vec::new();
@@ -1076,6 +1143,292 @@ fn is_base_threatened(
     }
 
     false
+}
+
+// ---------------------------------------------------------------------------
+// Tier-aware tactical helpers
+// ---------------------------------------------------------------------------
+
+/// Returns true if the unit kind is ranged (fights from distance).
+fn is_ranged_unit(kind: UnitKind) -> bool {
+    matches!(kind, UnitKind::Hisser | UnitKind::FlyingFox | UnitKind::Catnapper | UnitKind::Yowler)
+}
+
+/// Find the weakest (lowest HP) enemy unit near a centroid position.
+fn find_weakest_enemy_near(
+    centroid: GridPos,
+    radius: i32,
+    ai_player: u8,
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
+    health_query: &Query<&Health>,
+) -> Option<(Entity, GridPos)> {
+    let mut best: Option<(Entity, GridPos, Fixed)> = None;
+    for (entity, pos, owner, unit_type, _, _, _) in units.iter() {
+        if owner.player_id == ai_player || unit_type.kind == UnitKind::Pawdler {
+            continue;
+        }
+        let grid = pos.world.to_grid();
+        let dx = (grid.x - centroid.x).abs();
+        let dy = (grid.y - centroid.y).abs();
+        if dx > radius || dy > radius {
+            continue;
+        }
+        if let Ok(health) = health_query.get(entity) {
+            let is_weaker = best.as_ref().map_or(true, |(_, _, best_hp)| health.current < *best_hp);
+            if is_weaker {
+                best = Some((entity, grid, health.current));
+            }
+        }
+    }
+    best.map(|(e, g, _)| (e, g))
+}
+
+/// Split army entities into main force (70%) and flank group (30%).
+fn split_army_for_assault(army: &[Entity]) -> (Vec<Entity>, Vec<Entity>) {
+    let split_point = (army.len() * 7) / 10;
+    let main_force = army[..split_point.max(1)].to_vec();
+    let flank = army[split_point.max(1)..].to_vec();
+    (main_force, flank)
+}
+
+/// Collect entities of wounded units (HP below threshold percentage).
+fn wounded_units(
+    army: &[Entity],
+    health_query: &Query<&Health>,
+    threshold_pct: u32,
+) -> Vec<Entity> {
+    army.iter()
+        .filter(|&&e| {
+            if let Ok(health) = health_query.get(e) {
+                if health.max > Fixed::ZERO {
+                    let pct = (health.current * Fixed::from_num(100)) / health.max;
+                    return pct < Fixed::from_num(threshold_pct);
+                }
+            }
+            false
+        })
+        .copied()
+        .collect()
+}
+
+/// Compute the centroid (average position) of a set of army entities.
+fn army_centroid(
+    army: &[Entity],
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
+) -> Option<GridPos> {
+    if army.is_empty() {
+        return None;
+    }
+    let mut sum_x: i64 = 0;
+    let mut sum_y: i64 = 0;
+    let mut count: i64 = 0;
+    for &e in army {
+        if let Ok((_, pos, _, _, _, _, _)) = units.get(e) {
+            let g = pos.world.to_grid();
+            sum_x += g.x as i64;
+            sum_y += g.y as i64;
+            count += 1;
+        }
+    }
+    if count == 0 {
+        return None;
+    }
+    Some(GridPos::new((sum_x / count) as i32, (sum_y / count) as i32))
+}
+
+/// Offset a target position for flanking (perpendicular offset).
+fn flank_offset(target: GridPos, centroid: GridPos) -> GridPos {
+    let dx = target.x - centroid.x;
+    let dy = target.y - centroid.y;
+    // Perpendicular offset: rotate 90 degrees, scale to ~5 tiles
+    let perp_x = -dy.signum() * 5;
+    let perp_y = dx.signum() * 5;
+    GridPos::new(
+        (target.x + perp_x).max(0),
+        (target.y + perp_y).max(0),
+    )
+}
+
+/// Issue tier-aware attack commands for the Attack phase.
+fn issue_attack_commands(
+    tier: AiTier,
+    tick: u64,
+    ai_state: &mut AiState,
+    army: &[Entity],
+    ai_player: u8,
+    retreat_threshold: u32,
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
+    health_query: &Query<&Health>,
+    cmd_queue: &mut CommandQueue,
+    box_pos: Option<GridPos>,
+    target: GridPos,
+) {
+    match tier {
+        AiTier::Basic => {
+            // Plain AttackMove — original behavior
+            let ids: Vec<EntityId> = army.iter().map(|e| EntityId(e.to_bits())).collect();
+            cmd_queue.push(GameCommand::AttackMove {
+                unit_ids: ids,
+                target,
+            });
+        }
+        AiTier::Tactical => {
+            // Focus-fire weakest enemy near army centroid; retreat wounded
+            let centroid = army_centroid(army, units).unwrap_or(target);
+
+            // Retreat wounded units back to base
+            let wounded = wounded_units(army, health_query, retreat_threshold);
+            if !wounded.is_empty() {
+                let retreat_pos = box_pos.unwrap_or(GridPos::new(55, 55));
+                let ids: Vec<EntityId> = wounded.iter().map(|e| EntityId(e.to_bits())).collect();
+                cmd_queue.push(GameCommand::Move {
+                    unit_ids: ids,
+                    target: retreat_pos,
+                });
+            }
+
+            // Healthy units focus-fire weakest enemy
+            let healthy: Vec<Entity> = army.iter()
+                .filter(|e| !wounded.contains(e))
+                .copied()
+                .collect();
+            if !healthy.is_empty() {
+                if let Some((weak_entity, _weak_pos)) = find_weakest_enemy_near(centroid, 15, ai_player, units, health_query) {
+                    let ids: Vec<EntityId> = healthy.iter().map(|e| EntityId(e.to_bits())).collect();
+                    cmd_queue.push(GameCommand::Attack {
+                        unit_ids: ids,
+                        target: EntityId(weak_entity.to_bits()),
+                    });
+                } else {
+                    let ids: Vec<EntityId> = healthy.iter().map(|e| EntityId(e.to_bits())).collect();
+                    cmd_queue.push(GameCommand::AttackMove {
+                        unit_ids: ids,
+                        target,
+                    });
+                }
+            }
+        }
+        AiTier::Strategic | AiTier::Advanced => {
+            // Retreat wounded first (same as Tactical)
+            let wounded = wounded_units(army, health_query, retreat_threshold);
+            if !wounded.is_empty() {
+                let retreat_pos = box_pos.unwrap_or(GridPos::new(55, 55));
+                let ids: Vec<EntityId> = wounded.iter().map(|e| EntityId(e.to_bits())).collect();
+                cmd_queue.push(GameCommand::Move {
+                    unit_ids: ids,
+                    target: retreat_pos,
+                });
+            }
+
+            // 70/30 split with flanking
+            let healthy: Vec<Entity> = army.iter()
+                .filter(|e| !wounded.contains(e))
+                .copied()
+                .collect();
+            if healthy.len() >= 4 {
+                let centroid = army_centroid(&healthy, units).unwrap_or(target);
+                let (main_force, flank_group) = split_army_for_assault(&healthy);
+
+                // Main force: focus-fire weakest or attack-move
+                if let Some((weak_entity, _)) = find_weakest_enemy_near(centroid, 15, ai_player, units, health_query) {
+                    let ids: Vec<EntityId> = main_force.iter().map(|e| EntityId(e.to_bits())).collect();
+                    cmd_queue.push(GameCommand::Attack {
+                        unit_ids: ids,
+                        target: EntityId(weak_entity.to_bits()),
+                    });
+                } else {
+                    let ids: Vec<EntityId> = main_force.iter().map(|e| EntityId(e.to_bits())).collect();
+                    cmd_queue.push(GameCommand::AttackMove {
+                        unit_ids: ids,
+                        target,
+                    });
+                }
+
+                // Flank group: attack-move to offset position
+                if !flank_group.is_empty() {
+                    let flank_target = flank_offset(target, centroid);
+                    let ids: Vec<EntityId> = flank_group.iter().map(|e| EntityId(e.to_bits())).collect();
+                    cmd_queue.push(GameCommand::AttackMove {
+                        unit_ids: ids,
+                        target: flank_target,
+                    });
+                }
+            } else {
+                // Too few healthy units for split — use Tactical behavior
+                if let Some((weak_entity, _)) = find_weakest_enemy_near(
+                    army_centroid(&healthy, units).unwrap_or(target), 15, ai_player, units, health_query,
+                ) {
+                    let ids: Vec<EntityId> = healthy.iter().map(|e| EntityId(e.to_bits())).collect();
+                    cmd_queue.push(GameCommand::Attack {
+                        unit_ids: ids,
+                        target: EntityId(weak_entity.to_bits()),
+                    });
+                } else {
+                    let ids: Vec<EntityId> = healthy.iter().map(|e| EntityId(e.to_bits())).collect();
+                    cmd_queue.push(GameCommand::AttackMove {
+                        unit_ids: ids,
+                        target,
+                    });
+                }
+            }
+        }
+    }
+    ai_state.attack_ordered = true;
+    ai_state.last_attack_tick = tick;
+}
+
+/// Issue tier-aware defend commands — position melee forward, ranged back.
+fn issue_defend_commands(
+    tier: AiTier,
+    army: &[Entity],
+    rally_pos: GridPos,
+    units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
+    cmd_queue: &mut CommandQueue,
+) {
+    match tier {
+        AiTier::Basic => {
+            let ids: Vec<EntityId> = army.iter().map(|e| EntityId(e.to_bits())).collect();
+            cmd_queue.push(GameCommand::AttackMove {
+                unit_ids: ids,
+                target: rally_pos,
+            });
+        }
+        AiTier::Tactical | AiTier::Strategic | AiTier::Advanced => {
+            // Split melee and ranged: melee forward (+2 toward threat), ranged at rally
+            let mut melee = Vec::new();
+            let mut ranged = Vec::new();
+            for &e in army {
+                if let Ok((_, _, _, ut, _, _, _)) = units.get(e) {
+                    if is_ranged_unit(ut.kind) {
+                        ranged.push(e);
+                    } else {
+                        melee.push(e);
+                    }
+                } else {
+                    melee.push(e);
+                }
+            }
+
+            // Melee units forward
+            if !melee.is_empty() {
+                let forward_pos = GridPos::new(rally_pos.x + 2, rally_pos.y + 2);
+                let ids: Vec<EntityId> = melee.iter().map(|e| EntityId(e.to_bits())).collect();
+                cmd_queue.push(GameCommand::AttackMove {
+                    unit_ids: ids,
+                    target: forward_pos,
+                });
+            }
+
+            // Ranged units at rally (behind melee)
+            if !ranged.is_empty() {
+                let ids: Vec<EntityId> = ranged.iter().map(|e| EntityId(e.to_bits())).collect();
+                cmd_queue.push(GameCommand::AttackMove {
+                    unit_ids: ids,
+                    target: rally_pos,
+                });
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1244,235 +1597,47 @@ mod tests {
         assert!(chebyshev >= AI_BUILD_SPACING, "Should place at distance >= {AI_BUILD_SPACING}, got {chebyshev}");
     }
 
-    fn empty_building_census() -> BuildingCensus {
-        BuildingCensus {
-            has_box: false,
-            has_cat_tree: false,
-            has_fish_market: false,
-            has_server_rack: false,
-            has_scratching_post: false,
-            has_laser_pointer: false,
-            box_entity: None,
-            box_pos: None,
-            cat_tree_entity: None,
-            server_rack_entity: None,
-            scratching_post_entity: None,
-            building_positions: Vec::new(),
-        }
-    }
-
-    fn empty_unit_census() -> UnitCensus {
-        UnitCensus {
-            worker_count: 0,
-            army_count: 0,
-            enemy_army_count: 0,
-            idle_workers: Vec::new(),
-            all_workers: Vec::new(),
-            army_entities: Vec::new(),
-            pending_builds: Vec::new(),
-        }
-    }
-
-    fn default_pres() -> crate::resources::PlayerResourceState {
-        crate::resources::PlayerResourceState::default()
+    #[test]
+    fn tier_upgrades_with_rack_count() {
+        assert_eq!(AiTier::from_rack_count(0), AiTier::Basic);
+        assert_eq!(AiTier::from_rack_count(1), AiTier::Tactical);
+        assert_eq!(AiTier::from_rack_count(2), AiTier::Strategic);
+        assert_eq!(AiTier::from_rack_count(3), AiTier::Advanced);
+        assert_eq!(AiTier::from_rack_count(10), AiTier::Advanced);
     }
 
     #[test]
-    fn maybe_queue_research_no_scratching_post_returns_false() {
-        let bc = empty_building_census();
-        let pres = default_pres();
-        let mut cmd_queue = CommandQueue::default();
-
-        let saving = maybe_queue_research(&bc, &pres, &mut cmd_queue);
-        assert!(!saving, "No ScratchingPost should not trigger save mode");
-        assert!(cmd_queue.drain().is_empty(), "No commands should be queued");
+    fn ai_default_tier_is_basic() {
+        let state = AiState::default();
+        assert_eq!(state.tier, AiTier::Basic);
     }
 
     #[test]
-    fn maybe_queue_research_queues_when_affordable() {
-        let mut bc = empty_building_census();
-        // Use a fake entity (bits = 42)
-        bc.scratching_post_entity = Some(Entity::from_bits(42));
-
-        let mut pres = default_pres();
-        pres.food = 200;
-        pres.gpu_cores = 100;
-
-        let mut cmd_queue = CommandQueue::default();
-
-        let saving = maybe_queue_research(&bc, &pres, &mut cmd_queue);
-        assert!(!saving, "Should not save when research was just queued");
-
-        let commands = cmd_queue.drain();
-        assert_eq!(commands.len(), 1);
-        match &commands[0] {
-            GameCommand::Research { upgrade, .. } => {
-                assert_eq!(*upgrade, UpgradeType::SharperClaws);
-            }
-            other => panic!("Expected Research command, got {other:?}"),
-        }
+    fn split_army_70_30() {
+        let entities: Vec<Entity> = (1..=10u64)
+            .map(|i| Entity::from_bits((1u64 << 32) | i))
+            .collect();
+        let (main, flank) = split_army_for_assault(&entities);
+        assert_eq!(main.len(), 7);
+        assert_eq!(flank.len(), 3);
     }
 
     #[test]
-    fn maybe_queue_research_saves_when_food_short_gpu_ok() {
-        let mut bc = empty_building_census();
-        bc.scratching_post_entity = Some(Entity::from_bits(42));
-
-        let mut pres = default_pres();
-        // SharperClaws costs 150 food + 50 GPU
-        pres.food = 100; // Not enough food
-        pres.gpu_cores = 100; // Enough GPU
-
-        let mut cmd_queue = CommandQueue::default();
-
-        let saving = maybe_queue_research(&bc, &pres, &mut cmd_queue);
-        assert!(saving, "Should save when food is short but GPU is sufficient");
-        assert!(cmd_queue.drain().is_empty(), "No command should be queued when unaffordable");
+    fn split_army_small() {
+        let entities: Vec<Entity> = (1..=2u64)
+            .map(|i| Entity::from_bits((1u64 << 32) | i))
+            .collect();
+        let (main, flank) = split_army_for_assault(&entities);
+        assert_eq!(main.len(), 1);
+        assert_eq!(flank.len(), 1);
     }
 
     #[test]
-    fn maybe_queue_research_does_not_save_when_both_resources_short() {
-        let mut bc = empty_building_census();
-        bc.scratching_post_entity = Some(Entity::from_bits(42));
-
-        let mut pres = default_pres();
-        // SharperClaws costs 150 food + 50 GPU
-        pres.food = 50;
-        pres.gpu_cores = 10; // Not enough GPU either
-
-        let mut cmd_queue = CommandQueue::default();
-
-        let saving = maybe_queue_research(&bc, &pres, &mut cmd_queue);
-        assert!(!saving, "Should not save when both resources are insufficient");
-    }
-
-    #[test]
-    fn maybe_queue_research_skips_completed_upgrades() {
-        let mut bc = empty_building_census();
-        bc.scratching_post_entity = Some(Entity::from_bits(42));
-
-        let mut pres = default_pres();
-        pres.food = 200;
-        pres.gpu_cores = 100;
-        pres.completed_upgrades.insert(UpgradeType::SharperClaws);
-
-        let mut cmd_queue = CommandQueue::default();
-
-        let saving = maybe_queue_research(&bc, &pres, &mut cmd_queue);
-        assert!(!saving);
-
-        let commands = cmd_queue.drain();
-        assert_eq!(commands.len(), 1);
-        match &commands[0] {
-            GameCommand::Research { upgrade, .. } => {
-                assert_eq!(*upgrade, UpgradeType::ThickerFur);
-            }
-            other => panic!("Expected ThickerFur Research, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn maybe_queue_research_returns_false_when_all_complete() {
-        let mut bc = empty_building_census();
-        bc.scratching_post_entity = Some(Entity::from_bits(42));
-
-        let mut pres = default_pres();
-        pres.food = 500;
-        pres.gpu_cores = 500;
-        pres.completed_upgrades.insert(UpgradeType::SharperClaws);
-        pres.completed_upgrades.insert(UpgradeType::ThickerFur);
-        pres.completed_upgrades.insert(UpgradeType::SiegeTraining);
-
-        let mut cmd_queue = CommandQueue::default();
-
-        let saving = maybe_queue_research(&bc, &pres, &mut cmd_queue);
-        assert!(!saving, "All research complete, should not save");
-        assert!(cmd_queue.drain().is_empty());
-    }
-
-    #[test]
-    fn maybe_train_advanced_units_trains_flyingfox() {
-        let mut bc = empty_building_census();
-        bc.server_rack_entity = Some(Entity::from_bits(99));
-
-        let uc = empty_unit_census();
-        let mut pres = default_pres();
-        pres.food = 200;
-        pres.gpu_cores = 100;
-        pres.supply = 5;
-        pres.supply_cap = 20;
-
-        let mut cmd_queue = CommandQueue::default();
-
-        maybe_train_advanced_units(&bc, &uc, &pres, &mut cmd_queue);
-
-        let commands = cmd_queue.drain();
-        assert_eq!(commands.len(), 1);
-        match &commands[0] {
-            GameCommand::TrainUnit { unit_kind, .. } => {
-                assert_eq!(*unit_kind, UnitKind::FlyingFox);
-            }
-            other => panic!("Expected TrainUnit FlyingFox, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn maybe_train_advanced_units_trains_catnapper_with_siege_training() {
-        let mut bc = empty_building_census();
-        bc.server_rack_entity = Some(Entity::from_bits(99));
-
-        let mut uc = empty_unit_census();
-        uc.army_count = 4; // army_count % 4 == 0 triggers Catnapper
-
-        let mut pres = default_pres();
-        pres.food = 300;
-        pres.gpu_cores = 100;
-        pres.supply = 5;
-        pres.supply_cap = 20;
-        pres.completed_upgrades.insert(UpgradeType::SiegeTraining);
-
-        let mut cmd_queue = CommandQueue::default();
-
-        maybe_train_advanced_units(&bc, &uc, &pres, &mut cmd_queue);
-
-        let commands = cmd_queue.drain();
-        assert_eq!(commands.len(), 1);
-        match &commands[0] {
-            GameCommand::TrainUnit { unit_kind, .. } => {
-                assert_eq!(*unit_kind, UnitKind::Catnapper);
-            }
-            other => panic!("Expected TrainUnit Catnapper, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn maybe_train_advanced_units_no_server_rack_no_command() {
-        let bc = empty_building_census();
-        let uc = empty_unit_census();
-        let pres = default_pres();
-        let mut cmd_queue = CommandQueue::default();
-
-        maybe_train_advanced_units(&bc, &uc, &pres, &mut cmd_queue);
-
-        assert!(cmd_queue.drain().is_empty());
-    }
-
-    #[test]
-    fn maybe_train_advanced_units_supply_capped_no_command() {
-        let mut bc = empty_building_census();
-        bc.server_rack_entity = Some(Entity::from_bits(99));
-
-        let uc = empty_unit_census();
-        let mut pres = default_pres();
-        pres.food = 200;
-        pres.gpu_cores = 100;
-        pres.supply = 20;
-        pres.supply_cap = 20; // At cap
-
-        let mut cmd_queue = CommandQueue::default();
-
-        maybe_train_advanced_units(&bc, &uc, &pres, &mut cmd_queue);
-
-        assert!(cmd_queue.drain().is_empty(), "Should not train when at supply cap");
+    fn flank_offset_perpendicular() {
+        let target = GridPos::new(20, 20);
+        let centroid = GridPos::new(10, 10);
+        let flanked = flank_offset(target, centroid);
+        // Should be offset perpendicular to attack direction
+        assert_ne!(flanked, target);
     }
 }
