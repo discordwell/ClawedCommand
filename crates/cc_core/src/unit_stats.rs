@@ -490,6 +490,17 @@ mod tests {
             UnitKind::Wrecker,
             UnitKind::DumpsterDiver,
             UnitKind::JunkyardKing,
+            // Seekers of the Deep (Badgers)
+            UnitKind::Delver,
+            UnitKind::Ironhide,
+            UnitKind::Cragback,
+            UnitKind::Warden,
+            UnitKind::Sapjaw,
+            UnitKind::Wardenmother,
+            UnitKind::SeekerTunneler,
+            UnitKind::Embermaw,
+            UnitKind::Dustclaw,
+            UnitKind::Gutripper,
         ];
         for kind in kinds {
             let stats = base_stats(kind);
@@ -533,6 +544,13 @@ mod tests {
             UnitKind::GlitchRat,
             UnitKind::DeadDropUnit,
             UnitKind::Wrecker,
+            // Seekers melee
+            UnitKind::Delver,
+            UnitKind::Ironhide,
+            UnitKind::Sapjaw,
+            UnitKind::SeekerTunneler,
+            UnitKind::Dustclaw,
+            UnitKind::Gutripper,
         ];
         for kind in melee_kinds {
             let stats = base_stats(kind);
@@ -577,6 +595,11 @@ mod tests {
             UnitKind::GreaseMonkey,
             UnitKind::DumpsterDiver,
             UnitKind::JunkyardKing,
+            // Seekers ranged
+            UnitKind::Cragback,
+            UnitKind::Warden,
+            UnitKind::Wardenmother,
+            UnitKind::Embermaw,
         ];
         for kind in ranged_kinds {
             let stats = base_stats(kind);

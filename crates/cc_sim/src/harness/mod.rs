@@ -54,6 +54,7 @@ pub struct BotConfig {
     pub player_id: u8,
     pub difficulty: AiDifficulty,
     pub profile: AiPersonalityProfile,
+    pub faction: cc_core::components::Faction,
 }
 
 /// A synthetic voice command to inject at a specific tick.
@@ -94,11 +95,13 @@ impl Default for HarnessConfig {
                     player_id: 0,
                     difficulty: AiDifficulty::Medium,
                     profile: AiPersonalityProfile::balanced(),
+                    faction: cc_core::components::Faction::CatGpt,
                 },
                 BotConfig {
                     player_id: 1,
                     difficulty: AiDifficulty::Medium,
                     profile: AiPersonalityProfile::balanced(),
+                    faction: cc_core::components::Faction::CatGpt,
                 },
             ],
             voice_script: None,
@@ -416,6 +419,7 @@ fn make_harness_sim(
                 phase: AiPhase::EarlyGame,
                 difficulty: bot.difficulty,
                 profile: bot.profile.clone(),
+                fmap: crate::ai::fsm::faction_map(bot.faction),
                 enemy_spawn: None,
                 attack_ordered: false,
                 last_attack_tick: 0,

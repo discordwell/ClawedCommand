@@ -70,6 +70,7 @@ pub struct BotConfig {
     pub player_id: u8,
     pub difficulty: AiDifficulty,
     pub profile: AiPersonalityProfile,
+    pub faction: cc_core::components::Faction,
 }
 
 /// Configuration for an arena match.
@@ -98,11 +99,13 @@ impl Default for ArenaConfig {
                     player_id: 0,
                     difficulty: AiDifficulty::Medium,
                     profile: AiPersonalityProfile::balanced(),
+                    faction: cc_core::components::Faction::CatGpt,
                 },
                 BotConfig {
                     player_id: 1,
                     difficulty: AiDifficulty::Medium,
                     profile: AiPersonalityProfile::balanced(),
+                    faction: cc_core::components::Faction::CatGpt,
                 },
             ],
             scripts: [None, None],
@@ -333,19 +336,38 @@ fn make_arena_sim(
     world.insert_resource(player_res);
     world.insert_resource(MapResource { map });
 
+    let spawn_positions: Vec<(u8, GridPos)> = map_def
+        .spawn_points
+        .iter()
+        .map(|sp| (sp.player, GridPos::new(sp.pos.0, sp.pos.1)))
+        .collect();
+    world.insert_resource(SpawnPositions {
+        positions: spawn_positions.clone(),
+    });
+
+    // Pre-seed enemy_spawn from SpawnPositions so both AIs have symmetric
+    // information from tick 0 (previously discovered at runtime, giving P0/P1
+    // different amounts of "blind" time).
     let multi_ai = MultiAiState {
         players: config
             .bots
             .iter()
-            .map(|bot| AiState {
-                player_id: bot.player_id,
-                phase: AiPhase::EarlyGame,
-                difficulty: bot.difficulty,
-                profile: bot.profile.clone(),
-                enemy_spawn: None,
-                attack_ordered: false,
-                last_attack_tick: 0,
-                tier: AiTier::Basic,
+            .map(|bot| {
+                let enemy_pos = spawn_positions
+                    .iter()
+                    .find(|(pid, _)| *pid != bot.player_id)
+                    .map(|(_, pos)| *pos);
+                AiState {
+                    player_id: bot.player_id,
+                    phase: AiPhase::EarlyGame,
+                    difficulty: bot.difficulty,
+                    profile: bot.profile.clone(),
+                    fmap: cc_sim::ai::fsm::faction_map(bot.faction),
+                    enemy_spawn: enemy_pos,
+                    attack_ordered: false,
+                    last_attack_tick: 0,
+                    tier: AiTier::Basic,
+                }
             })
             .collect(),
     };
@@ -361,15 +383,6 @@ fn make_arena_sim(
     world.insert_resource(PreviousSnapshots::default());
     world.insert_resource(FactionToolStates::default());
     world.insert_resource(ArenaStats::default());
-
-    let spawn_positions: Vec<(u8, GridPos)> = map_def
-        .spawn_points
-        .iter()
-        .map(|sp| (sp.player, GridPos::new(sp.pos.0, sp.pos.1)))
-        .collect();
-    world.insert_resource(SpawnPositions {
-        positions: spawn_positions.clone(),
-    });
 
     // Schedule: tick → FSM → scripts → process_commands → sim → cleanup
     // Split into two chained groups to stay within Bevy's 20-tuple limit.

@@ -17,6 +17,10 @@ fn main() {
         #[arg(long, default_value = "42")]
         seeds: String,
 
+        /// Directory of Lua scripts for BOTH players (overridden by per-player flags)
+        #[arg(long)]
+        shared_scripts: Option<PathBuf>,
+
         /// Directory of Lua scripts for player 0
         #[arg(long)]
         p0_scripts: Option<PathBuf>,
@@ -79,8 +83,9 @@ fn main() {
 
     let map_size = parse_map_size(&args.map_size);
 
-    let p0_scripts = args.p0_scripts.map(|p| vec![ScriptSource::File(p)]);
-    let p1_scripts = args.p1_scripts.map(|p| vec![ScriptSource::File(p)]);
+    let shared = args.shared_scripts.map(|p| vec![ScriptSource::File(p)]);
+    let p0_scripts = args.p0_scripts.map(|p| vec![ScriptSource::File(p)]).or(shared.clone());
+    let p1_scripts = args.p1_scripts.map(|p| vec![ScriptSource::File(p)]).or(shared);
 
     println!("=== Arena Match Runner ===");
     println!("Seeds: {:?}", seeds);
