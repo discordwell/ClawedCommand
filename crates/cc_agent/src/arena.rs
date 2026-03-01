@@ -1,0 +1,881 @@
+//! Arena match runner — FSM + Lua scripts coexisting for AI training.
+//!
+//! The arena runs headless matches where the FSM handles macro decisions
+//! (build orders, army movement, phase transitions) and Lua scripts handle
+//! micro (focus fire, kiting, retreat). Both emit to CommandQueue.
+//! For the same unit, the **later** command wins — scripts override FSM
+//! since they run after it in the schedule chain.
+
+use std::path::{Path, PathBuf};
+use std::time::Instant;
+
+use bevy::prelude::*;
+use serde::Serialize;
+
+use cc_core::building_stats::building_stats;
+use cc_core::components::*;
+use cc_core::coords::{GridPos, WorldPos};
+use cc_core::map::GameMap;
+use cc_core::map_gen::{self, MapGenParams};
+use cc_core::unit_stats::base_stats;
+
+use cc_sim::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState, AiTier};
+use cc_sim::ai::MultiAiState;
+use cc_sim::harness::invariants::{InvariantChecker, InvariantViolation, Severity};
+use cc_sim::harness::MatchOutcome;
+use cc_sim::resources::{
+    CombatStats, CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock,
+    SpawnPositions,
+};
+use cc_sim::systems::{
+    ability_effect_system::ability_effect_system,
+    ability_system::ability_cooldown_system,
+    aura_system::aura_system,
+    builder_system::builder_system,
+    cleanup_system::cleanup_system,
+    combat_system::combat_system,
+    command_system::process_commands,
+    grid_sync_system::grid_sync_system,
+    movement_system::movement_system,
+    production_system::production_system,
+    projectile_system::projectile_system,
+    research_system::research_system,
+    resource_system::gathering_system,
+    stat_modifier_system::stat_modifier_system,
+    status_effect_system::status_effect_system,
+    target_acquisition_system::target_acquisition_system,
+    tick_system::tick_system,
+    tower_combat_system::tower_combat_system,
+    victory_system::victory_system,
+};
+
+use crate::events::ScriptRegistration;
+use crate::runner::{script_runner_system, PreviousSnapshots, ScriptRegistry};
+use crate::tool_tier::FactionToolStates;
+
+// ---------------------------------------------------------------------------
+// Configuration
+// ---------------------------------------------------------------------------
+
+/// Source for a Lua script — either inline source or a file path.
+#[derive(Debug, Clone)]
+pub enum ScriptSource {
+    File(PathBuf),
+    Inline { name: String, source: String },
+}
+
+/// Configuration for a single bot player.
+#[derive(Debug, Clone)]
+pub struct BotConfig {
+    pub player_id: u8,
+    pub difficulty: AiDifficulty,
+    pub profile: AiPersonalityProfile,
+}
+
+/// Configuration for an arena match.
+#[derive(Debug, Clone)]
+pub struct ArenaConfig {
+    pub seed: u64,
+    pub map_size: (u32, u32),
+    pub max_ticks: u64,
+    pub output_path: Option<PathBuf>,
+    pub bots: [BotConfig; 2],
+    /// Per-player Lua script sources. Index 0 = player 0, index 1 = player 1.
+    pub scripts: [Option<Vec<ScriptSource>>; 2],
+    /// Compute budget per script execution (default 500).
+    pub script_budget: u32,
+}
+
+impl Default for ArenaConfig {
+    fn default() -> Self {
+        Self {
+            seed: 42,
+            map_size: (64, 64),
+            max_ticks: 6000,
+            output_path: None,
+            bots: [
+                BotConfig {
+                    player_id: 0,
+                    difficulty: AiDifficulty::Medium,
+                    profile: AiPersonalityProfile::balanced(),
+                },
+                BotConfig {
+                    player_id: 1,
+                    difficulty: AiDifficulty::Medium,
+                    profile: AiPersonalityProfile::balanced(),
+                },
+            ],
+            scripts: [None, None],
+            script_budget: 500,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Stats tracking
+// ---------------------------------------------------------------------------
+
+/// A script error recorded during a match.
+#[derive(Debug, Clone, Serialize)]
+pub struct ArenaScriptError {
+    pub tick: u64,
+    pub script_name: String,
+    pub message: String,
+}
+
+/// Per-player combat statistics tracked during an arena match.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct PlayerArenaStats {
+    pub units_trained: u32,
+    pub units_lost: u32,
+    pub units_killed: u32,
+    pub buildings_built: u32,
+    pub buildings_lost: u32,
+    pub damage_dealt: f64,
+    pub damage_taken: f64,
+    pub resources_gathered: u32,
+}
+
+/// A key moment during the match.
+#[derive(Debug, Clone, Serialize)]
+pub struct TimelineEvent {
+    pub tick: u64,
+    pub event: String,
+}
+
+/// Resource for tracking arena stats during simulation.
+#[derive(Resource, Default, Debug, Clone)]
+pub struct ArenaStats {
+    pub players: [PlayerArenaStats; 2],
+    pub timeline: Vec<TimelineEvent>,
+    pub script_errors: Vec<ArenaScriptError>,
+    prev_unit_counts: [u32; 2],
+    prev_building_counts: [u32; 2],
+    first_combat_recorded: bool,
+}
+
+// ---------------------------------------------------------------------------
+// Results & Report
+// ---------------------------------------------------------------------------
+
+/// Full result of an arena match.
+pub struct ArenaResult {
+    pub outcome: MatchOutcome,
+    pub final_tick: u64,
+    pub wall_time_ms: u64,
+    pub stats: ArenaStats,
+    pub scripts_loaded: [Vec<String>; 2],
+    pub violations: Vec<InvariantViolation>,
+}
+
+impl ArenaResult {
+    pub fn passed(&self) -> bool {
+        let has_fatal = self
+            .violations
+            .iter()
+            .any(|v| matches!(v.severity, Severity::Error | Severity::Fatal));
+        let is_error = matches!(self.outcome, MatchOutcome::Error { .. });
+        !has_fatal && !is_error
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub struct ArenaReport {
+    pub seed: u64,
+    pub outcome: String,
+    pub duration_ticks: u64,
+    pub wall_time_ms: u64,
+    pub player_stats: [PlayerArenaStats; 2],
+    pub scripts_loaded: [Vec<String>; 2],
+    pub script_errors: Vec<ArenaScriptError>,
+    pub timeline: Vec<TimelineEvent>,
+    pub violations_warning: u32,
+    pub violations_error: u32,
+    pub passed: bool,
+}
+
+impl ArenaReport {
+    pub fn from_result(result: &ArenaResult, config: &ArenaConfig) -> Self {
+        let mut warnings = 0u32;
+        let mut errors = 0u32;
+        for v in &result.violations {
+            match v.severity {
+                Severity::Warning => warnings += 1,
+                Severity::Error | Severity::Fatal => errors += 1,
+            }
+        }
+
+        Self {
+            seed: config.seed,
+            outcome: format!("{}", result.outcome),
+            duration_ticks: result.final_tick,
+            wall_time_ms: result.wall_time_ms,
+            player_stats: result.stats.players.clone(),
+            scripts_loaded: result.scripts_loaded.clone(),
+            script_errors: result.stats.script_errors.clone(),
+            timeline: result.stats.timeline.clone(),
+            violations_warning: warnings,
+            violations_error: errors,
+            passed: result.passed(),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Script loading
+// ---------------------------------------------------------------------------
+
+/// Load Lua scripts from a directory, parsing annotation headers.
+///
+/// Annotation format in Lua comment headers:
+/// ```lua
+/// -- @name: tactical_micro
+/// -- @events: on_tick, on_enemy_spotted, on_unit_attacked
+/// -- @interval: 3
+/// ```
+pub fn load_scripts_from_dir(dir: &Path, player_id: u8) -> Vec<ScriptRegistration> {
+    let mut scripts = Vec::new();
+
+    let entries = match std::fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return scripts,
+    };
+
+    let mut lua_files: Vec<_> = entries
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            e.path()
+                .extension()
+                .map(|ext| ext == "lua")
+                .unwrap_or(false)
+        })
+        .collect();
+    lua_files.sort_by_key(|e| e.file_name());
+
+    for entry in lua_files {
+        let path = entry.path();
+        let source = match std::fs::read_to_string(&path) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+
+        let file_stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("unnamed")
+            .to_string();
+
+        let mut name = file_stem;
+        let mut events = vec!["on_tick".to_string()];
+        let mut interval = 5u32;
+
+        for line in source.lines() {
+            let trimmed = line.trim();
+            if !trimmed.starts_with("--") {
+                if !trimmed.is_empty() {
+                    break;
+                }
+                continue;
+            }
+            let comment = trimmed.trim_start_matches("--").trim();
+            if let Some(val) = comment.strip_prefix("@name:") {
+                name = val.trim().to_string();
+            } else if let Some(val) = comment.strip_prefix("@events:") {
+                events = val
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+            } else if let Some(val) = comment.strip_prefix("@interval:") {
+                if let Ok(n) = val.trim().parse::<u32>() {
+                    interval = n;
+                }
+            }
+        }
+
+        let mut reg = ScriptRegistration::new(name, source, events, player_id);
+        reg.tick_interval = interval;
+        scripts.push(reg);
+    }
+
+    scripts
+}
+
+// ---------------------------------------------------------------------------
+// World + Schedule construction
+// ---------------------------------------------------------------------------
+
+/// Headless despawn: no client death_fade_system, so despawn Dead immediately.
+fn headless_despawn_system(mut commands: Commands, dead: Query<Entity, With<Dead>>) {
+    for entity in dead.iter() {
+        commands.entity(entity).despawn();
+    }
+}
+
+/// Create a World + Schedule for arena matches (FSM + scripts coexisting).
+fn make_arena_sim(
+    map: GameMap,
+    config: &ArenaConfig,
+    map_def: &cc_core::map_format::MapDefinition,
+    script_registrations: Vec<ScriptRegistration>,
+) -> (World, Schedule) {
+    let mut world = World::new();
+    world.insert_resource(CommandQueue::default());
+    world.insert_resource(SimClock::default());
+    world.insert_resource(ControlGroups::default());
+    world.insert_resource(GameState::Playing);
+    world.insert_resource(CombatStats::default());
+
+    let mut player_res = PlayerResources::default();
+    while player_res.players.len() < 2 {
+        player_res.players.push(Default::default());
+    }
+    world.insert_resource(player_res);
+    world.insert_resource(MapResource { map });
+
+    let multi_ai = MultiAiState {
+        players: config
+            .bots
+            .iter()
+            .map(|bot| AiState {
+                player_id: bot.player_id,
+                phase: AiPhase::EarlyGame,
+                difficulty: bot.difficulty,
+                profile: bot.profile.clone(),
+                enemy_spawn: None,
+                attack_ordered: false,
+                last_attack_tick: 0,
+                tier: AiTier::Basic,
+            })
+            .collect(),
+    };
+    world.insert_resource(multi_ai);
+    world.insert_resource(AiState::default());
+
+    // Script runner resources
+    let mut registry = ScriptRegistry::default();
+    for reg in script_registrations {
+        registry.register(reg);
+    }
+    world.insert_resource(registry);
+    world.insert_resource(PreviousSnapshots::default());
+    world.insert_resource(FactionToolStates::default());
+    world.insert_resource(ArenaStats::default());
+
+    let spawn_positions: Vec<(u8, GridPos)> = map_def
+        .spawn_points
+        .iter()
+        .map(|sp| (sp.player, GridPos::new(sp.pos.0, sp.pos.1)))
+        .collect();
+    world.insert_resource(SpawnPositions {
+        positions: spawn_positions.clone(),
+    });
+
+    // Schedule: tick → FSM → scripts → process_commands → sim → cleanup
+    // Split into two chained groups to stay within Bevy's 20-tuple limit.
+    let mut schedule = Schedule::new(FixedUpdate);
+    schedule.add_systems(
+        (
+            tick_system,
+            cc_sim::ai::fsm::multi_ai_decision_system,
+            script_runner_system,
+            process_commands,
+            ability_cooldown_system,
+            ability_effect_system,
+            status_effect_system,
+            aura_system,
+            stat_modifier_system,
+            production_system,
+            research_system,
+            gathering_system,
+            target_acquisition_system,
+            combat_system,
+            tower_combat_system,
+            projectile_system,
+            movement_system,
+            builder_system,
+            grid_sync_system,
+        )
+            .chain(),
+    );
+    schedule.add_systems(
+        (cleanup_system, headless_despawn_system)
+            .chain()
+            .after(grid_sync_system),
+    );
+    schedule.add_systems(victory_system.after(headless_despawn_system));
+
+    // Spawn starting entities for each player
+    for (player_id, spawn_pos) in &spawn_positions {
+        spawn_starting_entities(&mut world, *player_id, *spawn_pos, map_def);
+    }
+
+    // Seed ArenaStats prev counts so starting units aren't counted as "trained"
+    {
+        let mut unit_counts = [0u32; 2];
+        let mut building_counts = [0u32; 2];
+        for (owner,) in world
+            .query_filtered::<(&Owner,), With<UnitType>>()
+            .iter(&world)
+        {
+            if (owner.player_id as usize) < 2 {
+                unit_counts[owner.player_id as usize] += 1;
+            }
+        }
+        for (owner,) in world
+            .query_filtered::<(&Owner,), With<Building>>()
+            .iter(&world)
+        {
+            if (owner.player_id as usize) < 2 {
+                building_counts[owner.player_id as usize] += 1;
+            }
+        }
+        let mut stats = world.resource_mut::<ArenaStats>();
+        stats.prev_unit_counts = unit_counts;
+        stats.prev_building_counts = building_counts;
+    }
+
+    (world, schedule)
+}
+
+fn spawn_starting_entities(
+    world: &mut World,
+    player_id: u8,
+    spawn_pos: GridPos,
+    map_def: &cc_core::map_format::MapDefinition,
+) {
+    let box_stats = building_stats(BuildingKind::TheBox);
+    world.spawn((
+        Position {
+            world: WorldPos::from_grid(spawn_pos),
+        },
+        GridCell { pos: spawn_pos },
+        Owner { player_id },
+        Building {
+            kind: BuildingKind::TheBox,
+        },
+        Health {
+            current: box_stats.health,
+            max: box_stats.health,
+        },
+        Producer,
+        ProductionQueue::default(),
+    ));
+
+    {
+        let mut player_res = world.resource_mut::<PlayerResources>();
+        if let Some(pres) = player_res.players.get_mut(player_id as usize) {
+            pres.supply_cap += box_stats.supply_provided;
+            pres.food = 200;
+        }
+    }
+
+    let unit_supply_cost = base_stats(UnitKind::Pawdler).supply_cost;
+    for i in 0..2 {
+        let offset = GridPos::new(spawn_pos.x + 1 + i, spawn_pos.y);
+        spawn_combat_unit(world, offset, player_id, UnitKind::Pawdler);
+    }
+
+    {
+        let mut player_res = world.resource_mut::<PlayerResources>();
+        if let Some(pres) = player_res.players.get_mut(player_id as usize) {
+            pres.supply += unit_supply_cost * 2;
+        }
+    }
+
+    if player_id == 0 {
+        for res in &map_def.resources {
+            let pos = GridPos::new(res.pos.0, res.pos.1);
+            let (resource_type, amount) = match res.kind {
+                cc_core::map_format::ResourceKind::FishPond => (ResourceType::Food, 1500),
+                cc_core::map_format::ResourceKind::BerryBush => (ResourceType::Food, 800),
+                cc_core::map_format::ResourceKind::GpuDeposit => (ResourceType::GpuCores, 500),
+                cc_core::map_format::ResourceKind::MonkeyMine => (ResourceType::Nft, 200),
+            };
+            world.spawn((
+                Position {
+                    world: WorldPos::from_grid(pos),
+                },
+                GridCell { pos },
+                ResourceDeposit {
+                    resource_type,
+                    remaining: amount,
+                },
+            ));
+        }
+    }
+}
+
+fn spawn_combat_unit(world: &mut World, grid: GridPos, player_id: u8, kind: UnitKind) -> Entity {
+    let stats = base_stats(kind);
+    world
+        .spawn((
+            Position {
+                world: WorldPos::from_grid(grid),
+            },
+            Velocity::zero(),
+            GridCell { pos: grid },
+            Owner { player_id },
+            UnitType { kind },
+            Health {
+                current: stats.health,
+                max: stats.health,
+            },
+            MovementSpeed { speed: stats.speed },
+            AttackStats {
+                damage: stats.damage,
+                range: stats.range,
+                attack_speed: stats.attack_speed,
+                cooldown_remaining: 0,
+            },
+            AttackTypeMarker {
+                attack_type: stats.attack_type,
+            },
+        ))
+        .id()
+}
+
+// ---------------------------------------------------------------------------
+// Stats tracking
+// ---------------------------------------------------------------------------
+
+fn update_arena_stats(world: &mut World) {
+    let mut unit_counts = [0u32; 2];
+    let mut building_counts = [0u32; 2];
+
+    for (owner,) in world
+        .query_filtered::<(&Owner,), (With<UnitType>, Without<Dead>)>()
+        .iter(world)
+    {
+        if (owner.player_id as usize) < 2 {
+            unit_counts[owner.player_id as usize] += 1;
+        }
+    }
+
+    for (owner,) in world
+        .query_filtered::<(&Owner,), (With<Building>, Without<Dead>)>()
+        .iter(world)
+    {
+        if (owner.player_id as usize) < 2 {
+            building_counts[owner.player_id as usize] += 1;
+        }
+    }
+
+    let tick = world.resource::<SimClock>().tick;
+    let combat = world.resource::<CombatStats>().clone();
+    let mut stats = world.resource_mut::<ArenaStats>();
+
+    for p in 0..2 {
+        let prev = stats.prev_unit_counts[p];
+        let curr = unit_counts[p];
+        if curr < prev {
+            stats.players[p].units_lost += prev - curr;
+            let other = 1 - p;
+            stats.players[other].units_killed += prev - curr;
+        }
+        if curr > prev && tick > 0 {
+            stats.players[p].units_trained += curr - prev;
+        }
+
+        let bprev = stats.prev_building_counts[p];
+        let bcurr = building_counts[p];
+        if bcurr < bprev {
+            stats.players[p].buildings_lost += bprev - bcurr;
+        }
+        if bcurr > bprev && tick > 0 {
+            stats.players[p].buildings_built += bcurr - bprev;
+        }
+    }
+
+    if !stats.first_combat_recorded
+        && (combat.melee_attack_count > 0 || combat.ranged_attack_count > 0)
+    {
+        stats.first_combat_recorded = true;
+        stats.timeline.push(TimelineEvent {
+            tick,
+            event: "first_combat".to_string(),
+        });
+    }
+
+    stats.prev_unit_counts = unit_counts;
+    stats.prev_building_counts = building_counts;
+}
+
+fn count_living_entities(world: &mut World) -> [u32; 2] {
+    let mut counts = [0u32; 2];
+    for (owner,) in world
+        .query_filtered::<(&Owner,), Without<Dead>>()
+        .iter(world)
+    {
+        if (owner.player_id as usize) < 2 {
+            counts[owner.player_id as usize] += 1;
+        }
+    }
+    counts
+}
+
+fn check_elimination(world: &mut World) -> Option<u8> {
+    let counts = count_living_entities(world);
+    match (counts[0] > 0, counts[1] > 0) {
+        (false, false) => None, // mutual annihilation — draw
+        (false, true) => Some(1),
+        (true, false) => Some(0),
+        (true, true) => None,
+    }
+}
+
+fn determine_leader(world: &mut World) -> Option<u8> {
+    let counts = count_living_entities(world);
+    match counts[0].cmp(&counts[1]) {
+        std::cmp::Ordering::Greater => Some(0),
+        std::cmp::Ordering::Less => Some(1),
+        std::cmp::Ordering::Equal => None,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Main match runner
+// ---------------------------------------------------------------------------
+
+/// Run a complete arena match (FSM + scripts coexisting).
+pub fn run_arena_match(config: &ArenaConfig) -> ArenaResult {
+    let wall_start = Instant::now();
+
+    let params = MapGenParams {
+        width: config.map_size.0,
+        height: config.map_size.1,
+        seed: config.seed,
+        ..Default::default()
+    };
+    let map_def = map_gen::generate_map(&params);
+    let game_map = map_def.to_game_map();
+    let map_width = game_map.width;
+    let map_height = game_map.height;
+
+    // Load scripts
+    let mut all_registrations = Vec::new();
+    let mut scripts_loaded: [Vec<String>; 2] = [vec![], vec![]];
+
+    for (player_idx, scripts_opt) in config.scripts.iter().enumerate() {
+        let player_id = player_idx as u8;
+        if let Some(sources) = scripts_opt {
+            for source in sources {
+                match source {
+                    ScriptSource::File(path) => {
+                        if path.is_dir() {
+                            let regs = load_scripts_from_dir(path, player_id);
+                            for reg in &regs {
+                                scripts_loaded[player_idx].push(reg.name.clone());
+                            }
+                            all_registrations.extend(regs);
+                        } else if let Ok(src) = std::fs::read_to_string(path) {
+                            let name = path
+                                .file_stem()
+                                .and_then(|s| s.to_str())
+                                .unwrap_or("unnamed")
+                                .to_string();
+                            scripts_loaded[player_idx].push(name.clone());
+                            all_registrations.push(ScriptRegistration::new(
+                                name,
+                                src,
+                                vec!["on_tick".to_string()],
+                                player_id,
+                            ));
+                        }
+                    }
+                    ScriptSource::Inline { name, source } => {
+                        scripts_loaded[player_idx].push(name.clone());
+                        all_registrations.push(ScriptRegistration::new(
+                            name.clone(),
+                            source.clone(),
+                            vec!["on_tick".to_string()],
+                            player_id,
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    let (mut world, mut schedule) = make_arena_sim(game_map, config, &map_def, all_registrations);
+
+    let mut checker = InvariantChecker::new(map_width, map_height);
+
+    let mut outcome = MatchOutcome::Timeout {
+        tick: config.max_ticks,
+        leading_player: None,
+    };
+
+    for _ in 0..config.max_ticks {
+        let tick_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            schedule.run(&mut world);
+        }));
+
+        let tick_after = world.resource::<SimClock>().tick;
+
+        if let Err(panic_info) = tick_result {
+            let msg = if let Some(s) = panic_info.downcast_ref::<&str>() {
+                s.to_string()
+            } else if let Some(s) = panic_info.downcast_ref::<String>() {
+                s.clone()
+            } else {
+                "unknown panic".to_string()
+            };
+            checker.record_panic(tick_after, &msg);
+            outcome = MatchOutcome::Error {
+                tick: tick_after,
+                message: msg,
+            };
+            break;
+        }
+
+        if tick_after % 10 == 0 {
+            update_arena_stats(&mut world);
+        }
+
+        if tick_after % 50 == 0 {
+            checker.check_all(&mut world, tick_after);
+        }
+
+        let game_state = *world.resource::<GameState>();
+        if let GameState::Victory { winner } = game_state {
+            outcome = MatchOutcome::Victory {
+                winner,
+                tick: tick_after,
+            };
+            world
+                .resource_mut::<ArenaStats>()
+                .timeline
+                .push(TimelineEvent {
+                    tick: tick_after,
+                    event: format!("victory_player_{winner}"),
+                });
+            break;
+        }
+
+        if let Some(winner) = check_elimination(&mut world) {
+            outcome = MatchOutcome::Victory {
+                winner,
+                tick: tick_after,
+            };
+            world
+                .resource_mut::<ArenaStats>()
+                .timeline
+                .push(TimelineEvent {
+                    tick: tick_after,
+                    event: format!("elimination_player_{winner}_wins"),
+                });
+            break;
+        }
+    }
+
+    let final_tick = world.resource::<SimClock>().tick;
+    if matches!(outcome, MatchOutcome::Timeout { .. }) {
+        let leading = determine_leader(&mut world);
+        outcome = MatchOutcome::Timeout {
+            tick: final_tick,
+            leading_player: leading,
+        };
+        checker.record_timeout(final_tick);
+    }
+
+    update_arena_stats(&mut world);
+
+    let stats = world.resource::<ArenaStats>().clone();
+    let wall_time = wall_start.elapsed().as_millis() as u64;
+
+    ArenaResult {
+        outcome,
+        final_tick,
+        wall_time_ms: wall_time,
+        stats,
+        scripts_loaded,
+        violations: checker.violations,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn arena_fsm_only_match() {
+        let config = ArenaConfig {
+            max_ticks: 200,
+            ..Default::default()
+        };
+        let result = run_arena_match(&config);
+        assert!(result.passed());
+        assert!(result.final_tick > 0);
+        assert!(result.scripts_loaded[0].is_empty());
+        assert!(result.scripts_loaded[1].is_empty());
+    }
+
+    #[test]
+    fn arena_loads_scripts() {
+        let dir = tempfile::tempdir().unwrap();
+        let script_path = dir.path().join("test_micro.lua");
+        let mut f = std::fs::File::create(&script_path).unwrap();
+        writeln!(
+            f,
+            "-- @name: test_micro\n-- @events: on_tick\n-- @interval: 5\n\nlocal units = ctx:my_units()\n"
+        )
+        .unwrap();
+
+        let scripts = load_scripts_from_dir(dir.path(), 0);
+        assert_eq!(scripts.len(), 1);
+        assert_eq!(scripts[0].name, "test_micro");
+        assert!(scripts[0].listens_for("on_tick"));
+        assert_eq!(scripts[0].tick_interval, 5);
+    }
+
+    #[test]
+    fn arena_scripts_coexist_with_fsm() {
+        let config = ArenaConfig {
+            max_ticks: 100,
+            scripts: [
+                Some(vec![ScriptSource::Inline {
+                    name: "noop_script".into(),
+                    source: "-- do nothing\nlocal units = ctx:my_units()\n".into(),
+                }]),
+                None,
+            ],
+            ..Default::default()
+        };
+        let result = run_arena_match(&config);
+        assert!(result.passed());
+        assert_eq!(result.scripts_loaded[0], vec!["noop_script".to_string()]);
+        assert!(result.scripts_loaded[1].is_empty());
+    }
+
+    #[test]
+    fn arena_report_has_stats() {
+        let config = ArenaConfig {
+            max_ticks: 200,
+            ..Default::default()
+        };
+        let result = run_arena_match(&config);
+        let report = ArenaReport::from_result(&result, &config);
+
+        assert_eq!(report.seed, 42);
+        assert!(report.duration_ticks > 0);
+        assert!(report.wall_time_ms > 0);
+        // Stats should be initialized (may be 0 if no combat in 200 ticks)
+        assert_eq!(report.player_stats.len(), 2);
+    }
+
+    #[test]
+    fn arena_script_annotation_defaults() {
+        let dir = tempfile::tempdir().unwrap();
+        let script_path = dir.path().join("bare.lua");
+        std::fs::write(&script_path, "local x = 1\n").unwrap();
+
+        let scripts = load_scripts_from_dir(dir.path(), 1);
+        assert_eq!(scripts.len(), 1);
+        assert_eq!(scripts[0].name, "bare"); // defaults to filename
+        assert!(scripts[0].listens_for("on_tick")); // default event
+        assert_eq!(scripts[0].tick_interval, 5); // default interval
+        assert_eq!(scripts[0].player_id, 1);
+    }
+}

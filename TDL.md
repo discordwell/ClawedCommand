@@ -133,6 +133,15 @@
 - [ ] Separate Strategic and Advanced tier match arms in `issue_attack_commands` (currently conflated; Advanced should add adaptive positioning per enum doc)
 - [ ] Consider replacing `BuildingCensus` per-kind booleans/entities with `HashMap<BuildingKind, BuildingInfo>` for extensibility
 
+## From Arena Module Code Review
+
+- [ ] Make `cc_sim::harness` helpers `pub` and reuse in `cc_agent::arena` instead of duplicating: `spawn_starting_entities`, `spawn_combat_unit`, `headless_despawn_system`, `count_living_entities`, `check_elimination`, `determine_leader`, `BotConfig`
+- [ ] Extract shared `make_headless_world()` from `make_harness_sim` and `make_arena_sim` (resource initialization is ~80% identical)
+- [ ] Populate `damage_dealt`/`damage_taken` fields in `PlayerArenaStats` (currently always 0.0)
+- [ ] Add bounds checking in `spawn_starting_entities` for Pawdler spawn offsets near map edge
+- [ ] Count `MatchOutcome::Error` outcomes in arena CLI summary statistics
+- [ ] Extract `extract_panic_message()` helper from duplicated `catch_unwind` downcast patterns
+
 ## From Voice Pipeline Implementation
 
 - [ ] Run Python voice training tests after setting up PyTorch environment (`cd training/voice && python test_model.py`)

@@ -1,0 +1,33 @@
+{
+  "current_generation": 1,
+  "best_win_rate": 0.0,
+  "best_generation": 0,
+  "generations": [
+    {
+      "generation": -1,
+      "timestamp": "2026-03-01T06:49:45.199116+00:00",
+      "scripts": [],
+      "notes": "FSM-only baseline",
+      "win_rate_vs_fsm": 0.0,
+      "p0_wins": 0,
+      "p1_wins": 2,
+      "timeouts": 8,
+      "seeds": "1,2,3,4,5,6,7,8,9,10"
+    },
+    {
+      "generation": 0,
+      "timestamp": "2026-03-01T06:49:45.199265+00:00",
+      "scripts": [
+        "focus_fire.lua",
+        "kite_ranged.lua",
+        "retreat_wounded.lua"
+      ],
+      "notes": "Combat-only focus fire + kite + retreat. Reduced P1 victories from 2 to 1.",
+      "win_rate_vs_fsm": 0.0,
+      "p0_wins": 0,
+      "p1_wins": 1,
+      "timeouts": 9,
+      "seeds": "1,2,3,4,5,6,7,8,9,10"
+    }
+  ]
+}

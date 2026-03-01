@@ -44,12 +44,16 @@ pub fn production_system(
             }
 
             // Scale HP proportionally to construction progress (10% to 100%)
+            // Use min() so combat damage is preserved — never heal above the formula value
             if uc.remaining_ticks > 0 && uc.total_ticks > 0 {
                 let progress = Fixed::from_num(1.0f32)
                     - Fixed::from_num(uc.remaining_ticks as f32)
                         / Fixed::from_num(uc.total_ticks as f32);
-                health.current =
+                let formula_hp =
                     health.max * (Fixed::from_num(0.1f32) + Fixed::from_num(0.9f32) * progress);
+                if health.current < formula_hp {
+                    health.current = formula_hp;
+                }
             }
 
             if uc.remaining_ticks == 0 {
