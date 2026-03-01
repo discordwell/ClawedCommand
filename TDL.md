@@ -50,8 +50,8 @@
 
 ## From Code Review (Agent Harness + Gameplay Fixes)
 
-- [ ] `ToolRegistry::build_default()` called on every `execute_tool()` invocation — should use `OnceLock` or pass registry as parameter
-- [ ] Hardcoded `ToolTier::Advanced` in `cc_client/src/ui/agent_chat.rs` — should read from `FactionToolStates` resource
+- [x] `ToolRegistry::build_default()` called on every `execute_tool()` invocation — fixed: `LazyLock<ToolRegistry>` singleton in `mcp_tools.rs`
+- [x] Hardcoded `ToolTier::Advanced` in `cc_client/src/ui/agent_chat.rs` — already fixed: reads from `FactionToolStates` resource
 - [ ] `FactionId::from_u8(player_id).unwrap_or(CatGPT)` duplicated 19× in `cc_harness/src/server.rs` — extract to `FactionId::for_player(id)` method
 - [ ] Lua behavior binding registration boilerplate (~18 blocks) in `lua_runtime.rs` — consider a macro
 - [x] `test_dream_siege_resets_on_target_change` was flaky — fixed by zeroing target damage in test (T2 damage-reset was interfering)
@@ -155,7 +155,7 @@
 - [ ] `resource_deposits` Lua binding bypasses compute budget — should route through `ScriptContext` method with `budget.spend(COST_SIMPLE)` like other query bindings
 - [ ] LLM pipeline disconnected: `AgentBridge::default()` creates dead channels, `spawn_llm_runner()` never called — need startup wiring in `AgentPlugin::build()` or game setup
 - [ ] Dead snapshot path: `process_request`'s `snapshot: Option<&GameStateSnapshot>` always called with `None` from `spawn_llm_runner` — either pass snapshot through channel or remove parameter
-- [x] `ToolRegistry::build_default()` rebuilt on every call (already tracked above)
+- [x] `ToolRegistry::build_default()` rebuilt on every call (fixed: `LazyLock` singleton in `mcp_tools.rs`)
 - [ ] Hardcoded `player_id: 0` in construct mode UI and agent chat quick commands — should use `LocalPlayer` resource
 - [ ] `deposit_to_lua_table` uses `"kind"` field name vs `resource_deposits` binding using both `"kind"` and `"resource_type"` — standardize across all deposit APIs
 
