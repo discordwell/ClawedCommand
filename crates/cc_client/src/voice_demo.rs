@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use cc_core::commands::{CommandSource, EntityId, GameCommand};
-use cc_core::components::{Dead, Owner, Selected, StatModifiers, UnitKind, UnitType};
+use cc_core::components::{Dead, Owner, Selected, StatModifiers, UnitKind, UnitType, VoiceBuffed};
 use cc_core::coords::GridPos;
 use cc_core::mission::*;
 use cc_core::status_effects::{StatusEffectId, StatusEffects, StatusInstance};
@@ -64,10 +64,6 @@ impl Default for VoiceDemoState {
         }
     }
 }
-
-/// Marker component for units that received the golden voice-command buff.
-#[derive(Component)]
-pub struct VoiceBuffed;
 
 // ---------------------------------------------------------------------------
 // Mission Builder

@@ -7,10 +7,12 @@
 /// then flushes when an agent command arrives with a prior target context.
 ///
 /// Default target: all of the player's on-screen units (not just selected).
+use bevy::ecs::world::EntityWorldMut;
 use bevy::prelude::*;
 
 use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::{Building, CursorGridPos, Dead, Faction, Owner, Position, UnitKind};
+use cc_core::components::{Building, CursorGridPos, Dead, Faction, Owner, Position, StatModifiers, UnitKind, VoiceBuffed};
+use cc_core::status_effects::{StatusEffectId, StatusEffects, StatusInstance};
 use cc_core::coords::GridPos;
 use cc_sim::ai::fsm::{FactionMap, faction_map};
 use cc_sim::resources::MapResource;
@@ -445,11 +447,56 @@ pub fn find_voice_build_position(
     None
 }
 
+/// Duration of the voice-command SpeedBuff (effectively permanent).
+const VOICE_BUFF_DURATION: u32 = 9999;
+
+/// Apply the golden voice-command SpeedBuff to a set of entities.
+///
+/// Same pattern as `voice_demo::apply_voice_buff` but operates on a batch.
+pub fn apply_voice_buff_to_entities(
+    commands: &mut Commands,
+    entities: &[Entity],
+    status_query: &Query<Option<&StatusEffects>, Without<Dead>>,
+) {
+    for &entity in entities {
+        commands.entity(entity).insert(VoiceBuffed);
+
+        let has_status = status_query
+            .get(entity)
+            .ok()
+            .flatten()
+            .is_some();
+
+        let buff = StatusInstance {
+            effect: StatusEffectId::SpeedBuff,
+            remaining_ticks: VOICE_BUFF_DURATION,
+            stacks: 1,
+            source: EntityId(0),
+        };
+
+        if has_status {
+            commands.entity(entity).queue(move |mut entity_world: EntityWorldMut| {
+                if let Some(mut se) = entity_world.get_mut::<StatusEffects>() {
+                    se.effects.push(buff);
+                }
+                if entity_world.get::<StatModifiers>().is_none() {
+                    entity_world.insert(StatModifiers::default());
+                }
+            });
+        } else {
+            let mut effects = StatusEffects::default();
+            effects.effects.push(buff);
+            commands.entity(entity).insert((effects, StatModifiers::default()));
+        }
+    }
+}
+
 /// Bevy system: consumes VoiceCommandEvents and pushes GameCommands.
 ///
 /// Default target: all of the player's on-screen units (not just selected).
 /// If a unit name keyword was recently spoken, filters to that unit type.
 pub fn voice_intent_system(
+    mut commands: Commands,
     mut voice_events: MessageReader<VoiceCommandEvent>,
     // All living units — filter by owner.player_id in code
     all_units: Query<(Entity, &cc_core::components::UnitType, &Position, &Owner), Without<Dead>>,
@@ -460,6 +507,7 @@ pub fn voice_intent_system(
     map_res: Res<MapResource>,
     cursor_grid: Res<CursorGridPos>,
     mut cmd_queue: ResMut<cc_sim::resources::CommandQueue>,
+    status_query: Query<Option<&StatusEffects>, Without<Dead>>,
     mut pending_filter: Local<Option<UnitKind>>,
     mut pending_selector: Local<Option<SelectorKind>>,
     mut pending_direction: Local<Option<DirectionKind>>,
@@ -488,21 +536,21 @@ pub fn voice_intent_system(
                     all_units.iter().filter(|(_, _, _, owner)| owner.player_id == 0)
                 };
 
-                let unit_ids: Vec<EntityId> = match *pending_selector {
+                let (entities, unit_ids): (Vec<Entity>, Vec<EntityId>) = match *pending_selector {
                     Some(SelectorKind::Selected) => {
-                        selected_units.iter().map(|e| EntityId(e.to_bits())).collect()
+                        selected_units.iter().map(|e| (e, EntityId(e.to_bits()))).unzip()
                     }
                     Some(SelectorKind::Workers) => {
                         own_units()
                             .filter(|(_, ut, _, _)| ut.kind == UnitKind::Pawdler)
-                            .map(|(e, _, _, _)| EntityId(e.to_bits()))
-                            .collect()
+                            .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
+                            .unzip()
                     }
                     Some(SelectorKind::Army) => {
                         own_units()
                             .filter(|(_, ut, _, _)| ut.kind != UnitKind::Pawdler)
-                            .map(|(e, _, _, _)| EntityId(e.to_bits()))
-                            .collect()
+                            .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
+                            .unzip()
                     }
                     Some(SelectorKind::Nearby) => {
                         // Filter to own units within 10 tiles (Chebyshev) of cursor
@@ -514,13 +562,13 @@ pub fn voice_intent_system(
                                     let dy = (gp.y - cursor.y).abs();
                                     dx.max(dy) <= 10
                                 })
-                                .map(|(e, _, _, _)| EntityId(e.to_bits()))
-                                .collect()
+                                .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
+                                .unzip()
                         } else {
                             // No cursor position — fall back to all own units
                             own_units()
-                                .map(|(e, _, _, _)| EntityId(e.to_bits()))
-                                .collect()
+                                .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
+                                .unzip()
                         }
                     }
                     _ => {
@@ -529,13 +577,13 @@ pub fn voice_intent_system(
                             Some(kind) => {
                                 own_units()
                                     .filter(|(_, ut, _, _)| ut.kind == kind)
-                                    .map(|(e, _, _, _)| EntityId(e.to_bits()))
-                                    .collect()
+                                    .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
+                                    .unzip()
                             }
                             None => {
                                 own_units()
-                                    .map(|(e, _, _, _)| EntityId(e.to_bits()))
-                                    .collect()
+                                    .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
+                                    .unzip()
                             }
                         }
                     }
@@ -683,6 +731,11 @@ pub fn voice_intent_system(
 
                 if let Some(c) = cmd {
                     cmd_queue.push_sourced(Some(0), cc_core::commands::CommandSource::VoiceCommand, c);
+
+                    // Apply golden speed buff for combat commands
+                    if matches!(action, AgentAction::Attack | AgentAction::Charge | AgentAction::Siege) {
+                        apply_voice_buff_to_entities(&mut commands, &entities, &status_query);
+                    }
                 }
 
                 // Clear all pending state after command execution
@@ -1113,5 +1166,41 @@ mod tests {
                 "Label '{label}' hit the fallback branch — add it to classify_keyword"
             );
         }
+    }
+
+    #[test]
+    fn test_apply_voice_buff_inserts_components() {
+        use bevy::ecs::system::RunSystemOnce;
+
+        let mut world = World::new();
+
+        // Spawn two entities — one with existing StatusEffects, one without
+        let e1 = world.spawn_empty().id();
+        let e2 = world.spawn(StatusEffects::default()).id();
+        let entities = vec![e1, e2];
+
+        // Run the buff application via a one-shot system
+        let entities_clone = entities.clone();
+        let _ = world.run_system_once(move |mut commands: Commands, status_q: Query<Option<&StatusEffects>, Without<Dead>>| {
+            apply_voice_buff_to_entities(&mut commands, &entities_clone, &status_q);
+        });
+
+        // Both should have VoiceBuffed marker
+        assert!(world.get::<VoiceBuffed>(e1).is_some(), "e1 should have VoiceBuffed");
+        assert!(world.get::<VoiceBuffed>(e2).is_some(), "e2 should have VoiceBuffed");
+
+        // Both should have StatusEffects with SpeedBuff
+        let se1 = world.get::<StatusEffects>(e1).expect("e1 should have StatusEffects");
+        assert_eq!(se1.effects.len(), 1);
+        assert_eq!(se1.effects[0].effect, StatusEffectId::SpeedBuff);
+        assert_eq!(se1.effects[0].remaining_ticks, VOICE_BUFF_DURATION);
+
+        let se2 = world.get::<StatusEffects>(e2).expect("e2 should have StatusEffects");
+        assert_eq!(se2.effects.len(), 1);
+        assert_eq!(se2.effects[0].effect, StatusEffectId::SpeedBuff);
+
+        // Both should have StatModifiers
+        assert!(world.get::<StatModifiers>(e1).is_some(), "e1 should have StatModifiers");
+        assert!(world.get::<StatModifiers>(e2).is_some(), "e2 should have StatModifiers");
     }
 }

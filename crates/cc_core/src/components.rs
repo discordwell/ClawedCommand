@@ -546,6 +546,11 @@ pub struct MovementSpeed {
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
 pub struct Selected;
 
+/// Marker: this unit received the golden voice-command speed buff.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct VoiceBuffed;
+
 /// The unit is moving toward this world position (simple direct move).
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]

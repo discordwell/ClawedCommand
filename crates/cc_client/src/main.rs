@@ -26,6 +26,8 @@ enum DemoMode {
     Cutscene(u8),
     /// Voice command demo.
     Voice,
+    /// AI mirror match — two scripted AI armies fight each other.
+    Match,
 }
 
 /// Parse `--demo <mode>` from CLI args.
@@ -49,6 +51,8 @@ fn parse_demo_mode() -> Option<DemoMode> {
                     DemoMode::Cutscene(n.clamp(1, 3))
                 }
                 Some("voice") => DemoMode::Voice,
+                Some("match") => DemoMode::Match,
+                Some("4") => DemoMode::Match,
                 Some(n) if n.parse::<u8>().is_ok() => {
                     DemoMode::Canyon(n.parse::<u8>().unwrap().clamp(1, 3))
                 }
@@ -99,6 +103,9 @@ fn main() {
         Some(DemoMode::Voice) => {
             setup_voice_demo(&mut app);
         }
+        Some(DemoMode::Match) => {
+            setup_match(&mut app);
+        }
         None => {
             // No demo mode — normal game startup
         }
@@ -113,6 +120,11 @@ fn main() {
             setup::setup_game
                 .after(renderer::unit_gen::generate_unit_sprites)
                 .after(renderer::resource_nodes::generate_resource_sprites),
+        )
+        .add_systems(
+            Update,
+            voice_demo::voice_demo_buff_tint
+                .after(renderer::selection::render_selection_indicators),
         );
 
     #[cfg(any(feature = "native", feature = "wasm-agent"))]
@@ -289,13 +301,98 @@ fn setup_voice_demo(app: &mut App) {
     app.insert_resource(demo_player_resources());
     app.insert_resource(voice_demo::VoiceDemoState::default());
 
-    // Register demo systems
-    app.add_systems(
-        Update,
-        (
-            voice_demo::voice_demo_system,
-            voice_demo::voice_demo_buff_tint
-                .after(renderer::selection::render_selection_indicators),
-        ),
+    // Register demo systems (buff tint registered globally)
+    app.add_systems(Update, voice_demo::voice_demo_system);
+}
+
+/// Set up the AI mirror match demo — two CatGPT armies with Gen 42 scripts.
+fn setup_match(app: &mut App) {
+    eprintln!("AI Mirror Match demo");
+
+    let ron_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../assets/campaign/demo_match.ron");
+    let ron_str = std::fs::read_to_string(&ron_path)
+        .unwrap_or_else(|e| panic!("Failed to read {}: {e}", ron_path.display()));
+    let mission: cc_core::mission::MissionDefinition = ron::from_str(&ron_str)
+        .unwrap_or_else(|e| panic!("Failed to parse demo_match.ron: {e}"));
+
+    load_demo_mission(app, mission, "AI Mirror Match");
+
+    // Load Gen 42 script for both players
+    use cc_agent::events::ScriptRegistration;
+    use cc_agent::runner::ScriptRegistry;
+
+    let script_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../training/arena/gen_042/player_1/combat_micro.lua");
+    let script_source = std::fs::read_to_string(&script_path)
+        .unwrap_or_else(|e| panic!("Failed to read gen_042 combat_micro.lua: {e}"));
+
+    let mut registry = ScriptRegistry::default();
+
+    // Register for P0
+    let mut p0_reg = ScriptRegistration::new(
+        "combat_micro_p0".to_string(),
+        script_source.clone(),
+        vec!["on_tick".to_string()],
+        0,
     );
+    p0_reg.tick_interval = 3;
+    registry.register(p0_reg);
+
+    // Register for P1
+    let mut p1_reg = ScriptRegistration::new(
+        "combat_micro_p1".to_string(),
+        script_source,
+        vec!["on_tick".to_string()],
+        1,
+    );
+    p1_reg.tick_interval = 3;
+    registry.register(p1_reg);
+
+    app.insert_resource(registry);
+
+    // Populate MultiAiState with two CatGPT AIs so the FSM runs for both players
+    use cc_core::components::Faction;
+    use cc_core::coords::GridPos;
+    use cc_sim::ai::MultiAiState;
+    use cc_sim::ai::fsm::{AiState, faction_map};
+
+    let multi_ai = MultiAiState {
+        players: vec![
+            AiState {
+                player_id: 0,
+                fmap: faction_map(Faction::CatGpt),
+                enemy_spawn: Some(GridPos::new(70, 38)),
+                ..Default::default()
+            },
+            AiState {
+                player_id: 1,
+                fmap: faction_map(Faction::CatGpt),
+                enemy_spawn: Some(GridPos::new(10, 10)),
+                ..Default::default()
+            },
+        ],
+    };
+    app.insert_resource(multi_ai);
+
+    // Give both players resources for the FSM to work with
+    let player_res = cc_sim::resources::PlayerResources {
+        players: vec![
+            {
+                let mut p = cc_sim::resources::PlayerResourceState::default();
+                p.food = 500;
+                p.gpu_cores = 200;
+                p.supply_cap = 50;
+                p
+            },
+            {
+                let mut p = cc_sim::resources::PlayerResourceState::default();
+                p.food = 500;
+                p.gpu_cores = 200;
+                p.supply_cap = 50;
+                p
+            },
+        ],
+    };
+    app.insert_resource(player_res);
 }
