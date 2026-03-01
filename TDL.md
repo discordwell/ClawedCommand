@@ -91,6 +91,16 @@
 - [x] Move LaserPointer combat stats to tuning.rs constants (hardcoded in production_system.rs)
 - [x] Extract `BUILDING_SPRITE_SIZE: f32 = 28.0` constant (repeated in 4 renderer locations)
 
+## Post-Merge Cleanup (from code review)
+
+- [ ] `spawn_base_unit` should delegate to `unit_bundle` internally (30 lines of duplicated component assembly)
+- [ ] Remove trivial `spawn_combat_unit` wrappers in integration.rs, campaign_integration.rs (just call `spawn_base_unit` directly)
+- [ ] Reduce `count_living_entities` visibility from `pub` to `pub(crate)` in harness/mod.rs
+- [ ] Remove dead `CommandQueue::drain()` method (only `drain_interleaved` is used)
+- [ ] Remove stub `GameCommand::player_hint()` that always returns None (or implement it)
+- [ ] Rename `pending_litter_boxes` parameter to `pending_supply_count` in `maybe_build_supply`
+- [ ] LLAMA TinkerBench producible units unreachable via AI FSM (only `barracks` role produces units)
+
 ## Campaign Missions (Remaining RON Files)
 
 - [ ] Act 2 M5: False Front (Seekers border, first encounter)
