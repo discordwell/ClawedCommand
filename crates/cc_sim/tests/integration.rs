@@ -35,6 +35,8 @@ fn make_sim(map: GameMap) -> (World, Schedule) {
     world.insert_resource(SimClock::default());
     world.insert_resource(ControlGroups::default());
     world.insert_resource(PlayerResources::default());
+    world.insert_resource(GameState::default());
+    world.insert_resource(SpawnPositions::default());
     world.insert_resource(SimRng::default());
     world.insert_resource(MapResource { map });
 
@@ -63,6 +65,8 @@ fn make_sim(map: GameMap) -> (World, Schedule) {
         )
             .chain(),
     );
+    // Victory system runs unconditionally (after main chain)
+    schedule.add_systems(victory_system);
 
     (world, schedule)
 }
@@ -103,6 +107,21 @@ fn issue_stop(world: &mut World, entities: &[Entity]) {
     world
         .resource_mut::<CommandQueue>()
         .push(GameCommand::Stop { unit_ids: ids });
+}
+
+fn issue_build(world: &mut World, builder: Entity, kind: BuildingKind, pos: GridPos) {
+    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
+        builder: EntityId(builder.to_bits()),
+        building_kind: kind,
+        position: pos,
+    });
+}
+
+fn issue_train(world: &mut World, building: Entity, unit_kind: UnitKind) {
+    world.resource_mut::<CommandQueue>().push(GameCommand::TrainUnit {
+        building: EntityId(building.to_bits()),
+        unit_kind,
+    });
 }
 
 /// Simple LCG (PCG-like output) for deterministic pseudo-random test data.
@@ -1026,67 +1045,48 @@ fn combat_determinism() {
 // Phase 2: Economy, Production, Victory integration tests
 // ---------------------------------------------------------------------------
 
-/// Extended make_sim that includes GameState + SpawnPositions + victory_system.
-fn make_full_sim(map: GameMap) -> (World, Schedule) {
-    let mut world = World::new();
-    world.insert_resource(CommandQueue::default());
-    world.insert_resource(SimClock::default());
-    world.insert_resource(ControlGroups::default());
-    world.insert_resource(PlayerResources::default());
-    world.insert_resource(GameState::default());
-    world.insert_resource(SpawnPositions::default());
-    world.insert_resource(SimRng::default());
-    world.insert_resource(MapResource { map });
 
-    let mut schedule = Schedule::new(FixedUpdate);
-    schedule.add_systems(
-        (
-            tick_system,
-            process_commands,
-            ability_cooldown_system,
-            ability_effect_system,
-            status_effect_system,
-            aura_system,
-            stat_modifier_system,
-            production_system,
-            research_system,
-            gathering_system,
-            target_acquisition_system,
-            combat_system,
-            tower_combat_system,
-            projectile_system,
-            movement_system,
-            builder_system,
-            grid_sync_system,
-            cleanup_system,
-        )
-            .chain(),
-    );
-    // Victory system runs unconditionally (after main chain)
-    schedule.add_systems(victory_system);
-
-    (world, schedule)
-}
-
-/// Spawn a TheBox building for a given player.
-fn spawn_the_box(world: &mut World, grid: GridPos, player_id: u8) -> Entity {
-    let bstats = cc_core::building_stats::building_stats(BuildingKind::TheBox);
-    // Grant supply_cap from the building (matches what setup.rs does at game start)
-    if let Some(pres) = world.resource_mut::<PlayerResources>().players.get_mut(player_id as usize) {
-        pres.supply_cap += bstats.supply_provided;
-    }
-    world
+/// Spawn a pre-built building for a given player.
+fn spawn_building(world: &mut World, kind: BuildingKind, grid: GridPos, player_id: u8) -> Entity {
+    let bstats = cc_core::building_stats::building_stats(kind);
+    let entity = world
         .spawn((
             Position { world: WorldPos::from_grid(grid) },
             Velocity::zero(),
             GridCell { pos: grid },
             Owner { player_id },
-            Building { kind: BuildingKind::TheBox },
+            Building { kind },
             Health { current: bstats.health, max: bstats.health },
-            Producer,
-            ProductionQueue::default(),
         ))
-        .id()
+        .id();
+    // Add capability components based on kind
+    match kind {
+        BuildingKind::TheBox | BuildingKind::CatTree | BuildingKind::ServerRack => {
+            world.entity_mut(entity).insert((Producer, ProductionQueue::default()));
+        }
+        BuildingKind::ScratchingPost => {
+            world.entity_mut(entity).insert((Researcher, ResearchQueue::default()));
+        }
+        BuildingKind::LaserPointer => {
+            world.entity_mut(entity).insert((
+                AttackStats {
+                    damage: Fixed::from_num(10),
+                    range: Fixed::from_num(6),
+                    attack_speed: 15,
+                    cooldown_remaining: 0,
+                },
+                AttackTypeMarker { attack_type: AttackType::Ranged },
+            ));
+        }
+        _ => {}
+    }
+    // TheBox grants supply cap
+    if kind == BuildingKind::TheBox {
+        if let Some(pres) = world.resource_mut::<PlayerResources>().players.get_mut(player_id as usize) {
+            pres.supply_cap += bstats.supply_provided;
+        }
+    }
+    entity
 }
 
 /// Spawn a resource deposit at a grid position.
@@ -1106,10 +1106,10 @@ fn spawn_deposit(world: &mut World, grid: GridPos) -> Entity {
 
 #[test]
 fn test_full_economy_loop() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
 
     // Spawn TheBox at (10,10), deposit at (12,10), Pawdler at (11,10)
-    spawn_the_box(&mut world, GridPos::new(10, 10), 0);
+    spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(10, 10), 0);
     let deposit = spawn_deposit(&mut world, GridPos::new(12, 10));
     let worker = spawn_combat_unit(&mut world, GridPos::new(11, 10), 0, UnitKind::Pawdler);
 
@@ -1133,8 +1133,8 @@ fn test_full_economy_loop() {
 
 #[test]
 fn test_train_unit_from_the_box() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
-    let box_e = spawn_the_box(&mut world, GridPos::new(10, 10), 0);
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let box_e = spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(10, 10), 0);
 
     // Set supply to 0 so we have room (supply_cap defaults to 10)
     world.resource_mut::<PlayerResources>().players[0].supply = 0;
@@ -1146,10 +1146,7 @@ fn test_train_unit_from_the_box() {
         .count();
 
     // Issue train command (Pawdler costs 50 food, 50 ticks to train)
-    world.resource_mut::<CommandQueue>().push(GameCommand::TrainUnit {
-        building: EntityId(box_e.to_bits()),
-        unit_kind: UnitKind::Pawdler,
-    });
+    issue_train(&mut world, box_e, UnitKind::Pawdler);
 
     // Run 55 ticks (50 train_time + buffer)
     run_ticks(&mut world, &mut schedule, 55);
@@ -1169,7 +1166,7 @@ fn test_train_unit_from_the_box() {
 
 #[test]
 fn test_build_command_spawns_building() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
 
     // Need a builder entity (any unit works since the command just checks Owner)
     let builder = spawn_combat_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Pawdler);
@@ -1177,11 +1174,7 @@ fn test_build_command_spawns_building() {
     world.resource_mut::<PlayerResources>().players[0].food = 300;
 
     let build_pos = GridPos::new(12, 10);
-    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
-        builder: EntityId(builder.to_bits()),
-        building_kind: BuildingKind::LitterBox,
-        position: build_pos,
-    });
+    issue_build(&mut world, builder, BuildingKind::LitterBox, build_pos);
 
     // Builder needs to walk from (10,10) to adjacent (12,10) — ~20 ticks
     run_ticks(&mut world, &mut schedule, 20);
@@ -1210,17 +1203,13 @@ fn test_build_command_spawns_building() {
 
 #[test]
 fn test_build_insufficient_resources() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
     let builder = spawn_combat_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Pawdler);
 
     // Set food too low for CatTree (needs 150)
     world.resource_mut::<PlayerResources>().players[0].food = 50;
 
-    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
-        builder: EntityId(builder.to_bits()),
-        building_kind: BuildingKind::CatTree,
-        position: GridPos::new(12, 10),
-    });
+    issue_build(&mut world, builder, BuildingKind::CatTree, GridPos::new(12, 10));
 
     run_ticks(&mut world, &mut schedule, 5);
 
@@ -1235,7 +1224,7 @@ fn test_build_insufficient_resources() {
 
 #[test]
 fn test_build_and_train_loop() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
 
     let builder = spawn_combat_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Pawdler);
     // CatTree costs 150 food, build_time=150, then train Nuisance costs 75, train_time=60
@@ -1244,11 +1233,7 @@ fn test_build_and_train_loop() {
     world.resource_mut::<PlayerResources>().players[0].supply_cap = 20; // enough room
 
     // Step 1: Build CatTree
-    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
-        builder: EntityId(builder.to_bits()),
-        building_kind: BuildingKind::CatTree,
-        position: GridPos::new(12, 10),
-    });
+    issue_build(&mut world, builder, BuildingKind::CatTree, GridPos::new(12, 10));
 
     // Wait for builder walk (~20 ticks) + construction (150 ticks) + buffer
     run_ticks(&mut world, &mut schedule, 180);
@@ -1264,10 +1249,7 @@ fn test_build_and_train_loop() {
     let cat_tree = cat_tree.unwrap();
 
     // Step 2: Train a Nuisance
-    world.resource_mut::<CommandQueue>().push(GameCommand::TrainUnit {
-        building: EntityId(cat_tree.to_bits()),
-        unit_kind: UnitKind::Nuisance,
-    });
+    issue_train(&mut world, cat_tree, UnitKind::Nuisance);
 
     run_ticks(&mut world, &mut schedule, 65);
 
@@ -1282,11 +1264,11 @@ fn test_build_and_train_loop() {
 
 #[test]
 fn test_victory_on_enemy_box_destroyed() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
 
     // Both players have TheBox
-    spawn_the_box(&mut world, GridPos::new(5, 5), 0);
-    let enemy_box = spawn_the_box(&mut world, GridPos::new(20, 20), 1);
+    spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(5, 5), 0);
+    let enemy_box = spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(20, 20), 1);
 
     run_ticks(&mut world, &mut schedule, 1);
     assert_eq!(*world.resource::<GameState>(), GameState::Playing);
@@ -1308,10 +1290,10 @@ fn test_victory_on_enemy_box_destroyed() {
 
 #[test]
 fn test_defeat_on_own_box_destroyed() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
 
-    let player_box = spawn_the_box(&mut world, GridPos::new(5, 5), 0);
-    spawn_the_box(&mut world, GridPos::new(20, 20), 1);
+    let player_box = spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(5, 5), 0);
+    spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(20, 20), 1);
 
     // Destroy player's box
     world.entity_mut(player_box).insert(Dead);
@@ -1330,10 +1312,10 @@ fn test_defeat_on_own_box_destroyed() {
 
 #[test]
 fn test_no_victory_while_both_alive() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
 
-    spawn_the_box(&mut world, GridPos::new(5, 5), 0);
-    spawn_the_box(&mut world, GridPos::new(20, 20), 1);
+    spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(5, 5), 0);
+    spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(20, 20), 1);
 
     run_ticks(&mut world, &mut schedule, 50);
 
@@ -1346,10 +1328,10 @@ fn test_no_victory_while_both_alive() {
 
 #[test]
 fn test_sim_freezes_on_victory() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
 
-    spawn_the_box(&mut world, GridPos::new(5, 5), 0);
-    let enemy_box = spawn_the_box(&mut world, GridPos::new(20, 20), 1);
+    spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(5, 5), 0);
+    let enemy_box = spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(20, 20), 1);
 
     // Kill enemy box
     world.entity_mut(enemy_box).insert(Dead);
@@ -1376,14 +1358,11 @@ fn test_sim_freezes_on_victory() {
 
 #[test]
 fn test_trained_unit_gets_components() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
-    let box_e = spawn_the_box(&mut world, GridPos::new(10, 10), 0);
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let box_e = spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(10, 10), 0);
     world.resource_mut::<PlayerResources>().players[0].supply = 0;
 
-    world.resource_mut::<CommandQueue>().push(GameCommand::TrainUnit {
-        building: EntityId(box_e.to_bits()),
-        unit_kind: UnitKind::Pawdler,
-    });
+    issue_train(&mut world, box_e, UnitKind::Pawdler);
 
     run_ticks(&mut world, &mut schedule, 55);
 
@@ -1403,7 +1382,7 @@ fn test_trained_unit_gets_components() {
 
 #[test]
 fn test_combat_determines_winner() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
 
     // Set up two small armies facing each other
     // Player 0: 3 Nuisance
@@ -1426,7 +1405,7 @@ fn test_combat_determines_winner() {
 
 #[test]
 fn test_supply_cap_from_buildings() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
     let builder = spawn_combat_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Pawdler);
 
     // Initial supply_cap is 0 (default, all supply comes from buildings)
@@ -1435,11 +1414,7 @@ fn test_supply_cap_from_buildings() {
     let initial_cap = world.resource::<PlayerResources>().players[0].supply_cap;
 
     // Build a LitterBox (provides +10 supply)
-    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
-        builder: EntityId(builder.to_bits()),
-        building_kind: BuildingKind::LitterBox,
-        position: GridPos::new(12, 10),
-    });
+    issue_build(&mut world, builder, BuildingKind::LitterBox, GridPos::new(12, 10));
 
     // Builder walks from (10,10) to adjacent (12,10) — ~20 ticks for arrival
     run_ticks(&mut world, &mut schedule, 20);
@@ -1454,8 +1429,8 @@ fn test_supply_cap_from_buildings() {
 
 #[test]
 fn test_resource_deposit_depletes() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
-    let _box = spawn_the_box(&mut world, GridPos::new(5, 5), 0);
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let _box = spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(5, 5), 0);
     let deposit = spawn_deposit(&mut world, GridPos::new(7, 7));
 
     // Set deposit remaining to a small amount
@@ -1481,8 +1456,8 @@ fn test_resource_deposit_depletes() {
 
 #[test]
 fn test_dead_gatherer_stops_gathering() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
-    let _box = spawn_the_box(&mut world, GridPos::new(5, 5), 0);
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let _box = spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(5, 5), 0);
     let deposit = spawn_deposit(&mut world, GridPos::new(7, 7));
 
     let pawdler = spawn_combat_unit(&mut world, GridPos::new(7, 7), 0, UnitKind::Pawdler);
@@ -1518,17 +1493,13 @@ fn test_build_on_water_rejected() {
         tile.terrain = cc_core::terrain::TerrainType::Water;
     }
 
-    let (mut world, mut schedule) = make_full_sim(map);
+    let (mut world, mut schedule) = make_sim(map);
     let builder = spawn_combat_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Pawdler);
     world.resource_mut::<PlayerResources>().players[0].food = 500;
 
     let initial_food = world.resource::<PlayerResources>().players[0].food;
 
-    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
-        builder: EntityId(builder.to_bits()),
-        building_kind: BuildingKind::LitterBox,
-        position: GridPos::new(15, 15),
-    });
+    issue_build(&mut world, builder, BuildingKind::LitterBox, GridPos::new(15, 15));
 
     run_ticks(&mut world, &mut schedule, 5);
 
@@ -1548,7 +1519,7 @@ fn test_build_on_water_rejected() {
 
 #[test]
 fn test_victory_with_more_than_two_players() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
 
     // Add a third player to PlayerResources
     world.resource_mut::<PlayerResources>().players.push(
@@ -1556,9 +1527,9 @@ fn test_victory_with_more_than_two_players() {
     );
 
     // Three players with TheBox
-    spawn_the_box(&mut world, GridPos::new(5, 5), 0);
-    spawn_the_box(&mut world, GridPos::new(20, 20), 1);
-    let box_2 = spawn_the_box(&mut world, GridPos::new(15, 15), 2);
+    spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(5, 5), 0);
+    spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(20, 20), 1);
+    let box_2 = spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(15, 15), 2);
 
     run_ticks(&mut world, &mut schedule, 1);
     assert_eq!(*world.resource::<GameState>(), GameState::Playing);
@@ -1614,72 +1585,13 @@ fn spawn_full_unit(
         .id()
 }
 
-/// Spawn a ScratchingPost (already constructed) for research tests.
-fn spawn_scratching_post(world: &mut World, grid: GridPos, player_id: u8) -> Entity {
-    let bstats = cc_core::building_stats::building_stats(BuildingKind::ScratchingPost);
-    world
-        .spawn((
-            Position { world: WorldPos::from_grid(grid) },
-            Velocity::zero(),
-            GridCell { pos: grid },
-            Owner { player_id },
-            Building { kind: BuildingKind::ScratchingPost },
-            Health { current: bstats.health, max: bstats.health },
-            Researcher,
-            ResearchQueue::default(),
-        ))
-        .id()
-}
-
-/// Spawn a ServerRack (already constructed) for advanced unit training.
-fn spawn_server_rack(world: &mut World, grid: GridPos, player_id: u8) -> Entity {
-    let bstats = cc_core::building_stats::building_stats(BuildingKind::ServerRack);
-    world
-        .spawn((
-            Position { world: WorldPos::from_grid(grid) },
-            Velocity::zero(),
-            GridCell { pos: grid },
-            Owner { player_id },
-            Building { kind: BuildingKind::ServerRack },
-            Health { current: bstats.health, max: bstats.health },
-            Producer,
-            ProductionQueue::default(),
-        ))
-        .id()
-}
-
-/// Spawn a LaserPointer tower (already constructed).
-fn spawn_laser_pointer(world: &mut World, grid: GridPos, player_id: u8) -> Entity {
-    let bstats = cc_core::building_stats::building_stats(BuildingKind::LaserPointer);
-    world
-        .spawn((
-            Position { world: WorldPos::from_grid(grid) },
-            Velocity::zero(),
-            GridCell { pos: grid },
-            Owner { player_id },
-            Building { kind: BuildingKind::LaserPointer },
-            Health { current: bstats.health, max: bstats.health },
-            AttackStats {
-                damage: Fixed::from_num(10),
-                range: Fixed::from_num(6),
-                attack_speed: 15,
-                cooldown_remaining: 0,
-            },
-            AttackTypeMarker { attack_type: AttackType::Ranged },
-        ))
-        .id()
-}
-
 #[test]
 fn test_ability_infrastructure_on_spawn() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
-    let box_e = spawn_the_box(&mut world, GridPos::new(10, 10), 0);
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let box_e = spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(10, 10), 0);
     world.resource_mut::<PlayerResources>().players[0].supply = 0;
 
-    world.resource_mut::<CommandQueue>().push(GameCommand::TrainUnit {
-        building: EntityId(box_e.to_bits()),
-        unit_kind: UnitKind::Pawdler,
-    });
+    issue_train(&mut world, box_e, UnitKind::Pawdler);
 
     run_ticks(&mut world, &mut schedule, 55);
 
@@ -1694,7 +1606,7 @@ fn test_ability_infrastructure_on_spawn() {
 
 #[test]
 fn test_activate_ability_cooldown_cycle() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
     // Nuisance slot 2 = Zoomies: Activated, cooldown 120, gpu_cost 10, duration 30
     let unit = spawn_full_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
 
@@ -1735,7 +1647,7 @@ fn test_activate_ability_cooldown_cycle() {
 
 #[test]
 fn test_stat_modifiers_affect_combat() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
     // Two adjacent melee units, one with boosted damage
     let attacker = spawn_full_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
     let target = spawn_full_unit(&mut world, GridPos::new(6, 5), 1, UnitKind::Chonk);
@@ -1761,7 +1673,7 @@ fn test_stat_modifiers_affect_combat() {
 fn test_stat_modifiers_affect_movement() {
     use cc_core::status_effects::{StatusEffectId, StatusInstance};
 
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
     let fast_unit = spawn_full_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
     let normal_unit = spawn_full_unit(&mut world, GridPos::new(5, 8), 0, UnitKind::Nuisance);
 
@@ -1790,8 +1702,8 @@ fn test_stat_modifiers_affect_movement() {
 
 #[test]
 fn test_server_rack_trains_advanced_units() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
-    let rack = spawn_server_rack(&mut world, GridPos::new(10, 10), 0);
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let rack = spawn_building(&mut world, BuildingKind::ServerRack, GridPos::new(10, 10), 0);
 
     world.resource_mut::<PlayerResources>().players[0].food = 500;
     world.resource_mut::<PlayerResources>().players[0].gpu_cores = 200;
@@ -1799,10 +1711,7 @@ fn test_server_rack_trains_advanced_units() {
     world.resource_mut::<PlayerResources>().players[0].supply_cap = 20;
 
     // Train a FlyingFox (no upgrade gate)
-    world.resource_mut::<CommandQueue>().push(GameCommand::TrainUnit {
-        building: EntityId(rack.to_bits()),
-        unit_kind: UnitKind::FlyingFox,
-    });
+    issue_train(&mut world, rack, UnitKind::FlyingFox);
 
     // FlyingFox train_time = 80 ticks
     run_ticks(&mut world, &mut schedule, 85);
@@ -1818,8 +1727,8 @@ fn test_server_rack_trains_advanced_units() {
 
 #[test]
 fn test_laser_pointer_fires_at_enemies() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
-    let _tower = spawn_laser_pointer(&mut world, GridPos::new(10, 10), 0);
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let _tower = spawn_building(&mut world, BuildingKind::LaserPointer, GridPos::new(10, 10), 0);
     let target = spawn_full_unit(&mut world, GridPos::new(13, 10), 1, UnitKind::Nuisance);
 
     let initial_hp = world.get::<Health>(target).unwrap().current;
@@ -1836,8 +1745,8 @@ fn test_laser_pointer_fires_at_enemies() {
 
 #[test]
 fn test_research_completes_and_applies() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
-    let sp = spawn_scratching_post(&mut world, GridPos::new(10, 10), 0);
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let sp = spawn_building(&mut world, BuildingKind::ScratchingPost, GridPos::new(10, 10), 0);
 
     // Give enough resources
     world.resource_mut::<PlayerResources>().players[0].food = 500;
@@ -1868,8 +1777,8 @@ fn test_research_completes_and_applies() {
 
 #[test]
 fn test_upgrade_gates_unit_training() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
-    let rack = spawn_server_rack(&mut world, GridPos::new(10, 10), 0);
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let rack = spawn_building(&mut world, BuildingKind::ServerRack, GridPos::new(10, 10), 0);
 
     world.resource_mut::<PlayerResources>().players[0].food = 1000;
     world.resource_mut::<PlayerResources>().players[0].gpu_cores = 500;
@@ -1877,10 +1786,7 @@ fn test_upgrade_gates_unit_training() {
     world.resource_mut::<PlayerResources>().players[0].supply_cap = 20;
 
     // Try training MechCommander without MechPrototype — should be rejected
-    world.resource_mut::<CommandQueue>().push(GameCommand::TrainUnit {
-        building: EntityId(rack.to_bits()),
-        unit_kind: UnitKind::MechCommander,
-    });
+    issue_train(&mut world, rack, UnitKind::MechCommander);
 
     run_ticks(&mut world, &mut schedule, 500);
 
@@ -1895,8 +1801,8 @@ fn test_upgrade_gates_unit_training() {
 
 #[test]
 fn test_cancel_research_refunds() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
-    let sp = spawn_scratching_post(&mut world, GridPos::new(10, 10), 0);
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let sp = spawn_building(&mut world, BuildingKind::ScratchingPost, GridPos::new(10, 10), 0);
 
     world.resource_mut::<PlayerResources>().players[0].food = 500;
     world.resource_mut::<PlayerResources>().players[0].gpu_cores = 200;
@@ -1929,25 +1835,11 @@ fn test_cancel_research_refunds() {
 
 #[test]
 fn test_new_units_get_upgrades() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
-    let sp = spawn_scratching_post(&mut world, GridPos::new(10, 10), 0);
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let sp = spawn_building(&mut world, BuildingKind::ScratchingPost, GridPos::new(10, 10), 0);
 
     // Build a CatTree (already constructed) to train Nuisance from
-    let cat_tree = {
-        let bstats = cc_core::building_stats::building_stats(BuildingKind::CatTree);
-        world
-            .spawn((
-                Position { world: WorldPos::from_grid(GridPos::new(15, 15)) },
-                Velocity::zero(),
-                GridCell { pos: GridPos::new(15, 15) },
-                Owner { player_id: 0 },
-                Building { kind: BuildingKind::CatTree },
-                Health { current: bstats.health, max: bstats.health },
-                Producer,
-                ProductionQueue::default(),
-            ))
-            .id()
-    };
+    let cat_tree = spawn_building(&mut world, BuildingKind::CatTree, GridPos::new(15, 15), 0);
 
     world.resource_mut::<PlayerResources>().players[0].food = 1000;
     world.resource_mut::<PlayerResources>().players[0].gpu_cores = 200;
@@ -1970,10 +1862,7 @@ fn test_new_units_get_upgrades() {
     );
 
     // Train a Nuisance (combat unit) — it should spawn with +25 HP
-    world.resource_mut::<CommandQueue>().push(GameCommand::TrainUnit {
-        building: EntityId(cat_tree.to_bits()),
-        unit_kind: UnitKind::Nuisance,
-    });
+    issue_train(&mut world, cat_tree, UnitKind::Nuisance);
 
     // Nuisance train_time = 60 ticks
     run_ticks(&mut world, &mut schedule, 65);
@@ -1997,8 +1886,8 @@ fn test_new_units_get_upgrades() {
 fn test_stale_gatherer_gets_released() {
     // A worker with Gathering + MoveTarget that never changes position should
     // lose its Gathering component after GATHERER_STALE_TICKS ticks.
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
-    let _box = spawn_the_box(&mut world, GridPos::new(5, 5), 0);
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let _box = spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(5, 5), 0);
     let deposit = spawn_deposit(&mut world, GridPos::new(20, 20));
 
     // Spawn worker with zero movement speed so movement_system cannot advance
@@ -2060,8 +1949,8 @@ fn test_stale_gatherer_gets_released() {
 fn test_returning_worker_deposits_near_dropoff() {
     // A worker that completes the ReturningToBase movement and ends up near a
     // drop-off building should deposit resources normally.
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
-    let _box = spawn_the_box(&mut world, GridPos::new(10, 10), 0);
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let _box = spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(10, 10), 0);
     let deposit = spawn_deposit(&mut world, GridPos::new(12, 10));
 
     let worker = spawn_combat_unit(&mut world, GridPos::new(11, 10), 0, UnitKind::Pawdler);
@@ -2088,8 +1977,8 @@ fn test_returning_worker_deposits_near_dropoff() {
 fn test_returning_worker_no_deposit_when_far_from_dropoff() {
     // A worker in ReturningToBase state that loses its MoveTarget while far from
     // any drop-off should NOT deposit resources.
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
-    let _box = spawn_the_box(&mut world, GridPos::new(5, 5), 0);
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let _box = spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(5, 5), 0);
     let deposit = spawn_deposit(&mut world, GridPos::new(20, 20));
 
     // Spawn worker far from the drop-off
@@ -2153,16 +2042,12 @@ fn test_tuning_constants_accessible() {
 
 #[test]
 fn test_builder_walks_to_build_site() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
     let builder = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
     world.resource_mut::<PlayerResources>().players[0].food = 300;
 
     let build_pos = GridPos::new(10, 5);
-    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
-        builder: EntityId(builder.to_bits()),
-        building_kind: BuildingKind::CatTree,
-        position: build_pos,
-    });
+    issue_build(&mut world, builder, BuildingKind::CatTree, build_pos);
 
     // After 1 tick: builder should have BuildOrder, no building yet
     run_ticks(&mut world, &mut schedule, 1);
@@ -2197,15 +2082,11 @@ fn test_builder_walks_to_build_site() {
 
 #[test]
 fn test_dead_builder_cannot_place_building() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
     let builder = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
     world.resource_mut::<PlayerResources>().players[0].food = 300;
 
-    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
-        builder: EntityId(builder.to_bits()),
-        building_kind: BuildingKind::CatTree,
-        position: GridPos::new(10, 5),
-    });
+    issue_build(&mut world, builder, BuildingKind::CatTree, GridPos::new(10, 5));
 
     run_ticks(&mut world, &mut schedule, 1);
 
@@ -2229,15 +2110,11 @@ fn test_dead_builder_cannot_place_building() {
 
 #[test]
 fn test_stop_cancels_build_order() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
     let builder = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
     world.resource_mut::<PlayerResources>().players[0].food = 300;
 
-    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
-        builder: EntityId(builder.to_bits()),
-        building_kind: BuildingKind::CatTree,
-        position: GridPos::new(10, 5),
-    });
+    issue_build(&mut world, builder, BuildingKind::CatTree, GridPos::new(10, 5));
 
     run_ticks(&mut world, &mut schedule, 1);
     assert!(world.get::<BuildOrder>(builder).is_some());
@@ -2265,15 +2142,11 @@ fn test_stop_cancels_build_order() {
 
 #[test]
 fn test_move_cancels_build_order() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
     let builder = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
     world.resource_mut::<PlayerResources>().players[0].food = 300;
 
-    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
-        builder: EntityId(builder.to_bits()),
-        building_kind: BuildingKind::CatTree,
-        position: GridPos::new(10, 5),
-    });
+    issue_build(&mut world, builder, BuildingKind::CatTree, GridPos::new(10, 5));
 
     run_ticks(&mut world, &mut schedule, 1);
     assert!(world.get::<BuildOrder>(builder).is_some());
@@ -2300,17 +2173,13 @@ fn test_move_cancels_build_order() {
 
 #[test]
 fn test_build_deducts_resources_immediately() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
     let builder = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
     world.resource_mut::<PlayerResources>().players[0].food = 300;
     let initial_food = world.resource::<PlayerResources>().players[0].food;
 
     // Build CatTree (costs 150 food) far away so builder hasn't arrived after 1 tick
-    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
-        builder: EntityId(builder.to_bits()),
-        building_kind: BuildingKind::CatTree,
-        position: GridPos::new(15, 5),
-    });
+    issue_build(&mut world, builder, BuildingKind::CatTree, GridPos::new(15, 5));
 
     run_ticks(&mut world, &mut schedule, 1);
 
@@ -2332,17 +2201,13 @@ fn test_build_deducts_resources_immediately() {
 
 #[test]
 fn test_stop_builder_refunds_resources() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
     let builder = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
     world.resource_mut::<PlayerResources>().players[0].food = 300;
     let initial_food = world.resource::<PlayerResources>().players[0].food;
 
     // Build CatTree far away (costs 150 food)
-    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
-        builder: EntityId(builder.to_bits()),
-        building_kind: BuildingKind::CatTree,
-        position: GridPos::new(15, 5),
-    });
+    issue_build(&mut world, builder, BuildingKind::CatTree, GridPos::new(15, 5));
 
     run_ticks(&mut world, &mut schedule, 1);
 
@@ -2365,10 +2230,10 @@ fn test_stop_builder_refunds_resources() {
 
 #[test]
 fn test_end_to_end_gather_build_train_rally() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
 
     // Setup: TheBox at (10,10), deposit at (12,10), Pawdler at (11,10)
-    spawn_the_box(&mut world, GridPos::new(10, 10), 0);
+    spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(10, 10), 0);
     let deposit = spawn_deposit(&mut world, GridPos::new(12, 10));
     let worker = spawn_combat_unit(&mut world, GridPos::new(11, 10), 0, UnitKind::Pawdler);
 
@@ -2390,11 +2255,7 @@ fn test_end_to_end_gather_build_train_rally() {
     issue_stop(&mut world, &[worker]);
     run_ticks(&mut world, &mut schedule, 1);
 
-    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
-        builder: EntityId(worker.to_bits()),
-        building_kind: BuildingKind::CatTree,
-        position: GridPos::new(14, 10),
-    });
+    issue_build(&mut world, worker, BuildingKind::CatTree, GridPos::new(14, 10));
 
     // Wait for walk (~30 ticks) + construction (150 ticks) + buffer
     run_ticks(&mut world, &mut schedule, 200);
@@ -2419,10 +2280,7 @@ fn test_end_to_end_gather_build_train_rally() {
     world.resource_mut::<PlayerResources>().players[0].food += 100;
 
     // Train a Nuisance
-    world.resource_mut::<CommandQueue>().push(GameCommand::TrainUnit {
-        building: EntityId(cat_tree.to_bits()),
-        unit_kind: UnitKind::Nuisance,
-    });
+    issue_train(&mut world, cat_tree, UnitKind::Nuisance);
 
     // Wait for training (60 ticks) + movement to rally
     run_ticks(&mut world, &mut schedule, 80);
@@ -2437,22 +2295,10 @@ fn test_end_to_end_gather_build_train_rally() {
 
 #[test]
 fn test_production_queue_multiple_units() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
 
     // Spawn a pre-built CatTree
-    let bstats = cc_core::building_stats::building_stats(BuildingKind::CatTree);
-    let cat_tree = world
-        .spawn((
-            Position { world: WorldPos::from_grid(GridPos::new(10, 10)) },
-            Velocity::zero(),
-            GridCell { pos: GridPos::new(10, 10) },
-            Owner { player_id: 0 },
-            Building { kind: BuildingKind::CatTree },
-            Health { current: bstats.health, max: bstats.health },
-            Producer,
-            ProductionQueue::default(),
-        ))
-        .id();
+    let cat_tree = spawn_building(&mut world, BuildingKind::CatTree, GridPos::new(10, 10), 0);
 
     world.resource_mut::<PlayerResources>().players[0].food = 1000;
     world.resource_mut::<PlayerResources>().players[0].supply = 0;
@@ -2460,10 +2306,7 @@ fn test_production_queue_multiple_units() {
 
     // Queue 3 Nuisances
     for _ in 0..3 {
-        world.resource_mut::<CommandQueue>().push(GameCommand::TrainUnit {
-            building: EntityId(cat_tree.to_bits()),
-            unit_kind: UnitKind::Nuisance,
-        });
+        issue_train(&mut world, cat_tree, UnitKind::Nuisance);
     }
 
     run_ticks(&mut world, &mut schedule, 1);
@@ -2485,7 +2328,7 @@ fn test_production_queue_multiple_units() {
 
 #[test]
 fn test_duplicate_build_at_same_location() {
-    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
 
     let builder1 = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
     let builder2 = spawn_combat_unit(&mut world, GridPos::new(5, 6), 0, UnitKind::Pawdler);
@@ -2494,16 +2337,8 @@ fn test_duplicate_build_at_same_location() {
     let build_pos = GridPos::new(8, 5);
 
     // Issue two build commands at the same position
-    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
-        builder: EntityId(builder1.to_bits()),
-        building_kind: BuildingKind::CatTree,
-        position: build_pos,
-    });
-    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
-        builder: EntityId(builder2.to_bits()),
-        building_kind: BuildingKind::CatTree,
-        position: build_pos,
-    });
+    issue_build(&mut world, builder1, BuildingKind::CatTree, build_pos);
+    issue_build(&mut world, builder2, BuildingKind::CatTree, build_pos);
 
     // Wait for both to arrive and build
     run_ticks(&mut world, &mut schedule, 60);
