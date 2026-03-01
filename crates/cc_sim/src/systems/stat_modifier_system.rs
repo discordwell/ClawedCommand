@@ -20,9 +20,11 @@ pub fn stat_modifier_system(
 
             match instance.effect {
                 StatusEffectId::Zoomies => {
-                    // +100% speed
+                    // +100% speed, invulnerable, can't attack
                     modifiers.speed_multiplier =
                         modifiers.speed_multiplier + FIXED_ONE;
+                    modifiers.invulnerable = true;
+                    modifiers.cannot_attack = true;
                 }
                 StatusEffectId::LoafModeActive => {
                     // Immobile + 50% damage reduction
@@ -97,6 +99,11 @@ pub fn stat_modifier_system(
                 StatusEffectId::Overridden => {
                     // Silenced while overridden
                     modifiers.silenced = true;
+                }
+                StatusEffectId::SpiteCarryBuff => {
+                    // +50% gather speed
+                    modifiers.gather_speed_multiplier = modifiers.gather_speed_multiplier
+                        * Fixed::from_bits((1 << 16) + (1 << 16) * 50 / 100); // 1.5
                 }
                 StatusEffectId::Tagged | StatusEffectId::CcImmune => {
                     // These don't affect stats

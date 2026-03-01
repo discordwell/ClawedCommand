@@ -3,20 +3,23 @@ use std::collections::VecDeque;
 
 use crate::pathfinding;
 use crate::resources::{CommandQueue, ControlGroups, MapResource, PlayerResources};
-use cc_core::abilities::{ability_def, AbilityActivation};
+use cc_core::abilities::{ability_def, AbilityActivation, AbilityId};
 use cc_core::building_stats::building_stats;
 use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::{
-    AbilitySlots, AttackMoveTarget, AttackTarget, Building, ChasingTarget,
+    AbilitySlots, AttackMoveTarget, AttackTarget, Aura, AuraType, Building, ChasingTarget,
     Gathering, GatherState, Health, HoldPosition, MoveTarget, Owner, Path, Position, Producer,
     ProductionQueue, RallyPoint, ResearchQueue, Researcher, ResourceDeposit, Selected,
     StatModifiers, UnderConstruction, UnitKind, UpgradeType,
 };
 use cc_core::coords::WorldPos;
-use cc_core::math::{FIXED_ONE, fixed_from_i32};
+use cc_core::math::{Fixed, FIXED_ONE, fixed_from_i32};
+use cc_core::status_effects::StatusEffectId;
 use cc_core::terrain::FactionId;
 use cc_core::unit_stats::base_stats;
 use cc_core::upgrade_stats::upgrade_stats;
+
+use crate::systems::damage::{AoeCcCommand, RevulsionAoeCommand};
 
 /// Process all queued commands for this tick.
 pub fn process_commands(
@@ -450,6 +453,14 @@ pub fn process_commands(
                 target: _ability_target,
             } => {
                 let entity = Entity::from_bits(unit_id.0);
+
+                // Get owner player_id for deferred commands
+                let owner_player_id = query
+                    .get(entity)
+                    .ok()
+                    .and_then(|(_, _, o, _, _)| o.map(|o| o.player_id))
+                    .unwrap_or(0);
+
                 if let Ok((mut ability_slots, stat_mods)) = ability_query.get_mut(entity) {
                     let slot_idx = slot as usize;
                     if slot_idx >= 3 {
@@ -458,6 +469,7 @@ pub fn process_commands(
 
                     let ability_state = &mut ability_slots.slots[slot_idx];
                     let def = ability_def(ability_state.id);
+                    let ability_id = ability_state.id;
 
                     // Check silenced
                     if stat_mods.is_some_and(|m| m.silenced) {
@@ -476,17 +488,13 @@ pub fn process_commands(
 
                     // Check GPU cost
                     if def.gpu_cost > 0 {
-                        // Find owner to deduct GPU
-                        if let Ok((_, _, owner_opt, _, _)) = query.get(entity) {
-                            let player_id = owner_opt.map(|o| o.player_id).unwrap_or(0) as usize;
-                            if let Some(pres) = player_resources.players.get_mut(player_id) {
-                                if pres.gpu_cores < def.gpu_cost {
-                                    continue;
-                                }
-                                pres.gpu_cores -= def.gpu_cost;
-                            } else {
+                        if let Some(pres) = player_resources.players.get_mut(owner_player_id as usize) {
+                            if pres.gpu_cores < def.gpu_cost {
                                 continue;
                             }
+                            pres.gpu_cores -= def.gpu_cost;
+                        } else {
+                            continue;
                         }
                     }
 
@@ -499,6 +507,51 @@ pub fn process_commands(
                         AbilityActivation::Toggle => {
                             ability_state.active = !ability_state.active;
                             ability_state.cooldown_remaining = effective_cooldown;
+
+                            let is_now_active = ability_state.active;
+
+                            // Mutual exclusivity: HarmonicResonance ↔ Lullaby
+                            if ability_id == AbilityId::HarmonicResonance && is_now_active {
+                                for other_slot in &mut ability_slots.slots {
+                                    if other_slot.id == AbilityId::Lullaby {
+                                        other_slot.active = false;
+                                    }
+                                }
+                            }
+                            if ability_id == AbilityId::Lullaby && is_now_active {
+                                for other_slot in &mut ability_slots.slots {
+                                    if other_slot.id == AbilityId::HarmonicResonance {
+                                        other_slot.active = false;
+                                    }
+                                }
+                            }
+
+                            // Aura component management for toggle auras
+                            match ability_id {
+                                AbilityId::HarmonicResonance => {
+                                    commands.entity(entity).insert(Aura {
+                                        aura_type: AuraType::HarmonicResonance,
+                                        radius: def.range,
+                                        active: is_now_active,
+                                    });
+                                    // If activating, also deactivate Lullaby aura
+                                    if is_now_active {
+                                        commands.entity(entity).insert(Aura {
+                                            aura_type: AuraType::HarmonicResonance,
+                                            radius: def.range,
+                                            active: true,
+                                        });
+                                    }
+                                }
+                                AbilityId::Lullaby => {
+                                    commands.entity(entity).insert(Aura {
+                                        aura_type: AuraType::Lullaby,
+                                        radius: def.range,
+                                        active: is_now_active,
+                                    });
+                                }
+                                _ => {}
+                            }
                         }
                         AbilityActivation::Activated => {
                             ability_state.active = true;
@@ -506,6 +559,32 @@ pub fn process_commands(
                             ability_state.duration_remaining = def.duration_ticks;
                             if def.max_charges > 0 {
                                 ability_state.charges -= 1;
+                            }
+
+                            // Instant effects on activation
+                            match ability_id {
+                                AbilityId::DissonantScreech => {
+                                    // AoE CC: apply Disoriented to enemies in range
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Disoriented,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::Revulsion => {
+                                    // AoE pushback: push enemies away
+                                    commands.queue(RevulsionAoeCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        push_distance: Fixed::from_num(2),
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                _ => {}
                             }
                         }
                         AbilityActivation::Passive => {

@@ -23,8 +23,8 @@ impl Plugin for CampaignPlugin {
                         .after(crate::systems::combat_system::combat_system)
                         .before(cleanup_system::cleanup_system),
                     state::mission_objective_system
-                        .after(cleanup_system::cleanup_system)
-                        .before(crate::systems::victory_system::victory_system),
+                        .after(triggers::trigger_check_system)
+                        .before(cleanup_system::cleanup_system),
                 ),
             );
     }

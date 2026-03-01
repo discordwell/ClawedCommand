@@ -1,6 +1,14 @@
 //! Composable behavior primitives for AI agents.
 //! Each function takes a ScriptContext and produces GameCommands.
 
+pub mod economy;
+pub mod strategic;
+pub mod tactical;
+
+pub use economy::*;
+pub use strategic::*;
+pub use tactical::*;
+
 use cc_core::commands::EntityId;
 use cc_core::components::UnitKind;
 use cc_core::coords::GridPos;

@@ -477,7 +477,9 @@ fn run_ai_fsm(
             }
 
             if builder_used.is_none() {
-                maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue);
+                if let Some(b) = maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue) {
+                    builder_used = Some(b);
+                }
             }
 
             // Train army from CatTree
@@ -592,7 +594,9 @@ fn run_ai_fsm(
             }
 
             if builder_used.is_none() {
-                maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue);
+                if let Some(b) = maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue) {
+                    builder_used = Some(b);
+                }
             }
 
             // Continue training workers (cap at 6 to reserve supply for army)
@@ -657,7 +661,9 @@ fn run_ai_fsm(
                 }
             }
 
-            maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue);
+            if let Some(b) = maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue) {
+                builder_used = Some(b);
+            }
 
             // Check if base is under attack (enemy units near our buildings)
             let base_threatened = is_base_threatened(ai_player, units, buildings);
@@ -699,7 +705,9 @@ fn run_ai_fsm(
                 }
             }
 
-            maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue);
+            if let Some(b) = maybe_build_supply(pres, &idle_workers, &all_workers, box_pos, building_count, cmd_queue) {
+                builder_used = Some(b);
+            }
 
             let base_threatened = is_base_threatened(ai_player, units, buildings);
             if !base_threatened {
@@ -796,6 +804,7 @@ fn find_nearest_deposit(
 }
 
 /// Try to build a LitterBox for more supply when nearing cap.
+/// Returns the builder entity if a build command was issued.
 fn maybe_build_supply(
     pres: &crate::resources::PlayerResourceState,
     idle_workers: &[Entity],
@@ -803,7 +812,7 @@ fn maybe_build_supply(
     box_pos: Option<GridPos>,
     building_count: u32,
     cmd_queue: &mut CommandQueue,
-) {
+) -> Option<Entity> {
     if pres.supply + 2 >= pres.supply_cap && pres.food >= 75 {
         if let Some(builder) = pick_builder(idle_workers, all_workers) {
             let build_pos = find_build_position(box_pos, building_count);
@@ -812,8 +821,10 @@ fn maybe_build_supply(
                 building_kind: BuildingKind::LitterBox,
                 position: build_pos,
             });
+            return Some(builder);
         }
     }
+    None
 }
 
 /// Find a position near the base to place a building.

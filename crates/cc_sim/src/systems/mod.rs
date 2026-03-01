@@ -1,3 +1,4 @@
+pub mod ability_effect_system;
 pub mod ability_system;
 pub mod aura_system;
 pub mod cleanup_system;
@@ -47,6 +48,7 @@ impl Plugin for SimSystemsPlugin {
                     tick_system::tick_system,
                     command_system::process_commands,
                     ability_system::ability_cooldown_system,
+                    ability_effect_system::ability_effect_system,
                     status_effect_system::status_effect_system,
                     aura_system::aura_system,
                     stat_modifier_system::stat_modifier_system,

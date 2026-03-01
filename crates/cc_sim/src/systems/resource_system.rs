@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 
 use cc_core::components::{
     Building, BuildingKind, Dead, GatherState, Gathering, MoveTarget, Owner, Path, Position,
-    ResourceDeposit,
+    ResourceDeposit, StatModifiers,
 };
 use cc_core::coords::WorldPos;
 use cc_core::math::Fixed;
@@ -24,6 +24,7 @@ pub fn gathering_system(
             &Owner,
             &mut Gathering,
             Option<&MoveTarget>,
+            Option<&StatModifiers>,
         ),
         Without<Dead>,
     >,
@@ -33,7 +34,7 @@ pub fn gathering_system(
 ) {
     let dropoff_proximity_sq = Fixed::from_num(DROPOFF_PROXIMITY_SQ);
 
-    for (entity, pos, owner, mut gathering, move_target) in gatherers.iter_mut() {
+    for (entity, pos, owner, mut gathering, move_target, stat_mods) in gatherers.iter_mut() {
         // --- Staleness detection (Bug 1 fix) ---
         // For movement states (MovingToDeposit, ReturningToBase) with an active
         // MoveTarget, check whether the worker has made positional progress.
@@ -74,9 +75,18 @@ pub fn gathering_system(
                         let dist = pos.world.distance_squared(deposit_pos.world);
                         let threshold = Fixed::from_num(2); // within ~1.4 tiles
                         if dist <= threshold {
-                            // Start harvesting
+                            // Start harvesting — apply gather_speed_multiplier
+                            let speed_mult = stat_mods
+                                .map(|m| m.gather_speed_multiplier)
+                                .unwrap_or(Fixed::ONE);
+                            let effective_ticks = if speed_mult > Fixed::ZERO {
+                                let raw = Fixed::from_num(HARVEST_TICKS as i32) / speed_mult;
+                                (raw.ceil().to_num::<u32>()).max(1)
+                            } else {
+                                HARVEST_TICKS
+                            };
                             gathering.state = GatherState::Harvesting {
-                                ticks_remaining: HARVEST_TICKS,
+                                ticks_remaining: effective_ticks,
                             };
                             gathering.carried_type = deposit.resource_type;
                         } else {

@@ -31,6 +31,8 @@ pub enum StatusEffectId {
     Overridden,
     /// Chonk passive — reviving (CC immune during).
     NineLivesReviving,
+    /// Pawdler SpiteCarry — gather speed boost.
+    SpiteCarryBuff,
     /// Post-CC immunity window.
     CcImmune,
 }
@@ -113,6 +115,7 @@ mod tests {
         assert!(!is_cc(StatusEffectId::Annoyed));
         assert!(!is_cc(StatusEffectId::Zoomies));
         assert!(!is_cc(StatusEffectId::Tagged));
+        assert!(!is_cc(StatusEffectId::SpiteCarryBuff));
     }
 
     #[test]

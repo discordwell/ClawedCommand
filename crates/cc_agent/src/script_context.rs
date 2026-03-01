@@ -255,7 +255,7 @@ impl<'a> ScriptContext<'a> {
     // -----------------------------------------------------------------------
 
     /// Squared distance between two units (by EntityId).
-    pub fn distance_between(&mut self, a_id: EntityId, b_id: EntityId) -> Option<Fixed> {
+    pub fn distance_squared_between(&mut self, a_id: EntityId, b_id: EntityId) -> Option<Fixed> {
         if !self.budget.spend(COST_SIMPLE) {
             return None;
         }
@@ -265,7 +265,7 @@ impl<'a> ScriptContext<'a> {
     }
 
     /// Squared distance from a unit to its closest visible enemy.
-    pub fn distance_to_nearest_enemy(&mut self, unit_id: EntityId) -> Option<Fixed> {
+    pub fn distance_squared_to_nearest_enemy(&mut self, unit_id: EntityId) -> Option<Fixed> {
         if !self.budget.spend(COST_SPATIAL) {
             return None;
         }
@@ -1147,7 +1147,7 @@ mod tests {
         let map = GameMap::new(64, 64);
         let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
 
-        let dist = ctx.distance_between(EntityId(1), EntityId(10));
+        let dist = ctx.distance_squared_between(EntityId(1), EntityId(10));
         assert!(dist.is_some());
         // 3^2 + 4^2 = 25 (in world coords)
         let d: f64 = dist.unwrap().to_num();

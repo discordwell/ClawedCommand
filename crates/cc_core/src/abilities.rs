@@ -221,6 +221,16 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
     }
 }
 
+/// Catnapper DreamSiege damage multiplier — ramps the longer it attacks the same target.
+pub fn dream_siege_multiplier(ticks_on_target: u32) -> Fixed {
+    match ticks_on_target {
+        0..=49 => Fixed::ONE,            // 1x for first 5s
+        50..=149 => Fixed::from_num(2),  // 2x at 5-15s
+        150..=299 => Fixed::from_num(4), // 4x at 15-30s
+        _ => Fixed::from_num(8),         // 8x at 30s+
+    }
+}
+
 /// Return the 3 ability IDs for a given unit kind.
 pub fn unit_abilities(kind: UnitKind) -> [AbilityId; 3] {
     match kind {
@@ -372,5 +382,17 @@ mod tests {
             assert_eq!(def.activation, AbilityActivation::Activated, "{id:?} should be activated");
             assert!(def.cooldown_ticks > 0, "{id:?} activated should have cooldown");
         }
+    }
+
+    #[test]
+    fn dream_siege_multiplier_tiers() {
+        assert_eq!(dream_siege_multiplier(0), Fixed::ONE);
+        assert_eq!(dream_siege_multiplier(49), Fixed::ONE);
+        assert_eq!(dream_siege_multiplier(50), Fixed::from_num(2));
+        assert_eq!(dream_siege_multiplier(149), Fixed::from_num(2));
+        assert_eq!(dream_siege_multiplier(150), Fixed::from_num(4));
+        assert_eq!(dream_siege_multiplier(299), Fixed::from_num(4));
+        assert_eq!(dream_siege_multiplier(300), Fixed::from_num(8));
+        assert_eq!(dream_siege_multiplier(1000), Fixed::from_num(8));
     }
 }

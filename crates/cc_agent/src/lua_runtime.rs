@@ -164,32 +164,32 @@ pub fn execute_script_with_context(
         // Extended unit query bindings
         // -------------------------------------------------------------------
 
-        // ctx:distance_between(a_id, b_id)
+        // ctx:distance_squared_between(a_id, b_id)
         {
             let cell = &ctx_cell;
             let f = scope
                 .create_function(|_, (_self, a_id, b_id): (LuaValue, u64, u64)| {
                     let mut ctx = cell.borrow_mut();
-                    match ctx.distance_between(EntityId(a_id), EntityId(b_id)) {
+                    match ctx.distance_squared_between(EntityId(a_id), EntityId(b_id)) {
                         Some(d) => Ok(LuaValue::Number(fixed_to_f64(d))),
                         None => Ok(LuaValue::Nil),
                     }
                 })?;
-            ctx_table.set("distance_between", f)?;
+            ctx_table.set("distance_squared_between", f)?;
         }
 
-        // ctx:distance_to_nearest_enemy(unit_id)
+        // ctx:distance_squared_to_nearest_enemy(unit_id)
         {
             let cell = &ctx_cell;
             let f = scope
                 .create_function(|_, (_self, unit_id): (LuaValue, u64)| {
                     let mut ctx = cell.borrow_mut();
-                    match ctx.distance_to_nearest_enemy(EntityId(unit_id)) {
+                    match ctx.distance_squared_to_nearest_enemy(EntityId(unit_id)) {
                         Some(d) => Ok(LuaValue::Number(fixed_to_f64(d))),
                         None => Ok(LuaValue::Nil),
                     }
                 })?;
-            ctx_table.set("distance_to_nearest_enemy", f)?;
+            ctx_table.set("distance_squared_to_nearest_enemy", f)?;
         }
 
         // ctx:idle_units(kind?)

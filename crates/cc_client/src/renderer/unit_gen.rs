@@ -94,9 +94,13 @@ pub fn generate_unit_sprites(
 
     for kind in ALL_KINDS {
         let asset_path = sprite_file_path(kind);
-        let disk_path = std::path::Path::new("assets").join(&asset_path);
 
-        if disk_path.exists() {
+        #[cfg(not(target_arch = "wasm32"))]
+        let use_disk = std::path::Path::new("assets").join(&asset_path).exists();
+        #[cfg(target_arch = "wasm32")]
+        let use_disk = false;
+
+        if use_disk {
             handles.push(asset_server.load(asset_path));
             any_art_loaded = true;
         } else {

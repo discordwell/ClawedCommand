@@ -103,8 +103,11 @@ impl Plugin for RenderPlugin {
                     fog::update_fog_visibility,
                     fog::render_fog_overlays.after(fog::update_fog_visibility),
                     fog::toggle_fog_hotkey,
+                    #[cfg(not(target_arch = "wasm32"))]
                     screenshot::screenshot_hotkey,
+                    #[cfg(not(target_arch = "wasm32"))]
                     screenshot::screenshot_auto_toggle,
+                    #[cfg(not(target_arch = "wasm32"))]
                     screenshot::screenshot_auto_capture,
                 ),
             );

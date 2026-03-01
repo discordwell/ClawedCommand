@@ -3,9 +3,10 @@ use bevy::prelude::*;
 use cc_core::abilities::unit_abilities;
 use cc_core::building_stats::building_stats;
 use cc_core::components::{
-    AbilitySlots, AttackStats, AttackType, AttackTypeMarker, Building, BuildingKind, GridCell,
-    Health, MoveTarget, MovementSpeed, Owner, Position, Producer, ProductionQueue, RallyPoint,
-    ResearchQueue, Researcher, StatModifiers, UnderConstruction, UnitType, Velocity,
+    AbilitySlots, AttackStats, AttackType, AttackTypeMarker, Building, BuildingKind,
+    DreamSiegeTimer, GridCell, Health, MoveTarget, MovementSpeed, Owner, Position, Producer,
+    ProductionQueue, RallyPoint, ResearchQueue, Researcher, StatModifiers, UnderConstruction,
+    UnitKind, UnitType, Velocity,
 };
 use cc_core::coords::WorldPos;
 use cc_core::math::Fixed;
@@ -111,7 +112,7 @@ pub fn production_system(
                         );
                     }
 
-                    let new_entity = commands
+                    let mut entity_cmds = commands
                         .spawn((
                             Position { world: spawn_world },
                             Velocity::zero(),
@@ -129,8 +130,14 @@ pub fn production_system(
                             AbilitySlots::from_abilities(unit_abilities(kind)),
                             StatusEffects::default(),
                             StatModifiers::default(),
-                        ))
-                        .id();
+                        ));
+
+                    // DreamSiegeTimer for Catnappers
+                    if kind == UnitKind::Catnapper {
+                        entity_cmds.insert(DreamSiegeTimer::default());
+                    }
+
+                    let new_entity = entity_cmds.id();
 
                     // Auto-move to rally point if set
                     if let Some(rally) = rally {

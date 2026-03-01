@@ -23,3 +23,4 @@ path = "src/bin/wet_test.rs"
 required-features = ["harness"]
 
 [dev-dependencies]
+ron = { workspace = true }

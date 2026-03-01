@@ -2,12 +2,15 @@ use cc_core::commands::EntityId;
 use cc_core::components::{AttackType, UnitKind};
 use cc_core::coords::{GridPos, WorldPos};
 use cc_core::math::fixed_from_i32;
+use cc_core::unit_stats::base_stats;
 use cc_sim::resources::PlayerResourceState;
 
 use crate::snapshot::{GameStateSnapshot, UnitSnapshot};
 
 /// Full-params unit constructor for tests.
+/// Uses the unit's canonical attack_type from base_stats.
 pub fn make_unit(id: u64, kind: UnitKind, x: i32, y: i32, owner: u8) -> UnitSnapshot {
+    let stats = base_stats(kind);
     UnitSnapshot {
         id: EntityId(id),
         kind,
@@ -20,7 +23,7 @@ pub fn make_unit(id: u64, kind: UnitKind, x: i32, y: i32, owner: u8) -> UnitSnap
         attack_damage: fixed_from_i32(10),
         attack_range: fixed_from_i32(5),
         attack_speed: 10,
-        attack_type: AttackType::Ranged,
+        attack_type: stats.attack_type,
         is_moving: false,
         is_attacking: false,
         is_idle: true,

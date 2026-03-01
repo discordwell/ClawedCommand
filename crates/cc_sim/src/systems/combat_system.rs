@@ -3,15 +3,17 @@ use std::collections::VecDeque;
 
 use crate::pathfinding;
 use crate::resources::MapResource;
-use crate::systems::damage::ApplyDamageCommand;
+use crate::systems::damage::{ApplyDamageCommand, ApplyStatusCommand};
+use cc_core::abilities::dream_siege_multiplier;
 use cc_core::commands::EntityId;
 use cc_core::components::{
     AttackStats, AttackTarget, AttackType, AttackTypeMarker, Building, ChasingTarget, Dead,
-    HoldPosition, MoveTarget, Owner, Path, Position, Projectile, ProjectileTarget, StatModifiers,
-    UnitType, Velocity,
+    DreamSiegeTimer, HoldPosition, MoveTarget, Owner, Path, Position, Projectile, ProjectileTarget,
+    StatModifiers, UnitKind, UnitType, Velocity,
 };
 use cc_core::coords::WorldPos;
 use cc_core::math::{Fixed, FIXED_ONE};
+use cc_core::status_effects::StatusEffectId;
 use cc_core::terrain::FactionId;
 use cc_core::tuning::PROJECTILE_SPEED;
 
@@ -29,15 +31,22 @@ pub fn combat_system(
             Option<&Owner>,
             Option<&HoldPosition>,
             Option<&StatModifiers>,
+            &UnitType,
+            Option<&mut DreamSiegeTimer>,
         ),
-        (With<UnitType>, Without<Dead>),
+        Without<Dead>,
     >,
     targets: Query<(Entity, &Position, Option<&StatModifiers>), (Or<(With<UnitType>, With<Building>)>, Without<Dead>)>,
 ) {
-    for (entity, pos, mut stats, atk_type, attack_target, owner, hold, attacker_mods) in attackers.iter_mut() {
+    for (entity, pos, mut stats, atk_type, attack_target, owner, hold, attacker_mods, unit_type, mut dream_siege_timer) in attackers.iter_mut() {
         // Tick cooldown
         if stats.cooldown_remaining > 0 {
             stats.cooldown_remaining -= 1;
+        }
+
+        // Cannot attack (e.g. Zoomies)
+        if attacker_mods.is_some_and(|m| m.cannot_attack) {
+            continue;
         }
 
         let Some(target) = attack_target else {
@@ -92,6 +101,20 @@ pub fn combat_system(
                     final_damage = final_damage * mods.damage_multiplier;
                 }
 
+                // DreamSiege passive (Catnapper): ramp damage on same target
+                if unit_type.kind == UnitKind::Catnapper {
+                    if let Some(ref mut siege_timer) = dream_siege_timer {
+                        if siege_timer.current_target == Some(EntityId(target_entity.to_bits())) {
+                            siege_timer.ticks_on_target += 1;
+                        } else {
+                            siege_timer.current_target = Some(EntityId(target_entity.to_bits()));
+                            siege_timer.ticks_on_target = 0;
+                        }
+                        let siege_mult = dream_siege_multiplier(siege_timer.ticks_on_target);
+                        final_damage = final_damage * siege_mult;
+                    }
+                }
+
                 // Apply target's damage_reduction
                 if let Some(mods) = target_mods {
                     final_damage = final_damage * mods.damage_reduction;
@@ -117,6 +140,30 @@ pub fn combat_system(
                             },
                         ));
                     }
+                }
+
+                // AnnoyanceStacks passive (Nuisance): each attack applies Annoyed
+                if unit_type.kind == UnitKind::Nuisance {
+                    commands.queue(ApplyStatusCommand {
+                        target: target_entity,
+                        effect: StatusEffectId::Annoyed,
+                        duration: 80, // 8s
+                        stacks: 1,
+                        max_stacks: 5,
+                        source: EntityId(entity.to_bits()),
+                    });
+                }
+
+                // CorrosiveSpit passive (Hisser): each attack applies Corroded
+                if unit_type.kind == UnitKind::Hisser {
+                    commands.queue(ApplyStatusCommand {
+                        target: target_entity,
+                        effect: StatusEffectId::Corroded,
+                        duration: 80, // 8s
+                        stacks: 1,
+                        max_stacks: 6,
+                        source: EntityId(entity.to_bits()),
+                    });
                 }
             }
         } else if hold.is_none() {

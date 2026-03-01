@@ -427,6 +427,7 @@ pub struct StatModifiers {
     pub invulnerable: bool,
     pub immobilized: bool,
     pub silenced: bool,
+    pub cannot_attack: bool,
 }
 
 impl Default for StatModifiers {
@@ -441,6 +442,7 @@ impl Default for StatModifiers {
             invulnerable: false,
             immobilized: false,
             silenced: false,
+            cannot_attack: false,
         }
     }
 }
@@ -478,6 +480,23 @@ pub struct Stealth {
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
 pub struct VisibleThroughFog {
     pub remaining_ticks: u32,
+}
+
+/// Tracks Catnapper's DreamSiege passive — damage ramps the longer it attacks the same target.
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct DreamSiegeTimer {
+    pub ticks_on_target: u32,
+    pub current_target: Option<EntityId>,
+}
+
+impl Default for DreamSiegeTimer {
+    fn default() -> Self {
+        Self {
+            ticks_on_target: 0,
+            current_target: None,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -609,5 +628,18 @@ mod tests {
             assert_eq!(parsed, at);
         }
         assert!("Bogus".parse::<AttackType>().is_err());
+    }
+
+    #[test]
+    fn dream_siege_timer_defaults() {
+        let timer = DreamSiegeTimer::default();
+        assert_eq!(timer.ticks_on_target, 0);
+        assert!(timer.current_target.is_none());
+    }
+
+    #[test]
+    fn stat_modifiers_cannot_attack_default_false() {
+        let mods = StatModifiers::default();
+        assert!(!mods.cannot_attack);
     }
 }

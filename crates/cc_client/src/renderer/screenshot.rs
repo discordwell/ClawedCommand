@@ -1,7 +1,9 @@
 use bevy::prelude::*;
+#[cfg(not(target_arch = "wasm32"))]
 use bevy::render::view::screenshot::{save_to_disk, Screenshot};
 use std::path::PathBuf;
 
+#[cfg(not(target_arch = "wasm32"))]
 use cc_sim::resources::SimClock;
 
 /// Configuration resource for the screenshot capture pipeline.
@@ -32,6 +34,7 @@ impl Default for ScreenshotConfig {
 }
 
 /// F12: Take a screenshot immediately.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn screenshot_hotkey(
     mut commands: Commands,
     keyboard: Res<ButtonInput<KeyCode>>,
@@ -44,6 +47,7 @@ pub fn screenshot_hotkey(
 }
 
 /// F11: Cycle auto-capture interval (off -> 10s -> 30s -> off).
+#[cfg(not(target_arch = "wasm32"))]
 pub fn screenshot_auto_toggle(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut config: ResMut<ScreenshotConfig>,
@@ -68,6 +72,7 @@ pub fn screenshot_auto_toggle(
 }
 
 /// Timer-based auto-capture system.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn screenshot_auto_capture(
     mut commands: Commands,
     time: Res<Time>,
@@ -86,6 +91,7 @@ pub fn screenshot_auto_capture(
 }
 
 /// Capture a screenshot to disk with a JSON sidecar.
+#[cfg(not(target_arch = "wasm32"))]
 fn capture_screenshot(
     commands: &mut Commands,
     config: &mut ScreenshotConfig,
@@ -120,6 +126,7 @@ fn capture_screenshot(
 }
 
 /// Generate a timestamp string YYYYMMDD_HHMMSS.
+#[cfg(not(target_arch = "wasm32"))]
 fn chrono_timestamp() -> String {
     use std::time::SystemTime;
     let now = SystemTime::now()
@@ -166,6 +173,7 @@ fn chrono_timestamp() -> String {
     format!("{y:04}{m:02}{d:02}_{hours:02}{minutes:02}{seconds:02}")
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn is_leap(y: i32) -> bool {
     (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
 }
