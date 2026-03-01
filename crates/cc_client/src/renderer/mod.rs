@@ -1,3 +1,5 @@
+pub mod anim_assets;
+pub mod animation;
 pub mod autotile;
 pub mod box_select;
 pub mod buildings;
@@ -6,6 +8,7 @@ pub mod death;
 pub mod fog;
 pub mod health_bars;
 pub mod minimap;
+pub mod projectile_assets;
 pub mod projectiles;
 pub mod props;
 pub mod rally_flag;
@@ -18,6 +21,7 @@ pub mod tile_gen;
 pub mod tilemap;
 pub mod unit_gen;
 pub mod units;
+pub mod vfx;
 pub mod water;
 pub mod zoom_lod;
 
@@ -37,6 +41,8 @@ impl Plugin for RenderPlugin {
                 (
                     unit_gen::generate_unit_sprites,
                     resource_nodes::generate_resource_sprites,
+                    anim_assets::load_anim_assets,
+                    projectile_assets::load_projectile_assets,
                 ),
             )
             // Phase 1: Generate terrain tiles at Startup (no map dependency)
@@ -120,6 +126,27 @@ impl Plugin for RenderPlugin {
                     screenshot::screenshot_auto_toggle,
                     #[cfg(not(target_arch = "wasm32"))]
                     screenshot::screenshot_auto_capture,
+                ),
+            )
+            // Animation systems
+            .add_systems(
+                Update,
+                (
+                    animation::derive_anim_state,
+                    animation::advance_animation
+                        .after(animation::derive_anim_state),
+                ),
+            )
+            // VFX particle systems
+            .add_systems(
+                Update,
+                (
+                    vfx::update_particles,
+                    vfx::update_emitters,
+                    vfx::spawn_trail_particles
+                        .run_if(zoom_lod::is_tactical),
+                    vfx::spawn_impact_vfx
+                        .run_if(zoom_lod::is_tactical),
                 ),
             );
     }

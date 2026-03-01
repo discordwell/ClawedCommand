@@ -9,6 +9,7 @@ use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
 use cc_core::unit_stats::base_stats;
 use cc_sim::resources::{MapResource, PlayerResources, SpawnPositions};
 
+use crate::renderer::animation::{AnimIndices, AnimState, AnimTimer, PrevAnimState};
 use crate::renderer::resource_nodes::ResourceNodeSprites;
 use crate::renderer::unit_gen::{UnitSprites, kind_index};
 use crate::renderer::zoom_lod::{self, ZoomTier};
@@ -234,6 +235,12 @@ pub fn setup_game(
                     Transform::from_xyz(screen.x, -screen.y + elevation_offset, depth_z(world))
                         .with_scale(Vec3::splat(scale)),
                 )).id();
+                commands.entity(unit_entity).insert((
+                    AnimState::default(),
+                    PrevAnimState::default(),
+                    AnimIndices::default(),
+                    AnimTimer::default(),
+                ));
 
                 zoom_lod::spawn_strategic_icon(
                     &mut commands, &mut meshes, &mut materials,

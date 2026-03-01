@@ -321,6 +321,7 @@ fn make_arena_sim(
     }
     world.insert_resource(player_res);
     world.insert_resource(MapResource { map });
+    world.init_resource::<bevy::prelude::Messages<projectile_system::ProjectileHit>>();
 
     let spawn_positions: Vec<(u8, GridPos)> = map_def
         .spawn_points

@@ -54,6 +54,7 @@ impl HeadlessSim {
         }
         world.insert_resource(player_res);
         world.insert_resource(MapResource { map });
+        world.init_resource::<bevy::prelude::Messages<cc_sim::systems::projectile_system::ProjectileHit>>();
 
         let mut schedule = Schedule::new(FixedUpdate);
         schedule.add_systems(

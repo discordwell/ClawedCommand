@@ -560,6 +560,25 @@ pub struct ChasingTarget {
     pub target: EntityId,
 }
 
+/// Visual style of a projectile, derived from the attacker's unit type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub enum ProjectileKind {
+    /// Hisser's acid spit (green)
+    Spit,
+    /// Tower/laser-based attacks (red)
+    LaserBeam,
+    /// Yowler's sonic attack (purple)
+    SonicWave,
+    /// MechCommander's cannon (cyan)
+    MechShot,
+    /// Catnapper's siege projectile (orange)
+    Explosive,
+    /// Default fallback (yellow)
+    #[default]
+    Generic,
+}
+
 /// A projectile in flight.
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
@@ -573,6 +592,20 @@ pub struct Projectile {
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
 pub struct ProjectileTarget {
     pub target: EntityId,
+}
+
+impl ProjectileKind {
+    /// Derive the projectile kind from the attacker's unit type.
+    pub fn from_unit_kind(kind: UnitKind) -> Self {
+        match kind {
+            UnitKind::Hisser => ProjectileKind::Spit,
+            UnitKind::Yowler | UnitKind::Jaycaller => ProjectileKind::SonicWave,
+            UnitKind::MechCommander | UnitKind::CorvusRex | UnitKind::MurkCommander
+            | UnitKind::Wardenmother | UnitKind::JunkyardKing | UnitKind::WarrenMarshal => ProjectileKind::MechShot,
+            UnitKind::Catnapper | UnitKind::Cragback => ProjectileKind::Explosive,
+            _ => ProjectileKind::Generic,
+        }
+    }
 }
 
 /// Marker: this entity is dead (awaiting despawn next tick).
@@ -1538,6 +1571,53 @@ mod tests {
         assert!(!BuildingKind::CatTree.is_hq());
         assert!(!BuildingKind::LitterBox.is_hq());
         assert!(!BuildingKind::Rookery.is_hq());
+    }
+
+    #[test]
+    fn projectile_kind_default_is_generic() {
+        assert_eq!(ProjectileKind::default(), ProjectileKind::Generic);
+    }
+
+    #[test]
+    fn projectile_kind_from_unit_kind_hisser_is_spit() {
+        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::Hisser), ProjectileKind::Spit);
+    }
+
+    #[test]
+    fn projectile_kind_from_unit_kind_yowler_is_sonic() {
+        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::Yowler), ProjectileKind::SonicWave);
+    }
+
+    #[test]
+    fn projectile_kind_from_unit_kind_mech_is_mechshot() {
+        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::MechCommander), ProjectileKind::MechShot);
+    }
+
+    #[test]
+    fn projectile_kind_from_unit_kind_catnapper_is_explosive() {
+        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::Catnapper), ProjectileKind::Explosive);
+    }
+
+    #[test]
+    fn projectile_kind_from_unit_kind_generic_fallback() {
+        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::FlyingFox), ProjectileKind::Generic);
+        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::Pawdler), ProjectileKind::Generic);
+    }
+
+    #[test]
+    fn projectile_kind_from_hero_units() {
+        // All hero units should get MechShot
+        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::CorvusRex), ProjectileKind::MechShot);
+        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::MurkCommander), ProjectileKind::MechShot);
+        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::Wardenmother), ProjectileKind::MechShot);
+        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::JunkyardKing), ProjectileKind::MechShot);
+        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::WarrenMarshal), ProjectileKind::MechShot);
+    }
+
+    #[test]
+    fn projectile_kind_equality() {
+        assert_eq!(ProjectileKind::Spit, ProjectileKind::Spit);
+        assert_ne!(ProjectileKind::Spit, ProjectileKind::LaserBeam);
     }
 }
 

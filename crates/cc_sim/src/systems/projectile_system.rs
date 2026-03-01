@@ -1,16 +1,25 @@
 use bevy::prelude::*;
 
 use crate::systems::damage::ApplyDamageCommand;
-use cc_core::components::{Dead, Position, Projectile, ProjectileTarget, Velocity};
+use cc_core::components::{Dead, Position, Projectile, ProjectileKind, ProjectileTarget, Velocity};
+use cc_core::coords::WorldPos;
 use cc_core::math::{FIXED_ZERO, approx_distance};
+
+/// Message emitted when a projectile hits its target, for VFX.
+#[derive(Message, Debug, Clone)]
+pub struct ProjectileHit {
+    pub position: WorldPos,
+    pub kind: ProjectileKind,
+}
 
 /// Move projectiles toward their targets, apply damage on arrival.
 pub fn projectile_system(
     mut commands: Commands,
-    mut projectiles: Query<(Entity, &mut Position, &mut Velocity, &Projectile, &ProjectileTarget)>,
+    mut hit_events: MessageWriter<ProjectileHit>,
+    mut projectiles: Query<(Entity, &mut Position, &mut Velocity, &Projectile, &ProjectileTarget, Option<&ProjectileKind>)>,
     targets: Query<&Position, (Without<Projectile>, Without<Dead>)>,
 ) {
-    for (entity, mut pos, mut vel, proj, proj_target) in projectiles.iter_mut() {
+    for (entity, mut pos, mut vel, proj, proj_target, proj_kind) in projectiles.iter_mut() {
         let target_entity = Entity::from_bits(proj_target.target.0);
         let Ok(target_pos) = targets.get(target_entity) else {
             // Target despawned or dead — remove projectile
@@ -24,6 +33,13 @@ pub fn projectile_system(
         let speed_sq = proj.speed * proj.speed;
 
         if dist_sq <= speed_sq {
+            // Emit hit event for VFX before despawning
+            let kind = proj_kind.copied().unwrap_or_default();
+            hit_events.write(ProjectileHit {
+                position: target_pos.world,
+                kind,
+            });
+
             // Arrived — apply damage and despawn
             commands.queue(ApplyDamageCommand {
                 target: target_entity,

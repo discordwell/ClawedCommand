@@ -8,8 +8,8 @@ use cc_core::abilities::dream_siege_multiplier;
 use cc_core::commands::EntityId;
 use cc_core::components::{
     AttackStats, AttackTarget, AttackType, AttackTypeMarker, Building, ChasingTarget, Dead,
-    DreamSiegeTimer, HoldPosition, MoveTarget, Owner, Path, Position, Projectile, ProjectileTarget,
-    StatModifiers, UnitKind, UnitType, Velocity,
+    DreamSiegeTimer, HoldPosition, MoveTarget, Owner, Path, Position, Projectile, ProjectileKind,
+    ProjectileTarget, StatModifiers, UnitKind, UnitType, Velocity,
 };
 use cc_core::coords::WorldPos;
 use cc_core::math::{Fixed, FIXED_ONE};
@@ -142,6 +142,7 @@ pub fn combat_system(
                             ProjectileTarget {
                                 target: EntityId(target_entity.to_bits()),
                             },
+                            ProjectileKind::from_unit_kind(unit_type.kind),
                         ));
                         combat_stats.ranged_attack_count += 1;
                     }

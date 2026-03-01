@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::renderer::animation::{AnimIndices, AnimState, AnimTimer, PrevAnimState};
 use crate::setup::{TeamMaterials, UnitMesh, team_color, unit_scale};
 use crate::renderer::unit_gen::{UnitSprites, kind_index};
 use crate::renderer::zoom_lod::{self, ZoomTier};
@@ -54,6 +55,10 @@ pub fn spawn_unit_visuals(
                 },
                 Transform::from_xyz(screen.x, -screen.y + elev, depth_z(pos.world))
                     .with_scale(Vec3::splat(scale)),
+                AnimState::default(),
+                PrevAnimState::default(),
+                AnimIndices::default(),
+                AnimTimer::default(),
             ));
         } else if let Some(ref team_mats) = team_mats {
             // Fallback: colored circle mesh

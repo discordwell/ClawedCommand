@@ -33,7 +33,8 @@ fn game_is_playing(state: Res<GameState>) -> bool {
 
 impl Plugin for SimSystemsPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<CommandQueue>()
+        app.add_message::<projectile_system::ProjectileHit>()
+            .init_resource::<CommandQueue>()
             .init_resource::<SimClock>()
             .init_resource::<ControlGroups>()
             .init_resource::<PlayerResources>()

@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::resources::MapResource;
 use cc_core::commands::EntityId;
 use cc_core::components::{
-    AttackStats, AttackTypeMarker, Building, Dead, Owner, Position, Projectile,
+    AttackStats, AttackTypeMarker, Building, Dead, Owner, Position, Projectile, ProjectileKind,
     ProjectileTarget, StatModifiers, UnderConstruction, UnitType, Velocity,
 };
 use cc_core::math::{Fixed, FIXED_ONE};
@@ -100,6 +100,7 @@ pub fn tower_combat_system(
             ProjectileTarget {
                 target: EntityId(target_entity.to_bits()),
             },
+            ProjectileKind::LaserBeam,
         ));
     }
 }

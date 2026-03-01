@@ -40,6 +40,7 @@ fn make_sim(map: GameMap) -> (World, Schedule) {
     world.insert_resource(SimRng::default());
     world.insert_resource(cc_sim::resources::CombatStats::default());
     world.insert_resource(MapResource { map });
+    world.init_resource::<bevy::prelude::Messages<cc_sim::systems::projectile_system::ProjectileHit>>();
 
     // Mirror production pipeline from SimSystemsPlugin, using FixedUpdate label
     let mut schedule = Schedule::new(FixedUpdate);
@@ -2393,6 +2394,7 @@ fn test_ai_builds_on_valid_terrain() {
     player_res.players[1].supply_cap = 20;
     world.insert_resource(player_res);
     world.insert_resource(MapResource { map });
+    world.init_resource::<bevy::prelude::Messages<cc_sim::systems::projectile_system::ProjectileHit>>();
 
     // AI state: player 1, Hard difficulty, start in BuildUp phase
     let ai_state = AiState {

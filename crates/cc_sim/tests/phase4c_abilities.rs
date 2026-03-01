@@ -43,6 +43,7 @@ fn make_sim() -> (World, Schedule) {
     world.insert_resource(MapResource {
         map: GameMap::new(32, 32),
     });
+    world.init_resource::<bevy::prelude::Messages<cc_sim::systems::projectile_system::ProjectileHit>>();
 
     let mut schedule = Schedule::new(FixedUpdate);
     schedule.add_systems(
