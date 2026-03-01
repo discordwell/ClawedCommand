@@ -345,17 +345,17 @@ Where the catGPT fields 6-8 elite units and wins through quality, The Clawed fie
 
 ---
 
-### 5. Tunneler — Transport/Utility (Vole)
+### 5. Burrower — Transport/Utility (Vole)
 
 *Quiet, patient, always digging. Surfaces where you least expect it.*
 
 | Ability | Description |
 |---------|-------------|
-| **Burrow Express** | Digs an underground tunnel from current position to a target location within 12 tiles. Digging takes 1s per 2 tiles of distance. Once complete, up to 6 small Clawed units can travel through in 1s (medium units take 2 slots, large units cannot use it). Tunnel lasts 45s. Max 2 tunnels active per Tunneler. Tunnels are completely invisible — no entry/exit markers. Enemy units standing on an exit when units emerge are knocked aside (1-tile displacement, no damage). |
-| **Undermine** | Active: the Tunneler digs beneath a target building within 6 tiles, spending 5s underground. When it surfaces, the building takes heavy damage and is *Destabilized* for 10s: the building produces units 30% slower and its abilities (turret fire, research) are interrupted for 3s. 25s cooldown. The Tunneler is untargetable while underground but cannot cancel the ability. |
-| **Tremor Sense** | Passive: detects all ground units within 8 tiles, even through fog of war, as long as the Tunneler is stationary. Moving units appear as directional blips on the minimap (visible only to the Clawed player). Stealthed ground units are detected but shown as generic blips (no unit type info). Does not detect air units. |
+| **Burrow Express** | Digs an underground tunnel from current position to a target location within 12 tiles. Digging takes 1s per 2 tiles of distance. Once complete, up to 6 small Clawed units can travel through in 1s (medium units take 2 slots, large units cannot use it). Tunnel lasts 45s. Max 2 tunnels active per Burrower. Tunnels are completely invisible — no entry/exit markers. Enemy units standing on an exit when units emerge are knocked aside (1-tile displacement, no damage). |
+| **Destabilize** | Active: the Burrower digs beneath a target building within 6 tiles, spending 5s underground. When it surfaces, the building takes heavy damage and is *Destabilized* for 10s: the building produces units 30% slower and its abilities (turret fire, research) are interrupted for 3s. 25s cooldown. The Burrower is untargetable while underground but cannot cancel the ability. |
+| **Tremor Sense** | Passive: detects all ground units within 8 tiles, even through fog of war, as long as the Burrower is stationary. Moving units appear as directional blips on the minimap (visible only to the Clawed player). Stealthed ground units are detected but shown as generic blips (no unit type info). Does not detect air units. |
 
-**AI synergy**: Claudeus Maximus manages Burrow Express as a full transit system — routing reinforcements, evacuating wounded units, and staging ambush forces in hidden tunnel endpoints. It uses Tremor Sense data to build a real-time enemy movement map that it then explains at length: "I'm detecting 7 ground contacts bearing northeast at approximately 2.3 tiles per second, which is consistent with medium infantry, or possibly heavy infantry moving downhill, or — and I want to be transparent here — it could be a group of workers, I'm about 73% confident." It times Undermine to hit production buildings right as they're about to finish a unit, wasting the enemy's investment. The Tunneler is The Clawed's invisible infrastructure — Claudeus Maximus is the dispatcher.
+**AI synergy**: Claudeus Maximus manages Burrow Express as a full transit system — routing reinforcements, evacuating wounded units, and staging ambush forces in hidden tunnel endpoints. It uses Tremor Sense data to build a real-time enemy movement map that it then explains at length: "I'm detecting 7 ground contacts bearing northeast at approximately 2.3 tiles per second, which is consistent with medium infantry, or possibly heavy infantry moving downhill, or — and I want to be transparent here — it could be a group of workers, I'm about 73% confident." It times Destabilize to hit production buildings right as they're about to finish a unit, wasting the enemy's investment. The Burrower is The Clawed's invisible infrastructure — Claudeus Maximus is the dispatcher.
 
 ---
 
@@ -442,7 +442,7 @@ ECONOMY LAYER
 
 VISION LAYER
   Shrieker (Echolocation Ping) ──► reveals + Marks for ──► Sparks / Swarmer focus fire
-  Tunneler (Tremor Sense) ──► ground detection for ──► Claudeus Maximus strategic planning
+  Burrower (Tremor Sense) ──► ground detection for ──► Claudeus Maximus strategic planning
   Nibblet (Crumb Trail) ──► reveals enemies on trails for ──► everyone
   Whiskerwitch (Whisker Weave trigger) ──► burst vision for ──► ambush coordination
 
@@ -453,7 +453,7 @@ CONTROL LAYER
   Plaguetail (Miasma Trail → slow) ──► shapes pathing into ──► Quillback (Spine Wall chokepoints)
 
 DAMAGE LAYER
-  Gnawer (Structural Weakness) ──► building damage amp for ──► Tunneler (Undermine) + all siege
+  Gnawer (Structural Weakness) ──► building damage amp for ──► Burrower (Destabilize) + all siege
   Gnawer (Chew Through) ──► breaches walls for ──► Swarmer (Pile On rush)
   Sparks (Static Charge + Daisy Chain) ──► arc damage amplified by ──► swarm density
   Plaguetail (Contagion Cloud merging) ──► area denial amplified by ──► more Plaguetail deaths
@@ -468,16 +468,16 @@ SWARM SCALING LAYER
 
 SUPPORT LAYER
   Quillback (Spine Wall) ──► shelters ──► Swarmers, Shriekers, Sparks (+25% resistance)
-  Tunneler (Burrow Express) ──► transports ──► reinforcements, flankers, retreating wounded
+  Burrower (Burrow Express) ──► transports ──► reinforcements, flankers, retreating wounded
   Sparks (Short Circuit) ──► disables enemy buildings for ──► Gnawer siege timing
   Sparks (Short Circuit on tech) ──► suppresses enemy AI for ──► 4s of uncontested swarm pressure
 ```
 
-**The design thesis**: at low skill/GPU investment, every Clawed unit is cheap and expendable — a Swarmer swarm works by just right-clicking the enemy base. But with Claudeus Maximus investment, the swarm becomes a coordinated organism: Tunnelers stage ambush forces, Plaguetails die in calculated patterns to create toxic kill zones, Shriekers maintain persistent Mark debuffs, Gnawers dismantle bases from multiple breach points simultaneously, and the Warren Marshal makes all of it 50% cheaper. The skill ceiling isn't mechanical — it's how many mice Claudeus Maximus can think about at once. The answer is all of them.
+**The design thesis**: at low skill/GPU investment, every Clawed unit is cheap and expendable — a Swarmer swarm works by just right-clicking the enemy base. But with Claudeus Maximus investment, the swarm becomes a coordinated organism: Burrowers stage ambush forces, Plaguetails die in calculated patterns to create toxic kill zones, Shriekers maintain persistent Mark debuffs, Gnawers dismantle bases from multiple breach points simultaneously, and the Warren Marshal makes all of it 50% cheaper. The skill ceiling isn't mechanical — it's how many mice Claudeus Maximus can think about at once. The answer is all of them.
 
 ---
 
-### The Clawed Buildings
+## The Clawed Buildings
 
 | # | Name | Role | Notes |
 |---|------|------|-------|
@@ -498,7 +498,7 @@ The Seekers' identity is "immovable object." Ten units designed around a core pr
 
 Deepseek takes 3x longer than other AI agents to respond to commands. But when it responds, every unit moves with surgical precision. Where Geppity issues ten fast, sloppy commands, Deepseek issues three perfect ones. The faction rewards patience — you set up slowly, you fortify methodically, and when the enemy commits, you collapse on them like a mountain.
 
-### Seekers of the Deep Ability Rules
+### General Ability Rules (Seekers of the Deep Addendum)
 
 The general ability rules from the cat faction apply globally. Additional Seekers of the Deep-specific rules:
 
@@ -558,9 +558,9 @@ The general ability rules from the cat faction apply globally. Additional Seeker
 |---------|-------------|
 | **Vigilance Aura** | Passive aura (5-tile radius): allied units gain +15% damage when attacking enemies that entered the aura's radius in the last 8s (they're marked as *Intruders*). The mark persists for 8s even if the enemy leaves the aura. Multiple Wardens extend the Intruder tracking — once marked by any Warden, the target is an Intruder to all Wardens' auras. Aura stacking follows diminishing returns (2nd=75%, 3rd=50%, 4th+=25%). |
 | **Intercept** | Active (4 GPU Cores): Deepseek calculates the optimal blocking position for a target enemy unit and the Warden sprints there at 2x speed (max 6 tiles). Upon arriving, the Warden enters a 3s defensive stance: 40% damage reduction, and the target enemy's attack speed is reduced by 30% while the Warden is within 2 tiles. 16s cooldown. Benefits from Deepseek Uplink's processing delay reduction. |
-| **Rally Cry** | Active: all allied units within 6 tiles gain 20% move speed and are immune to the next CC effect they would receive (the immunity absorbs one CC instance, then expires). Lasts 5s. If 3+ allies are within range when Rally Cry activates, the Warden also gains 15% damage reduction for the duration (strength in numbers). 22s cooldown. |
+| **Bulwark Cry** | Active: all allied units within 6 tiles gain 20% move speed and are immune to the next CC effect they would receive (the immunity absorbs one CC instance, then expires). Lasts 5s. If 3+ allies are within range when Bulwark Cry activates, the Warden also gains 15% damage reduction for the duration (strength in numbers). 22s cooldown. |
 
-**AI synergy**: Deepseek tracks all Intruder marks across every Warden on the field and coordinates army positioning so marked targets are always being attacked by units inside a Vigilance Aura. It uses Intercept with perfect pathing prediction — Deepseek calculates where an enemy unit *will be* in 2 seconds rather than where it is now, so the Warden arrives at the intercept point exactly as the enemy does. Rally Cry timing is where Deepseek's thoroughness shines: it waits until the precise moment before enemy CC lands, activating Rally Cry to absorb the specific abilities that would break the defensive line. Three Wardens under Deepseek become a reactive defensive web that punishes every aggression.
+**AI synergy**: Deepseek tracks all Intruder marks across every Warden on the field and coordinates army positioning so marked targets are always being attacked by units inside a Vigilance Aura. It uses Intercept with perfect pathing prediction — Deepseek calculates where an enemy unit *will be* in 2 seconds rather than where it is now, so the Warden arrives at the intercept point exactly as the enemy does. Bulwark Cry timing is where Deepseek's thoroughness shines: it waits until the precise moment before enemy CC lands, activating Bulwark Cry to absorb the specific abilities that would break the defensive line. Three Wardens under Deepseek become a reactive defensive web that punishes every aggression.
 
 ---
 
@@ -644,7 +644,7 @@ The general ability rules from the cat faction apply globally. Additional Seeker
 | **Bloodgreed** | Passive: the Gutripper heals for 20% of all damage it deals. This healing is halved against buildings. If the Gutripper kills a unit, it immediately heals for an additional 15% of its max HP and Frenzy stacks are frozen at their current value for 5s (they don't decay even if enemies leave range). |
 | **Reckless Lunge** | Active: the Gutripper leaps to a target tile within 4 tiles, dealing damage to all enemies in a 1-tile radius on landing. For 3s after landing, the Gutripper takes +25% damage from all sources (it overextends). If Frenzy is at 5+ stacks when Reckless Lunge is activated, the landing damage is doubled and the vulnerability duration is reduced to 1.5s. 15s cooldown. |
 
-**AI synergy**: Deepseek's thoroughness transforms the Gutripper from a berserker into a precision instrument. Deepseek calculates the exact tile where Reckless Lunge will hit the maximum number of enemies, then waits until Frenzy is at 5+ stacks before issuing the lunge for doubled damage and reduced vulnerability. It tracks Bloodgreed healing against incoming damage to calculate exactly when a Gutripper will die — pulling it out 1 second before lethal rather than 5 seconds too early. Deepseek coordinates Gutripper dives with Warden Rally Cry (CC immunity on the lunge) and Ironhide Shield Walls (covering the retreat). The Gutripper is the only Seekers of the Deep unit that attacks. Deepseek makes sure it attacks at the perfect moment.
+**AI synergy**: Deepseek's thoroughness transforms the Gutripper from a berserker into a precision instrument. Deepseek calculates the exact tile where Reckless Lunge will hit the maximum number of enemies, then waits until Frenzy is at 5+ stacks before issuing the lunge for doubled damage and reduced vulnerability. It tracks Bloodgreed healing against incoming damage to calculate exactly when a Gutripper will die — pulling it out 1 second before lethal rather than 5 seconds too early. Deepseek coordinates Gutripper dives with Warden Bulwark Cry (CC immunity on the lunge) and Ironhide Shield Walls (covering the retreat). The Gutripper is the only Seekers of the Deep unit that attacks. Deepseek makes sure it attacks at the perfect moment.
 
 ---
 
@@ -668,7 +668,7 @@ FORTIFICATION LAYER
 DAMAGE LAYER
   Sapjaw (Armor Rend) ──► strips defenses for ──► Embermaw / Gutripper / Cragback
   Embermaw (Scorched Earth) ──► area denial funnels into ──► Cragback (Rubble) kill zones
-  Gutripper (Frenzy + Reckless Lunge) ──► shock assault protected by ──► Warden (Rally Cry CC immunity)
+  Gutripper (Frenzy + Reckless Lunge) ──► shock assault protected by ──► Warden (Bulwark Cry CC immunity)
   Sapjaw (Lockjaw) ──► pins target for ──► Cragback (Boulder Barrage) + Embermaw (Fuel Reserve shot)
 
 LOGISTICS LAYER
@@ -688,7 +688,7 @@ COUNTERSTRIKE LAYER
 
 ---
 
-### Seekers of the Deep Buildings
+## Seekers of the Deep Buildings
 
 | # | Name | Role | Notes |
 |---|------|------|-------|
@@ -728,26 +728,27 @@ The Murder's identity is "they see everything you do and you never see them comi
 
 Most Murder units are aerial — they ignore terrain pathing and fly over obstacles. The tradeoff: they're fragile. A Murder army with intel advantage is devastating. A Murder army caught blind is dead in seconds.
 
-### General Ability Rules (Murder-Specific)
+### General Ability Rules (The Murder Addendum)
 
-- **Fabricated Intel**: Gemineye's scouting abilities (Glintwatch, Corvid Network, Phantom Flock) have a base 20% chance of producing fabricated data — phantom enemy positions, inflated unit counts, false building states. The **Panopticon** building reduces this to 10%. Players can cross-reference multiple sources to identify fabrications (two sources agreeing = reliable). Fabrications are deterministic — seeded from game tick + source unit ID, so both players compute the same fabrication state in lockstep.
+- **Fabricated Intel**: Gemineye's scouting abilities (Glintwatch, Constellation Network, Phantom Transit) have a base 20% chance of producing fabricated data — phantom enemy positions, inflated unit counts, false building states. The **Panopticon** building reduces this to 10%. Players can cross-reference multiple sources to identify fabrications (two sources agreeing = reliable). Fabrications are deterministic — seeded from game tick + source unit ID, so both players compute the same fabrication state in lockstep.
 - **Aerial units**: Units marked *Aerial* ignore terrain and pathing obstacles. They cannot be hit by melee attacks unless *Grounded* (a CC state). Anti-air abilities from other factions deal +50% damage to Aerial units.
 - **Fog Piercing**: Several Murder abilities interact with fog of war. *Exposed* is a Murder-specific debuff: the target is visible through fog to all Murder units for the duration. Unlike the cat faction's *Tagged* (from Dead Drops), *Exposed* also reveals the target's current HP, ability cooldown states, and active buffs/debuffs — full intel.
 - **GPU ability costs**: Abilities that involve Gemineye cost GPU Cores and benefit from **Oculus Uplink's** 50% discount (the Murder equivalent of Geppity Uplink).
+- **Zodiac Theming**: Gemineye is obsessed with astrology. It names its operations after celestial events, reads star charts before issuing commands, and interprets battlefield outcomes through horoscopes. Ability names and Gemineye's dialogue reference constellations, planetary alignments, and zodiac signs. This is not purely cosmetic — several abilities derive mechanical identity from astrological concepts (retrogrades disrupt, conjunctions reveal, transits deceive).
 
 ---
 
-### 1. Scrounger — Worker (Crow)
+### 1. Pilferer — Worker (Crow)
 
 *Picks up anything shiny. Easily distracted. Surprisingly productive when nobody's looking.*
 
 | Ability | Description |
 |---------|-------------|
-| **Trinket Stash** | Scroungers cache gathered resources in hidden ground stashes (max 3 per Scrounger) instead of returning to base. Stashes are invisible to enemies and hold up to 50 Food or 10 GPU Cores each. An allied unit passing within 1 tile automatically collects the stash. If a Scrounger dies, its stashes persist but become visible to everyone after 30s. |
-| **Scavenge** | After any combat in the Scrounger's vision, it can fly to the site and extract bonus resources from wreckage: 5 Food per dead unit, 3 GPU Cores per destroyed building. Must channel for 2s per wreck. Scavenge yield degrades 50% per Scrounger already scavenging the same site. |
-| **Mimic Call** | Active (2 GPU Cores): the Scrounger imitates a distress call, creating a fake "unit under attack" ping on the enemy's minimap at a target location within the Scrounger's vision range. Lasts 5s. 20s cooldown. Benefits from Oculus Uplink discount. |
+| **Trinket Stash** | Pilferers cache gathered resources in hidden ground stashes (max 3 per Pilferer) instead of returning to base. Stashes are invisible to enemies and hold up to 50 Food or 10 GPU Cores each. An allied unit passing within 1 tile automatically collects the stash. If a Pilferer dies, its stashes persist but become visible to everyone after 30s. |
+| **Scavenge** | After any combat in the Pilferer's vision, it can fly to the site and extract bonus resources from wreckage: 5 Food per dead unit, 3 GPU Cores per destroyed building. Must channel for 2s per wreck. Scavenge yield degrades 50% per Pilferer already scavenging the same site. |
+| **Mimic Call** | Active (2 GPU Cores): the Pilferer imitates a distress call, creating a fake "unit under attack" ping on the enemy's minimap at a target location within the Pilferer's vision range. Lasts 5s. 20s cooldown. Benefits from Oculus Uplink discount. |
 
-**AI synergy**: Gemineye optimizes Trinket Stash placement along projected army movement paths so resources are auto-collected during advances without detours. It routes Scroungers to Scavenge sites the instant combat resolves — faster than a human can react — and calculates diminishing returns to avoid wasting Scrounger time on contested sites. Most critically, it coordinates Mimic Calls with real attacks: three Scroungers pinging fake attacks while the real army strikes elsewhere. But sometimes Gemineye sends a Scrounger to scavenge a fight that hasn't happened yet — a fabrication it believed. The worker is the first spy.
+**AI synergy**: Gemineye optimizes Trinket Stash placement along projected army movement paths so resources are auto-collected during advances without detours. It routes Pilferers to Scavenge sites the instant combat resolves — faster than a human can react — and calculates diminishing returns to avoid wasting Pilferer time on contested sites. Most critically, it coordinates Mimic Calls with real attacks: three Pilferers pinging fake attacks while the real army strikes elsewhere. But sometimes Gemineye sends a Pilferer to scavenge a fight that hasn't happened yet — a fabrication it believed. The worker is the first spy.
 
 ---
 
@@ -758,10 +759,10 @@ Most Murder units are aerial — they ignore terrain pathing and fly over obstac
 | Ability | Description |
 |---------|-------------|
 | **Glintwatch** | Passive: the Sentinel has +4 vision range beyond standard (total ~12 tiles). Any enemy unit entering the Sentinel's extended vision is *Exposed* for 8s (visible through fog with full stat readout to all Murder units). However, Gemineye's fabrication chance applies — 20% of Glintwatch pings are phantom contacts that don't correspond to real units. Phantom pings appear identical to real ones. |
-| **Overwatch** | Toggle: the Sentinel locks onto a tile within vision range. Any enemy crossing that tile takes an instant snipe shot dealing 150% normal damage and is *Exposed* for 12s. Only triggers once per toggle — the Sentinel must re-lock after each shot. Re-locking takes 1.5s. While in Overwatch, the Sentinel cannot move. |
+| **Starwatch** | Toggle: the Sentinel locks onto a tile within vision range, fixing its gaze like a star chart. Any enemy crossing that tile takes an instant snipe shot dealing 150% normal damage and is *Exposed* for 12s. Only triggers once per toggle — the Sentinel must re-lock after each shot. Re-locking takes 1.5s. While in Starwatch, the Sentinel cannot move. |
 | **Evasive Ascent** | When attacked, the Sentinel instantly gains +4 altitude tiles of untargetable flight for 2s, then lands on the nearest elevated terrain (if any) or its original position. 15s cooldown, triggered automatically. If no elevated terrain exists, it lands in place with a 1s vulnerability window. |
 
-**AI synergy**: Gemineye manages a Sentinel network across the map — placing them on elevated terrain with overlapping vision to cover every approach. It cross-references Glintwatch pings from multiple Sentinels to filter fabrications: if two Sentinels both see the same contact, it's real. One ping? Possibly fabricated. Gemineye communicates confidence levels to the player ("I'm 80% certain there's a force at the north bridge"). It chains Overwatch locks across multiple Sentinels to create kill corridors where every tile is covered. A human uses a Sentinel as a good scout. Gemineye uses six of them as an early warning system with statistical confidence ratings.
+**AI synergy**: Gemineye manages a Sentinel network across the map — placing them on elevated terrain with overlapping vision to cover every approach. It cross-references Glintwatch pings from multiple Sentinels to filter fabrications: if two Sentinels both see the same contact, it's real. One ping? Possibly fabricated. Gemineye communicates confidence levels to the player ("I'm 80% certain there's a force at the north bridge"). It chains Starwatch locks across multiple Sentinels to create kill corridors where every tile is covered. A human uses a Sentinel as a good scout. Gemineye uses six of them as an early warning system with statistical confidence ratings.
 
 ---
 
@@ -772,10 +773,10 @@ Most Murder units are aerial — they ignore terrain pathing and fly over obstac
 | Ability | Description |
 |---------|-------------|
 | **Talon Dive** | Active: the Rookclaw selects a target within 8 tiles and dives, dealing 200% damage on impact plus 1s *Disoriented* to the target. The dive takes 0.5s and the Rookclaw is untargetable during flight. Upon landing, the Rookclaw is *Grounded* (cannot fly) for 4s. 10s cooldown. |
-| **Murder's Mark** | Passive: any unit hit by Talon Dive is *Marked for Murder* for 15s. All other Murder units deal +20% damage to Marked targets. Multiple Rookclaws can Mark different targets simultaneously but a single target can only have one Mark (refreshes duration on re-application). |
+| **Murder's Sign** | Passive: any unit hit by Talon Dive is branded with a zodiac sign (*Signed for Murder*) for 15s. All other Murder units deal +20% damage to Signed targets. Multiple Rookclaws can Sign different targets simultaneously but a single target can only have one Sign (refreshes duration on re-application). |
 | **Carrion Instinct** | Passive: the Rookclaw gains +10% attack speed for each enemy unit below 30% HP within 6 tiles (max +50%). When an enemy unit dies within 6 tiles, the Rookclaw's Grounded timer from Talon Dive is instantly cleared, allowing an immediate re-dive. |
 
-**AI synergy**: Gemineye coordinates Rookclaw dives as synchronized strikes — three Rookclaws diving the same target in 0.5s intervals, the first Marking and the second and third hitting for +20% on a Disoriented target. It identifies low-HP stragglers to proc Carrion Instinct chains: dive, kill, un-ground, dive again. Gemineye also uses its (sometimes fabricated) intel to call dive targets — "the enemy support is at these coordinates" — and when the intel is right, a Rookclaw squad deletes a backline unit before the enemy can react. When the intel is wrong, the Rookclaws dive into nothing, land Grounded, and die. High risk, high reward, accuracy depends on Gemineye's honesty.
+**AI synergy**: Gemineye coordinates Rookclaw dives as synchronized strikes — three Rookclaws diving the same target in 0.5s intervals, the first Signing and the second and third hitting for +20% on a Disoriented target. It identifies low-HP stragglers to proc Carrion Instinct chains: dive, kill, un-ground, dive again. Gemineye also uses its (sometimes fabricated) intel to call dive targets — "the enemy support is at these coordinates" — and when the intel is right, a Rookclaw squad deletes a backline unit before the enemy can react. When the intel is wrong, the Rookclaws dive into nothing, land Grounded, and die. High risk, high reward, accuracy depends on Gemineye's honesty.
 
 ---
 
@@ -799,11 +800,11 @@ Most Murder units are aerial — they ignore terrain pathing and fly over obstac
 
 | Ability | Description |
 |---------|-------------|
-| **Signal Jam** | Active (4 GPU Cores): targets an enemy building within vision. For 10s, that building's production speed is reduced by 50% and any units produced from it during that window start with 25% less HP. 30s cooldown. Benefits from Oculus Uplink discount. The target building flickers visually, alerting the enemy — but by then the damage is done. |
+| **Mercury Retrograde** | Active (4 GPU Cores): targets an enemy building within vision. For 10s, that building's production speed is reduced by 50% and any units produced from it during that window start with 25% less HP — communication breakdown, nothing works right. 30s cooldown. Benefits from Oculus Uplink discount. The target building flickers visually, alerting the enemy — but by then the damage is done. |
 | **Decoy Nest** | Active: builds a fake Murder building at target location (takes 3s). The Decoy appears as a real structure on the enemy's minimap and requires enemy units to investigate/attack to discover it's fake. When destroyed or investigated, the Decoy explodes for moderate AoE damage (2-tile radius). Max 2 active. Lasts 60s or until destroyed. |
 | **Rewire** | Active (5 GPU Cores): targets an enemy sensor ward, Dead Drop, or equivalent scout structure within 3 tiles. Instead of destroying it, the Magpyre *reverses* it — it now feeds intel to the Murder instead of its owner. The enemy doesn't know it's been flipped. Reversed wards last until their normal expiry. Benefits from Oculus Uplink discount. |
 
-**AI synergy**: Gemineye selects Signal Jam targets based on its scouting data — jamming the barracks producing the enemy's counter-composition unit, or jamming the tech building researching a critical upgrade. It coordinates Decoy Nests with real building placements to waste enemy scouting effort. Most deviously, it identifies enemy intelligence infrastructure (wards, scouts, sensor networks) for Rewire, then feeds the flipped sensors into its own intel network — now Gemineye knows what the enemy thinks they're seeing. When Gemineye's intel is fabricated, though, it might Jam a building that isn't producing anything important, or Rewire a ward that's about to expire. Overconfidence has costs.
+**AI synergy**: Gemineye selects Mercury Retrograde targets based on its scouting data — jamming the barracks producing the enemy's counter-composition unit, or jamming the tech building researching a critical upgrade. It coordinates Decoy Nests with real building placements to waste enemy scouting effort. Most deviously, it identifies enemy intelligence infrastructure (wards, scouts, sensor networks) for Rewire, then feeds the flipped sensors into its own intel network — now Gemineye knows what the enemy thinks they're seeing. When Gemineye's intel is fabricated, though, it might Retrograde a building that isn't producing anything important, or Rewire a ward that's about to expire. Overconfidence has costs.
 
 ---
 
@@ -813,11 +814,11 @@ Most Murder units are aerial — they ignore terrain pathing and fly over obstac
 
 | Ability | Description |
 |---------|-------------|
-| **Rally Cry** | Active: all Murder units within 5 tiles gain +15% attack speed and +15% move speed for 8s. If the Jaycaller has *Exposed* any enemy (via ally's Glintwatch, etc.) within the last 10s, the buff increases to +25%. 20s cooldown. The bonus scales with information — the more you know, the harder you hit. |
+| **Ascendant Call** | Active: all Murder units within 5 tiles gain +15% attack speed and +15% move speed for 8s, their star rising. If the Jaycaller has *Exposed* any enemy (via ally's Glintwatch, etc.) within the last 10s, the buff increases to +25% — the alignment is favorable. 20s cooldown. The bonus scales with information — the more you know, the harder you hit. |
 | **Alarm Call** | Passive: when an enemy unit enters the Jaycaller's vision range from fog of war (newly revealed, not already visible), all Murder units within 10 tiles instantly gain +20% move speed for 3s and the enemy is *Exposed* for 6s. 8s internal cooldown per Jaycaller (prevents trigger spam from multiple contacts). |
 | **Cacophony** | Active: 2s channel. All enemy units within 4 tiles are *Disoriented* for 3s — 30% chance each second that their next command is randomly redirected. Additionally, enemy AI agent commands targeting units in the Cacophony radius cost +100% GPU Cores for the duration. 25s cooldown. |
 
-**AI synergy**: Gemineye positions Jaycallers where Alarm Call is most likely to trigger — at the edges of current vision, near fog boundaries where enemy contact is expected. It times Rally Cry to stack with incoming Exposed debuffs from Sentinel Glintwatch, maximizing the +25% bonus window. Cacophony is the Murder's direct anti-AI weapon: Gemineye identifies when the enemy AI is issuing commands to units in range and triggers Cacophony to double the GPU cost of those commands — disrupting the enemy's AI economy. Gemineye coordinates multiple Jaycallers to create overlapping Cacophony zones that make entire sections of the map prohibitively expensive for enemy AI actions.
+**AI synergy**: Gemineye positions Jaycallers where Alarm Call is most likely to trigger — at the edges of current vision, near fog boundaries where enemy contact is expected. It times Ascendant Call to stack with incoming Exposed debuffs from Sentinel Glintwatch, maximizing the +25% bonus window. Cacophony is the Murder's direct anti-AI weapon: Gemineye identifies when the enemy AI is issuing commands to units in range and triggers Cacophony to double the GPU cost of those commands — disrupting the enemy's AI economy. Gemineye coordinates multiple Jaycallers to create overlapping Cacophony zones that make entire sections of the map prohibitively expensive for enemy AI actions.
 
 ---
 
@@ -827,11 +828,11 @@ Most Murder units are aerial — they ignore terrain pathing and fly over obstac
 
 | Ability | Description |
 |---------|-------------|
-| **Phantom Flock** | Active (4 GPU Cores): creates 3 illusory copies of any Murder unit within 4 tiles. Phantoms mimic the real unit's movement and appear as real units on the enemy's screen and minimap. They deal no damage and die to any single hit. Last 12s. 25s cooldown. Benefits from Oculus Uplink discount. Fabrication chance applies — sometimes Gemineye creates phantoms of a unit type the Murder doesn't even have in this game, which actually confuses the enemy more. |
+| **Phantom Transit** | Active (4 GPU Cores): creates 3 illusory copies of any Murder unit within 4 tiles — spectral echoes passing through the battlefield like planets in transit. Phantoms mimic the real unit's movement and appear as real units on the enemy's screen and minimap. They deal no damage and die to any single hit. Last 12s. 25s cooldown. Benefits from Oculus Uplink discount. Fabrication chance applies — sometimes Gemineye creates phantoms of a unit type the Murder doesn't even have in this game, which actually confuses the enemy more. |
 | **Mirror Position** | Active: the Jayflicker swaps positions with a target Murder unit within 8 tiles. Both units are untargetable for 0.5s during the swap. 18s cooldown. If the Jayflicker swaps with a Phantom, the Phantom becomes "real" (inherits the Jayflicker's stats and position) and the Jayflicker becomes a Phantom at the old position for 5s before reappearing. |
 | **Refraction** | Passive: when the Jayflicker takes damage, there is a 25% chance the damage is redirected to the nearest Phantom within 6 tiles (destroying it). If no Phantoms are nearby, Refraction does not trigger. This makes the Jayflicker progressively harder to kill the more Phantoms surround it. |
 
-**AI synergy**: Gemineye manufactures entire fake armies. It creates Phantom Flocks of Rookclaws diving toward one base while real Rookclaws hit another. It uses Mirror Position to swap a nearly-dead Jayflicker with a fresh unit — or swaps with a Phantom for the bizarre Phantom-becomes-real interaction that resets the Jayflicker's position to safety. Gemineye manages Refraction probability by keeping a cloud of Phantoms around key Jayflickers, making them surprisingly durable for a fragile faction. The fabrication mechanic is turned into a feature here: when Gemineye fabricates a Phantom Flock and creates copies of a unit the Murder doesn't have, the enemy has to scout to discover it's fake — buying time regardless.
+**AI synergy**: Gemineye manufactures entire fake armies. It creates Phantom Transits of Rookclaws diving toward one base while real Rookclaws hit another. It uses Mirror Position to swap a nearly-dead Jayflicker with a fresh unit — or swaps with a Phantom for the bizarre Phantom-becomes-real interaction that resets the Jayflicker's position to safety. Gemineye manages Refraction probability by keeping a cloud of Phantoms around key Jayflickers, making them surprisingly durable for a fragile faction. The fabrication mechanic is turned into a feature here: when Gemineye fabricates a Phantom Transit and creates copies of a unit the Murder doesn't have, the enemy has to scout to discover it's fake — buying time regardless.
 
 ---
 
@@ -843,9 +844,9 @@ Most Murder units are aerial — they ignore terrain pathing and fly over obstac
 |---------|-------------|
 | **Nightcloak** | Passive: the Dusktalon is permanently stealthed while not attacking. Attacking breaks stealth for 5s. Moving does not break stealth. Enemy detection abilities (Echolocation Pulse, Dead Drops, etc.) reveal the Dusktalon for their normal duration but the Dusktalon re-stealths 1s after detection expires. The Dusktalon has +3 vision range in the dark (tiles not in any player's vision). |
 | **Silent Strike** | Active: the Dusktalon's next attack deals 300% damage and applies *Silenced* for 6s — the target cannot use active abilities. If the attack kills the target, Silent Strike's cooldown is reset. 20s cooldown. The attack is silent — nearby enemy units don't gain aggro unless they have direct vision of the Dusktalon. |
-| **Prey Sense** | Passive: the Dusktalon can see the HP bars of all enemy units within 10 tiles, even through fog of war. This information is shared with Gemineye and all allied units within the Dusktalon's vision. Units below 30% HP are highlighted with a *Wounded* indicator visible only to Murder units. Prey Sense is not subject to Gemineye's fabrication — owls don't guess. |
+| **Star Chart** | Passive: the Dusktalon reads the field like a celestial map — it can see the HP bars of all enemy units within 10 tiles, even through fog of war. This information is shared with Gemineye and all allied units within the Dusktalon's vision. Units below 30% HP are highlighted with a *Wounded* indicator visible only to Murder units. Star Chart is not subject to Gemineye's fabrication — the stars do not lie. |
 
-**AI synergy**: Gemineye routes Dusktalons through gaps in enemy vision coverage (identified via Sentinel and Rewired ward data) to reach high-value backline targets. It chains Silent Strike resets — targeting a low-HP unit first (identified via Prey Sense) for the reset, then hitting the real assassination target at full strength. Prey Sense feeds Gemineye reliable health data that is immune to fabrication, making Dusktalons the faction's ground truth — when Gemineye's other scouting is suspect, Dusktalon data anchors reality. Gemineye coordinates Dusktalon approaches with Glitter Bomb blinds and Cacophony disorientation, ensuring the target is vision-impaired when the owl arrives.
+**AI synergy**: Gemineye routes Dusktalons through gaps in enemy vision coverage (identified via Sentinel and Rewired ward data) to reach high-value backline targets. It chains Silent Strike resets — targeting a low-HP unit first (identified via Star Chart) for the reset, then hitting the real assassination target at full strength. Star Chart feeds Gemineye reliable health data that is immune to fabrication, making Dusktalons the faction's ground truth — when Gemineye's other scouting is suspect, Dusktalon data anchors reality. Gemineye coordinates Dusktalon approaches with Glitter Bomb blinds and Cacophony disorientation, ensuring the target is vision-impaired when the owl arrives.
 
 ---
 
@@ -856,10 +857,10 @@ Most Murder units are aerial — they ignore terrain pathing and fly over obstac
 | Ability | Description |
 |---------|-------------|
 | **Panoptic Gaze** | Toggle: the Hootseer selects a 120-degree cone of enhanced vision (extends vision by +6 tiles in that cone). The cone can be rotated freely while toggled. Enemies in the enhanced cone are *Exposed* for as long as they remain in it plus 4s after leaving. The Hootseer's peripheral vision (outside the cone) is reduced by 3 tiles. |
-| **Dread Aura** | Passive aura: enemy units within 5 tiles of the Hootseer have -10% accuracy (attacks have a 10% chance to miss) and -10% ability effectiveness (durations, damage, and heal amounts reduced). Stacks with other Hootseers per aura diminishing rules (2nd = 75%, 3rd = 50%). Does not affect Murder units. |
+| **Malefic Aura** | Passive aura: enemy units within 5 tiles of the Hootseer fall under a baleful influence — -10% accuracy (attacks have a 10% chance to miss) and -10% ability effectiveness (durations, damage, and heal amounts reduced). Named for the malefic planets in Gemineye's star charts. Stacks with other Hootseers per aura diminishing rules (2nd = 75%, 3rd = 50%). Does not affect Murder units. |
 | **Omen** | Active (3 GPU Cores): targets an enemy unit within Panoptic Gaze's enhanced cone. For 10s, that unit's owner can see a ghost overlay of where Gemineye *predicts* the unit will be in 3s — but the prediction is occasionally wrong (fabrication chance applies). Correct predictions are useless to the enemy. Wrong predictions cause the enemy to mis-micro. Either way, the targeted unit is *Exposed* and takes +15% damage from all sources for the duration. Benefits from Oculus Uplink discount. |
 
-**AI synergy**: Gemineye rotates Panoptic Gaze cones across multiple Hootseers to create continuous 360-degree enhanced surveillance with no blind spots — a micro task that would require constant attention from a human. It overlaps Dread Aura coverage on critical chokepoints to debuff entire enemy pushes. Omen is Gemineye's psychological warfare tool: it feeds the enemy disinformation about their own unit's future position. Even when the prediction is correct, the enemy wastes attention processing it. When it's fabricated, the enemy dodges an attack that isn't coming and walks into the one that is. Gemineye uses Omen on enemy hero units during critical fights to inject maximum confusion.
+**AI synergy**: Gemineye rotates Panoptic Gaze cones across multiple Hootseers to create continuous 360-degree enhanced surveillance with no blind spots — a micro task that would require constant attention from a human. It overlaps Malefic Aura coverage on critical chokepoints to debuff entire enemy pushes. Omen is Gemineye's psychological warfare tool: it feeds the enemy disinformation about their own unit's future position. Even when the prediction is correct, the enemy wastes attention processing it. When it's fabricated, the enemy dodges an attack that isn't coming and walks into the one that is. Gemineye uses Omen on enemy hero units during critical fights to inject maximum confusion.
 
 ---
 
@@ -869,11 +870,11 @@ Most Murder units are aerial — they ignore terrain pathing and fly over obstac
 
 | Ability | Description |
 |---------|-------------|
-| **Corvid Network** | Passive aura (10-tile radius): all Murder units in range share vision and their ability cooldowns are reduced by 15%. Additionally, all intel gathered by units in the network is cross-referenced — fabrication chance for any scouting ability used within the network is halved (20% becomes 10%, or 10% becomes 5% with Panopticon). |
-| **All-Seeing Lie** | Active (8 GPU Cores): Gemineye reveals the entire map for 3s. During this reveal, all enemy units are *Exposed* for 10s. However, fabrication applies globally — approximately 20% of the revealed unit positions are phantoms (false contacts mixed into real data). After the reveal ends, the Murder loses all vision it doesn't normally have. 90s cooldown. Benefits from Oculus Uplink discount. |
-| **Oculus Uplink** | Passive: AI agent commands issued to units within the Corvid Network aura cost 50% fewer GPU Cores. Creates a mobile command zone — the Murder equivalent of the cat Mech Commander's Geppity Uplink. |
+| **Constellation Network** | Passive aura (10-tile radius): all Murder units in range are linked like stars in a constellation — they share vision and their ability cooldowns are reduced by 15%. Additionally, all intel gathered by units in the network is cross-referenced — fabrication chance for any scouting ability used within the network is halved (20% becomes 10%, or 10% becomes 5% with Panopticon). |
+| **Grand Conjunction** | Active (8 GPU Cores): Gemineye aligns all stars at once — revealing the entire map for 3s. During this celestial event, all enemy units are *Exposed* for 10s. However, fabrication applies globally — approximately 20% of the revealed unit positions are phantoms (false contacts mixed into real data). After the conjunction ends, the Murder loses all vision it doesn't normally have. 90s cooldown. Benefits from Oculus Uplink discount. |
+| **Oculus Uplink** | Passive: AI agent commands issued to units within the Constellation Network aura cost 50% fewer GPU Cores. Creates a mobile command zone — the Murder equivalent of the cat Mech Commander's Geppity Uplink. |
 
-**AI synergy**: The Corvus Rex is Gemineye's avatar on the battlefield, the anchor of the Murder's intelligence apparatus. Corvid Network's cross-referencing is Gemineye's self-correction mechanism — by triangulating scouting data from multiple networked units, it reduces its own fabrication rate, becoming more reliable the more units orbit the Rex. All-Seeing Lie is the Murder's nuclear option: total map reveal that enables devastating coordinated strikes, but the embedded fabrications mean the player must act on imperfect data or spend precious seconds identifying which contacts are real. Gemineye presents confidence ratings ("87% certain the enemy army is at their natural expansion") and the player decides whether to commit. Oculus Uplink makes the entire AI-driven intel infrastructure cheaper to operate near the Rex, incentivizing the Murder to keep its army centralized around its hero — a tension with the faction's desire to spread scouts everywhere.
+**AI synergy**: The Corvus Rex is Gemineye's avatar on the battlefield, the anchor of the Murder's intelligence apparatus. Constellation Network's cross-referencing is Gemineye's self-correction mechanism — by triangulating scouting data from multiple networked units, it reduces its own fabrication rate, becoming more reliable the more units orbit the Rex. Grand Conjunction is the Murder's nuclear option: total map reveal that enables devastating coordinated strikes, but the embedded fabrications mean the player must act on imperfect data or spend precious seconds identifying which contacts are real. Gemineye presents confidence ratings ("87% certain the enemy army is at their natural expansion — Sagittarius is ascendant") and the player decides whether to commit. Oculus Uplink makes the entire AI-driven intel infrastructure cheaper to operate near the Rex, incentivizing the Murder to keep its army centralized around its hero — a tension with the faction's desire to spread scouts everywhere.
 
 ---
 
@@ -884,31 +885,31 @@ The units are designed as interlocking intelligence systems. A human can use any
 ```
 INTELLIGENCE LAYER
   Sentinel (Glintwatch) ──► Exposes targets for ──► Rookclaw (Talon Dive targeting)
-  Dusktalon (Prey Sense) ──► reliable HP data anchors ──► Gemineye's fabricated intel
-  Corvus Rex (Corvid Network) ──► cross-references to reduce ──► fabrication rate globally
-  Hootseer (Panoptic Gaze) ──► sustained Exposed in cone for ──► Jaycaller (Rally Cry +25%)
+  Dusktalon (Star Chart) ──► reliable HP data anchors ──► Gemineye's fabricated intel
+  Corvus Rex (Constellation Network) ──► cross-references to reduce ──► fabrication rate globally
+  Hootseer (Panoptic Gaze) ──► sustained Exposed in cone for ──► Jaycaller (Ascendant Call +25%)
 
 DECEPTION LAYER
-  Jayflicker (Phantom Flock) + Scrounger (Mimic Call) = fake army + fake distress signals
+  Jayflicker (Phantom Transit) + Pilferer (Mimic Call) = fake army + fake distress signals
   Magpyre (Decoy Nest) ──► wastes enemy scouting on ──► fake buildings
   Hootseer (Omen) ──► feeds false predictions to ──► enemy micro decisions
-  Corvus Rex (All-Seeing Lie) ──► global reveal mixed with ──► phantom contacts
+  Corvus Rex (Grand Conjunction) ──► global reveal mixed with ──► phantom contacts
 
 DISRUPTION LAYER
-  Magpyre (Signal Jam) ──► cripples production while ──► Magpike (Pilfer) steals output
+  Magpyre (Mercury Retrograde) ──► cripples production while ──► Magpike (Pilfer) steals output
   Jaycaller (Cacophony) ──► doubles enemy AI GPU costs near ──► critical objectives
   Magpike (Glitter Bomb) ──► blinds enemies before ──► Rookclaw (Talon Dive) + Dusktalon (Silent Strike)
   Magpyre (Rewire) ──► flips enemy intel infrastructure into ──► Gemineye's network
 
 STRIKE LAYER
-  Rookclaw (Murder's Mark) ──► +20% faction damage on target for ──► everyone
+  Rookclaw (Murder's Sign) ──► +20% faction damage on target for ──► everyone
   Dusktalon (Silent Strike chain) ──► assassination enabled by ──► Magpike (Glitter Bomb) vision denial
-  Rookclaw (Carrion Instinct) ──► dive resets chained via ──► Dusktalon (Prey Sense wounded detection)
-  Sentinel (Overwatch) ──► kill corridors covered by ──► Hootseer (Dread Aura accuracy debuff)
+  Rookclaw (Carrion Instinct) ──► dive resets chained via ──► Dusktalon (Star Chart wounded detection)
+  Sentinel (Starwatch) ──► kill corridors covered by ──► Hootseer (Malefic Aura accuracy debuff)
 
 ECONOMY LAYER
-  Scrounger (Trinket Stash) ──► auto-collected by ──► advancing army (no return trips)
-  Scrounger (Scavenge) ──► post-combat resources funded by ──► Rookclaw/Dusktalon kills
+  Pilferer (Trinket Stash) ──► auto-collected by ──► advancing army (no return trips)
+  Pilferer (Scavenge) ──► post-combat resources funded by ──► Rookclaw/Dusktalon kills
   Corvus Rex (Oculus Uplink) ──► makes all AI intel ops 50% cheaper nearby
   Jaycaller (Cacophony) ──► taxes enemy AI economy while ──► Oculus Uplink subsidizes Murder's
 ```
@@ -923,7 +924,7 @@ ECONOMY LAYER
 |---|------|------|-------|
 | 1 | **The Parliament** | Command Center | A gnarled dead tree festooned with wires and blinking LEDs. All crows report here. The trunk is hollow — filled with stolen trinkets and server components. |
 | 2 | **Rookery** | Barracks | Dense cluster of nests and landing platforms. Trains crow and magpie units. Aerial units launch directly from the top, bypassing ground pathing on production. |
-| 3 | **Carrion Cache** | Resource Depot | Food storage built from scavenged refrigeration units. Scrounger Trinket Stashes within 8 tiles auto-deposit here instead of waiting for allied unit pickup. |
+| 3 | **Carrion Cache** | Resource Depot | Food storage built from scavenged refrigeration units. Pilferer Trinket Stashes within 8 tiles auto-deposit here instead of waiting for allied unit pickup. |
 | 4 | **Antenna Array** | Tech Building | Salvaged satellite dishes and radio towers. Processes GPU Cores. Gemineye's primary data feed — destroying these degrades Gemineye's fabrication filtering (increases fabrication chance by +5% per destroyed Array, stacking). |
 | 5 | **Panopticon** | Research | A tower covered in salvaged cameras and lenses. Unlocks upgrades and reduces Gemineye's base fabrication rate from 20% to 10%. Only one can be built. Losing it is catastrophic for intel reliability. |
 | 6 | **Nest Box** | Supply Depot | Rows of modular nesting compartments. Increases supply cap. Corvids argue over the best spots. |
@@ -1145,7 +1146,7 @@ SUPPORT LAYER
 
 ---
 
-### Croak Buildings
+## Croak Buildings
 
 | # | Name | Role | Notes |
 |---|------|------|-------|
@@ -1362,7 +1363,7 @@ SUPPORT LAYER
 
 ---
 
-### LLAMA Buildings
+## LLAMA Buildings
 
 | # | Name | Role | Notes |
 |---|------|------|-------|
