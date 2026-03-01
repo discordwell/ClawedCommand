@@ -102,10 +102,11 @@ pub fn combat_system(
                 }
 
                 // DreamSiege passive (Catnapper): ramp damage on same target
+                // Increment by attack_speed to approximate elapsed ticks between attacks
                 if unit_type.kind == UnitKind::Catnapper {
                     if let Some(ref mut siege_timer) = dream_siege_timer {
                         if siege_timer.current_target == Some(EntityId(target_entity.to_bits())) {
-                            siege_timer.ticks_on_target += 1;
+                            siege_timer.ticks_on_target += stats.attack_speed as u32;
                         } else {
                             siege_timer.current_target = Some(EntityId(target_entity.to_bits()));
                             siege_timer.ticks_on_target = 0;
