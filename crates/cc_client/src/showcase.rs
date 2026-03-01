@@ -4,6 +4,7 @@ use cc_core::mission::*;
 use cc_core::terrain::TerrainType;
 
 use crate::renderer::building_gen::ALL_BUILDING_KINDS;
+use crate::setup;
 
 /// Faction neighborhood centers on the 80×48 map (3 columns × 2 rows).
 const FACTION_CENTERS: [(i32, i32); 6] = [
@@ -154,7 +155,7 @@ fn stamp_diamond(
     }
 }
 
-/// Set a tile at (x, y) if within map bounds.
+/// Convenience wrapper for set_tile with this module's map dimensions.
 fn set_tile(
     tiles: &mut [TerrainType],
     elevation: &mut [u8],
@@ -163,11 +164,7 @@ fn set_tile(
     terrain: TerrainType,
     elev: u8,
 ) {
-    if x >= 0 && y >= 0 && (x as u32) < MAP_WIDTH && (y as u32) < MAP_HEIGHT {
-        let idx = y as usize * MAP_WIDTH as usize + x as usize;
-        tiles[idx] = terrain;
-        elevation[idx] = elev;
-    }
+    setup::set_tile(tiles, elevation, x, y, terrain, elev, MAP_WIDTH, MAP_HEIGHT);
 }
 
 #[cfg(test)]

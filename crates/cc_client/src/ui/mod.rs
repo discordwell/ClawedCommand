@@ -42,6 +42,7 @@ impl Plugin for UiPlugin {
         app.init_resource::<LocalPlayer>()
             .init_resource::<UiState>()
             .init_resource::<dialogue::DialogueState>()
+            .init_resource::<dialogue::PortraitHandles>()
             .init_resource::<campaign_menu::AvailableMissions>()
             .init_resource::<campaign_menu::CampaignMenuOpen>()
             .add_systems(

@@ -16,6 +16,7 @@ use crate::renderer::building_gen::{BuildingSprites, building_kind_index, buildi
 use crate::renderer::buildings::SpriteBuilding;
 use crate::renderer::resource_nodes::ResourceNodeSprites;
 use crate::renderer::unit_gen::{UnitSprites, kind_index};
+use crate::cutscene::CutsceneCamera;
 use crate::renderer::zoom_lod::{self, ZoomTier};
 
 /// Marker to distinguish unit entities from tile entities in queries.
@@ -86,6 +87,24 @@ pub(crate) fn game_map_from_inline(
     map
 }
 
+/// Set a single tile in an inline map tile/elevation array.
+pub(crate) fn set_tile(
+    tiles: &mut [cc_core::terrain::TerrainType],
+    elevation: &mut [u8],
+    x: i32,
+    y: i32,
+    terrain: cc_core::terrain::TerrainType,
+    elev: u8,
+    width: u32,
+    height: u32,
+) {
+    if x >= 0 && y >= 0 && (x as u32) < width && (y as u32) < height {
+        let idx = y as usize * width as usize + x as usize;
+        tiles[idx] = terrain;
+        elevation[idx] = elev;
+    }
+}
+
 /// Set up the initial game state: procedurally generated map, camera, starter units + base.
 pub fn setup_game(
     mut commands: Commands,
@@ -99,6 +118,7 @@ pub fn setup_game(
     building_sprites: Option<Res<BuildingSprites>>,
     tier: Res<ZoomTier>,
     campaign: Res<CampaignState>,
+    cutscene_cam: Option<Res<CutsceneCamera>>,
 ) {
     let map_def = if let Some(ref mission) = campaign.current_mission {
         // Build map from mission definition
@@ -143,10 +163,21 @@ pub fn setup_game(
         }
     }
 
-    // Center camera on the map center
-    let cx = map_res.map.width as i32 / 2;
-    let cy = map_res.map.height as i32 / 2;
-    let center_world = WorldPos::from_grid(GridPos::new(cx, cy));
+    // Camera positioning: cutscene override > showcase heuristic > default center
+    let (cam_grid, cam_scale) = if let Some(ref cc) = cutscene_cam {
+        (cc.focus, cc.zoom)
+    } else {
+        let is_showcase = map_res.map.width == 80 && map_res.map.height == 48;
+        if is_showcase {
+            // Focus on catGPT neighborhood center (13,13) at min zoom for building visibility
+            (GridPos::new(13, 13), 0.5)
+        } else {
+            let cx = map_res.map.width as i32 / 2;
+            let cy = map_res.map.height as i32 / 2;
+            (GridPos::new(cx, cy), 1.2)
+        }
+    };
+    let center_world = WorldPos::from_grid(cam_grid);
     let center_screen = world_to_screen(center_world);
     let cam_pos = Vec3::new(center_screen.x, -center_screen.y, 0.0);
 
@@ -154,7 +185,7 @@ pub fn setup_game(
         Camera2d,
         Transform::from_translation(cam_pos),
         Projection::Orthographic(OrthographicProjection {
-            scale: 1.2,
+            scale: cam_scale,
             ..OrthographicProjection::default_2d()
         }),
     ));
@@ -236,7 +267,8 @@ pub fn setup_game(
         if let Some(ref bsprites) = building_sprites {
             let idx = building_kind_index(BuildingKind::TheBox);
             let image = bsprites.sprites[idx].clone();
-            let scale = building_scale(BuildingKind::TheBox, bsprites.art_loaded);
+            let has_art = bsprites.has_art.get(idx).copied().unwrap_or(false);
+            let scale = building_scale(BuildingKind::TheBox, has_art);
             let tint = team_color(sp.player);
             commands.spawn((
                 Position { world: box_world },
