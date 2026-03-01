@@ -128,10 +128,13 @@
 - [ ] Extract `to_entity_ids(entities: &[Entity]) -> Vec<EntityId>` — repeated 12× across issue_attack/defend_commands
 - [ ] Extract `set_rally_points()` and `defense_rally_pos()` helpers — rally point logic repeated 3× across phases
 - [ ] Extract phase arms from `run_ai_fsm()` (~400 lines) into individual `phase_early_game()`, `phase_build_up()`, etc. functions for testability
-- [ ] Replace hardcoded building costs (100 food for FishMarket, 150 for CatTree, etc.) with references to `building_stats()` data to prevent silent desync
+- [x] Replace hardcoded building costs (100 food for FishMarket, 150 for CatTree, etc.) with references to `building_stats()` data to prevent silent desync
 - [ ] Extract magic numbers: `4` (BuildUp→MidGame threshold), `6` (max MidGame workers), `15` (focus-fire search radius), `5` (flank offset tiles), `2` (melee forward offset), `3` (defense rally offset from box)
 - [ ] Separate Strategic and Advanced tier match arms in `issue_attack_commands` (currently conflated; Advanced should add adaptive positioning per enum doc)
-- [ ] Consider replacing `BuildingCensus` per-kind booleans/entities with `HashMap<BuildingKind, BuildingInfo>` for extensibility
+- [ ] Rename `BuildingCensus` fields from catGPT names to role names (`has_hq`, `barracks_entity`, `tech_queue_len`, etc.) for consistency with FactionMap
+- [ ] Simplify `take_building_census` to compare against `fmap` fields instead of enumerating all faction building variants (~200 lines → ~30 lines)
+- [ ] Consolidate duplicate `BotConfig` structs (cc_sim::harness + cc_agent::arena) into `cc_sim::ai`
+- [ ] Consolidate duplicate helper functions between harness and arena (`spawn_starting_entities`, `spawn_combat_unit`, `headless_despawn_system`, etc.)
 
 ## From AI Training Pipeline Iterations
 

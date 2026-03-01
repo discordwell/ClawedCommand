@@ -613,6 +613,214 @@ mod wet {
         }
     }
 
+    // -----------------------------------------------------------------------
+    // Multi-faction wet tests
+    // -----------------------------------------------------------------------
+
+    /// Helper: run a faction mirror match and return the result.
+    fn run_faction_match(
+        faction_a: cc_core::components::Faction,
+        faction_b: cc_core::components::Faction,
+        seed: u64,
+    ) -> MatchResult {
+        use cc_sim::ai::fsm::faction_personality;
+        let config = HarnessConfig {
+            seed,
+            max_ticks: 8000,
+            snapshot_interval: 200,
+            bots: [
+                BotConfig {
+                    player_id: 0,
+                    difficulty: AiDifficulty::Medium,
+                    profile: faction_personality(faction_a),
+                    faction: faction_a,
+                },
+                BotConfig {
+                    player_id: 1,
+                    difficulty: AiDifficulty::Medium,
+                    profile: faction_personality(faction_b),
+                    faction: faction_b,
+                },
+            ],
+            ..Default::default()
+        };
+        run_match(&config)
+    }
+
+    /// Each faction can play a mirror match without panics or fatal violations.
+    #[test]
+    fn wet_faction_mirror_matches() {
+        use cc_core::components::Faction;
+
+        let factions = [
+            Faction::CatGpt,
+            Faction::TheClawed,
+            Faction::SeekersOfTheDeep,
+            Faction::TheMurder,
+            Faction::Llama,
+            Faction::Croak,
+        ];
+
+        for faction in factions {
+            let result = run_faction_match(faction, faction, 42);
+
+            println!(
+                "mirror {}: {} | ticks: {} | violations: {} | wall: {}ms",
+                faction,
+                result.outcome,
+                result.final_tick,
+                result.violations.len(),
+                result.wall_time_ms,
+            );
+
+            assert!(
+                result.passed(),
+                "Mirror match for {} should pass. Violations: {:?}",
+                faction,
+                result.violations.iter()
+                    .filter(|v| matches!(v.severity, invariants::Severity::Error | invariants::Severity::Fatal))
+                    .collect::<Vec<_>>()
+            );
+        }
+    }
+
+    /// Cross-faction matchups: CatGpt vs each other faction.
+    #[test]
+    fn wet_cross_faction_matchups() {
+        use cc_core::components::Faction;
+
+        let opponents = [
+            Faction::TheClawed,
+            Faction::SeekersOfTheDeep,
+            Faction::TheMurder,
+            Faction::Llama,
+            Faction::Croak,
+        ];
+
+        for opponent in opponents {
+            let result = run_faction_match(Faction::CatGpt, opponent, 42);
+
+            println!(
+                "CatGpt vs {}: {} | ticks: {} | violations: {} | wall: {}ms",
+                opponent,
+                result.outcome,
+                result.final_tick,
+                result.violations.len(),
+                result.wall_time_ms,
+            );
+
+            assert!(
+                result.passed(),
+                "CatGpt vs {} should pass. Violations: {:?}",
+                opponent,
+                result.violations.iter()
+                    .filter(|v| matches!(v.severity, invariants::Severity::Error | invariants::Severity::Fatal))
+                    .collect::<Vec<_>>()
+            );
+        }
+    }
+
+    /// Verify each faction spawns its own HQ and worker type, not CatGpt defaults.
+    #[test]
+    fn wet_faction_spawns_correct_entities() {
+        use cc_core::components::Faction;
+        use cc_sim::ai::fsm::{faction_map, faction_personality};
+
+        let factions = [
+            Faction::CatGpt,
+            Faction::TheClawed,
+            Faction::SeekersOfTheDeep,
+            Faction::TheMurder,
+            Faction::Llama,
+            Faction::Croak,
+        ];
+
+        for faction in factions {
+            let config = HarnessConfig {
+                seed: 42,
+                max_ticks: 500,
+                snapshot_interval: 10, // Capture early to see starting entities
+                bots: [
+                    BotConfig {
+                        player_id: 0,
+                        difficulty: AiDifficulty::Medium,
+                        profile: faction_personality(faction),
+                        faction,
+                    },
+                    BotConfig {
+                        player_id: 1,
+                        difficulty: AiDifficulty::Medium,
+                        profile: faction_personality(faction),
+                        faction,
+                    },
+                ],
+                ..Default::default()
+            };
+            let result = run_match(&config);
+            assert!(!result.snapshots.is_empty(), "Should have at least one snapshot for {}", faction);
+            let snap = &result.snapshots[0];
+            let fmap = faction_map(faction);
+
+            let expected_hq = format!("{:?}", fmap.hq);
+            let expected_worker = format!("{:?}", fmap.worker);
+
+            // Both players should have the faction's HQ
+            for player_id in 0u8..=1 {
+                let has_hq = snap.buildings.iter().any(|b| {
+                    b.owner == player_id && b.kind == expected_hq
+                });
+                assert!(
+                    has_hq,
+                    "P{} ({}) should have HQ '{}', buildings: {:?}",
+                    player_id, faction, expected_hq,
+                    snap.buildings.iter().map(|b| &b.kind).collect::<Vec<_>>()
+                );
+
+                let has_worker = snap.units.iter().any(|u| {
+                    u.owner == player_id && u.kind == expected_worker
+                });
+                assert!(
+                    has_worker,
+                    "P{} ({}) should have worker '{}', units: {:?}",
+                    player_id, faction, expected_worker,
+                    snap.units.iter().map(|u| &u.kind).collect::<Vec<_>>()
+                );
+            }
+        }
+    }
+
+    /// Multi-faction stress test: different faction pairs across seeds.
+    #[test]
+    fn wet_faction_variety_stress() {
+        use cc_core::components::Faction;
+
+        let matchups = [
+            (Faction::TheClawed, Faction::Croak, 7),
+            (Faction::SeekersOfTheDeep, Faction::Llama, 123),
+            (Faction::TheMurder, Faction::TheClawed, 999),
+            (Faction::Llama, Faction::SeekersOfTheDeep, 42),
+        ];
+
+        for (a, b, seed) in matchups {
+            let result = run_faction_match(a, b, seed);
+
+            println!(
+                "{} vs {} (seed {}): {} | ticks: {} | wall: {}ms",
+                a, b, seed,
+                result.outcome, result.final_tick, result.wall_time_ms,
+            );
+
+            assert!(
+                result.passed(),
+                "{} vs {} (seed {}) should pass. Violations: {:?}",
+                a, b, seed,
+                result.violations.iter()
+                    .filter(|v| matches!(v.severity, invariants::Severity::Error | invariants::Severity::Fatal))
+                    .collect::<Vec<_>>()
+            );
+        }
+    }
+
     /// Verify that melee combat is tracked via CombatStats, not just projectiles.
     /// This catches the bug where `projectile_count == 0` at snapshot time
     /// caused combat to appear absent even when melee units were dealing damage.

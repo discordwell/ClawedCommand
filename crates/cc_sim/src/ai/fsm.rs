@@ -901,7 +901,7 @@ fn run_ai_fsm(
         bc.building_positions.push((*pos, *kind));
         match kind {
             BuildingKind::FishMarket | BuildingKind::ScrapHeap | BuildingKind::BurrowDepot
-                | BuildingKind::LilyMarket | BuildingKind::SeedVault => bc.has_fish_market = true,
+                | BuildingKind::LilyMarket | BuildingKind::SeedVault | BuildingKind::CarrionCache => bc.has_fish_market = true,
             BuildingKind::CatTree | BuildingKind::ChopShop | BuildingKind::WarHollow
                 | BuildingKind::SpawningPools | BuildingKind::NestingBox | BuildingKind::Rookery => bc.has_cat_tree = true,
             BuildingKind::ServerRack | BuildingKind::JunkServer | BuildingKind::CoreTap
@@ -969,7 +969,10 @@ fn run_ai_fsm(
         AiPhase::BuildUp => {
             let reserve = food_reserve_for_buildings(AiPhase::BuildUp, &bc, pres.gpu_cores, fmap);
 
-            if builder_used.is_none() && !bc.has_fish_market && pres.food >= 100 && bc.has_box {
+            let depot_cost = cc_core::building_stats::building_stats(fmap.resource_depot);
+            let barracks_cost = cc_core::building_stats::building_stats(fmap.barracks);
+
+            if builder_used.is_none() && !bc.has_fish_market && pres.food >= depot_cost.food_cost && bc.has_box {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
                     let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
                     cmd_queue.push(GameCommand::Build {
@@ -981,7 +984,7 @@ fn run_ai_fsm(
                 }
             }
 
-            if builder_used.is_none() && !bc.has_cat_tree && pres.food >= 150 && bc.has_box {
+            if builder_used.is_none() && !bc.has_cat_tree && pres.food >= barracks_cost.food_cost && bc.has_box {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
                     let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
                     cmd_queue.push(GameCommand::Build {
@@ -1041,8 +1044,11 @@ fn run_ai_fsm(
 
         AiPhase::MidGame => {
             let reserve = food_reserve_for_buildings(AiPhase::MidGame, &bc, pres.gpu_cores, fmap);
+            let tech_stats = cc_core::building_stats::building_stats(fmap.tech);
+            let research_stats = cc_core::building_stats::building_stats(fmap.research);
+            let tower_stats = cc_core::building_stats::building_stats(fmap.defense_tower);
 
-            if builder_used.is_none() && !bc.has_server_rack && pres.food >= 100 && pres.gpu_cores >= 75 && bc.has_box {
+            if builder_used.is_none() && !bc.has_server_rack && pres.food >= tech_stats.food_cost && pres.gpu_cores >= tech_stats.gpu_cost && bc.has_box {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
                     let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
                     cmd_queue.push(GameCommand::Build {
@@ -1054,7 +1060,7 @@ fn run_ai_fsm(
                 }
             }
 
-            if builder_used.is_none() && !bc.has_scratching_post && pres.food >= 100 && pres.gpu_cores >= 50 && bc.has_box {
+            if builder_used.is_none() && !bc.has_scratching_post && pres.food >= research_stats.food_cost && pres.gpu_cores >= research_stats.gpu_cost && bc.has_box {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
                     let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
                     cmd_queue.push(GameCommand::Build {
@@ -1066,7 +1072,7 @@ fn run_ai_fsm(
                 }
             }
 
-            if builder_used.is_none() && !bc.has_laser_pointer && pres.food >= 75 && pres.gpu_cores >= 25 && bc.has_box {
+            if builder_used.is_none() && !bc.has_laser_pointer && pres.food >= tower_stats.food_cost && pres.gpu_cores >= tower_stats.gpu_cost && bc.has_box {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
                     let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
                     cmd_queue.push(GameCommand::Build {
@@ -1361,7 +1367,8 @@ fn maybe_build_supply(
     if pending_litter_boxes > 0 {
         return None;
     }
-    if pres.supply + 2 >= pres.supply_cap && pres.food >= 75 {
+    let supply_cost = cc_core::building_stats::building_stats(supply_kind).food_cost;
+    if pres.supply + 2 >= pres.supply_cap && pres.food >= supply_cost {
         if let Some(builder) = pick_builder(idle_workers, all_workers) {
             let build_pos = find_build_position(box_pos, map, building_positions);
             cmd_queue.push(GameCommand::Build {

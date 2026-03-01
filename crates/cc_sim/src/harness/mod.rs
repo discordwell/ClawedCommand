@@ -468,7 +468,8 @@ fn make_harness_sim(
     schedule.add_systems(victory_system.after(headless_despawn_system));
 
     for (player_id, spawn_pos) in &spawn_positions {
-        spawn_starting_entities(&mut world, *player_id, *spawn_pos, map_def);
+        let faction = config.bots[*player_id as usize].faction;
+        spawn_starting_entities(&mut world, *player_id, *spawn_pos, faction, map_def);
     }
 
     (world, schedule)
@@ -478,9 +479,11 @@ fn spawn_starting_entities(
     world: &mut World,
     player_id: u8,
     spawn_pos: GridPos,
+    faction: cc_core::components::Faction,
     map_def: &cc_core::map_format::MapDefinition,
 ) {
-    let box_stats = building_stats(BuildingKind::TheBox);
+    let fmap = crate::ai::fsm::faction_map(faction);
+    let hq_stats = building_stats(fmap.hq);
     world.spawn((
         Position {
             world: WorldPos::from_grid(spawn_pos),
@@ -488,29 +491,29 @@ fn spawn_starting_entities(
         GridCell { pos: spawn_pos },
         Owner { player_id },
         Building {
-            kind: BuildingKind::TheBox,
+            kind: fmap.hq,
         },
         Health {
-            current: box_stats.health,
-            max: box_stats.health,
+            current: hq_stats.health,
+            max: hq_stats.health,
         },
         Producer,
         ProductionQueue::default(),
     ));
 
-    // Grant supply_cap from TheBox and starting resources
+    // Grant supply_cap from HQ and starting resources
     {
         let mut player_res = world.resource_mut::<PlayerResources>();
         if let Some(pres) = player_res.players.get_mut(player_id as usize) {
-            pres.supply_cap += box_stats.supply_provided;
+            pres.supply_cap += hq_stats.supply_provided;
             pres.food = 200; // Starting resources
         }
     }
 
-    let unit_supply_cost = base_stats(UnitKind::Pawdler).supply_cost;
+    let unit_supply_cost = base_stats(fmap.worker).supply_cost;
     for i in 0..2 {
         let offset = GridPos::new(spawn_pos.x + 1 + i, spawn_pos.y);
-        spawn_combat_unit(world, offset, player_id, UnitKind::Pawdler);
+        spawn_combat_unit(world, offset, player_id, fmap.worker);
     }
 
     // Track supply used by starting units

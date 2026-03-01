@@ -121,11 +121,13 @@ fn main() {
                     player_id: 0,
                     difficulty: AiDifficulty::Medium,
                     profile: parse_profile(&args.p0_profile),
+                    faction: cc_core::components::Faction::CatGpt,
                 },
                 BotConfig {
                     player_id: 1,
                     difficulty: AiDifficulty::Medium,
                     profile: parse_profile(&args.p1_profile),
+                    faction: cc_core::components::Faction::CatGpt,
                 },
             ],
             scripts: [p0_scripts.clone(), p1_scripts.clone()],
