@@ -36,6 +36,12 @@ pub fn upgrade_stats(upgrade: UpgradeType) -> UpgradeBaseStats {
             food_cost: 400,
             gpu_cost: 200,
         },
+        // Non-cat faction upgrades — placeholder stats
+        _ => UpgradeBaseStats {
+            research_time: 200,
+            food_cost: 150,
+            gpu_cost: 50,
+        },
     }
 }
 

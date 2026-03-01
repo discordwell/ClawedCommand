@@ -89,6 +89,24 @@ pub fn building_stats(kind: BuildingKind) -> BuildingBaseStats {
             supply_provided: 0,
             can_produce: &[],
         },
+        // Non-cat factions — placeholder stats
+        _ => BuildingBaseStats {
+            health: Fixed::from_bits(200 << 16),
+            build_time: 100,
+            food_cost: 100,
+            gpu_cost: 0,
+            supply_provided: 0,
+            can_produce: &[],
+        },
+        // Non-cat faction buildings — placeholder stats
+        _ => BuildingBaseStats {
+            health: Fixed::from_bits(200 << 16),
+            build_time: 100,
+            food_cost: 100,
+            gpu_cost: 0,
+            supply_provided: 0,
+            can_produce: &[],
+        },
     }
 }
 

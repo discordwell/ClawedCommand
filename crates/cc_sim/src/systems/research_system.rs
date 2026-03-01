@@ -82,6 +82,8 @@ pub fn apply_upgrade_to_existing_units(
             UpgradeType::SiegeTraining | UpgradeType::MechPrototype => {
                 // These are unlock gates, not stat bonuses
             }
+            // Non-cat faction upgrades — no effect in cat game loop yet
+            _ => {}
         }
     }
 }

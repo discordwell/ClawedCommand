@@ -45,6 +45,17 @@ pub enum AbilityId {
     TacticalUplink,
     Override,
     GeppityUplink,
+    // --- LLAMA (Raccoons) ---
+    DumpsterDiveAbility, PocketStash, PlayDead,
+    StickyFingers, JuryRig, Getaway,
+    ScrapArmorAbility, WreckBall, MagneticPulse,
+    CableGnaw, SignalScramble, TunnelRat,
+    DuctTapeFix, SalvageResurrection, FeignDeath,
+    JunkLauncher, SalvageTurret, Overcharge,
+    Eavesdrop, TrashHeapAmbush, LeakInjection,
+    Disassemble, PryBar, ChainBreak,
+    TreasureTrash, RefuseShield, StenchCloudAbility,
+    OpenSourceUplinkAbility, FrankensteinProtocol, OverclockCascade,
 }
 
 /// How an ability is activated.
@@ -217,6 +228,11 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
         AbilityId::GeppityUplink => AbilityDef {
             id, activation: Activated, cooldown_ticks: 300, gpu_cost: 50,
             duration_ticks: 100, range: Fixed::ZERO, max_charges: 0,
+        },
+        // Non-cat faction abilities — placeholder stats
+        _ => AbilityDef {
+            id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
+            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
         },
     }
 }

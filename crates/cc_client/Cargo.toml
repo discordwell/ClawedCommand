@@ -15,6 +15,10 @@ cc_agent = { path = "../cc_agent", optional = true }
 bevy = { workspace = true }
 bevy_egui = { workspace = true, optional = true }
 
+[[example]]
+name = "poc_3d"
+required-features = []
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 bevy = { workspace = true, features = ["webgl2"] }
 getrandom = { version = "0.2", features = ["js"] }

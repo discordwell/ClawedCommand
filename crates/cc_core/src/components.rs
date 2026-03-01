@@ -110,6 +110,40 @@ pub enum BuildingKind {
     CatFlap,
     /// Defensive tower — auto-attacks enemies in range.
     LaserPointer,
+    // --- The Murder (Corvids) ---
+    /// HQ — pre-built, produces MurderScrounger, command center.
+    TheParliament,
+    /// Barracks — produces Sentinel, Rookclaw, Magpike, Jaycaller.
+    Rookery,
+    /// Resource depot — food storage.
+    CarrionCache,
+    /// Tech building — produces Magpyre, Jayflicker, Dusktalon, Hootseer, CorvusRex.
+    AntennaArray,
+    /// Research building — upgrades, unique (limit 1).
+    Panopticon,
+    /// Supply depot — increases supply cap.
+    NestBox,
+    /// Defensive wall — blocks ground, cheap and fast.
+    ThornHedge,
+    /// Defense tower — long-range ranged auto-attack.
+    Watchtower,
+    // --- Croak (Axolotls) ---
+    /// HQ (Croak) — pre-built, produces Ponderer.
+    TheGrotto,
+    /// Barracks (Croak) — produces Regeneron, Croaker, Leapfrog, Gulper.
+    SpawningPools,
+    /// Resource Depot (Croak) — food drop-off.
+    LilyMarket,
+    /// Tech Building (Croak) — produces Eftsaber, Broodmother, Shellwarden, Bogwhisper, MurkCommander.
+    SunkenServer,
+    /// Research (Croak) — Croak-specific upgrades.
+    FossilStones,
+    /// Supply Depot (Croak) — increases supply cap.
+    ReedBed,
+    /// Garrison/Gate (Croak) — units enter for protection.
+    TidalGate,
+    /// Defense Tower (Croak) — applies Waterlogged, DoT.
+    SporeTower,
 }
 
 impl std::fmt::Display for BuildingKind {
@@ -130,6 +164,24 @@ impl std::str::FromStr for BuildingKind {
             "ScratchingPost" => Ok(Self::ScratchingPost),
             "CatFlap" => Ok(Self::CatFlap),
             "LaserPointer" => Ok(Self::LaserPointer),
+            // The Murder (Corvids)
+            "TheParliament" => Ok(Self::TheParliament),
+            "Rookery" => Ok(Self::Rookery),
+            "CarrionCache" => Ok(Self::CarrionCache),
+            "AntennaArray" => Ok(Self::AntennaArray),
+            "Panopticon" => Ok(Self::Panopticon),
+            "NestBox" => Ok(Self::NestBox),
+            "ThornHedge" => Ok(Self::ThornHedge),
+            "Watchtower" => Ok(Self::Watchtower),
+            // Croak (Axolotls)
+            "TheGrotto" => Ok(Self::TheGrotto),
+            "SpawningPools" => Ok(Self::SpawningPools),
+            "LilyMarket" => Ok(Self::LilyMarket),
+            "SunkenServer" => Ok(Self::SunkenServer),
+            "FossilStones" => Ok(Self::FossilStones),
+            "ReedBed" => Ok(Self::ReedBed),
+            "TidalGate" => Ok(Self::TidalGate),
+            "SporeTower" => Ok(Self::SporeTower),
             _ => Err(()),
         }
     }
@@ -194,6 +246,39 @@ pub enum UnitKind {
     Catnapper,     // Siege (Cat) — sleeps on buildings until they collapse
     FerretSapper,  // Demolitions (Ferret) — plants explosives, fast building destruction
     MechCommander, // Hero/Heavy (Cat in Mech) — late-game, commands nearby units
+    // --- The Murder (Corvids) ---
+    MurderScrounger, // Worker (Crow) — gathers food, builds, scavenges
+    Sentinel,      // Ranged Scout (Crow) — long-range glass cannon
+    Rookclaw,      // Melee Dive Striker (Crow) — fast, bursty, fragile
+    Magpike,       // Disruptor/Thief (Magpie) — steals resources, disrupts
+    Magpyre,       // Saboteur (Magpie) — signal jamming, decoys, rewiring
+    Jaycaller,     // Support/Buffer (Jay) — rally cry, alarm call
+    Jayflicker,    // Illusion Specialist (Jay) — phantom flock, mirror position
+    Dusktalon,     // Stealth Assassin (Owl) — ground-based stealth, high burst
+    Hootseer,      // Area Denial/Debuffer (Owl) — panoptic gaze, dread aura
+    CorvusRex,     // Hero/Heavy (Augmented Crow) — corvid network, all-seeing lie
+    // --- The Clawed (Mice) ---
+    Nibblet,       // Worker (Mouse) — gathers food, builds
+    Swarmer,       // Light Infantry (Mouse) — cheap, fast attack speed, swarm in numbers
+    Gnawer,        // Anti-Structure (Mouse) — Structural Weakness passive vs buildings
+    Shrieker,      // Ranged Harasser (Shrew) — cone attack, fragile
+    Tunneler,      // Transport/Utility (Vole) — burrow express, tremor sense
+    Sparks,        // Saboteur (Mouse) — static charge burst after movement
+    Quillback,     // Heavy Defender (Hedgehog) — spine wall DR, stubborn advance
+    Whiskerwitch,  // Caster/Support (Shrew) — hex of multiplication, whisker weave
+    Plaguetail,    // Area Denial (Mouse) — contagion cloud on death
+    WarrenMarshal, // Hero/Commander (Mouse) — rally the swarm aura, whiskernet relay
+    // --- Croak (Axolotls) ---
+    Ponderer,       // Worker (Croak) — gathers via ambient gathering on water
+    Regeneron,      // Light Skirmisher (Croak) — Limb Economy, self-regen
+    Broodmother,    // Healer/Support (Croak) — spawns Spawnlings, burst heals
+    Gulper,         // Heavy Bruiser (Croak) — Devour mechanic, massive regen
+    Eftsaber,       // Assassin/Flanker (Croak) — poison, Waterway stealth
+    Croaker,        // Ranged Artillery (Croak) — Bog Mortar, terrain creation
+    Leapfrog,       // Mobile Harasser (Croak) — Hop chains on water
+    Shellwarden,    // Tank/Defender (Croak) — Hunker, Ancient Moss aura
+    Bogwhisper,     // Support/Caster (Croak) — Mire Curse, Prophecy
+    MurkCommander,  // Hero/Heavy (Croak) — Grok Protocol, Murk Uplink
 }
 
 impl std::fmt::Display for UnitKind {
@@ -216,6 +301,28 @@ impl std::str::FromStr for UnitKind {
             "Catnapper" => Ok(Self::Catnapper),
             "FerretSapper" => Ok(Self::FerretSapper),
             "MechCommander" => Ok(Self::MechCommander),
+            // The Murder (Corvids)
+            "MurderScrounger" => Ok(Self::MurderScrounger),
+            "Sentinel" => Ok(Self::Sentinel),
+            "Rookclaw" => Ok(Self::Rookclaw),
+            "Magpike" => Ok(Self::Magpike),
+            "Magpyre" => Ok(Self::Magpyre),
+            "Jaycaller" => Ok(Self::Jaycaller),
+            "Jayflicker" => Ok(Self::Jayflicker),
+            "Dusktalon" => Ok(Self::Dusktalon),
+            "Hootseer" => Ok(Self::Hootseer),
+            "CorvusRex" => Ok(Self::CorvusRex),
+            // Croak (Axolotls)
+            "Ponderer" => Ok(Self::Ponderer),
+            "Regeneron" => Ok(Self::Regeneron),
+            "Broodmother" => Ok(Self::Broodmother),
+            "Gulper" => Ok(Self::Gulper),
+            "Eftsaber" => Ok(Self::Eftsaber),
+            "Croaker" => Ok(Self::Croaker),
+            "Leapfrog" => Ok(Self::Leapfrog),
+            "Shellwarden" => Ok(Self::Shellwarden),
+            "Bogwhisper" => Ok(Self::Bogwhisper),
+            "MurkCommander" => Ok(Self::MurkCommander),
             _ => Err(()),
         }
     }
@@ -519,10 +626,19 @@ impl Default for StatModifiers {
 pub enum AuraType {
     GravitationalChonk,
     HarmonicResonance,
+    // The Murder (Corvids)
+    DreadAura,
+    CorvidNetwork,
+    OculusUplink,
     Lullaby,
     ContagiousYawning,
     TacticalUplink,
     GeppityUplink,
+    // Croak (Axolotls)
+    AncientMoss,
+    BogSong,
+    UndyingPresence,
+    MurkUplinkAura,
 }
 
 /// Component for units that emit an area-of-effect aura.
@@ -609,6 +725,17 @@ pub enum UpgradeType {
     SiegeTraining,
     /// Unlocks MechCommander training at ServerRack.
     MechPrototype,
+    // --- The Murder (Corvids) ---
+    /// +2 damage for all Murder combat units.
+    SharperTalons,
+    /// +20 HP for all Murder combat units.
+    HardenedPlumage,
+    /// +10% speed for all Murder units.
+    SwiftWings,
+    /// Unlocks Dusktalon training at AntennaArray.
+    AssassinTraining,
+    /// Unlocks CorvusRex training at AntennaArray.
+    RexPrototype,
 }
 
 impl std::fmt::Display for UpgradeType {
@@ -619,6 +746,11 @@ impl std::fmt::Display for UpgradeType {
             Self::NimblePaws => write!(f, "NimblePaws"),
             Self::SiegeTraining => write!(f, "SiegeTraining"),
             Self::MechPrototype => write!(f, "MechPrototype"),
+            Self::SharperTalons => write!(f, "SharperTalons"),
+            Self::HardenedPlumage => write!(f, "HardenedPlumage"),
+            Self::SwiftWings => write!(f, "SwiftWings"),
+            Self::AssassinTraining => write!(f, "AssassinTraining"),
+            Self::RexPrototype => write!(f, "RexPrototype"),
         }
     }
 }
@@ -632,6 +764,11 @@ impl std::str::FromStr for UpgradeType {
             "NimblePaws" => Ok(Self::NimblePaws),
             "SiegeTraining" => Ok(Self::SiegeTraining),
             "MechPrototype" => Ok(Self::MechPrototype),
+            "SharperTalons" => Ok(Self::SharperTalons),
+            "HardenedPlumage" => Ok(Self::HardenedPlumage),
+            "SwiftWings" => Ok(Self::SwiftWings),
+            "AssassinTraining" => Ok(Self::AssassinTraining),
+            "RexPrototype" => Ok(Self::RexPrototype),
             _ => Err(()),
         }
     }
@@ -677,6 +814,58 @@ pub struct HeroIdentity {
 pub struct WaveMember {
     pub wave_id: String,
 }
+
+
+// ---------------------------------------------------------------------------
+// Murder faction components
+// ---------------------------------------------------------------------------
+
+/// Marker: this unit is aerial -- ignores terrain pathing, immune to melee unless Grounded.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct Aerial;
+
+/// Marker: aerial unit is temporarily grounded -- can be hit by melee, cannot fly.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct Grounded {
+    pub remaining_ticks: u32,
+}
+
+/// Murder-specific debuff: target is visible through fog to all Murder units.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct Exposed {
+    pub remaining_ticks: u32,
+    pub source_player: u8,
+}
+
+/// Tracks Murder's Mark debuff on an enemy unit.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct MurdersMarkDebuff {
+    pub remaining_ticks: u32,
+}
+
+/// Tracks Magpike's Trinket Ward passive stacking.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct TrinketWardTracker {
+    pub trinkets_collected: u32,
+}
+
+/// Tracks Hootseer's Panoptic Gaze cone direction.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct PanopticGazeCone {
+    pub direction: Fixed,
+    pub half_angle: Fixed,
+}
+
+/// Unique building limit tracker (e.g., Panopticon is limit-1).
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct UniqueBuildingLimit;
 
 #[cfg(test)]
 mod tests {

@@ -312,15 +312,24 @@ Voice comprehension sits in the Intelligence Layer alongside the agentic builder
 
 See [VOICE.md](./VOICE.md) for the full keyword spotting technical details.
 
-### 5. Renderer (Bevy 2D + Isometric)
+### 5. Renderer (Bevy 2D + Isometric → 3D Migration Planned)
 
-**Isometric projection:**
+**Current: 2D isometric projection:**
 - Tile-based map with diamond-shaped tiles
 - Sprite-based units and buildings with directional animations
 - Depth sorting based on y-position for correct overlap
 - Smooth camera with zoom (0.5x-3.5x), pan, edge scrolling, minimap
 - Two-tier zoom LOD with hysteresis: Tactical (< 2.0x) shows full sprites/health bars/props; Strategic (>= 2.0x) shows simplified colored-dot icons
 - 2x sprite resolution for crisp close-up zoom (drawn at 1x, nearest-neighbor upscaled)
+
+**Planned: 3D orthographic renderer (Into the Breach / Bad North style):**
+- AI-generated GLB models via Tripo API (image-to-3D from existing sprites)
+- 3D orthographic camera at isometric angle (~35.26°), orbitable
+- `assets/models/units/` stores GLB files, loaded via `SceneRoot`
+- Team color tinting via material base_color multiply blend
+- PoC validated in `crates/cc_client/examples/poc_3d.rs`
+- 3D model generation script: `tools/asset_pipeline/scripts/generate_3d_model.py`
+- Full migration tracked in TDL.md under "3D Renderer Migration"
 
 **Visual layers (bottom to top):**
 1. Terrain tiles
@@ -556,7 +565,8 @@ ClawedCommand/
 | Language | Rust |
 | Game Engine | Bevy 0.15+ |
 | ECS | Bevy ECS (built-in) |
-| Rendering | Bevy 2D with custom isometric plugin |
+| Rendering | Bevy 2D isometric (current) → Bevy 3D orthographic (planned, PoC validated) |
+| 3D Model Gen | Tripo API (image-to-3D GLB) |
 | Networking | Quinn (QUIC) or wtransport |
 | Serialization | bincode / serde |
 | AI Model (Server) | Devstral 2 123B via Mistral API (`devstral-2-2512`) |
