@@ -5,7 +5,7 @@ edition = "2024"
 
 [features]
 default = []
-harness = ["dep:image", "dep:serde_json"]
+harness = ["dep:image", "dep:serde_json", "dep:clap"]
 
 [dependencies]
 cc_core = { path = "../cc_core", features = ["bevy"] }
@@ -16,6 +16,7 @@ log = { workspace = true }
 # Harness-only deps (optional)
 image = { version = "0.25", optional = true, default-features = false, features = ["png"] }
 serde_json = { version = "1", optional = true }
+clap = { version = "4", features = ["derive"], optional = true }
 
 [[bin]]
 name = "wet-test"

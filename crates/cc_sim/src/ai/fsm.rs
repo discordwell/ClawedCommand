@@ -640,7 +640,6 @@ fn run_ai_fsm(
         AiPhase::BuildUp => {
             let reserve = food_reserve_for_buildings(AiPhase::BuildUp, &bc, pres.gpu_cores);
 
-            // Build one structure per tick to avoid same-worker conflicts
             if builder_used.is_none() && !bc.has_fish_market && pres.food >= 100 && bc.has_box {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
                     let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
@@ -671,7 +670,6 @@ fn run_ai_fsm(
                 }
             }
 
-            // Train army from CatTree
             if let Some(ct_e) = bc.cat_tree_entity {
                 let nuisance_cost = cc_core::unit_stats::base_stats(UnitKind::Nuisance).food_cost;
                 if pres.food >= nuisance_cost + reserve && pres.supply < pres.supply_cap
@@ -684,7 +682,6 @@ fn run_ai_fsm(
                 }
             }
 
-            // Train additional workers during BuildUp (economy needs more than EarlyGame count)
             let buildup_worker_cap = (target_workers + 1).min(6);
             if uc.worker_count < buildup_worker_cap {
                 if let Some(box_e) = bc.box_entity {
@@ -699,7 +696,6 @@ fn run_ai_fsm(
                 }
             }
 
-            // Rally combat buildings to defensive position near base
             let defense_pos = bc.box_pos.map(|p| GridPos::new(p.x + 3, p.y + 3))
                 .unwrap_or(GridPos::new(55, 58));
             if let Some(ct_e) = bc.cat_tree_entity {
@@ -709,17 +705,12 @@ fn run_ai_fsm(
                 });
             }
 
-            if uc.army_count >= 4 {
-                AiPhase::MidGame
-            } else {
-                AiPhase::BuildUp
-            }
+            if uc.army_count >= 4 { AiPhase::MidGame } else { AiPhase::BuildUp }
         }
 
         AiPhase::MidGame => {
             let reserve = food_reserve_for_buildings(AiPhase::MidGame, &bc, pres.gpu_cores);
 
-            // Build one structure per tick to avoid same-worker conflicts
             if builder_used.is_none() && !bc.has_server_rack && pres.food >= 100 && pres.gpu_cores >= 75 && bc.has_box {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
                     let build_pos = find_build_position(bc.box_pos, map, &bc.building_positions);
@@ -756,12 +747,9 @@ fn run_ai_fsm(
                 }
             }
 
-            // Queue research at ScratchingPost
             if let Some(sp_e) = bc.scratching_post_entity {
                 let research_priority = [
-                    UpgradeType::SharperClaws,
-                    UpgradeType::ThickerFur,
-                    UpgradeType::SiegeTraining,
+                    UpgradeType::SharperClaws, UpgradeType::ThickerFur, UpgradeType::SiegeTraining,
                 ];
                 for upgrade in research_priority {
                     if !pres.completed_upgrades.contains(&upgrade) {
@@ -777,18 +765,11 @@ fn run_ai_fsm(
                 }
             }
 
-            // Train advanced units from ServerRack
             if let Some(sr_e) = bc.server_rack_entity {
-                if pres.supply < pres.supply_cap
-                    && bc.server_rack_queue_len < AI_MAX_QUEUE_DEPTH
-                {
+                if pres.supply < pres.supply_cap && bc.server_rack_queue_len < AI_MAX_QUEUE_DEPTH {
                     let kind = if pres.completed_upgrades.contains(&UpgradeType::SiegeTraining)
                         && uc.army_count % 4 == 0
-                    {
-                        UnitKind::Catnapper
-                    } else {
-                        UnitKind::FlyingFox
-                    };
+                    { UnitKind::Catnapper } else { UnitKind::FlyingFox };
                     let stats = cc_core::unit_stats::base_stats(kind);
                     if pres.food >= stats.food_cost + reserve && pres.gpu_cores >= stats.gpu_cost {
                         cmd_queue.push(GameCommand::TrainUnit {
@@ -799,11 +780,8 @@ fn run_ai_fsm(
                 }
             }
 
-            // Keep training basic units from CatTree — use profile preferences if available
             if let Some(ct_e) = bc.cat_tree_entity {
-                if pres.supply < pres.supply_cap
-                    && bc.cat_tree_queue_len < AI_MAX_QUEUE_DEPTH
-                {
+                if pres.supply < pres.supply_cap && bc.cat_tree_queue_len < AI_MAX_QUEUE_DEPTH {
                     let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick);
                     let stats = cc_core::unit_stats::base_stats(kind);
                     if pres.food >= stats.food_cost + reserve {
@@ -821,7 +799,6 @@ fn run_ai_fsm(
                 }
             }
 
-            // Continue training workers (cap at 6 to reserve supply for army)
             if uc.worker_count < 6 {
                 if let Some(box_e) = bc.box_entity {
                     if pres.food >= 50 + reserve && pres.supply < pres.supply_cap
@@ -835,7 +812,6 @@ fn run_ai_fsm(
                 }
             }
 
-            // Rally combat buildings to defensive position near base
             let defense_pos = bc.box_pos.map(|p| GridPos::new(p.x + 3, p.y + 3))
                 .unwrap_or(GridPos::new(55, 58));
             if let Some(ct_e) = bc.cat_tree_entity {
@@ -851,7 +827,6 @@ fn run_ai_fsm(
                 });
             }
 
-            // Attack when army is ready, OR when enemy has no army (cleanup mode).
             let enemy_defenseless = uc.enemy_army_count == 0 && uc.army_count >= 2;
             if uc.army_count >= attack_threshold || enemy_defenseless {
                 AiPhase::Attack
@@ -861,31 +836,26 @@ fn run_ai_fsm(
         }
 
         AiPhase::Attack => {
-            // Re-issue attack orders periodically (every 50 ticks / 5s) so
-            // reinforcements join the fight and units don't idle after reaching target.
             let should_reissue = !ai_state.attack_ordered
                 || tick.saturating_sub(ai_state.last_attack_tick) >= ATTACK_REISSUE_INTERVAL;
 
             if should_reissue {
                 if let Some(target) = ai_state.enemy_spawn {
                     if !uc.army_entities.is_empty() {
-                        issue_attack_commands(
-                            tier, tick, ai_state, &uc.army_entities, ai_player,
-                            retreat_threshold, units, health_query, cmd_queue,
-                            bc.box_pos, target,
-                        );
+                        let ids: Vec<EntityId> = uc.army_entities
+                            .iter()
+                            .map(|e| EntityId(e.to_bits()))
+                            .collect();
+                        cmd_queue.push(GameCommand::AttackMove { unit_ids: ids, target });
+                        ai_state.attack_ordered = true;
+                        ai_state.last_attack_tick = tick;
                     }
                 }
             }
 
-            // Keep economy running during attack — train reinforcements
             if let Some(ct_e) = bc.cat_tree_entity {
-                if pres.supply < pres.supply_cap {
-                    let kind = if uc.army_count % 3 == 0 {
-                        UnitKind::Hisser
-                    } else {
-                        UnitKind::Nuisance
-                    };
+                if pres.supply < pres.supply_cap && bc.cat_tree_queue_len < AI_MAX_QUEUE_DEPTH {
+                    let kind = if uc.army_count % 3 == 0 { UnitKind::Hisser } else { UnitKind::Nuisance };
                     let stats = cc_core::unit_stats::base_stats(kind);
                     if pres.food >= stats.food_cost {
                         cmd_queue.push(GameCommand::TrainUnit {
@@ -900,31 +870,43 @@ fn run_ai_fsm(
                 builder_used = Some(b);
             }
 
-            // Check if base is under attack (enemy units near our buildings)
+            if let Some(enemy_pos) = ai_state.enemy_spawn {
+                if let Some(ct_e) = bc.cat_tree_entity {
+                    cmd_queue.push(GameCommand::SetRallyPoint {
+                        building: EntityId(ct_e.to_bits()),
+                        target: enemy_pos,
+                    });
+                }
+                if let Some(sr_e) = bc.server_rack_entity {
+                    cmd_queue.push(GameCommand::SetRallyPoint {
+                        building: EntityId(sr_e.to_bits()),
+                        target: enemy_pos,
+                    });
+                }
+            }
+
             let base_threatened = is_base_threatened(ai_player, units, buildings);
             if base_threatened {
                 AiPhase::Defend
             } else if uc.army_count < 4 && uc.enemy_army_count > 0 {
-                // Lost most of army and enemy still has forces — rebuild
                 AiPhase::MidGame
             } else {
-                // Stay attacking (even with small army if enemy is defenseless)
                 AiPhase::Attack
             }
         }
 
         AiPhase::Defend => {
-            // Rally army back to base with tier-aware positioning
             let rally_pos = bc.box_pos.unwrap_or(GridPos::new(55, 55));
             if !uc.army_entities.is_empty() {
-                issue_defend_commands(
-                    tier, &uc.army_entities, rally_pos, units, cmd_queue,
-                );
+                let ids: Vec<EntityId> = uc.army_entities
+                    .iter()
+                    .map(|e| EntityId(e.to_bits()))
+                    .collect();
+                cmd_queue.push(GameCommand::AttackMove { unit_ids: ids, target: rally_pos });
             }
 
-            // Keep training reinforcements while defending
             if let Some(ct_e) = bc.cat_tree_entity {
-                if pres.supply < pres.supply_cap {
+                if pres.supply < pres.supply_cap && bc.cat_tree_queue_len < AI_MAX_QUEUE_DEPTH {
                     let stats = cc_core::unit_stats::base_stats(UnitKind::Nuisance);
                     if pres.food >= stats.food_cost {
                         cmd_queue.push(GameCommand::TrainUnit {
@@ -939,12 +921,23 @@ fn run_ai_fsm(
                 builder_used = Some(b);
             }
 
-            let base_threatened = is_base_threatened(ai_player, units, buildings);
-            if !base_threatened {
-                AiPhase::MidGame
-            } else {
-                AiPhase::Defend
+            let defense_pos = bc.box_pos.map(|p| GridPos::new(p.x + 3, p.y + 3))
+                .unwrap_or(GridPos::new(55, 58));
+            if let Some(ct_e) = bc.cat_tree_entity {
+                cmd_queue.push(GameCommand::SetRallyPoint {
+                    building: EntityId(ct_e.to_bits()),
+                    target: defense_pos,
+                });
             }
+            if let Some(sr_e) = bc.server_rack_entity {
+                cmd_queue.push(GameCommand::SetRallyPoint {
+                    building: EntityId(sr_e.to_bits()),
+                    target: defense_pos,
+                });
+            }
+
+            let base_threatened = is_base_threatened(ai_player, units, buildings);
+            if !base_threatened { AiPhase::MidGame } else { AiPhase::Defend }
         }
     };
 

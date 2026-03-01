@@ -8,7 +8,7 @@ pub mod minimap;
 pub mod report;
 pub mod snapshot;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use bevy::prelude::*;
@@ -419,6 +419,7 @@ fn make_harness_sim(
                 enemy_spawn: None,
                 attack_ordered: false,
                 last_attack_tick: 0,
+                tier: crate::ai::fsm::AiTier::Basic,
             })
             .collect(),
     };
