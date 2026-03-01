@@ -7,11 +7,11 @@
 ## Priority 1: Core Systems (Blocking Playability)
 
 ### 1.1 Structured Mission Definitions
-**Status**: Not started
-**What**: RON/YAML mission definition files that the game engine reads — spawn positions, objectives, win/lose conditions, trigger events, dialogue timing.
-**Where**: `assets/missions/` or `crates/cc_sim/src/campaign/`
+**Status**: Partially complete (Prologue + Act 1)
+**What**: RON mission definition files that the game engine reads — spawn positions, objectives, win/lose conditions, trigger events, dialogue timing.
+**Where**: `assets/campaign/` — prologue.ron, act1_m1-m4.ron
 **Depends on**: Mission trigger system in cc_sim
-**Notes**: Each of the 23 missions needs a structured definition. Story scripts define the *what*; these define the *how*.
+**Notes**: Prologue + 4 Act 1 missions implemented and validated. Remaining 18 missions (Act 2-5) need RON files.
 
 ### 1.2 Campaign Map Generation
 **Status**: Not started (map_gen exists for skirmish)
@@ -26,9 +26,9 @@
 - Act 5: Croak swamp — flooded caves, Grotto assembly site, convergence battlefield
 
 ### 1.3 Enemy Wave / Force Compositions
-**Status**: Not started
+**Status**: Partially complete (Act 1)
 **What**: Unit compositions for each mission's enemy forces. Story scripts describe factions and named characters present; need exact unit counts, spawn timing, and AI behavior profiles.
-**Where**: Mission definition files
+**Where**: Mission definition files (RON). Wave spawner system (`crates/cc_sim/src/campaign/wave_spawner.rs`) handles entity creation with WaveMember tracking.
 **Key battles**:
 - Mission 3: Clawed flanking force (Tunnelers + Swarmers)
 - Mission 8: Seekers pursuit force (Ironhides, non-lethal capture intent)
@@ -38,9 +38,9 @@
 - Mission 19: Five-faction convergence (largest battle)
 
 ### 1.4 Branching State Machine
-**Status**: Not started
+**Status**: Complete (infrastructure)
 **What**: Campaign state tracker for the Act 3 choice and its cascading consequences.
-**Where**: `crates/cc_sim/src/campaign/`
+**Where**: `crates/cc_sim/src/campaign/state.rs` — `PersistentCampaignState` struct with all fields, `NextMission` enum (Fixed/Branching/None) in `cc_core::mission`
 **Tracks**:
 - `act3_choice`: HelpRex | RefuseRex
 - `gemineye_fabrication_rate`: 20% (default) or 5% (HelpRex)
@@ -51,17 +51,12 @@
 - `ending_d_eligible`: bool (all 3 prerequisites met)
 
 ### 1.5 Mission Trigger / Event System
-**Status**: Not started
-**What**: In-mission scripted events — dialogue triggers, objective changes, reinforcement spawns, cinematic camera moves. Story scripts use `{GAMEPLAY}` tags that map to these.
-**Where**: `crates/cc_sim/src/campaign/triggers.rs` (exists but minimal)
-**Trigger types needed**:
-- Unit reaches location
-- Timer elapsed
-- Unit/building destroyed
-- Objective completed
-- Player choice prompt
-- Dialogue sequence (with camera control)
-- Reinforcement spawn
+**Status**: Complete (core system)
+**What**: In-mission scripted events — dialogue triggers, objective changes, reinforcement spawns, cinematic camera moves.
+**Where**: `crates/cc_sim/src/campaign/triggers.rs` — full trigger evaluation with 10 condition types, 6 action types
+**Implemented trigger conditions**: AtTick, HeroAtPos, EnemyKillCount, AllEnemiesDead, WaveEliminated, FlagSet, TriggerFired, All, Any, HeroHpBelow, PersistentFlag
+**Implemented trigger actions**: ShowDialogue, SpawnWave, SetFlag, CompleteObjective, PanCamera, SetPersistentFlag
+**Still needed**: Player choice prompt UI (presentation layer)
 
 ---
 

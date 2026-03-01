@@ -57,6 +57,36 @@
 - [ ] `test_dream_siege_resets_on_target_change` is flaky — target acquisition can re-acquire a different target mid-test
 - [ ] Update training data scripts (`validate_data.py`, `generate_synthetic.py`, `evaluate.py`) to match current tool list after `execute_strategy` removal
 
+## From Phase 4B: Ability Implementation
+
+- [ ] LoafMode should block pathing (grid occupancy system needed — currently only applies stat effects)
+- [ ] Yowler network stacking: multiple Yowlers amplify each other's auras (Phase 4C)
+- [ ] Tilted CC trigger at 5 Annoyed stacks (currently stacks but no CC conversion)
+- [ ] Zoomies Chaos Trail: enemy slow zone left behind while Zoomies is active
+- [ ] DreamSiege timer reset on Catnapper taking damage (currently only resets on target change)
+- [x] `wave_eliminated_fires_when_all_dead` campaign test — fixed by using WaveTracker resource for condition evaluation
+
+## Campaign Missions (Remaining RON Files)
+
+- [ ] Act 2 M5: False Front (Seekers border, first encounter)
+- [ ] Act 2 M6: Into the Deep (Seekers tunnels, escort mission)
+- [ ] Act 2 M7: The Sett (Seekers stronghold, stealth/diplomacy)
+- [ ] Act 2 M8: Betrayal (Escape from Seekers)
+- [ ] Act 3 M9: Crow's Landing (First Murder encounter)
+- [ ] Act 3 M10: The Parliament (Murder diplomacy/assassination)
+- [ ] Act 3 M11: Memory Vision (Flashback mission)
+- [ ] Act 3 M12: The Choice (Act 3 branching point — HelpRex/RefuseRex)
+- [ ] Act 3 M13: Consequences (Branch-dependent aftermath)
+- [ ] Act 4 M14: LLAMA Territory (Junkyard infiltration)
+- [ ] Act 4 M15: Scrapfall Crossing (Granite confrontation)
+- [ ] Act 4 M16: Four-faction Assault (Large multi-faction battle)
+- [ ] Act 5 M17: Croak Approach (Swamp entry)
+- [ ] Act 5 M18: The Grotto (Croak stronghold)
+- [ ] Act 5 M19: Convergence (Five-faction battle)
+- [ ] Act 5 M20: The Cloud (Wonder construction defense)
+- [ ] Act 5 M21: Endings (4 branching endings: A/B/C/D)
+- [ ] Missing hero units: Jinx (LLAMA), Ironjaw (Seekers), Zip (Murder) — needed for later act missions
+
 ## From Voice Pipeline Implementation
 
 - [ ] Run Python voice training tests after setting up PyTorch environment (`cd training/voice && python test_model.py`)
