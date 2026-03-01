@@ -645,7 +645,7 @@ fn map_center(map: &GameMap) -> GridPos {
     GridPos::new(map.width as i32 / 2, map.height as i32 / 2)
 }
 
-/// Discover the enemy base position. Prefers enemy TheBox, falls back to any enemy unit.
+/// Discover the enemy base position. Prefers enemy HQ building, falls back to any enemy unit.
 fn discover_enemy_spawn(
     ai_player: u8,
     units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
@@ -783,7 +783,7 @@ fn run_ai_fsm(
                     if pres.food >= worker_cost && pres.supply < pres.supply_cap
                         && bc.hq_queue_len < AI_MAX_QUEUE_DEPTH
                     {
-                        cmd_queue.push(GameCommand::TrainUnit {
+                        cmd_queue.push_for_player(ai_player, GameCommand::TrainUnit {
                             building: EntityId(box_e.to_bits()),
                             unit_kind: fmap.worker,
                         });
@@ -806,7 +806,7 @@ fn run_ai_fsm(
             if builder_used.is_none() && !bc.has_resource_depot && pres.food >= depot_cost.food_cost && bc.has_hq {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
                     let build_pos = find_build_position(bc.hq_pos, map, &bc.building_positions);
-                    cmd_queue.push(GameCommand::Build {
+                    cmd_queue.push_for_player(ai_player, GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: fmap.resource_depot,
                         position: build_pos,
@@ -818,7 +818,7 @@ fn run_ai_fsm(
             if builder_used.is_none() && !bc.has_barracks && pres.food >= barracks_cost.food_cost && bc.has_hq {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
                     let build_pos = find_build_position(bc.hq_pos, map, &bc.building_positions);
-                    cmd_queue.push(GameCommand::Build {
+                    cmd_queue.push_for_player(ai_player, GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: fmap.barracks,
                         position: build_pos,
@@ -828,7 +828,7 @@ fn run_ai_fsm(
             }
 
             if builder_used.is_none() {
-                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.hq_pos, map, &bc.building_positions, cmd_queue, bc.pending_supply_count, supply_kind) {
+                if let Some(b) = maybe_build_supply(ai_player, pres, &uc.idle_workers, &uc.all_workers, bc.hq_pos, map, &bc.building_positions, cmd_queue, bc.pending_supply_count, supply_kind) {
                     builder_used = Some(b);
                 }
             }
@@ -840,7 +840,7 @@ fn run_ai_fsm(
                 if pres.food >= unit_cost + reserve && pres.supply < pres.supply_cap
                     && bc.barracks_queue_len < AI_MAX_QUEUE_DEPTH
                 {
-                    cmd_queue.push(GameCommand::TrainUnit {
+                    cmd_queue.push_for_player(ai_player, GameCommand::TrainUnit {
                         building: EntityId(ct_e.to_bits()),
                         unit_kind: kind,
                     });
@@ -854,7 +854,7 @@ fn run_ai_fsm(
                     if pres.food >= worker_cost + reserve && pres.supply < pres.supply_cap
                         && bc.hq_queue_len < AI_MAX_QUEUE_DEPTH
                     {
-                        cmd_queue.push(GameCommand::TrainUnit {
+                        cmd_queue.push_for_player(ai_player, GameCommand::TrainUnit {
                             building: EntityId(box_e.to_bits()),
                             unit_kind: fmap.worker,
                         });
@@ -865,7 +865,7 @@ fn run_ai_fsm(
             let defense_pos = bc.hq_pos.map(|p| defense_offset(p, map))
                 .unwrap_or(map_center(map));
             if let Some(ct_e) = bc.barracks_entity {
-                cmd_queue.push(GameCommand::SetRallyPoint {
+                cmd_queue.push_for_player(ai_player, GameCommand::SetRallyPoint {
                     building: EntityId(ct_e.to_bits()),
                     target: defense_pos,
                 });
@@ -883,7 +883,7 @@ fn run_ai_fsm(
             if builder_used.is_none() && !bc.has_tech && pres.food >= tech_stats.food_cost && pres.gpu_cores >= tech_stats.gpu_cost && bc.has_hq {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
                     let build_pos = find_build_position(bc.hq_pos, map, &bc.building_positions);
-                    cmd_queue.push(GameCommand::Build {
+                    cmd_queue.push_for_player(ai_player, GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: fmap.tech,
                         position: build_pos,
@@ -895,7 +895,7 @@ fn run_ai_fsm(
             if builder_used.is_none() && !bc.has_research && pres.food >= research_stats.food_cost && pres.gpu_cores >= research_stats.gpu_cost && bc.has_hq {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
                     let build_pos = find_build_position(bc.hq_pos, map, &bc.building_positions);
-                    cmd_queue.push(GameCommand::Build {
+                    cmd_queue.push_for_player(ai_player, GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: fmap.research,
                         position: build_pos,
@@ -907,7 +907,7 @@ fn run_ai_fsm(
             if builder_used.is_none() && !bc.has_defense_tower && pres.food >= tower_stats.food_cost && pres.gpu_cores >= tower_stats.gpu_cost && bc.has_hq {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
                     let build_pos = find_build_position(bc.hq_pos, map, &bc.building_positions);
-                    cmd_queue.push(GameCommand::Build {
+                    cmd_queue.push_for_player(ai_player, GameCommand::Build {
                         builder: EntityId(builder.to_bits()),
                         building_kind: fmap.defense_tower,
                         position: build_pos,
@@ -921,7 +921,7 @@ fn run_ai_fsm(
                     if !pres.completed_upgrades.contains(upgrade) {
                         let ustats = cc_core::upgrade_stats::upgrade_stats(*upgrade);
                         if pres.food >= ustats.food_cost && pres.gpu_cores >= ustats.gpu_cost {
-                            cmd_queue.push(GameCommand::Research {
+                            cmd_queue.push_for_player(ai_player, GameCommand::Research {
                                 building: EntityId(sp_e.to_bits()),
                                 upgrade: *upgrade,
                             });
@@ -937,7 +937,7 @@ fn run_ai_fsm(
                     let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick, tech_producible);
                     let stats = cc_core::unit_stats::base_stats(kind);
                     if pres.food >= stats.food_cost + reserve && pres.gpu_cores >= stats.gpu_cost {
-                        cmd_queue.push(GameCommand::TrainUnit {
+                        cmd_queue.push_for_player(ai_player, GameCommand::TrainUnit {
                             building: EntityId(sr_e.to_bits()),
                             unit_kind: kind,
                         });
@@ -951,7 +951,7 @@ fn run_ai_fsm(
                     let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick, barracks_producible);
                     let stats = cc_core::unit_stats::base_stats(kind);
                     if pres.food >= stats.food_cost + reserve {
-                        cmd_queue.push(GameCommand::TrainUnit {
+                        cmd_queue.push_for_player(ai_player, GameCommand::TrainUnit {
                             building: EntityId(ct_e.to_bits()),
                             unit_kind: kind,
                         });
@@ -960,7 +960,7 @@ fn run_ai_fsm(
             }
 
             if builder_used.is_none() {
-                if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.hq_pos, map, &bc.building_positions, cmd_queue, bc.pending_supply_count, supply_kind) {
+                if let Some(b) = maybe_build_supply(ai_player, pres, &uc.idle_workers, &uc.all_workers, bc.hq_pos, map, &bc.building_positions, cmd_queue, bc.pending_supply_count, supply_kind) {
                     builder_used = Some(b);
                 }
             }
@@ -971,7 +971,7 @@ fn run_ai_fsm(
                     if pres.food >= worker_cost_mid + reserve && pres.supply < pres.supply_cap
                         && bc.hq_queue_len < AI_MAX_QUEUE_DEPTH
                     {
-                        cmd_queue.push(GameCommand::TrainUnit {
+                        cmd_queue.push_for_player(ai_player, GameCommand::TrainUnit {
                             building: EntityId(box_e.to_bits()),
                             unit_kind: fmap.worker,
                         });
@@ -982,13 +982,13 @@ fn run_ai_fsm(
             let defense_pos = bc.hq_pos.map(|p| defense_offset(p, map))
                 .unwrap_or(map_center(map));
             if let Some(ct_e) = bc.barracks_entity {
-                cmd_queue.push(GameCommand::SetRallyPoint {
+                cmd_queue.push_for_player(ai_player, GameCommand::SetRallyPoint {
                     building: EntityId(ct_e.to_bits()),
                     target: defense_pos,
                 });
             }
             if let Some(sr_e) = bc.tech_entity {
-                cmd_queue.push(GameCommand::SetRallyPoint {
+                cmd_queue.push_for_player(ai_player, GameCommand::SetRallyPoint {
                     building: EntityId(sr_e.to_bits()),
                     target: defense_pos,
                 });
@@ -1025,7 +1025,7 @@ fn run_ai_fsm(
                     let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick, barracks_producible);
                     let stats = cc_core::unit_stats::base_stats(kind);
                     if pres.food >= stats.food_cost {
-                        cmd_queue.push(GameCommand::TrainUnit {
+                        cmd_queue.push_for_player(ai_player, GameCommand::TrainUnit {
                             building: EntityId(ct_e.to_bits()),
                             unit_kind: kind,
                         });
@@ -1033,19 +1033,19 @@ fn run_ai_fsm(
                 }
             }
 
-            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.hq_pos, map, &bc.building_positions, cmd_queue, bc.pending_supply_count, supply_kind) {
+            if let Some(b) = maybe_build_supply(ai_player, pres, &uc.idle_workers, &uc.all_workers, bc.hq_pos, map, &bc.building_positions, cmd_queue, bc.pending_supply_count, supply_kind) {
                 builder_used = Some(b);
             }
 
             if let Some(enemy_pos) = ai_state.enemy_spawn {
                 if let Some(ct_e) = bc.barracks_entity {
-                    cmd_queue.push(GameCommand::SetRallyPoint {
+                    cmd_queue.push_for_player(ai_player, GameCommand::SetRallyPoint {
                         building: EntityId(ct_e.to_bits()),
                         target: enemy_pos,
                     });
                 }
                 if let Some(sr_e) = bc.tech_entity {
-                    cmd_queue.push(GameCommand::SetRallyPoint {
+                    cmd_queue.push_for_player(ai_player, GameCommand::SetRallyPoint {
                         building: EntityId(sr_e.to_bits()),
                         target: enemy_pos,
                     });
@@ -1066,7 +1066,7 @@ fn run_ai_fsm(
             let rally_pos = bc.hq_pos.unwrap_or(map_center(map));
             if !uc.army_entities.is_empty() {
                 issue_defend_commands(
-                    tier, &uc.army_entities, rally_pos,
+                    tier, &uc.army_entities, ai_player, rally_pos,
                     units, cmd_queue, map,
                 );
             }
@@ -1077,7 +1077,7 @@ fn run_ai_fsm(
                     let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick, barracks_producible);
                     let stats = cc_core::unit_stats::base_stats(kind);
                     if pres.food >= stats.food_cost {
-                        cmd_queue.push(GameCommand::TrainUnit {
+                        cmd_queue.push_for_player(ai_player, GameCommand::TrainUnit {
                             building: EntityId(ct_e.to_bits()),
                             unit_kind: kind,
                         });
@@ -1085,20 +1085,20 @@ fn run_ai_fsm(
                 }
             }
 
-            if let Some(b) = maybe_build_supply(pres, &uc.idle_workers, &uc.all_workers, bc.hq_pos, map, &bc.building_positions, cmd_queue, bc.pending_supply_count, supply_kind) {
+            if let Some(b) = maybe_build_supply(ai_player, pres, &uc.idle_workers, &uc.all_workers, bc.hq_pos, map, &bc.building_positions, cmd_queue, bc.pending_supply_count, supply_kind) {
                 builder_used = Some(b);
             }
 
             let defense_pos = bc.hq_pos.map(|p| defense_offset(p, map))
                 .unwrap_or(map_center(map));
             if let Some(ct_e) = bc.barracks_entity {
-                cmd_queue.push(GameCommand::SetRallyPoint {
+                cmd_queue.push_for_player(ai_player, GameCommand::SetRallyPoint {
                     building: EntityId(ct_e.to_bits()),
                     target: defense_pos,
                 });
             }
             if let Some(sr_e) = bc.tech_entity {
-                cmd_queue.push(GameCommand::SetRallyPoint {
+                cmd_queue.push_for_player(ai_player, GameCommand::SetRallyPoint {
                     building: EntityId(sr_e.to_bits()),
                     target: defense_pos,
                 });
@@ -1115,7 +1115,7 @@ fn run_ai_fsm(
             continue;
         }
         if let Some((deposit_entity, _)) = find_nearest_deposit(worker, units, deposits) {
-            cmd_queue.push(GameCommand::GatherResource {
+            cmd_queue.push_for_player(ai_player, GameCommand::GatherResource {
                 unit_ids: vec![EntityId(worker.to_bits())],
                 deposit: EntityId(deposit_entity.to_bits()),
             });
@@ -1200,27 +1200,28 @@ fn find_nearest_deposit(
     best
 }
 
-/// Try to build a LitterBox for more supply when nearing cap.
+/// Try to build a supply building when nearing cap.
 /// Returns the builder entity if a build command was issued.
 fn maybe_build_supply(
+    ai_player: u8,
     pres: &crate::resources::PlayerResourceState,
     idle_workers: &[Entity],
     all_workers: &[Entity],
-    box_pos: Option<GridPos>,
+    hq_pos: Option<GridPos>,
     map: &GameMap,
     building_positions: &[(GridPos, BuildingKind)],
     cmd_queue: &mut CommandQueue,
-    pending_litter_boxes: u32,
+    pending_supply_count: u32,
     supply_kind: BuildingKind,
 ) -> Option<Entity> {
-    if pending_litter_boxes > 0 {
+    if pending_supply_count > 0 {
         return None;
     }
     let supply_cost = cc_core::building_stats::building_stats(supply_kind).food_cost;
     if pres.supply + 2 >= pres.supply_cap && pres.food >= supply_cost {
         if let Some(builder) = pick_builder(idle_workers, all_workers) {
-            let build_pos = find_build_position(box_pos, map, building_positions);
-            cmd_queue.push(GameCommand::Build {
+            let build_pos = find_build_position(hq_pos, map, building_positions);
+            cmd_queue.push_for_player(ai_player, GameCommand::Build {
                 builder: EntityId(builder.to_bits()),
                 building_kind: supply_kind,
                 position: build_pos,
@@ -1234,11 +1235,11 @@ fn maybe_build_supply(
 /// Find a position near the base to place a building.
 /// Uses a growing spiral search with terrain passability and collision checks.
 fn find_build_position(
-    box_pos: Option<GridPos>,
+    hq_pos: Option<GridPos>,
     map: &GameMap,
     existing_buildings: &[(GridPos, BuildingKind)],
 ) -> GridPos {
-    let base = box_pos.unwrap_or(GridPos::new(32, 32));
+    let base = hq_pos.unwrap_or(GridPos::new(32, 32));
     let mut fallback: Option<GridPos> = None;
 
     // Compute ring scan start offset so buildings expand toward map center,
@@ -1468,7 +1469,7 @@ fn issue_attack_commands(
     units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
     health_query: &Query<&Health>,
     cmd_queue: &mut CommandQueue,
-    box_pos: Option<GridPos>,
+    hq_pos: Option<GridPos>,
     target: GridPos,
     map: &GameMap,
 ) {
@@ -1476,7 +1477,7 @@ fn issue_attack_commands(
         AiTier::Basic => {
             // Plain AttackMove — original behavior
             let ids: Vec<EntityId> = army.iter().map(|e| EntityId(e.to_bits())).collect();
-            cmd_queue.push(GameCommand::AttackMove {
+            cmd_queue.push_for_player(ai_player, GameCommand::AttackMove {
                 unit_ids: ids,
                 target,
             });
@@ -1488,9 +1489,9 @@ fn issue_attack_commands(
             // Retreat wounded units back to base
             let wounded = wounded_units(army, health_query, retreat_threshold);
             if !wounded.is_empty() {
-                let retreat_pos = box_pos.unwrap_or(map_center(map));
+                let retreat_pos = hq_pos.unwrap_or(map_center(map));
                 let ids: Vec<EntityId> = wounded.iter().map(|e| EntityId(e.to_bits())).collect();
-                cmd_queue.push(GameCommand::Move {
+                cmd_queue.push_for_player(ai_player, GameCommand::Move {
                     unit_ids: ids,
                     target: retreat_pos,
                 });
@@ -1504,13 +1505,13 @@ fn issue_attack_commands(
             if !healthy.is_empty() {
                 if let Some((weak_entity, _weak_pos)) = find_weakest_enemy_near(centroid, 15, ai_player, units, health_query) {
                     let ids: Vec<EntityId> = healthy.iter().map(|e| EntityId(e.to_bits())).collect();
-                    cmd_queue.push(GameCommand::Attack {
+                    cmd_queue.push_for_player(ai_player, GameCommand::Attack {
                         unit_ids: ids,
                         target: EntityId(weak_entity.to_bits()),
                     });
                 } else {
                     let ids: Vec<EntityId> = healthy.iter().map(|e| EntityId(e.to_bits())).collect();
-                    cmd_queue.push(GameCommand::AttackMove {
+                    cmd_queue.push_for_player(ai_player, GameCommand::AttackMove {
                         unit_ids: ids,
                         target,
                     });
@@ -1521,9 +1522,9 @@ fn issue_attack_commands(
             // Retreat wounded first (same as Tactical)
             let wounded = wounded_units(army, health_query, retreat_threshold);
             if !wounded.is_empty() {
-                let retreat_pos = box_pos.unwrap_or(map_center(map));
+                let retreat_pos = hq_pos.unwrap_or(map_center(map));
                 let ids: Vec<EntityId> = wounded.iter().map(|e| EntityId(e.to_bits())).collect();
-                cmd_queue.push(GameCommand::Move {
+                cmd_queue.push_for_player(ai_player, GameCommand::Move {
                     unit_ids: ids,
                     target: retreat_pos,
                 });
@@ -1541,13 +1542,13 @@ fn issue_attack_commands(
                 // Main force: focus-fire weakest or attack-move
                 if let Some((weak_entity, _)) = find_weakest_enemy_near(centroid, 15, ai_player, units, health_query) {
                     let ids: Vec<EntityId> = main_force.iter().map(|e| EntityId(e.to_bits())).collect();
-                    cmd_queue.push(GameCommand::Attack {
+                    cmd_queue.push_for_player(ai_player, GameCommand::Attack {
                         unit_ids: ids,
                         target: EntityId(weak_entity.to_bits()),
                     });
                 } else {
                     let ids: Vec<EntityId> = main_force.iter().map(|e| EntityId(e.to_bits())).collect();
-                    cmd_queue.push(GameCommand::AttackMove {
+                    cmd_queue.push_for_player(ai_player, GameCommand::AttackMove {
                         unit_ids: ids,
                         target,
                     });
@@ -1557,7 +1558,7 @@ fn issue_attack_commands(
                 if !flank_group.is_empty() {
                     let flank_target = flank_offset(target, centroid);
                     let ids: Vec<EntityId> = flank_group.iter().map(|e| EntityId(e.to_bits())).collect();
-                    cmd_queue.push(GameCommand::AttackMove {
+                    cmd_queue.push_for_player(ai_player, GameCommand::AttackMove {
                         unit_ids: ids,
                         target: flank_target,
                     });
@@ -1568,13 +1569,13 @@ fn issue_attack_commands(
                     army_centroid(&healthy, units).unwrap_or(target), 15, ai_player, units, health_query,
                 ) {
                     let ids: Vec<EntityId> = healthy.iter().map(|e| EntityId(e.to_bits())).collect();
-                    cmd_queue.push(GameCommand::Attack {
+                    cmd_queue.push_for_player(ai_player, GameCommand::Attack {
                         unit_ids: ids,
                         target: EntityId(weak_entity.to_bits()),
                     });
                 } else {
                     let ids: Vec<EntityId> = healthy.iter().map(|e| EntityId(e.to_bits())).collect();
-                    cmd_queue.push(GameCommand::AttackMove {
+                    cmd_queue.push_for_player(ai_player, GameCommand::AttackMove {
                         unit_ids: ids,
                         target,
                     });
@@ -1590,6 +1591,7 @@ fn issue_attack_commands(
 fn issue_defend_commands(
     tier: AiTier,
     army: &[Entity],
+    ai_player: u8,
     rally_pos: GridPos,
     units: &Query<(Entity, &Position, &Owner, &UnitType, Option<&Gathering>, Option<&MoveTarget>, Option<&BuildOrder>)>,
     cmd_queue: &mut CommandQueue,
@@ -1598,7 +1600,7 @@ fn issue_defend_commands(
     match tier {
         AiTier::Basic => {
             let ids: Vec<EntityId> = army.iter().map(|e| EntityId(e.to_bits())).collect();
-            cmd_queue.push(GameCommand::AttackMove {
+            cmd_queue.push_for_player(ai_player, GameCommand::AttackMove {
                 unit_ids: ids,
                 target: rally_pos,
             });
@@ -1626,7 +1628,7 @@ fn issue_defend_commands(
                 let dir_y = if rally_pos.y < center.y { 2 } else { -2 };
                 let forward_pos = GridPos::new(rally_pos.x + dir_x, rally_pos.y + dir_y);
                 let ids: Vec<EntityId> = melee.iter().map(|e| EntityId(e.to_bits())).collect();
-                cmd_queue.push(GameCommand::AttackMove {
+                cmd_queue.push_for_player(ai_player, GameCommand::AttackMove {
                     unit_ids: ids,
                     target: forward_pos,
                 });
@@ -1635,7 +1637,7 @@ fn issue_defend_commands(
             // Ranged units at rally (behind melee)
             if !ranged.is_empty() {
                 let ids: Vec<EntityId> = ranged.iter().map(|e| EntityId(e.to_bits())).collect();
-                cmd_queue.push(GameCommand::AttackMove {
+                cmd_queue.push_for_player(ai_player, GameCommand::AttackMove {
                     unit_ids: ids,
                     target: rally_pos,
                 });

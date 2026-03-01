@@ -12,17 +12,19 @@ use std::time::Instant;
 use bevy::prelude::*;
 use serde::Serialize;
 
-use cc_core::building_stats::building_stats;
 use cc_core::components::*;
-use cc_core::coords::{GridPos, WorldPos};
+use cc_core::coords::GridPos;
 use cc_core::map::GameMap;
 use cc_core::map_gen::{self, MapGenParams};
-use cc_core::unit_stats::base_stats;
 
-use cc_sim::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState, AiTier, BotConfig};
+use cc_sim::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState, AiTier};
+pub use cc_sim::ai::fsm::BotConfig;
 use cc_sim::ai::MultiAiState;
 use cc_sim::harness::invariants::{InvariantChecker, InvariantViolation, Severity};
-use cc_sim::harness::MatchOutcome;
+use cc_sim::harness::{
+    MatchOutcome, count_living_entities, determine_leader, headless_despawn_system,
+    spawn_starting_entities,
+};
 use cc_sim::resources::{
     CombatStats, CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock,
     SpawnPositions,
@@ -299,13 +301,6 @@ pub fn load_scripts_from_dir(dir: &Path, player_id: u8) -> Vec<ScriptRegistratio
 // World + Schedule construction
 // ---------------------------------------------------------------------------
 
-/// Headless despawn: no client death_fade_system, so despawn Dead immediately.
-fn headless_despawn_system(mut commands: Commands, dead: Query<Entity, With<Dead>>) {
-    for entity in dead.iter() {
-        commands.entity(entity).despawn();
-    }
-}
-
 /// Create a World + Schedule for arena matches (FSM + scripts coexisting).
 fn make_arena_sim(
     map: GameMap,
@@ -443,105 +438,6 @@ fn make_arena_sim(
     (world, schedule)
 }
 
-fn spawn_starting_entities(
-    world: &mut World,
-    player_id: u8,
-    spawn_pos: GridPos,
-    faction: cc_core::components::Faction,
-    map_def: &cc_core::map_format::MapDefinition,
-) {
-    let fmap = cc_sim::ai::fsm::faction_map(faction);
-    let hq_stats = building_stats(fmap.hq);
-    world.spawn((
-        Position {
-            world: WorldPos::from_grid(spawn_pos),
-        },
-        GridCell { pos: spawn_pos },
-        Owner { player_id },
-        Building {
-            kind: fmap.hq,
-        },
-        Health {
-            current: hq_stats.health,
-            max: hq_stats.health,
-        },
-        Producer,
-        ProductionQueue::default(),
-    ));
-
-    {
-        let mut player_res = world.resource_mut::<PlayerResources>();
-        if let Some(pres) = player_res.players.get_mut(player_id as usize) {
-            pres.supply_cap += hq_stats.supply_provided;
-            pres.food = 200;
-        }
-    }
-
-    let unit_supply_cost = base_stats(fmap.worker).supply_cost;
-    for i in 0..2 {
-        let offset = GridPos::new(spawn_pos.x + 1 + i, spawn_pos.y);
-        spawn_combat_unit(world, offset, player_id, fmap.worker);
-    }
-
-    {
-        let mut player_res = world.resource_mut::<PlayerResources>();
-        if let Some(pres) = player_res.players.get_mut(player_id as usize) {
-            pres.supply += unit_supply_cost * 2;
-        }
-    }
-
-    if player_id == 0 {
-        for res in &map_def.resources {
-            let pos = GridPos::new(res.pos.0, res.pos.1);
-            let (resource_type, amount) = match res.kind {
-                cc_core::map_format::ResourceKind::FishPond => (ResourceType::Food, 1500),
-                cc_core::map_format::ResourceKind::BerryBush => (ResourceType::Food, 800),
-                cc_core::map_format::ResourceKind::GpuDeposit => (ResourceType::GpuCores, 500),
-                cc_core::map_format::ResourceKind::MonkeyMine => (ResourceType::Nft, 200),
-            };
-            world.spawn((
-                Position {
-                    world: WorldPos::from_grid(pos),
-                },
-                GridCell { pos },
-                ResourceDeposit {
-                    resource_type,
-                    remaining: amount,
-                },
-            ));
-        }
-    }
-}
-
-fn spawn_combat_unit(world: &mut World, grid: GridPos, player_id: u8, kind: UnitKind) -> Entity {
-    let stats = base_stats(kind);
-    world
-        .spawn((
-            Position {
-                world: WorldPos::from_grid(grid),
-            },
-            Velocity::zero(),
-            GridCell { pos: grid },
-            Owner { player_id },
-            UnitType { kind },
-            Health {
-                current: stats.health,
-                max: stats.health,
-            },
-            MovementSpeed { speed: stats.speed },
-            AttackStats {
-                damage: stats.damage,
-                range: stats.range,
-                attack_speed: stats.attack_speed,
-                cooldown_remaining: 0,
-            },
-            AttackTypeMarker {
-                attack_type: stats.attack_type,
-            },
-        ))
-        .id()
-}
-
 // ---------------------------------------------------------------------------
 // Stats tracking
 // ---------------------------------------------------------------------------
@@ -608,19 +504,8 @@ fn update_arena_stats(world: &mut World) {
     stats.prev_building_counts = building_counts;
 }
 
-fn count_living_entities(world: &mut World) -> [u32; 2] {
-    let mut counts = [0u32; 2];
-    for (owner,) in world
-        .query_filtered::<(&Owner,), Without<Dead>>()
-        .iter(world)
-    {
-        if (owner.player_id as usize) < 2 {
-            counts[owner.player_id as usize] += 1;
-        }
-    }
-    counts
-}
-
+/// Arena-specific elimination check: mutual annihilation = draw (unlike harness
+/// which gives attacker advantage).
 fn check_elimination(world: &mut World) -> Option<u8> {
     let counts = count_living_entities(world);
     match (counts[0] > 0, counts[1] > 0) {
@@ -628,15 +513,6 @@ fn check_elimination(world: &mut World) -> Option<u8> {
         (false, true) => Some(1),
         (true, false) => Some(0),
         (true, true) => None,
-    }
-}
-
-fn determine_leader(world: &mut World) -> Option<u8> {
-    let counts = count_living_entities(world);
-    match counts[0].cmp(&counts[1]) {
-        std::cmp::Ordering::Greater => Some(0),
-        std::cmp::Ordering::Less => Some(1),
-        std::cmp::Ordering::Equal => None,
     }
 }
 

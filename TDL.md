@@ -131,14 +131,16 @@
 - [x] Replace hardcoded building costs (100 food for FishMarket, 150 for CatTree, etc.) with references to `building_stats()` data to prevent silent desync
 - [ ] Extract magic numbers: `4` (BuildUp→MidGame threshold), `6` (max MidGame workers), `15` (focus-fire search radius), `5` (flank offset tiles), `2` (melee forward offset), `3` (defense rally offset from box)
 - [ ] Separate Strategic and Advanced tier match arms in `issue_attack_commands` (currently conflated; Advanced should add adaptive positioning per enum doc)
-- [ ] Rename `BuildingCensus` fields from catGPT names to role names (`has_hq`, `barracks_entity`, `tech_queue_len`, etc.) for consistency with FactionMap
-- [ ] Simplify `take_building_census` to compare against `fmap` fields instead of enumerating all faction building variants (~200 lines → ~30 lines)
-- [ ] Consolidate duplicate `BotConfig` structs (cc_sim::harness + cc_agent::arena) into `cc_sim::ai`
-- [ ] Consolidate duplicate helper functions between harness and arena (`spawn_starting_entities`, `spawn_combat_unit`, `headless_despawn_system`, etc.)
+- [x] Rename `BuildingCensus` fields from catGPT names to role names (`has_hq`, `barracks_entity`, `tech_queue_len`, etc.) for consistency with FactionMap
+- [x] Simplify `take_building_census` to compare against `fmap` fields instead of enumerating all faction building variants
+- [x] Consolidate duplicate `BotConfig` structs (cc_sim::harness + cc_agent::arena) into `cc_sim::ai::fsm`
+- [x] Consolidate duplicate helper functions between harness and arena (`spawn_starting_entities`, `spawn_combat_unit`, `headless_despawn_system`, `count_living_entities`, `determine_leader`) — made pub in harness, arena imports from there. `check_elimination` kept separate (different semantics: draw vs attacker advantage)
 
 ## From AI Training Pipeline Iterations
 
-- [ ] **Investigate P1 map advantage**: P1 wins 70-80% of arena matches regardless of scripts. Likely causes: (1) FSM defense_pos `box_pos + (3,3)` puts P1 near map edge on 64x64, (2) `find_build_position` search direction bias, (3) process_commands execution order, (4) terrain generator not perfectly rotationally symmetric. Fix: mirror defense_pos offset based on spawn quadrant, or test with explicitly symmetric maps.
+- [x] **Investigate P1 map advantage**: Fixed resource placement asymmetry in `place_tiered_resources()`, build position ring scan bias in `find_build_position()`, and command processing order via `drain_interleaved()`. Remaining P0 bias from ECS entity iteration order (P0 entities spawned first → processed first in target_acquisition, combat, movement).
+- [ ] **Fix entity iteration order bias**: P0 wins mirrors because its entities are iterated first in all systems. Options: (1) snapshot-then-apply pattern for movement/targeting, (2) shuffle iteration order per tick via SimRng, (3) process systems in alternating player order per tick. Most principled: make target_acquisition and movement systems fully simultaneous.
+- [ ] **Balance non-CatGpt faction unit stats**: All 5 non-CatGpt factions lose 5/5 games vs CatGpt at Basic tier. Unit stats need tuning per faction (tracked in wet_faction_vs_catgpt_basic_tier test balance report).
 - [ ] Consider adding `--swap-spawns` flag to arena CLI to test positional advantage independently
 
 ## From Arena Module Code Review

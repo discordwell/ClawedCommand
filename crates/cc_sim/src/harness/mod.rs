@@ -21,7 +21,8 @@ use cc_core::map::GameMap;
 use cc_core::map_gen::{self, MapGenParams};
 use cc_core::unit_stats::base_stats;
 
-use crate::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState, BotConfig};
+use crate::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState};
+pub use crate::ai::fsm::BotConfig;
 use crate::ai::MultiAiState;
 use crate::resources::{
     CombatStats, CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock,
@@ -189,7 +190,7 @@ fn resolve_voice_keyword(
         "gather" => {
             let worker_ids: Vec<EntityId> = player_units
                 .iter()
-                .filter(|(_, kind)| *kind == UnitKind::Pawdler)
+                .filter(|(_, kind)| kind.is_worker())
                 .map(|(e, _)| EntityId(e.to_bits()))
                 .collect();
             if worker_ids.is_empty() {
@@ -463,14 +464,18 @@ fn make_harness_sim(
     schedule.add_systems(victory_system.after(headless_despawn_system));
 
     for (player_id, spawn_pos) in &spawn_positions {
-        let faction = config.bots[*player_id as usize].faction;
+        let idx = *player_id as usize;
+        if idx >= config.bots.len() {
+            continue; // Skip spawn points for players beyond our bot config
+        }
+        let faction = config.bots[idx].faction;
         spawn_starting_entities(&mut world, *player_id, *spawn_pos, faction, map_def);
     }
 
     (world, schedule)
 }
 
-fn spawn_starting_entities(
+pub fn spawn_starting_entities(
     world: &mut World,
     player_id: u8,
     spawn_pos: GridPos,
@@ -506,8 +511,12 @@ fn spawn_starting_entities(
     }
 
     let unit_supply_cost = base_stats(fmap.worker).supply_cost;
+    // Mirror worker spawn offset toward map center so both players start
+    // equidistant from their nearest resource deposits
+    let center_x = map_def.width as i32 / 2;
+    let dx = if spawn_pos.x < center_x { 1 } else { -1 };
     for i in 0..2 {
-        let offset = GridPos::new(spawn_pos.x + 1 + i, spawn_pos.y);
+        let offset = GridPos::new(spawn_pos.x + dx * (1 + i), spawn_pos.y);
         spawn_combat_unit(world, offset, player_id, fmap.worker);
     }
 
@@ -543,7 +552,7 @@ fn spawn_starting_entities(
     }
 }
 
-fn spawn_combat_unit(world: &mut World, grid: GridPos, player_id: u8, kind: UnitKind) -> Entity {
+pub fn spawn_combat_unit(world: &mut World, grid: GridPos, player_id: u8, kind: UnitKind) -> Entity {
     let stats = base_stats(kind);
     world
         .spawn((
@@ -574,14 +583,14 @@ fn spawn_combat_unit(world: &mut World, grid: GridPos, player_id: u8, kind: Unit
 
 /// Headless despawn: in the harness there's no client death_fade_system,
 /// so we despawn Dead entities immediately after cleanup marks them.
-fn headless_despawn_system(mut commands: Commands, dead: Query<Entity, With<Dead>>) {
+pub fn headless_despawn_system(mut commands: Commands, dead: Query<Entity, With<Dead>>) {
     for entity in dead.iter() {
         commands.entity(entity).despawn();
     }
 }
 
 /// Count living (non-Dead) entities per player.
-fn count_living_entities(world: &mut World) -> [u32; 2] {
+pub fn count_living_entities(world: &mut World) -> [u32; 2] {
     let mut counts = [0u32; 2];
     for (owner,) in world
         .query_filtered::<(&Owner,), Without<Dead>>()
@@ -604,7 +613,7 @@ fn check_elimination(world: &mut World) -> Option<u8> {
     }
 }
 
-fn determine_leader(world: &mut World) -> Option<u8> {
+pub fn determine_leader(world: &mut World) -> Option<u8> {
     let counts = count_living_entities(world);
     match counts[0].cmp(&counts[1]) {
         std::cmp::Ordering::Greater => Some(0),

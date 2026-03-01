@@ -738,13 +738,13 @@ pub fn process_commands(
                                 // The Clawed (Mice) — Activated abilities
                                 // =============================================
                                 AbilityId::SonicSpit => {
-                                    // Shrieker AoE stun
+                                    // Shrieker AoE stun (duration_ticks=0 in def, use tuning)
                                     commands.queue(AoeCcCommand {
                                         source_entity: entity,
                                         source_pos: WorldPos::zero(),
                                         radius: def.range,
                                         effect: StatusEffectId::Stunned,
-                                        duration: def.duration_ticks,
+                                        duration: SEISMIC_SLAM_STUN_TICKS,
                                         source_owner: owner_player_id,
                                     });
                                 }

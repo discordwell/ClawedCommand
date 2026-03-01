@@ -364,6 +364,21 @@ pub enum UnitKind {
     JunkyardKing,   // Hero/Heavy (Raccoon) — open source uplink, overclock cascade
 }
 
+impl UnitKind {
+    /// Returns true if this unit is a worker (resource gatherer / builder) for any faction.
+    pub fn is_worker(&self) -> bool {
+        matches!(
+            self,
+            UnitKind::Pawdler
+                | UnitKind::MurderScrounger
+                | UnitKind::Delver
+                | UnitKind::Nibblet
+                | UnitKind::Ponderer
+                | UnitKind::Scrounger
+        )
+    }
+}
+
 impl std::fmt::Display for UnitKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Debug::fmt(self, f)
@@ -1457,6 +1472,59 @@ mod tests {
         let stacks = FrenzyStacks::default();
         assert_eq!(stacks.current_stacks, 0);
         assert_eq!(stacks.frozen_until_tick, 0);
+    }
+
+    #[test]
+    fn is_worker_identifies_all_faction_workers() {
+        let workers = [
+            UnitKind::Pawdler,
+            UnitKind::MurderScrounger,
+            UnitKind::Delver,
+            UnitKind::Nibblet,
+            UnitKind::Ponderer,
+            UnitKind::Scrounger,
+        ];
+        for w in &workers {
+            assert!(w.is_worker(), "{:?} should be a worker", w);
+        }
+    }
+
+    #[test]
+    fn is_worker_rejects_combat_units() {
+        let non_workers = [
+            UnitKind::Nuisance,
+            UnitKind::Chonk,
+            UnitKind::FlyingFox,
+            UnitKind::Hisser,
+            UnitKind::Sentinel,
+            UnitKind::Rookclaw,
+            UnitKind::Swarmer,
+            UnitKind::Regeneron,
+            UnitKind::Bandit,
+            UnitKind::Ironhide,
+        ];
+        for u in &non_workers {
+            assert!(!u.is_worker(), "{:?} should not be a worker", u);
+        }
+    }
+
+    #[test]
+    fn is_hq_identifies_all_faction_hqs() {
+        let hqs = [
+            BuildingKind::TheBox,
+            BuildingKind::TheParliament,
+            BuildingKind::TheBurrow,
+            BuildingKind::TheSett,
+            BuildingKind::TheGrotto,
+            BuildingKind::TheDumpster,
+        ];
+        for h in &hqs {
+            assert!(h.is_hq(), "{:?} should be an HQ", h);
+        }
+        // Non-HQ buildings
+        assert!(!BuildingKind::CatTree.is_hq());
+        assert!(!BuildingKind::LitterBox.is_hq());
+        assert!(!BuildingKind::Rookery.is_hq());
     }
 }
 

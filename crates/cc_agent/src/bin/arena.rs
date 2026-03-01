@@ -6,7 +6,7 @@
 fn main() {
     use clap::Parser;
     use cc_agent::arena::*;
-    use cc_sim::ai::fsm::{AiDifficulty, AiPersonalityProfile};
+    use cc_sim::ai::fsm::{AiDifficulty, AiPersonalityProfile, BotConfig};
     use cc_sim::harness::MatchOutcome;
     use std::path::PathBuf;
 
