@@ -427,4 +427,5 @@ mod tests {
         persistent.set_flag("test".into());
         assert!(persistent.has_flag("test"));
     }
+
 }

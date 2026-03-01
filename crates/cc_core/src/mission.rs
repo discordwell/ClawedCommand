@@ -571,7 +571,7 @@ mod tests {
         let ron_str =
             ron::ser::to_string_pretty(&mission, ron::ser::PrettyConfig::default()).unwrap();
         let parsed: MissionDefinition = ron::from_str(&ron_str).unwrap();
-        assert!(matches!(parsed.next_mission, NextMission::Fixed(ref id) if id == "act1_m2"));
+        assert!(matches!(parsed.next_mission, NextMission::Fixed(id) if id == "act1_m2"));
     }
 
     #[test]
@@ -600,7 +600,7 @@ mod tests {
         let cond = TriggerCondition::PersistentFlag("murder_alliance".into());
         let ron_str = ron::to_string(&cond).unwrap();
         let parsed: TriggerCondition = ron::from_str(&ron_str).unwrap();
-        assert!(matches!(parsed, TriggerCondition::PersistentFlag(ref s) if s == "murder_alliance"));
+        assert!(matches!(parsed, TriggerCondition::PersistentFlag(s) if s == "murder_alliance"));
     }
 
     #[test]
@@ -608,7 +608,7 @@ mod tests {
         let action = TriggerAction::SetPersistentFlag("helped_rex".into());
         let ron_str = ron::to_string(&action).unwrap();
         let parsed: TriggerAction = ron::from_str(&ron_str).unwrap();
-        assert!(matches!(parsed, TriggerAction::SetPersistentFlag(ref s) if s == "helped_rex"));
+        assert!(matches!(parsed, TriggerAction::SetPersistentFlag(s) if s == "helped_rex"));
     }
 
     #[test]
@@ -620,4 +620,5 @@ mod tests {
         let parsed: MissionDefinition = ron::from_str(&ron_str).unwrap();
         assert!(parsed.ai_tool_tier.is_none());
     }
+
 }
