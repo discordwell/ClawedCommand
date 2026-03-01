@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use cc_core::commands::EntityId;
 use cc_core::components::{Aura, AuraType, Dead, Owner, Position};
-use cc_core::status_effects::{StatusEffectId, StatusEffects, StatusInstance};
+use cc_core::status_effects::{StatusEffectId, StatusEffects};
 use cc_core::tuning::GRAV_PULL_PER_TICK;
 
 use crate::systems::damage::GravitationalPullCommand;
@@ -31,11 +31,10 @@ pub fn aura_system(
                     }
                     let dist_sq = source_pos.world.distance_squared(target_pos.world);
                     if dist_sq <= radius_sq {
-                        refresh_or_add(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::HarmonicBuff,
                             2,
-                            source_entity,
+                            EntityId(source_entity.to_bits()),
                         );
                     }
                 }
@@ -50,11 +49,10 @@ pub fn aura_system(
                     }
                     let dist_sq = source_pos.world.distance_squared(target_pos.world);
                     if dist_sq <= radius_sq {
-                        refresh_or_add(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::LullabyDebuff,
                             2,
-                            source_entity,
+                            EntityId(source_entity.to_bits()),
                         );
                     }
                 }
@@ -87,11 +85,10 @@ pub fn aura_system(
                     }
                     let dist_sq = source_pos.world.distance_squared(target_pos.world);
                     if dist_sq <= radius_sq {
-                        refresh_or_add(
-                            &mut effects,
+                        effects.refresh_or_insert(
                             StatusEffectId::TacticalLink,
                             2,
-                            source_entity,
+                            EntityId(source_entity.to_bits()),
                         );
                     }
                 }
@@ -101,20 +98,3 @@ pub fn aura_system(
     }
 }
 
-fn refresh_or_add(
-    effects: &mut StatusEffects,
-    id: StatusEffectId,
-    duration: u32,
-    source_entity: Entity,
-) {
-    if let Some(existing) = effects.effects.iter_mut().find(|e| e.effect == id) {
-        existing.remaining_ticks = existing.remaining_ticks.max(duration);
-    } else {
-        effects.effects.push(StatusInstance {
-            effect: id,
-            remaining_ticks: duration,
-            stacks: 1,
-            source: EntityId(source_entity.to_bits()),
-        });
-    }
-}

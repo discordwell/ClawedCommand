@@ -85,11 +85,11 @@
 
 ## Code Quality (from code review)
 
-- [ ] Extract `ensure_effect`/`refresh_or_add` into `StatusEffects::refresh_or_insert()` method (3 duplicate copies)
-- [ ] Add `UnderConstruction::progress_f32()` method (construction progress computed 4× in different files)
-- [ ] Add `BuildingKind::display_name()` method in cc_core (duplicated in build_menu.rs and building_info.rs)
-- [ ] Move LaserPointer combat stats to tuning.rs constants (hardcoded in production_system.rs)
-- [ ] Extract `BUILDING_SPRITE_SIZE: f32 = 28.0` constant (repeated in 4 renderer locations)
+- [x] Extract `ensure_effect`/`refresh_or_add` into `StatusEffects::refresh_or_insert()` method (3 duplicate copies)
+- [x] Add `UnderConstruction::progress_f32()` method (construction progress computed 4× in different files)
+- [x] Add `BuildingKind::display_name()` method in cc_core (duplicated in build_menu.rs and building_info.rs)
+- [x] Move LaserPointer combat stats to tuning.rs constants (hardcoded in production_system.rs)
+- [x] Extract `BUILDING_SPRITE_SIZE: f32 = 28.0` constant (repeated in 4 renderer locations)
 
 ## Campaign Missions (Remaining RON Files)
 

@@ -30,6 +30,9 @@ pub const DROPOFF_PROXIMITY_SQ: i32 = 4;
 /// Chebyshev distance (tiles) a builder must be within to start construction.
 pub const BUILDER_PROXIMITY: i32 = 1;
 
+/// Default sprite size (width and height) for building meshes in the renderer.
+pub const BUILDING_SPRITE_SIZE: f32 = 28.0;
+
 // ---------------------------------------------------------------------------
 // Combat
 // ---------------------------------------------------------------------------
@@ -39,6 +42,15 @@ pub const PROJECTILE_SPEED: Fixed = Fixed::from_bits(1 << 15);
 
 /// Projectile speed for tower (LaserPointer) projectiles.
 pub const TOWER_PROJECTILE_SPEED: Fixed = Fixed::from_bits(1 << 15);
+
+/// LaserPointer tower damage per attack.
+pub const LASER_POINTER_DAMAGE: Fixed = Fixed::from_bits(10 << 16);
+
+/// LaserPointer tower attack range (tiles).
+pub const LASER_POINTER_RANGE: Fixed = Fixed::from_bits(6 << 16);
+
+/// LaserPointer tower attack speed (ticks between attacks, 1.5s at 10hz).
+pub const LASER_POINTER_ATTACK_SPEED: u32 = 15;
 
 /// Sight range (tiles) for units on AttackMove — scan this far for enemies.
 pub const ATTACK_MOVE_SIGHT_RANGE: i32 = 8;
@@ -145,3 +157,25 @@ pub const BASE_THREAT_RADIUS: i32 = 8;
 
 /// Minimum Chebyshev distance between AI building placements (tiles).
 pub const AI_BUILD_SPACING: i32 = 3;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn laser_pointer_stats_are_positive() {
+        assert!(LASER_POINTER_DAMAGE > Fixed::ZERO);
+        assert!(LASER_POINTER_RANGE > Fixed::ZERO);
+        assert!(LASER_POINTER_ATTACK_SPEED > 0);
+    }
+
+    #[test]
+    fn tower_projectile_speed_is_positive() {
+        assert!(TOWER_PROJECTILE_SPEED > Fixed::ZERO);
+    }
+
+    #[test]
+    fn building_sprite_size_is_positive() {
+        assert!(BUILDING_SPRITE_SIZE > 0.0);
+    }
+}

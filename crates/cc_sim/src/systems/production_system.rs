@@ -99,9 +99,9 @@ pub fn production_system(
                 if building.kind == BuildingKind::LaserPointer {
                     commands.entity(entity).insert((
                         AttackStats {
-                            damage: Fixed::from_bits(10 << 16), // 10 damage
-                            range: Fixed::from_bits(6 << 16),   // 6 range
-                            attack_speed: 15,                    // 1.5s between attacks
+                            damage: cc_core::tuning::LASER_POINTER_DAMAGE,
+                            range: cc_core::tuning::LASER_POINTER_RANGE,
+                            attack_speed: cc_core::tuning::LASER_POINTER_ATTACK_SPEED,
                             cooldown_remaining: 0,
                         },
                         AttackTypeMarker {

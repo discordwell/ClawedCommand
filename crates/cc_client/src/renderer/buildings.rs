@@ -5,6 +5,7 @@ use crate::setup::{BuildingMesh, building_color};
 use cc_core::components::{Building, BuildingKind, Owner, Position, UnderConstruction};
 use cc_core::coords::{depth_z, world_to_screen};
 use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
+use cc_core::tuning::BUILDING_SPRITE_SIZE;
 use cc_sim::resources::MapResource;
 
 // ---------------------------------------------------------------------------
@@ -30,7 +31,7 @@ const CONSTRUCTION_BAR_Y_OFFSET: f32 = 22.0;
 fn construction_bar_width(kind: BuildingKind) -> f32 {
     match kind {
         BuildingKind::TheBox => 30.0,
-        BuildingKind::CatTree | BuildingKind::ServerRack => 28.0,
+        BuildingKind::CatTree | BuildingKind::ServerRack => BUILDING_SPRITE_SIZE,
         BuildingKind::FishMarket | BuildingKind::ScratchingPost | BuildingKind::CatFlap => 24.0,
         BuildingKind::LitterBox | BuildingKind::LaserPointer => 20.0,
         _ => 24.0,
@@ -54,7 +55,7 @@ pub fn spawn_building_visuals(
         let grid = pos.world.to_grid();
         let elev = map_res.map.elevation_at(grid) as f32 * ELEVATION_PIXEL_OFFSET;
 
-        let mesh = meshes.add(Rectangle::new(28.0, 28.0));
+        let mesh = meshes.add(Rectangle::new(BUILDING_SPRITE_SIZE, BUILDING_SPRITE_SIZE));
         let mat = materials.add(ColorMaterial::from_color(building_color(owner.player_id)));
 
         commands.entity(entity).insert((
@@ -109,7 +110,7 @@ pub fn render_placement_preview(
         Color::srgba(0.8, 0.2, 0.2, 0.4) // Red ghost
     };
 
-    let mesh = meshes.add(Rectangle::new(28.0, 28.0));
+    let mesh = meshes.add(Rectangle::new(BUILDING_SPRITE_SIZE, BUILDING_SPRITE_SIZE));
     let mat = materials.add(ColorMaterial::from_color(color));
 
     commands.spawn((
@@ -179,11 +180,7 @@ pub fn update_construction_bars(
 ) {
     for (building, uc, children) in buildings.iter() {
         let bar_width = construction_bar_width(building.kind);
-        let progress = if uc.total_ticks > 0 {
-            1.0 - (uc.remaining_ticks as f32 / uc.total_ticks as f32)
-        } else {
-            1.0
-        };
+        let progress = uc.progress_f32();
         let fill_width = bar_width * progress;
 
         for child in children.iter() {
@@ -234,11 +231,7 @@ pub fn update_construction_alpha(
         };
 
         if let Some(uc) = uc {
-            let progress = if uc.total_ticks > 0 {
-                1.0 - (uc.remaining_ticks as f32 / uc.total_ticks as f32)
-            } else {
-                1.0
-            };
+            let progress = uc.progress_f32();
             let alpha = 0.4 + 0.6 * progress;
             mat.color = mat.color.with_alpha(alpha);
         } else {
