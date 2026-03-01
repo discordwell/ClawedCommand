@@ -138,3 +138,14 @@ impl Default for PlayerResources {
         }
     }
 }
+
+/// Cumulative combat event counters for observability.
+/// Tracks both melee and ranged attacks so combat can be detected
+/// even when no projectiles happen to be in flight at snapshot time.
+#[derive(Resource, Default, Debug, Clone)]
+pub struct CombatStats {
+    /// Total melee attacks that dealt damage.
+    pub melee_attack_count: u64,
+    /// Total ranged attacks (projectiles spawned).
+    pub ranged_attack_count: u64,
+}

@@ -38,6 +38,7 @@ fn make_sim(map: GameMap) -> (World, Schedule) {
     world.insert_resource(GameState::default());
     world.insert_resource(SpawnPositions::default());
     world.insert_resource(SimRng::default());
+    world.insert_resource(cc_sim::resources::CombatStats::default());
     world.insert_resource(MapResource { map });
 
     // Mirror production pipeline from SimSystemsPlugin, using FixedUpdate label
@@ -2379,6 +2380,7 @@ fn test_ai_builds_on_valid_terrain() {
     world.insert_resource(GameState::Playing);
     world.insert_resource(SpawnPositions::default());
     world.insert_resource(SimRng::default());
+    world.insert_resource(cc_sim::resources::CombatStats::default());
 
     // Set up player resources: player 0 (human), player 1 (AI)
     let mut player_res = PlayerResources::default();

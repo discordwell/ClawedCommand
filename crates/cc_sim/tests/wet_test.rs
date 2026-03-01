@@ -381,8 +381,11 @@ mod wet {
             }
 
             // Combat activity
-            if snap.projectile_count > 0 {
-                println!("  [COMBAT: {} projectiles in flight]", snap.projectile_count);
+            if snap.projectile_count > 0 || snap.melee_attack_count > 0 || snap.ranged_attack_count > 0 {
+                println!(
+                    "  [COMBAT: {} melee, {} ranged attacks (cumulative) | {} projectiles in flight]",
+                    snap.melee_attack_count, snap.ranged_attack_count, snap.projectile_count
+                );
             }
 
             // Status effects
@@ -474,7 +477,9 @@ mod wet {
                     .iter()
                     .any(|u| u.kind == "FlyingFox" || u.kind == "Catnapper")
             });
-            let ever_had_combat = snaps.iter().any(|s| s.projectile_count > 0);
+            let ever_had_combat = snaps.iter().any(|s| {
+                s.projectile_count > 0 || s.melee_attack_count > 0 || s.ranged_attack_count > 0
+            });
             let ever_had_construction = snaps.iter().any(|s| {
                 s.buildings.iter().any(|b| b.is_under_construction)
             });
@@ -535,5 +540,44 @@ mod wet {
                 name
             );
         }
+    }
+
+    /// Verify that melee combat is tracked via CombatStats, not just projectiles.
+    /// This catches the bug where `projectile_count == 0` at snapshot time
+    /// caused combat to appear absent even when melee units were dealing damage.
+    #[test]
+    fn wet_melee_combat_tracked() {
+        // Seed 999 previously showed [MISS] Combat occurred because all
+        // engagements were melee and no projectiles were captured at snapshot time.
+        let config = HarnessConfig {
+            seed: 999,
+            max_ticks: 8000,
+            snapshot_interval: 200,
+            ..Default::default()
+        };
+        let result = run_match(&config);
+        let snaps = &result.snapshots;
+
+        // At least one snapshot must show cumulative melee or ranged attacks
+        let any_combat = snaps.iter().any(|s| {
+            s.melee_attack_count > 0 || s.ranged_attack_count > 0
+        });
+        assert!(
+            any_combat,
+            "Seed 999 should record combat via melee_attack_count or ranged_attack_count"
+        );
+
+        // Specifically verify melee attacks happened (Nuisances are melee)
+        let max_melee = snaps.iter().map(|s| s.melee_attack_count).max().unwrap_or(0);
+        assert!(
+            max_melee > 0,
+            "Should have recorded melee attacks (Nuisances are melee units), got 0"
+        );
+
+        println!(
+            "wet_melee_combat_tracked: max melee={}, max ranged={}",
+            max_melee,
+            snaps.iter().map(|s| s.ranged_attack_count).max().unwrap_or(0)
+        );
     }
 }
