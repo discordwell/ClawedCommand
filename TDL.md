@@ -57,6 +57,11 @@
 - [ ] `test_dream_siege_resets_on_target_change` is flaky — target acquisition can re-acquire a different target mid-test
 - [ ] Update training data scripts (`validate_data.py`, `generate_synthetic.py`, `evaluate.py`) to match current tool list after `execute_strategy` removal
 
+## From Campaign System Code Review
+
+- [ ] Extract shared `spawn_base_unit` helper from 5 duplicated unit-spawning patterns (wave_spawner.rs, campaign_integration.rs, integration.rs, harness/mod.rs, headless.rs) — prevents drift when unit component bundles change
+- [ ] Add documentation comment in `cc_sim/src/campaign/mod.rs` about sim chain / campaign chain co-execution assumption (campaign system ordering constraints assume GameState::Playing is active simultaneously)
+
 ## From Phase 4B: Ability Implementation
 
 - [ ] LoafMode should block pathing (grid occupancy system needed — currently only applies stat effects)

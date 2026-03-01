@@ -185,6 +185,7 @@ pub fn mission_objective_system(
     mut fail_writer: MessageWriter<MissionFailedEvent>,
     heroes: Query<(&HeroIdentity, &Owner, Has<Dead>, Option<&Position>)>,
     enemies: Query<(&Owner, Has<Dead>)>,
+    wave_tracker: Res<super::wave_spawner::WaveTracker>,
 ) {
     if campaign.phase != CampaignPhase::InMission {
         return;
@@ -269,8 +270,13 @@ pub fn mission_objective_system(
                     }
                 }
             }
-            ObjectiveCondition::EliminateWave(_) => {
-                // Handled by trigger system via WaveEliminated condition
+            ObjectiveCondition::EliminateWave(wave_id) => {
+                // Auto-evaluate: complete when wave has been fully eliminated
+                if wave_tracker.waves.get(wave_id)
+                    .is_some_and(|(total, alive)| *total > 0 && *alive == 0)
+                {
+                    campaign.complete_objective(&obj.id);
+                }
             }
             ObjectiveCondition::Manual => {
                 // Only completed by triggers

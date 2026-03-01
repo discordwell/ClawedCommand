@@ -1376,6 +1376,45 @@ fn persistent_state_survives_mission_load_integration() {
 }
 
 #[test]
+fn mission_reset_clears_wave_tracker_on_new_mission() {
+    let (mut world, mut schedule) = make_wave_sim(GameMap::new(16, 16));
+
+    // Load and start mission 1
+    {
+        let mut campaign = world.resource_mut::<CampaignState>();
+        campaign.load_mission(wave_test_mission());
+        campaign.phase = CampaignPhase::InMission;
+    }
+    schedule.run(&mut world);
+
+    // Verify immediate wave spawned
+    let tracker = world.resource::<WaveTracker>();
+    assert!(tracker.waves.contains_key("imm_wave"), "First mission should spawn imm_wave");
+    assert!(tracker.processed.contains("imm_wave"));
+
+    // Load a second mission with a different ID
+    let mut mission2 = wave_test_mission();
+    mission2.id = "wave_test_2".into();
+    {
+        let mut campaign = world.resource_mut::<CampaignState>();
+        campaign.load_mission(mission2);
+        campaign.phase = CampaignPhase::InMission;
+    }
+    schedule.run(&mut world);
+
+    // WaveTracker should have been reset and re-populated for the new mission
+    let tracker = world.resource::<WaveTracker>();
+    assert!(tracker.waves.contains_key("imm_wave"), "Second mission should also spawn imm_wave");
+    let (total, alive) = tracker.waves.get("imm_wave").unwrap();
+    assert_eq!(*total, 2);
+    assert_eq!(*alive, 2);
+
+    // MissionStarted should reflect the new mission
+    let started = world.resource::<MissionStarted>();
+    assert_eq!(started.mission_id.as_deref(), Some("wave_test_2"));
+}
+
+#[test]
 fn all_act1_missions_parse_and_validate() {
     let campaign_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent().unwrap()
