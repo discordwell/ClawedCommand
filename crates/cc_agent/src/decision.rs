@@ -16,7 +16,6 @@ use cc_core::components::{
 use cc_sim::resources::{MapResource, PlayerResources, SimClock};
 
 use crate::agent_bridge::{AgentBridge, AgentRequest, AgentSource};
-use crate::llm_runner;
 use crate::snapshot;
 use crate::tool_tier::FactionToolStates;
 
@@ -135,7 +134,7 @@ pub fn agent_decision_system(
 
         let tier = tool_states.tier_for(player_id);
 
-        let summary = llm_runner::summarize_snapshot(&snap);
+        let summary = snapshot::summarize_snapshot(&snap);
         let request = AgentRequest {
             player_id,
             prompt: format!("{}\n\nAssess the situation and issue commands.", summary),
@@ -144,7 +143,7 @@ pub fn agent_decision_system(
             chat_history: None,
         };
 
-        if bridge.request_tx.send(request).is_ok() {
+        if bridge.request_tx.try_send(request).is_ok() {
             decision_state.in_flight.insert(player_id);
         }
     }

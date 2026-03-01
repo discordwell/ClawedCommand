@@ -1,12 +1,11 @@
 use bevy::prelude::*;
-use bevy_egui::{EguiContexts, egui};
 
 use cc_agent::agent_bridge::{AgentBridge, AgentRequest, AgentSource};
-use cc_agent::construct_mode::{ConstructModeState, ScriptLibrary, LuaScript, ScriptTestResult};
+use cc_agent::construct_mode::{ConstructModeState, LuaScript, ScriptLibrary, ScriptTestResult};
 use cc_agent::llm_client::ChatMessage;
 use cc_agent::tool_tier::FactionToolStates;
 
-/// System prompt for construct mode — instructs the LLM to generate Lua scripts.
+/// System prompt for construct mode.
 const CONSTRUCT_MODE_SYSTEM_PROMPT: &str = r#"You are Minstral, an AI assistant in the RTS game ClawedCommand. The player is asking you to create or modify a Lua script for army automation.
 
 Generate a Lua script using the ctx API. Available methods:
@@ -48,233 +47,315 @@ pub fn construct_mode_toggle(
     }
 }
 
-/// Construct mode UI: script library + code editor + LLM chat.
-pub fn construct_mode_system(
-    mut contexts: EguiContexts,
+/// Marker for construct mode root.
+#[derive(Component)]
+pub struct ConstructModeRoot;
+
+/// Marker for the script library list text.
+#[derive(Component)]
+pub struct ConstructScriptList;
+
+/// Marker for the code display text.
+#[derive(Component)]
+pub struct ConstructCodeDisplay;
+
+/// Marker for the chat log text.
+#[derive(Component)]
+pub struct ConstructChatLog;
+
+pub fn spawn_construct_mode(mut commands: Commands) {
+    commands
+        .spawn((
+            ConstructModeRoot,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Percent(50.0),
+                top: Val::Percent(50.0),
+                margin: UiRect {
+                    left: Val::Px(-400.0),
+                    top: Val::Px(-250.0),
+                    ..default()
+                },
+                width: Val::Px(800.0),
+                height: Val::Px(500.0),
+                padding: UiRect::all(Val::Px(12.0)),
+                flex_direction: FlexDirection::Row,
+                column_gap: Val::Px(12.0),
+                border_radius: BorderRadius::all(Val::Px(8.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.05, 0.05, 0.1, 0.95)),
+            Visibility::Hidden,
+        ))
+        .with_children(|parent| {
+            // Left panel: script library
+            parent
+                .spawn(Node {
+                    width: Val::Px(150.0),
+                    flex_direction: FlexDirection::Column,
+                    overflow: Overflow::clip_y(),
+                    ..default()
+                })
+                .with_children(|parent| {
+                    parent.spawn((
+                        Text::new("SCRIPTS"),
+                        TextColor(Color::srgb(0.9, 0.9, 0.9)),
+                        TextFont {
+                            font_size: 14.0,
+                            ..default()
+                        },
+                        Node {
+                            margin: UiRect::bottom(Val::Px(8.0)),
+                            ..default()
+                        },
+                    ));
+                    parent.spawn((
+                        ConstructScriptList,
+                        Text::new("No scripts"),
+                        TextColor(Color::srgb(0.7, 0.7, 0.7)),
+                        TextFont {
+                            font_size: 11.0,
+                            ..default()
+                        },
+                    ));
+                });
+
+            // Center panel: code display
+            parent
+                .spawn(Node {
+                    flex_grow: 1.0,
+                    flex_direction: FlexDirection::Column,
+                    overflow: Overflow::clip_y(),
+                    ..default()
+                })
+                .with_children(|parent| {
+                    parent.spawn((
+                        Text::new("CODE"),
+                        TextColor(Color::srgb(0.9, 0.9, 0.9)),
+                        TextFont {
+                            font_size: 14.0,
+                            ..default()
+                        },
+                        Node {
+                            margin: UiRect::bottom(Val::Px(8.0)),
+                            ..default()
+                        },
+                    ));
+                    parent.spawn((
+                        ConstructCodeDisplay,
+                        Text::new("Select a script or ask Minstral to create one"),
+                        TextColor(Color::srgb(0.6, 0.8, 0.6)),
+                        TextFont {
+                            font_size: 11.0,
+                            ..default()
+                        },
+                    ));
+                });
+
+            // Right panel: chat log
+            parent
+                .spawn(Node {
+                    width: Val::Px(200.0),
+                    flex_direction: FlexDirection::Column,
+                    overflow: Overflow::clip_y(),
+                    ..default()
+                })
+                .with_children(|parent| {
+                    parent.spawn((
+                        Text::new("AI CHAT  [F5-F7: quick cmd]"),
+                        TextColor(Color::srgb(0.9, 0.9, 0.9)),
+                        TextFont {
+                            font_size: 14.0,
+                            ..default()
+                        },
+                        Node {
+                            margin: UiRect::bottom(Val::Px(8.0)),
+                            ..default()
+                        },
+                    ));
+                    parent.spawn((
+                        ConstructChatLog,
+                        Text::new("Type requests in future versions.\nFor now, use voice commands or F5-F7 hotkeys."),
+                        TextColor(Color::srgb(0.7, 0.7, 0.7)),
+                        TextFont {
+                            font_size: 11.0,
+                            ..default()
+                        },
+                    ));
+                });
+        });
+}
+
+pub fn update_construct_mode(
+    state: Res<ConstructModeState>,
+    library: Res<ScriptLibrary>,
+    mut root_vis: Query<
+        &mut Visibility,
+        (
+            With<ConstructModeRoot>,
+            Without<ConstructScriptList>,
+            Without<ConstructCodeDisplay>,
+            Without<ConstructChatLog>,
+        ),
+    >,
+    mut list_q: Query<
+        &mut Text,
+        (
+            With<ConstructScriptList>,
+            Without<ConstructModeRoot>,
+            Without<ConstructCodeDisplay>,
+            Without<ConstructChatLog>,
+        ),
+    >,
+    mut code_q: Query<
+        &mut Text,
+        (
+            With<ConstructCodeDisplay>,
+            Without<ConstructModeRoot>,
+            Without<ConstructScriptList>,
+            Without<ConstructChatLog>,
+        ),
+    >,
+    mut chat_q: Query<
+        &mut Text,
+        (
+            With<ConstructChatLog>,
+            Without<ConstructModeRoot>,
+            Without<ConstructScriptList>,
+            Without<ConstructCodeDisplay>,
+        ),
+    >,
+) {
+    let show = state.active;
+    for mut vis in root_vis.iter_mut() {
+        *vis = if show {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+    }
+
+    if !show {
+        return;
+    }
+
+    // Update script list
+    if let Ok(mut text) = list_q.single_mut() {
+        if library.scripts.is_empty() {
+            text.0 = "No scripts".to_string();
+        } else {
+            let names: Vec<String> = library
+                .scripts
+                .iter()
+                .enumerate()
+                .map(|(i, s)| {
+                    let selected = state
+                        .current_script
+                        .as_ref()
+                        .is_some_and(|c| c.name == s.name);
+                    let marker = if selected { "> " } else { "  " };
+                    format!("{}[{}] {}", marker, i + 1, s.name)
+                })
+                .collect();
+            text.0 = names.join("\n");
+        }
+    }
+
+    // Update code display
+    if let Ok(mut text) = code_q.single_mut() {
+        if !state.editable_source.is_empty() {
+            let mut display = state.editable_source.clone();
+            if let Some(result) = &state.test_result {
+                let status = if result.success {
+                    format!("\n\n-- TEST OK: {} commands", result.command_count)
+                } else {
+                    format!("\n\n-- TEST FAILED: {}", result.message)
+                };
+                display.push_str(&status);
+            }
+            text.0 = display;
+        } else {
+            text.0 = "Select a script or ask Minstral to create one".to_string();
+        }
+    }
+
+    // Update chat log
+    if let Ok(mut text) = chat_q.single_mut() {
+        if state.chat_history.is_empty() {
+            text.0 = "No chat history yet.\nUse F5-F7 for quick commands.".to_string();
+        } else {
+            let history: Vec<String> = state
+                .chat_history
+                .iter()
+                .rev()
+                .take(10)
+                .rev()
+                .map(|msg| {
+                    let prefix = if msg.role == "user" { "You" } else { "Minstral" };
+                    let content: String = msg.content.chars().take(100).collect();
+                    format!("{}: {}", prefix, content)
+                })
+                .collect();
+            let mut display = history.join("\n\n");
+            if state.waiting_for_response {
+                display.push_str("\n\n... Minstral is thinking ...");
+            }
+            text.0 = display;
+        }
+    }
+}
+
+/// Handle keyboard shortcuts for construct mode: number keys to select scripts.
+pub fn construct_mode_keys(
+    keys: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<ConstructModeState>,
-    mut library: ResMut<ScriptLibrary>,
-    bridge: Res<AgentBridge>,
-    tool_states: Res<FactionToolStates>,
+    library: Res<ScriptLibrary>,
 ) {
     if !state.active {
         return;
     }
 
-    let Ok(ctx) = contexts.ctx_mut() else { return };
+    // Number keys 1-9 select scripts
+    let key_map = [
+        (KeyCode::Digit1, 0),
+        (KeyCode::Digit2, 1),
+        (KeyCode::Digit3, 2),
+        (KeyCode::Digit4, 3),
+        (KeyCode::Digit5, 4),
+        (KeyCode::Digit6, 5),
+        (KeyCode::Digit7, 6),
+        (KeyCode::Digit8, 7),
+        (KeyCode::Digit9, 8),
+    ];
 
-    egui::Window::new("Construct Mode")
-        .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
-        .resizable(true)
-        .default_width(800.0)
-        .default_height(500.0)
-        .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                // Left panel: script library
-                ui.vertical(|ui| {
-                    ui.set_min_width(140.0);
-                    ui.heading("Scripts");
-                    ui.separator();
-                    let script_names: Vec<(usize, String)> = library
-                        .scripts
-                        .iter()
-                        .enumerate()
-                        .map(|(i, s)| (i, s.name.clone()))
-                        .collect();
-                    for (i, name) in &script_names {
-                        let selected = state
-                            .current_script
-                            .as_ref()
-                            .is_some_and(|s| s.name == *name);
-                        if ui.selectable_label(selected, name).clicked() {
-                            let script = library.scripts[*i].clone();
-                            state.editable_source = script.source.clone();
-                            state.current_script = Some(script);
-                            state.test_result = None;
-                        }
-                        if *i < script_names.len() - 1 {
-                            ui.separator();
-                        }
-                    }
-                    if script_names.is_empty() {
-                        ui.label("No scripts yet");
-                    }
+    for (key, idx) in &key_map {
+        if keys.just_pressed(*key) {
+            if let Some(script) = library.scripts.get(*idx) {
+                state.editable_source = script.source.clone();
+                state.current_script = Some(script.clone());
+                state.test_result = None;
+            }
+        }
+    }
+
+    // T = test script (native only)
+    #[cfg(not(target_arch = "wasm32"))]
+    if keys.just_pressed(KeyCode::KeyT) && !state.editable_source.is_empty() {
+        match cc_agent::lua_runtime::execute_script(&state.editable_source, 0) {
+            Ok(commands) => {
+                state.test_result = Some(ScriptTestResult {
+                    success: true,
+                    message: format!("Script OK - {} commands generated", commands.len()),
+                    command_count: commands.len(),
                 });
-
-                ui.separator();
-
-                // Center panel: editable code editor
-                ui.vertical(|ui| {
-                    ui.set_min_width(300.0);
-                    ui.heading("Code");
-                    ui.separator();
-                    if state.current_script.is_some() || !state.editable_source.is_empty() {
-                        egui::ScrollArea::vertical()
-                            .max_height(350.0)
-                            .show(ui, |ui| {
-                                ui.add(
-                                    egui::TextEdit::multiline(&mut state.editable_source)
-                                        .code_editor()
-                                        .desired_width(300.0),
-                                );
-                            });
-                        if let Some(script) = &state.current_script {
-                            if !script.intents.is_empty() {
-                                ui.label(format!("Intents: {}", script.intents.join(", ")));
-                            }
-                        }
-                    } else {
-                        ui.label("Select a script or ask the AI to create one");
-                    }
-
-                    // Test result display
-                    if let Some(result) = &state.test_result {
-                        let color = if result.success {
-                            egui::Color32::GREEN
-                        } else {
-                            egui::Color32::from_rgb(255, 100, 100)
-                        };
-                        ui.colored_label(color, &result.message);
-                    }
+            }
+            Err(e) => {
+                state.test_result = Some(ScriptTestResult {
+                    success: false,
+                    message: format!("Error: {e}"),
+                    command_count: 0,
                 });
-
-                ui.separator();
-
-                // Right panel: LLM chat
-                ui.vertical(|ui| {
-                    ui.set_min_width(200.0);
-                    ui.heading("AI Chat");
-                    ui.separator();
-
-                    egui::ScrollArea::vertical()
-                        .max_height(320.0)
-                        .stick_to_bottom(true)
-                        .show(ui, |ui| {
-                            for msg in &state.chat_history {
-                                if msg.role == "user" {
-                                    ui.colored_label(
-                                        egui::Color32::LIGHT_BLUE,
-                                        format!("You: {}", msg.content),
-                                    );
-                                } else {
-                                    ui.label(format!("Minstral: {}", msg.content));
-                                }
-                                ui.add_space(4.0);
-                            }
-                            if state.waiting_for_response {
-                                ui.horizontal(|ui| {
-                                    ui.spinner();
-                                    ui.label("Minstral is thinking...");
-                                });
-                            }
-                        });
-
-                    ui.separator();
-
-                    let send_enabled = !state.waiting_for_response;
-                    ui.horizontal(|ui| {
-                        if !send_enabled {
-                            ui.disable();
-                        }
-                        let response = ui.add(
-                            egui::TextEdit::singleline(&mut state.chat_input)
-                                .desired_width(150.0)
-                                .hint_text("Describe behavior..."),
-                        );
-
-                        let send_clicked = ui.button("Send").clicked();
-                        let enter_pressed = response.lost_focus()
-                            && ui.input(|i| i.key_pressed(egui::Key::Enter));
-
-                        if (send_clicked || enter_pressed)
-                            && !state.chat_input.is_empty()
-                            && send_enabled
-                        {
-                            let user_msg = ChatMessage {
-                                role: "user".to_string(),
-                                content: state.chat_input.clone(),
-                            };
-                            state.chat_history.push(user_msg);
-
-                            // Build full message list with system prompt
-                            let mut messages = vec![ChatMessage {
-                                role: "system".to_string(),
-                                content: CONSTRUCT_MODE_SYSTEM_PROMPT.to_string(),
-                            }];
-                            messages.extend(state.chat_history.clone());
-
-                            let tier = tool_states.tier_for(0);
-                            let _ = bridge.request_tx.send(AgentRequest {
-                                player_id: 0,
-                                prompt: state.chat_input.clone(),
-                                tier,
-                                source: AgentSource::ConstructMode,
-                                chat_history: Some(messages),
-                            });
-
-                            state.chat_input.clear();
-                            state.waiting_for_response = true;
-                        }
-                    });
-                });
-            });
-
-            ui.separator();
-
-            // Bottom buttons
-            ui.horizontal(|ui| {
-                // Save Script
-                if ui.button("Save Script").clicked() && !state.editable_source.is_empty() {
-                    let intents =
-                        cc_agent::agent_bridge::extract_intents_from_source(&state.editable_source);
-                    let name = cc_agent::agent_bridge::extract_name_from_source(&state.editable_source)
-                        .unwrap_or_else(|| format!("script_{}", library.scripts.len()));
-
-                    let script = LuaScript {
-                        name: name.clone(),
-                        source: state.editable_source.clone(),
-                        intents,
-                        description: state
-                            .current_script
-                            .as_ref()
-                            .map(|s| s.description.clone())
-                            .unwrap_or_default(),
-                    };
-
-                    // Upsert by name
-                    if let Some(idx) = library.scripts.iter().position(|s| s.name == name) {
-                        library.scripts[idx] = script.clone();
-                    } else {
-                        library.scripts.push(script.clone());
-                    }
-                    state.current_script = Some(script);
-                }
-
-                // Test Script
-                if ui.button("Test Script").clicked() && !state.editable_source.is_empty() {
-                    match cc_agent::lua_runtime::execute_script(&state.editable_source, 0) {
-                        Ok(commands) => {
-                            state.test_result = Some(ScriptTestResult {
-                                success: true,
-                                message: format!(
-                                    "Script OK — {} commands generated",
-                                    commands.len()
-                                ),
-                                command_count: commands.len(),
-                            });
-                        }
-                        Err(e) => {
-                            state.test_result = Some(ScriptTestResult {
-                                success: false,
-                                message: format!("Error: {e}"),
-                                command_count: 0,
-                            });
-                        }
-                    }
-                }
-
-                if ui.button("Close (Tab)").clicked() {
-                    state.active = false;
-                }
-            });
-        });
+            }
+        }
+    }
 }

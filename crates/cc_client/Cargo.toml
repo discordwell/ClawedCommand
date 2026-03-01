@@ -5,7 +5,8 @@ edition = "2024"
 
 [features]
 default = ["native"]
-native = ["dep:cc_agent", "dep:cc_voice", "dep:bevy_egui"]
+native = ["dep:cc_agent", "dep:cc_voice"]
+wasm-agent = ["dep:cc_agent"]
 
 [dependencies]
 cc_core = { path = "../cc_core", features = ["bevy"] }
@@ -13,7 +14,6 @@ cc_sim = { path = "../cc_sim" }
 cc_voice = { path = "../cc_voice", default-features = false, optional = true }
 cc_agent = { path = "../cc_agent", optional = true }
 bevy = { workspace = true }
-bevy_egui = { workspace = true, optional = true }
 
 [[example]]
 name = "poc_3d"

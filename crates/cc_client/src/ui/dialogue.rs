@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy_egui::{EguiContexts, egui};
 
 use cc_core::mission::{DialogueLine, VoiceStyle};
 use cc_sim::campaign::triggers::DialogueEvent;
@@ -7,15 +6,10 @@ use cc_sim::campaign::triggers::DialogueEvent;
 /// Dialogue UI state — manages the typewriter effect and line queue.
 #[derive(Resource)]
 pub struct DialogueState {
-    /// Queue of dialogue lines waiting to be displayed.
     pub queue: Vec<DialogueLine>,
-    /// Index of the currently displayed line.
     pub current_index: usize,
-    /// How many characters of the current line are visible (typewriter).
     pub chars_revealed: usize,
-    /// Timer for typewriter effect.
     pub char_timer: f32,
-    /// If true, dialogue box is visible.
     pub active: bool,
 }
 
@@ -31,7 +25,6 @@ impl Default for DialogueState {
     }
 }
 
-/// Characters revealed per second for typewriter effect.
 const TYPEWRITER_SPEED: f32 = 40.0;
 
 /// Read incoming DialogueEvents and queue them for display.
@@ -40,7 +33,6 @@ pub fn dialogue_event_reader(
     mut state: ResMut<DialogueState>,
 ) {
     for event in events.read() {
-        // If already showing dialogue, append to queue
         if state.active {
             state.queue.extend(event.lines.iter().cloned());
         } else {
@@ -53,22 +45,110 @@ pub fn dialogue_event_reader(
     }
 }
 
-/// Render the dialogue box at the bottom of the screen.
-pub fn dialogue_system(
-    mut contexts: EguiContexts,
+/// Marker for the dialogue box root.
+#[derive(Component)]
+pub struct DialogueRoot;
+
+/// Marker for the dialogue speaker name.
+#[derive(Component)]
+pub struct DialogueSpeaker;
+
+/// Marker for the dialogue text content.
+#[derive(Component)]
+pub struct DialogueText;
+
+/// Marker for the advance prompt text.
+#[derive(Component)]
+pub struct DialoguePrompt;
+
+pub fn spawn_dialogue(mut commands: Commands) {
+    commands
+        .spawn((
+            DialogueRoot,
+            Node {
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(20.0),
+                left: Val::Percent(50.0),
+                margin: UiRect::left(Val::Px(-300.0)),
+                width: Val::Px(600.0),
+                padding: UiRect::all(Val::Px(16.0)),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(4.0),
+                border_radius: BorderRadius::all(Val::Px(8.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.8)),
+            Visibility::Hidden,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                DialogueSpeaker,
+                Text::new(""),
+                TextColor(Color::srgb(1.0, 1.0, 1.0)),
+                TextFont {
+                    font_size: 15.0,
+                    ..default()
+                },
+            ));
+            parent.spawn((
+                DialogueText,
+                Text::new(""),
+                TextColor(Color::srgb(0.9, 0.9, 0.9)),
+                TextFont {
+                    font_size: 14.0,
+                    ..default()
+                },
+            ));
+            parent.spawn((
+                DialoguePrompt,
+                Text::new(""),
+                TextColor(Color::srgb(0.6, 0.6, 0.6)),
+                TextFont {
+                    font_size: 10.0,
+                    ..default()
+                },
+                Node {
+                    align_self: AlignSelf::FlexEnd,
+                    ..default()
+                },
+            ));
+        });
+}
+
+pub fn update_dialogue(
     mut state: ResMut<DialogueState>,
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
+    mut root_vis: Query<
+        &mut Visibility,
+        (With<DialogueRoot>, Without<DialogueSpeaker>, Without<DialogueText>, Without<DialoguePrompt>),
+    >,
+    mut speaker_q: Query<
+        (&mut Text, &mut TextColor),
+        (With<DialogueSpeaker>, Without<DialogueRoot>, Without<DialogueText>, Without<DialoguePrompt>),
+    >,
+    mut text_q: Query<
+        &mut Text,
+        (With<DialogueText>, Without<DialogueRoot>, Without<DialogueSpeaker>, Without<DialoguePrompt>),
+    >,
+    mut prompt_q: Query<
+        &mut Text,
+        (With<DialoguePrompt>, Without<DialogueRoot>, Without<DialogueSpeaker>, Without<DialogueText>),
+    >,
 ) {
     if !state.active || state.queue.is_empty() {
+        for mut vis in root_vis.iter_mut() {
+            *vis = Visibility::Hidden;
+        }
         return;
     }
 
-    let Ok(ctx) = contexts.ctx_mut() else { return };
+    for mut vis in root_vis.iter_mut() {
+        *vis = Visibility::Inherited;
+    }
 
     let dt = time.delta_secs();
 
-    // Get current line
     let Some(line) = state.queue.get(state.current_index) else {
         state.active = false;
         return;
@@ -81,7 +161,6 @@ pub fn dialogue_system(
     // Handle Space input
     if keys.just_pressed(KeyCode::Space) {
         if fully_revealed {
-            // Advance to next line
             let next = state.current_index + 1;
             if next >= state.queue.len() {
                 state.active = false;
@@ -91,7 +170,6 @@ pub fn dialogue_system(
             state.chars_revealed = 0;
             state.char_timer = 0.0;
         } else {
-            // Skip to end of current line
             state.chars_revealed = total_chars;
         }
     }
@@ -106,7 +184,7 @@ pub fn dialogue_system(
         }
     }
 
-    // Re-read current line (may have advanced)
+    // Re-read current line
     let Some(current_line) = state.queue.get(state.current_index) else {
         state.active = false;
         return;
@@ -118,91 +196,36 @@ pub fn dialogue_system(
         .take(state.chars_revealed)
         .collect();
 
-    // Speaker name color based on voice style
     let speaker_color = match current_line.voice_style {
-        VoiceStyle::Normal => egui::Color32::WHITE,
-        VoiceStyle::AiVoice => egui::Color32::from_rgb(100, 255, 100),
-        VoiceStyle::Whisper => egui::Color32::from_rgb(180, 180, 200),
-        VoiceStyle::Shout => egui::Color32::from_rgb(255, 100, 100),
+        VoiceStyle::Normal => Color::srgb(1.0, 1.0, 1.0),
+        VoiceStyle::AiVoice => Color::srgb(0.4, 1.0, 0.4),
+        VoiceStyle::Whisper => Color::srgb(0.7, 0.7, 0.8),
+        VoiceStyle::Shout => Color::srgb(1.0, 0.4, 0.4),
     };
 
-    // Dialogue box at bottom of screen
-    let screen_rect = ctx.screen_rect();
-    let box_width = 600.0_f32.min(screen_rect.width() - 40.0);
-    let box_x = (screen_rect.width() - box_width) / 2.0;
-    let box_y = screen_rect.height() - 160.0;
+    if let Ok((mut text, mut color)) = speaker_q.single_mut() {
+        text.0 = current_line.speaker.clone();
+        color.0 = speaker_color;
+    }
 
-    egui::Area::new(egui::Id::new("dialogue_box"))
-        .fixed_pos(egui::pos2(box_x, box_y))
-        .show(ctx, |ui| {
-            egui::Frame::new()
-                .fill(egui::Color32::from_rgba_unmultiplied(0, 0, 0, 200))
-                .inner_margin(egui::Margin::same(16))
-                .corner_radius(8.0)
-                .show(ui, |ui| {
-                    ui.set_max_width(box_width);
+    if let Ok(mut text) = text_q.single_mut() {
+        text.0 = match current_line.voice_style {
+            VoiceStyle::Shout => visible_text.to_uppercase(),
+            _ => visible_text,
+        };
+    }
 
-                    // Portrait placeholder + speaker name
-                    ui.horizontal(|ui| {
-                        // Faction-colored square as portrait placeholder
-                        let (rect, _) = ui.allocate_exact_size(
-                            egui::vec2(48.0, 48.0),
-                            egui::Sense::hover(),
-                        );
-                        ui.painter().rect_filled(
-                            rect,
-                            4.0,
-                            speaker_color.linear_multiply(0.5),
-                        );
-
-                        ui.vertical(|ui| {
-                            ui.colored_label(speaker_color, &current_line.speaker);
-                            // Text styling based on voice
-                            match current_line.voice_style {
-                                VoiceStyle::Whisper => {
-                                    ui.label(
-                                        egui::RichText::new(&visible_text)
-                                            .italics()
-                                            .size(12.0)
-                                            .color(egui::Color32::LIGHT_GRAY),
-                                    );
-                                }
-                                VoiceStyle::Shout => {
-                                    ui.label(
-                                        egui::RichText::new(visible_text.to_uppercase())
-                                            .strong()
-                                            .size(16.0)
-                                            .color(egui::Color32::WHITE),
-                                    );
-                                }
-                                _ => {
-                                    ui.label(
-                                        egui::RichText::new(&visible_text)
-                                            .size(14.0)
-                                            .color(egui::Color32::WHITE),
-                                    );
-                                }
-                            }
-                        });
-                    });
-
-                    // Advance prompt
-                    let fully_done = state.chars_revealed >= current_line.text.chars().count();
-                    if fully_done {
-                        let is_last = state.current_index + 1 >= state.queue.len();
-                        let prompt = if is_last {
-                            "[Space] Close"
-                        } else {
-                            "[Space] Continue"
-                        };
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                            ui.label(
-                                egui::RichText::new(prompt)
-                                    .size(10.0)
-                                    .color(egui::Color32::from_rgb(150, 150, 150)),
-                            );
-                        });
-                    }
-                });
-        });
+    let fully_done = state.chars_revealed >= current_line.text.chars().count();
+    if let Ok(mut prompt) = prompt_q.single_mut() {
+        if fully_done {
+            let is_last = state.current_index + 1 >= state.queue.len();
+            prompt.0 = if is_last {
+                "[Space] Close".to_string()
+            } else {
+                "[Space] Continue".to_string()
+            };
+        } else {
+            prompt.0 = String::new();
+        }
+    }
 }

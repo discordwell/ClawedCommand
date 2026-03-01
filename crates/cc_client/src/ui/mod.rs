@@ -2,32 +2,23 @@ pub mod build_menu;
 pub mod building_info;
 pub mod resource_hud;
 
-#[cfg(feature = "native")]
 pub mod ability_bar;
-#[cfg(feature = "native")]
-pub mod agent_chat;
-#[cfg(feature = "native")]
 pub mod briefing;
-#[cfg(feature = "native")]
 pub mod campaign_menu;
-#[cfg(feature = "native")]
 pub mod command_card;
-#[cfg(feature = "native")]
-pub mod construct_mode;
-#[cfg(feature = "native")]
 pub mod dialogue;
-#[cfg(feature = "native")]
 pub mod game_over;
-#[cfg(feature = "native")]
 pub mod notifications;
-#[cfg(feature = "native")]
 pub mod resource_bar;
-#[cfg(feature = "native")]
 pub mod unit_info;
 
+// Agent-dependent UI modules — need cc_agent crate
+#[cfg(any(feature = "native", feature = "wasm-agent"))]
+pub mod agent_chat;
+#[cfg(any(feature = "native", feature = "wasm-agent"))]
+pub mod construct_mode;
+
 use bevy::prelude::*;
-#[cfg(feature = "native")]
-use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
 /// Shared UI state -- notifications, etc.
 #[derive(Resource, Default)]
@@ -41,54 +32,67 @@ pub struct UiPlugin;
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<UiState>()
+            .init_resource::<dialogue::DialogueState>()
+            .init_resource::<campaign_menu::AvailableMissions>()
+            .init_resource::<campaign_menu::CampaignMenuOpen>()
             .add_systems(
                 Startup,
                 (
                     resource_hud::spawn_resource_hud,
+                    resource_bar::spawn_resource_bar,
                     build_menu::spawn_build_menu,
                     building_info::spawn_building_info,
+                    unit_info::spawn_unit_info,
+                    command_card::spawn_command_card,
+                    ability_bar::spawn_ability_bar,
+                    notifications::spawn_notifications,
+                    game_over::spawn_game_over,
+                    dialogue::spawn_dialogue,
+                    briefing::spawn_briefing,
+                    campaign_menu::spawn_campaign_menu,
                 ),
             )
             .add_systems(
                 Update,
                 (
                     resource_hud::update_resource_hud,
+                    resource_bar::update_resource_bar,
                     build_menu::update_build_menu,
                     building_info::update_building_info,
+                    unit_info::update_unit_info,
+                    command_card::update_command_card,
+                    ability_bar::update_ability_bar,
+                    notifications::update_notifications,
+                    game_over::update_game_over,
+                    dialogue::dialogue_event_reader,
+                    dialogue::update_dialogue,
+                    briefing::update_briefing,
+                    briefing::briefing_input_system,
+                    campaign_menu::campaign_menu_toggle,
+                    campaign_menu::update_campaign_menu,
                 ),
             );
 
-        #[cfg(feature = "native")]
+        // Agent-dependent UI systems
+        #[cfg(any(feature = "native", feature = "wasm-agent"))]
         {
-            app.add_plugins(EguiPlugin::default())
-                .init_resource::<dialogue::DialogueState>()
-                .init_resource::<campaign_menu::AvailableMissions>()
-                .init_resource::<campaign_menu::CampaignMenuOpen>()
-                .add_systems(
-                    Update,
-                    (
-                        construct_mode::construct_mode_toggle,
-                        dialogue::dialogue_event_reader,
-                        briefing::briefing_input_system,
-                        campaign_menu::campaign_menu_toggle,
-                    ),
-                )
-                .add_systems(
-                    EguiPrimaryContextPass,
-                    (
-                        resource_bar::resource_bar_system,
-                        unit_info::unit_info_system,
-                        command_card::command_card_system,
-                        ability_bar::ability_bar_system,
-                        notifications::notification_system,
-                        construct_mode::construct_mode_system,
-                        agent_chat::agent_chat_system,
-                        game_over::game_over_system,
-                        dialogue::dialogue_system,
-                        briefing::briefing_system,
-                        campaign_menu::campaign_menu_system,
-                    ),
-                );
+            app.add_systems(
+                Startup,
+                (
+                    agent_chat::spawn_agent_chat,
+                    construct_mode::spawn_construct_mode,
+                ),
+            )
+            .add_systems(
+                Update,
+                (
+                    agent_chat::update_agent_chat,
+                    agent_chat::agent_quick_commands,
+                    construct_mode::construct_mode_toggle,
+                    construct_mode::update_construct_mode,
+                    construct_mode::construct_mode_keys,
+                ),
+            );
         }
     }
 }

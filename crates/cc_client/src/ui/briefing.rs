@@ -1,15 +1,70 @@
 use bevy::prelude::*;
-use bevy_egui::{EguiContexts, egui};
 
 use cc_sim::campaign::state::{CampaignPhase, CampaignState};
 
-/// Full-screen mission briefing overlay.
-/// Shown during CampaignPhase::Briefing, dismissed by clicking "Begin Mission".
-pub fn briefing_system(
-    mut contexts: EguiContexts,
-    mut campaign: ResMut<CampaignState>,
+/// Marker for the briefing overlay root.
+#[derive(Component)]
+pub struct BriefingRoot;
+
+/// Marker for the briefing text content.
+#[derive(Component)]
+pub struct BriefingText;
+
+pub fn spawn_briefing(mut commands: Commands) {
+    commands
+        .spawn((
+            BriefingRoot,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Percent(50.0),
+                top: Val::Percent(50.0),
+                margin: UiRect {
+                    left: Val::Px(-250.0),
+                    top: Val::Px(-200.0),
+                    ..default()
+                },
+                width: Val::Px(500.0),
+                padding: UiRect::all(Val::Px(30.0)),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(8.0),
+                border_radius: BorderRadius::all(Val::Px(12.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.04, 0.04, 0.08, 0.9)),
+            Visibility::Hidden,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                BriefingText,
+                Text::new(""),
+                TextColor(Color::srgb(0.9, 0.9, 0.9)),
+                TextFont {
+                    font_size: 14.0,
+                    ..default()
+                },
+            ));
+        });
+}
+
+pub fn update_briefing(
+    campaign: Res<CampaignState>,
+    mut root_vis: Query<
+        &mut Visibility,
+        (With<BriefingRoot>, Without<BriefingText>),
+    >,
+    mut text_q: Query<&mut Text, With<BriefingText>>,
 ) {
-    if campaign.phase != CampaignPhase::Briefing {
+    let show = campaign.phase == CampaignPhase::Briefing;
+
+    for mut vis in root_vis.iter_mut() {
+        *vis = if show {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+    }
+
+    if !show {
         return;
     }
 
@@ -17,107 +72,39 @@ pub fn briefing_system(
         return;
     };
 
-    let Ok(ctx) = contexts.ctx_mut() else { return };
+    let Ok(mut text) = text_q.single_mut() else {
+        return;
+    };
 
-    let mission_name = mission.name.clone();
-    let act = mission.act;
-    let briefing = mission.briefing_text.clone();
-    let objectives: Vec<(String, bool)> = mission
-        .objectives
-        .iter()
-        .map(|o| (o.description.clone(), o.primary))
-        .collect();
+    let mut lines = Vec::new();
 
-    let mut begin_clicked = false;
+    // Act title
+    let act_text = if mission.act == 0 {
+        "PROLOGUE".to_string()
+    } else {
+        format!("ACT {}", mission.act)
+    };
+    lines.push(act_text);
+    lines.push(String::new());
+    lines.push(mission.name.clone());
+    lines.push(String::new());
+    lines.push(mission.briefing_text.clone());
+    lines.push(String::new());
+    lines.push("OBJECTIVES".to_string());
 
-    egui::Area::new(egui::Id::new("briefing_overlay"))
-        .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
-        .show(ctx, |ui| {
-            egui::Frame::new()
-                .fill(egui::Color32::from_rgba_unmultiplied(10, 10, 20, 230))
-                .inner_margin(egui::Margin::same(40))
-                .corner_radius(12.0)
-                .show(ui, |ui| {
-                    ui.set_max_width(500.0);
-
-                    // Act title
-                    let act_text = if act == 0 {
-                        "PROLOGUE".to_string()
-                    } else {
-                        format!("ACT {act}")
-                    };
-                    ui.label(
-                        egui::RichText::new(act_text)
-                            .size(12.0)
-                            .color(egui::Color32::from_rgb(150, 150, 180)),
-                    );
-
-                    ui.add_space(8.0);
-
-                    // Mission name
-                    ui.label(
-                        egui::RichText::new(&mission_name)
-                            .heading()
-                            .size(24.0)
-                            .color(egui::Color32::WHITE),
-                    );
-
-                    ui.add_space(16.0);
-                    ui.separator();
-                    ui.add_space(12.0);
-
-                    // Briefing text
-                    ui.label(
-                        egui::RichText::new(&briefing)
-                            .size(14.0)
-                            .color(egui::Color32::LIGHT_GRAY),
-                    );
-
-                    ui.add_space(16.0);
-
-                    // Objectives
-                    ui.label(
-                        egui::RichText::new("OBJECTIVES")
-                            .strong()
-                            .size(14.0)
-                            .color(egui::Color32::from_rgb(255, 200, 100)),
-                    );
-                    ui.add_space(4.0);
-
-                    for (desc, primary) in &objectives {
-                        let prefix = if *primary { ">> " } else { "   " };
-                        let color = if *primary {
-                            egui::Color32::WHITE
-                        } else {
-                            egui::Color32::from_rgb(150, 150, 150)
-                        };
-                        let suffix = if *primary { "" } else { " (optional)" };
-                        ui.label(
-                            egui::RichText::new(format!("{prefix}{desc}{suffix}"))
-                                .size(13.0)
-                                .color(color),
-                        );
-                    }
-
-                    ui.add_space(24.0);
-
-                    // Begin button
-                    if ui.button(
-                        egui::RichText::new("BEGIN MISSION")
-                            .size(16.0)
-                            .strong(),
-                    ).clicked() {
-                        begin_clicked = true;
-                    }
-                });
-        });
-
-    if begin_clicked {
-        campaign.phase = CampaignPhase::InMission;
+    for obj in &mission.objectives {
+        let prefix = if obj.primary { ">> " } else { "   " };
+        let suffix = if obj.primary { "" } else { " (optional)" };
+        lines.push(format!("{}{}{}", prefix, obj.description, suffix));
     }
+
+    lines.push(String::new());
+    lines.push("[Enter/Space] BEGIN MISSION".to_string());
+
+    text.0 = lines.join("\n");
 }
 
-/// Transition from Briefing to InMission when the player presses Enter or clicks Begin.
+/// Transition from Briefing to InMission when the player presses Enter or Space.
 pub fn briefing_input_system(
     keys: Res<ButtonInput<KeyCode>>,
     mut campaign: ResMut<CampaignState>,
