@@ -255,7 +255,7 @@
     briefing_text: "Deep in Croak territory, in a flooded cave system, The Eternal has been building a Cloud component. Assemble the prototype while defending against waves of attackers. The water is rising — use the terrain to your advantage.",
     debrief_text: "The Cloud prototype hums with quiet power. Every faction in the world felt it activate. They're coming. All of them.",
     ai_tool_tier: Some(2),
-    next_mission: Fixed("act5_m2_siege_of_six"),
+    next_mission: Fixed("act5_m2_convergence"),
     mutators: [
         // Flooding: rises every 100 ticks after activation, converting elevation 0 tiles to water
         Flooding(

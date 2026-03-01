@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use cc_core::components::{Health, Owner, Position};
+use cc_core::components::{Dead, Health, MoveTarget, Owner, Path, Position};
 use cc_core::coords::GridPos;
 use cc_core::math::Fixed;
 use cc_core::mission::MissionDefinition;
@@ -10,7 +10,7 @@ use cc_core::terrain::{FLAG_LAVA, FLAG_TEMP_BLOCKED, FLAG_TOXIC, FLAG_WATER_CONV
 use crate::campaign::mutator_state::{
     should_fire, ControlRestrictions, FogState, MutatorState,
 };
-use crate::campaign::state::{CampaignPhase, CampaignState, MissionFailedEvent};
+use crate::campaign::state::{CampaignPhase, CampaignState, MissionFailedEvent, TimeLimitWarningEvent};
 use crate::resources::{MapResource, SimClock, SimRng};
 use crate::systems::damage::ApplyDamageCommand;
 
@@ -73,6 +73,7 @@ pub fn mutator_init(
     mutator_state.toxic_advance_count = 0;
     mutator_state.wind_active = false;
     mutator_state.fog_cleared = false;
+    mutator_state.time_warning_fired = false;
 }
 
 /// Set dynamic flags on a tile by grid coordinates, bounds-checked.
@@ -340,8 +341,14 @@ pub fn hazard_damage_system(
             MissionMutator::ToxicTide { damage_per_tick, .. } => {
                 toxic_dpt = toxic_dpt.max(*damage_per_tick);
             }
-            MissionMutator::DamageZone { tiles, damage_per_tick, .. } => {
-                damage_zones.push((tiles.as_slice(), *damage_per_tick));
+            MissionMutator::DamageZone { tiles, damage_per_tick, toggle_flag, .. } => {
+                let flag_active = match toggle_flag {
+                    Some(flag_name) => campaign.flags.contains(flag_name),
+                    None => true,
+                };
+                if flag_active {
+                    damage_zones.push((tiles.as_slice(), *damage_per_tick));
+                }
             }
             _ => {}
         }
@@ -392,9 +399,10 @@ pub fn hazard_damage_system(
 /// Tick system for time-based mutators (TimeLimit countdown, etc).
 pub fn mutator_tick_system(
     campaign: Res<CampaignState>,
-    mutator_state: Res<MutatorState>,
+    mut mutator_state: ResMut<MutatorState>,
     sim_clock: Res<SimClock>,
     mut fail_events: MessageWriter<MissionFailedEvent>,
+    mut warning_events: MessageWriter<TimeLimitWarningEvent>,
 ) {
     if campaign.phase != CampaignPhase::InMission {
         return;
@@ -411,7 +419,12 @@ pub fn mutator_tick_system(
         if !mutator_state.is_active(i) {
             continue;
         }
-        if let MissionMutator::TimeLimit { max_ticks, .. } = mutator {
+        if let MissionMutator::TimeLimit { max_ticks, warning_at } = mutator {
+            // Fire warning event once when reaching warning_at threshold
+            if !mutator_state.time_warning_fired && tick >= *warning_at {
+                mutator_state.time_warning_fired = true;
+                warning_events.write(TimeLimitWarningEvent);
+            }
             if tick >= *max_ticks {
                 fail_events.write(MissionFailedEvent {
                     reason: "Time limit exceeded".to_string(),
@@ -419,5 +432,88 @@ pub fn mutator_tick_system(
                 return;
             }
         }
+    }
+}
+
+/// Displace units when wind is active (WindStorm mutator).
+/// Pushes all units in the wind direction; kills those pushed off-map when `can_push_off_map` is true.
+pub fn wind_displacement_system(
+    campaign: Res<CampaignState>,
+    mutator_state: Res<MutatorState>,
+    map_res: Res<MapResource>,
+    mut commands: Commands,
+    mut units: Query<(Entity, &mut Position, &Health), (With<Owner>, Without<Dead>)>,
+) {
+    if campaign.phase != CampaignPhase::InMission {
+        return;
+    }
+    if !mutator_state.wind_active {
+        return;
+    }
+
+    let mission = match &campaign.current_mission {
+        Some(m) => m,
+        None => return,
+    };
+
+    // Find active WindStorm mutator
+    let mut wind_dir = None;
+    let mut wind_force = 0u32;
+    let mut push_off = false;
+
+    for (i, mutator) in mission.mutators.iter().enumerate() {
+        if !mutator_state.is_active(i) {
+            continue;
+        }
+        if let MissionMutator::WindStorm { direction, force, can_push_off_map, .. } = mutator {
+            wind_dir = Some(*direction);
+            wind_force = *force;
+            push_off = *can_push_off_map;
+            break;
+        }
+    }
+
+    let Some(direction) = wind_dir else { return };
+
+    // AllEdges has no single displacement direction — skip
+    if direction == HazardDirection::AllEdges {
+        return;
+    }
+
+    let force = wind_force as i32;
+    let (dx, dy): (i32, i32) = match direction {
+        HazardDirection::North => (0, -force),
+        HazardDirection::South => (0, force),
+        HazardDirection::East => (force, 0),
+        HazardDirection::West => (-force, 0),
+        HazardDirection::AllEdges => unreachable!(),
+    };
+
+    let map_w = map_res.map.width as i32;
+    let map_h = map_res.map.height as i32;
+    let max_x = Fixed::from_num(map_w - 1);
+    let max_y = Fixed::from_num(map_h - 1);
+    let zero = Fixed::from_num(0);
+
+    for (entity, mut pos, health) in units.iter_mut() {
+        let new_x = pos.world.x + Fixed::from_num(dx);
+        let new_y = pos.world.y + Fixed::from_num(dy);
+
+        let out_of_bounds = new_x < zero || new_x > max_x || new_y < zero || new_y > max_y;
+
+        if out_of_bounds && push_off {
+            // Lethal damage — pushed off the map
+            commands.queue(ApplyDamageCommand {
+                target: entity,
+                damage: health.max,
+            });
+        } else {
+            // Clamp to map bounds
+            pos.world.x = new_x.max(zero).min(max_x);
+            pos.world.y = new_y.max(zero).min(max_y);
+        }
+
+        // Clear movement targets to prevent walk-back
+        commands.entity(entity).remove::<MoveTarget>().remove::<Path>();
     }
 }

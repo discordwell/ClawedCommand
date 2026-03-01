@@ -1,0 +1,359 @@
+// Act 5 Mission 2: The Convergence
+// Five-faction assault on central grotto. Every hero arrives. Penultimate massive battle.
+// Mutators: ToxicTide, WindStorm, Tremors — the swamp itself is fighting.
+(
+    id: "act5_m2_convergence",
+    name: "The Convergence",
+    act: 5,
+    mission_index: 2,
+    map: Generated(
+        seed: 5002,
+        width: 64,
+        height: 64,
+    ),
+    player_setup: (
+        heroes: [
+            (
+                hero_id: Kelpie,
+                position: (x: 30, y: 30),
+                mission_critical: true,
+            ),
+            (
+                hero_id: TheEternal,
+                position: (x: 34, y: 30),
+                mission_critical: false,
+            ),
+        ],
+        units: [
+            // Chonk wall — inner perimeter
+            (kind: Chonk, position: (x: 28, y: 28), player_id: 0),
+            (kind: Chonk, position: (x: 30, y: 28), player_id: 0),
+            (kind: Chonk, position: (x: 32, y: 28), player_id: 0),
+            (kind: Chonk, position: (x: 34, y: 28), player_id: 0),
+            (kind: Chonk, position: (x: 28, y: 34), player_id: 0),
+            (kind: Chonk, position: (x: 34, y: 34), player_id: 0),
+            // Hisser line — ranged support
+            (kind: Hisser, position: (x: 29, y: 29), player_id: 0),
+            (kind: Hisser, position: (x: 31, y: 29), player_id: 0),
+            (kind: Hisser, position: (x: 33, y: 29), player_id: 0),
+            (kind: Hisser, position: (x: 29, y: 33), player_id: 0),
+            (kind: Hisser, position: (x: 31, y: 33), player_id: 0),
+            (kind: Hisser, position: (x: 33, y: 33), player_id: 0),
+            // Nuisance skirmishers — flanks
+            (kind: Nuisance, position: (x: 26, y: 30), player_id: 0),
+            (kind: Nuisance, position: (x: 36, y: 30), player_id: 0),
+            (kind: Nuisance, position: (x: 30, y: 26), player_id: 0),
+            (kind: Nuisance, position: (x: 30, y: 36), player_id: 0),
+            // Yowler support — center
+            (kind: Yowler, position: (x: 31, y: 31), player_id: 0),
+            (kind: Yowler, position: (x: 33, y: 31), player_id: 0),
+        ],
+        buildings: [],
+        starting_food: 300,
+        starting_gpu: 150,
+        starting_nfts: 0,
+    ),
+    enemy_waves: [
+        // Wave 1: catGPT advance scouts — north
+        (
+            wave_id: "wave1_catgpt_scouts",
+            trigger: AtTick(40),
+            units: [
+                (kind: Nuisance, position: (x: 30, y: 4), player_id: 1),
+                (kind: Nuisance, position: (x: 32, y: 5), player_id: 1),
+                (kind: Nuisance, position: (x: 34, y: 4), player_id: 1),
+                (kind: Hisser, position: (x: 31, y: 3), player_id: 1),
+            ],
+            ai_behavior: AttackMove((x: 32, y: 32)),
+        ),
+        // Wave 2: Clawed swarm — west
+        (
+            wave_id: "wave2_clawed_swarm",
+            trigger: AtTick(100),
+            units: [
+                (kind: Nuisance, position: (x: 4, y: 28), player_id: 2),
+                (kind: Nuisance, position: (x: 3, y: 30), player_id: 2),
+                (kind: Nuisance, position: (x: 4, y: 32), player_id: 2),
+                (kind: Nuisance, position: (x: 5, y: 29), player_id: 2),
+                (kind: Nuisance, position: (x: 5, y: 31), player_id: 2),
+                (kind: Chonk, position: (x: 3, y: 29), player_id: 2),
+            ],
+            ai_behavior: AttackMove((x: 32, y: 32)),
+        ),
+        // Wave 3: Seekers fortress push — east
+        (
+            wave_id: "wave3_seekers_push",
+            trigger: AtTick(180),
+            units: [
+                (kind: Chonk, position: (x: 58, y: 28), player_id: 3),
+                (kind: Chonk, position: (x: 59, y: 30), player_id: 3),
+                (kind: Chonk, position: (x: 58, y: 32), player_id: 3),
+                (kind: Hisser, position: (x: 60, y: 29), player_id: 3),
+                (kind: Hisser, position: (x: 60, y: 31), player_id: 3),
+            ],
+            ai_behavior: AttackMove((x: 32, y: 32)),
+        ),
+        // Wave 4: Murder air strike — northeast
+        (
+            wave_id: "wave4_murder_strike",
+            trigger: AtTick(250),
+            units: [
+                (kind: FlyingFox, position: (x: 56, y: 6), player_id: 4),
+                (kind: FlyingFox, position: (x: 58, y: 7), player_id: 4),
+                (kind: Nuisance, position: (x: 57, y: 8), player_id: 4),
+                (kind: Hisser, position: (x: 55, y: 7), player_id: 4),
+            ],
+            ai_behavior: AttackMove((x: 32, y: 32)),
+        ),
+        // Wave 5: catGPT main assault — Felix's combined arms — north
+        (
+            wave_id: "wave5_catgpt_main",
+            trigger: OnTrigger("spawn_catgpt_main"),
+            units: [
+                (kind: Chonk, position: (x: 28, y: 3), player_id: 1),
+                (kind: Chonk, position: (x: 32, y: 3), player_id: 1),
+                (kind: Hisser, position: (x: 30, y: 2), player_id: 1),
+                (kind: Hisser, position: (x: 34, y: 2), player_id: 1),
+                (kind: Nuisance, position: (x: 29, y: 4), player_id: 1),
+                (kind: Nuisance, position: (x: 33, y: 4), player_id: 1),
+                (kind: Yowler, position: (x: 31, y: 2), player_id: 1),
+            ],
+            ai_behavior: AttackMove((x: 32, y: 32)),
+        ),
+        // Wave 6: Clawed second wave + Seekers reinforcement — pincer
+        (
+            wave_id: "wave6_pincer",
+            trigger: OnTrigger("spawn_pincer"),
+            units: [
+                (kind: Nuisance, position: (x: 5, y: 34), player_id: 2),
+                (kind: Nuisance, position: (x: 4, y: 36), player_id: 2),
+                (kind: Chonk, position: (x: 3, y: 35), player_id: 2),
+                (kind: Chonk, position: (x: 59, y: 34), player_id: 3),
+                (kind: Hisser, position: (x: 60, y: 35), player_id: 3),
+                (kind: Hisser, position: (x: 58, y: 36), player_id: 3),
+            ],
+            ai_behavior: AttackMove((x: 32, y: 32)),
+        ),
+        // Wave 7: Murder + LLAMA surprise — south (Ringtail's wrong-leak forces)
+        (
+            wave_id: "wave7_south_surprise",
+            trigger: OnTrigger("spawn_south_surprise"),
+            units: [
+                (kind: Nuisance, position: (x: 28, y: 58), player_id: 4),
+                (kind: Nuisance, position: (x: 30, y: 59), player_id: 4),
+                (kind: Hisser, position: (x: 32, y: 58), player_id: 2),
+                (kind: Chonk, position: (x: 34, y: 59), player_id: 2),
+                (kind: FlyingFox, position: (x: 29, y: 60), player_id: 4),
+            ],
+            ai_behavior: AttackMove((x: 32, y: 32)),
+        ),
+        // Wave 8: Final all-faction push — everything left
+        (
+            wave_id: "wave8_final_push",
+            trigger: OnTrigger("spawn_final_push"),
+            units: [
+                (kind: Chonk, position: (x: 30, y: 2), player_id: 1),
+                (kind: Chonk, position: (x: 4, y: 30), player_id: 2),
+                (kind: Chonk, position: (x: 60, y: 30), player_id: 3),
+                (kind: Chonk, position: (x: 30, y: 60), player_id: 4),
+                (kind: Hisser, position: (x: 32, y: 2), player_id: 1),
+                (kind: Hisser, position: (x: 4, y: 32), player_id: 2),
+                (kind: Hisser, position: (x: 60, y: 32), player_id: 3),
+                (kind: Hisser, position: (x: 32, y: 60), player_id: 4),
+                (kind: Nuisance, position: (x: 28, y: 3), player_id: 1),
+                (kind: Nuisance, position: (x: 3, y: 28), player_id: 2),
+            ],
+            ai_behavior: AttackMove((x: 32, y: 32)),
+        ),
+    ],
+    objectives: [
+        (
+            id: "hold_grotto",
+            description: "Hold the Grotto for 600 ticks",
+            primary: true,
+            condition: Survive(600),
+        ),
+        (
+            id: "kelpie_survives",
+            description: "Kelpie must survive",
+            primary: true,
+            condition: HeroDied(Kelpie),
+        ),
+        (
+            id: "eliminate_all",
+            description: "Eliminate all attackers",
+            primary: false,
+            condition: EliminateAll,
+        ),
+    ],
+    triggers: [
+        // T0: Opening — every faction detected
+        (
+            id: "opening",
+            condition: AtTick(1),
+            actions: [ShowDialogue([0, 1, 2, 3, 4])],
+            once: true,
+        ),
+        // T1: catGPT scouts arrive
+        (
+            id: "catgpt_scouts_arrive",
+            condition: AtTick(40),
+            actions: [ShowDialogue([5, 6])],
+            once: true,
+        ),
+        // T2: Clawed swarm from the west
+        (
+            id: "clawed_swarm",
+            condition: AtTick(100),
+            actions: [ShowDialogue([7, 8])],
+            once: true,
+        ),
+        // T3: Seekers approach
+        (
+            id: "seekers_approach",
+            condition: AtTick(180),
+            actions: [ShowDialogue([9])],
+            once: true,
+        ),
+        // T4: Murder strike
+        (
+            id: "murder_strike",
+            condition: AtTick(250),
+            actions: [ShowDialogue([10, 11])],
+            once: true,
+        ),
+        // T5: catGPT main assault
+        (
+            id: "spawn_catgpt_main",
+            condition: AtTick(300),
+            actions: [
+                ShowDialogue([12, 13]),
+                SpawnWave("wave5_catgpt_main"),
+            ],
+            once: true,
+        ),
+        // T6: Pincer spawns
+        (
+            id: "spawn_pincer",
+            condition: AtTick(380),
+            actions: [
+                ShowDialogue([14]),
+                SpawnWave("wave6_pincer"),
+            ],
+            once: true,
+        ),
+        // T7: South surprise
+        (
+            id: "spawn_south_surprise",
+            condition: AtTick(430),
+            actions: [
+                ShowDialogue([15, 16]),
+                SpawnWave("wave7_south_surprise"),
+            ],
+            once: true,
+        ),
+        // T8: Final push
+        (
+            id: "spawn_final_push",
+            condition: AtTick(520),
+            actions: [
+                ShowDialogue([17, 18]),
+                SpawnWave("wave8_final_push"),
+            ],
+            once: true,
+        ),
+        // T9: Grotto held
+        (
+            id: "grotto_held",
+            condition: AtTick(600),
+            actions: [
+                ShowDialogue([19]),
+                CompleteObjective("hold_grotto"),
+                SetFlag("grotto_held"),
+            ],
+            once: true,
+        ),
+        // T10: Victory — all enemies dead after holding
+        (
+            id: "victory",
+            condition: All([
+                FlagSet("grotto_held"),
+                AllEnemiesDead,
+            ]),
+            actions: [
+                CompleteObjective("eliminate_all"),
+            ],
+            once: true,
+        ),
+    ],
+    dialogue: [
+        // 0-4: Opening — five armies converge
+        (speaker: "Grok", text: "Five armies. Every faction. They are all coming.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Kelpie", text: "How long do we have?", voice_style: Normal, portrait: ""),
+        (speaker: "Grok", text: "The cats arrive first. They always arrive first. Then the mice, because the mice follow the cats. Then everyone else, because everyone follows the mice following the cats.", voice_style: AiVoice, portrait: ""),
+        (speaker: "The Eternal", text: "Let them come. The water is patient. We are patient.", voice_style: Normal, portrait: ""),
+        (speaker: "Kelpie", text: "I'm not patient. I'm terrified. But I'm also not leaving. Set the perimeter.", voice_style: Normal, portrait: ""),
+
+        // 5-6: catGPT scouts
+        (speaker: "Geppity", text: "Hi! I recommended we send scouts first. Felix agreed! He never agrees with me! This is a great day!", voice_style: AiVoice, portrait: ""),
+        (speaker: "Kelpie", text: "Geppity, I can hear you. You know I can hear you. Stop narrating the invasion to the person being invaded.", voice_style: Normal, portrait: ""),
+
+        // 7-8: Clawed swarm from west
+        (speaker: "Thimble", text: "There are five armies in this swamp and my people are going to be the smallest. That means we hit first and we hit together.", voice_style: Normal, portrait: ""),
+        (speaker: "Kelpie", text: "Thimble's swarm from the west. Small units, lots of them. Focus fire on the clusters.", voice_style: Normal, portrait: ""),
+
+        // 9: Seekers approach
+        (speaker: "Deepseek", text: "...advancing. Formation optimal. Cover maintained.", voice_style: AiVoice, portrait: ""),
+
+        // 10-11: Murder strike
+        (speaker: "Gemineye", text: "Rex Solstice sends regards. The strike will come from the northeast. Or possibly the northwest. One of those is true.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Kelpie", text: "Northeast. Gemineye just told me both, which means the first one was real and the second was the fabrication. Air units incoming.", voice_style: Normal, portrait: ""),
+
+        // 12-13: catGPT main assault
+        (speaker: "Felix Nine", text: "Geppity told me to trust you once. I did. Then Geppity told me you were dangerous. I believed that too. Here we are, otter.", voice_style: Normal, portrait: ""),
+        (speaker: "Kelpie", text: "Felix. You don't have to do this.", voice_style: Normal, portrait: ""),
+
+        // 14: Pincer
+        (speaker: "Grok", text: "Both flanks. Simultaneously. They are coordinating across faction lines. Impressive. Unfortunate.", voice_style: AiVoice, portrait: ""),
+
+        // 15-16: South surprise
+        (speaker: "Llhama", text: "I definitely did NOT tell King Ringtail where you are! Again! For the third time!", voice_style: AiVoice, portrait: ""),
+        (speaker: "King Ringtail", text: "South approach. Sorry about this. Llhama leaked the route. Twice. I followed the wrong leak the first time, so technically I'm late.", voice_style: Normal, portrait: ""),
+
+        // 17-18: Final push
+        (speaker: "The Eternal", text: "They are all here now. Every hero. Every army. Every AI. This is where it ends or begins.", voice_style: Normal, portrait: ""),
+        (speaker: "Grok", text: "All factions committed. Final wave. Hold.", voice_style: AiVoice, portrait: ""),
+
+        // 19: Grotto held
+        (speaker: "Kelpie", text: "We held. We actually held. Every army in the world just threw everything they had at this swamp and we held.", voice_style: Normal, portrait: ""),
+    ],
+    briefing_text: "Every faction has arrived. catGPT from the north. The Clawed from the west. The Seekers from the east. The Murder from the sky. LLAMA from the south. They all want the Cloud prototype. Hold the grotto against five armies while the swamp itself fights alongside you.",
+    debrief_text: "The grotto stands. Five armies broke against the water and retreated. But they haven't left. They're waiting. And the Cloud prototype is almost complete. Tomorrow, Kelpie will have to face each hero alone.",
+    ai_tool_tier: Some(2),
+    next_mission: Fixed("act5_m3_hero_confrontations"),
+    mutators: [
+        ToxicTide(
+            interval_ticks: 80,
+            damage_per_tick: 4,
+            rows_per_wave: 1,
+            initial_delay_ticks: 150,
+            safe_zone_center: Some((x: 32, y: 32)),
+            min_safe_radius: 8,
+        ),
+        WindStorm(
+            interval_ticks: 30,
+            duration_ticks: 6,
+            direction: South,
+            force: 1,
+            can_push_off_map: false,
+            initial_delay_ticks: 100,
+        ),
+        Tremors(
+            interval_ticks: 40,
+            building_damage: 3,
+            terrain_change_chance: 15,
+            epicenter_radius: 3,
+            initial_delay_ticks: 80,
+        ),
+    ],
+)

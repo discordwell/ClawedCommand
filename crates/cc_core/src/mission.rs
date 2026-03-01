@@ -837,4 +837,100 @@ mod tests {
         let elev_1_count = elevation.iter().filter(|e| **e == 1).count();
         assert!(elev_1_count > 1000, "Plateaus should be elevation 1, got {elev_1_count}");
     }
+
+    #[test]
+    fn parse_act3_m9_jinx_ron() {
+        let ron_str = include_str!("../../../assets/campaign/act3_m9_jinx.ron");
+        let mission: MissionDefinition = ron::from_str(ron_str)
+            .expect("Failed to parse act3_m9_jinx.ron");
+        assert_eq!(mission.id, "act3_m9_jinx");
+        assert_eq!(mission.act, 3);
+        assert_eq!(mission.mission_index, 9);
+        assert_eq!(mission.player_setup.heroes.len(), 1);
+        assert_eq!(mission.enemy_waves.len(), 3);
+        assert_eq!(mission.objectives.len(), 2);
+        assert_eq!(mission.mutators.len(), 3);
+        assert_eq!(mission.dialogue.len(), 12);
+        assert!(matches!(mission.mutators[0], crate::mutator::MissionMutator::WindStorm { .. }));
+        assert!(matches!(mission.mutators[1], crate::mutator::MissionMutator::RestrictedUnits { .. }));
+        assert!(matches!(mission.mutators[2], crate::mutator::MissionMutator::NoBuildMode));
+        assert!(matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act3_m10_llama_perimeter"));
+        mission.validate().expect("Mission validation failed for act3_m9_jinx");
+    }
+
+    #[test]
+    fn parse_act3_m10_llama_perimeter_ron() {
+        let ron_str = include_str!("../../../assets/campaign/act3_m10_llama_perimeter.ron");
+        let mission: MissionDefinition = ron::from_str(ron_str)
+            .expect("Failed to parse act3_m10_llama_perimeter.ron");
+        assert_eq!(mission.id, "act3_m10_llama_perimeter");
+        assert_eq!(mission.act, 3);
+        assert_eq!(mission.mission_index, 10);
+        assert_eq!(mission.player_setup.heroes.len(), 2);
+        assert_eq!(mission.enemy_waves.len(), 5);
+        assert_eq!(mission.objectives.len(), 3);
+        assert_eq!(mission.mutators.len(), 2);
+        assert_eq!(mission.dialogue.len(), 15);
+        assert!(matches!(mission.mutators[0], crate::mutator::MissionMutator::ResourceScarcity { .. }));
+        assert!(matches!(mission.mutators[1], crate::mutator::MissionMutator::SpeedMultiplier { .. }));
+        assert!(matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act3_m11_junkyard"));
+        mission.validate().expect("Mission validation failed for act3_m10_llama_perimeter");
+    }
+
+    #[test]
+    fn parse_act3_m11_junkyard_ron() {
+        let ron_str = include_str!("../../../assets/campaign/act3_m11_junkyard.ron");
+        let mission: MissionDefinition = ron::from_str(ron_str)
+            .expect("Failed to parse act3_m11_junkyard.ron");
+        assert_eq!(mission.id, "act3_m11_junkyard");
+        assert_eq!(mission.act, 3);
+        assert_eq!(mission.mission_index, 11);
+        assert_eq!(mission.player_setup.heroes.len(), 2);
+        assert_eq!(mission.enemy_waves.len(), 5);
+        assert_eq!(mission.objectives.len(), 3);
+        assert_eq!(mission.mutators.len(), 3);
+        assert_eq!(mission.dialogue.len(), 15);
+        assert!(matches!(mission.mutators[0], crate::mutator::MissionMutator::DamageZone { .. }));
+        assert!(matches!(mission.mutators[1], crate::mutator::MissionMutator::Tremors { .. }));
+        assert!(matches!(mission.mutators[2], crate::mutator::MissionMutator::AiOnlyControl { tool_tier: 2 }));
+        assert!(matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act3_m12_rexs_truth"));
+        mission.validate().expect("Mission validation failed for act3_m11_junkyard");
+    }
+
+    #[test]
+    fn parse_act3_m12_rexs_truth_ron() {
+        let ron_str = include_str!("../../../assets/campaign/act3_m12_rexs_truth.ron");
+        let mission: MissionDefinition = ron::from_str(ron_str)
+            .expect("Failed to parse act3_m12_rexs_truth.ron");
+        assert_eq!(mission.id, "act3_m12_rexs_truth");
+        assert_eq!(mission.act, 3);
+        assert_eq!(mission.mission_index, 12);
+        assert_eq!(mission.player_setup.heroes.len(), 2);
+        assert_eq!(mission.enemy_waves.len(), 2);
+        assert_eq!(mission.objectives.len(), 2);
+        assert_eq!(mission.mutators.len(), 1);
+        assert_eq!(mission.dialogue.len(), 20);
+        assert!(matches!(mission.mutators[0], crate::mutator::MissionMutator::VoiceOnlyControl { ai_enabled: true, .. }));
+        assert!(matches!(mission.next_mission, NextMission::Branching { .. }));
+        mission.validate().expect("Mission validation failed for act3_m12_rexs_truth");
+    }
+
+    #[test]
+    fn parse_act3_m13_escape_parliament_ron() {
+        let ron_str = include_str!("../../../assets/campaign/act3_m13_escape_parliament.ron");
+        let mission: MissionDefinition = ron::from_str(ron_str)
+            .expect("Failed to parse act3_m13_escape_parliament.ron");
+        assert_eq!(mission.id, "act3_m13_escape_parliament");
+        assert_eq!(mission.act, 3);
+        assert_eq!(mission.mission_index, 13);
+        assert_eq!(mission.player_setup.heroes.len(), 1);
+        assert_eq!(mission.enemy_waves.len(), 4);
+        assert_eq!(mission.objectives.len(), 2);
+        assert_eq!(mission.mutators.len(), 2);
+        assert_eq!(mission.dialogue.len(), 12);
+        assert!(matches!(mission.mutators[0], crate::mutator::MissionMutator::LavaRise { .. }));
+        assert!(matches!(mission.mutators[1], crate::mutator::MissionMutator::SpeedMultiplier { .. }));
+        assert!(matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act4_m14_junkyard_fort"));
+        mission.validate().expect("Mission validation failed for act3_m13_escape_parliament");
+    }
 }

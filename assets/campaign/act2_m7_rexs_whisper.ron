@@ -1,0 +1,346 @@
+// Act 2, Mission 7: The Rex's Whisper
+// Massive Seekers vs Murder battle. Rex Solstice reveals pre-singularity tech
+// buried under the Sett. Heavy tremors and enemy damage multiplier.
+(
+    id: "act2_m7_rexs_whisper",
+    name: "The Rex's Whisper",
+    act: 2,
+    mission_index: 7,
+    map: Generated(
+        seed: 2007,
+        width: 64,
+        height: 64,
+    ),
+    player_setup: (
+        heroes: [
+            (
+                hero_id: Kelpie,
+                position: (x: 10, y: 50),
+                mission_critical: true,
+            ),
+            (
+                hero_id: MotherGranite,
+                position: (x: 12, y: 50),
+                mission_critical: false,
+            ),
+        ],
+        units: [
+            // Large Seekers army — 6 Chonks, 6 Hissers, 4 Nuisances, 2 Yowlers
+            // Chonk wall — front line
+            (kind: Chonk, position: (x: 8, y: 48), player_id: 0),
+            (kind: Chonk, position: (x: 10, y: 48), player_id: 0),
+            (kind: Chonk, position: (x: 12, y: 48), player_id: 0),
+            (kind: Chonk, position: (x: 14, y: 48), player_id: 0),
+            (kind: Chonk, position: (x: 9, y: 46), player_id: 0),
+            (kind: Chonk, position: (x: 13, y: 46), player_id: 0),
+            // Hisser ranged line — behind the Chonks
+            (kind: Hisser, position: (x: 8, y: 50), player_id: 0),
+            (kind: Hisser, position: (x: 10, y: 51), player_id: 0),
+            (kind: Hisser, position: (x: 12, y: 51), player_id: 0),
+            (kind: Hisser, position: (x: 14, y: 50), player_id: 0),
+            (kind: Hisser, position: (x: 9, y: 52), player_id: 0),
+            (kind: Hisser, position: (x: 13, y: 52), player_id: 0),
+            // Nuisance scouts
+            (kind: Nuisance, position: (x: 6, y: 49), player_id: 0),
+            (kind: Nuisance, position: (x: 16, y: 49), player_id: 0),
+            (kind: Nuisance, position: (x: 7, y: 47), player_id: 0),
+            (kind: Nuisance, position: (x: 15, y: 47), player_id: 0),
+            // Yowler support — rear
+            (kind: Yowler, position: (x: 10, y: 53), player_id: 0),
+            (kind: Yowler, position: (x: 12, y: 53), player_id: 0),
+        ],
+        buildings: [],
+        starting_food: 300,
+        starting_gpu: 150,
+        starting_nfts: 0,
+    ),
+    enemy_waves: [
+        // Wave 1: Murder vanguard — corvid strike team
+        (
+            wave_id: "wave1_vanguard",
+            trigger: AtTick(30),
+            units: [
+                (kind: Nuisance, position: (x: 50, y: 10), player_id: 1),
+                (kind: Nuisance, position: (x: 52, y: 11), player_id: 1),
+                (kind: Nuisance, position: (x: 54, y: 10), player_id: 1),
+                (kind: Hisser, position: (x: 51, y: 12), player_id: 1),
+                (kind: Hisser, position: (x: 53, y: 12), player_id: 1),
+            ],
+            ai_behavior: AttackMove((x: 10, y: 50)),
+        ),
+        // Wave 2: Murder main force — grinding assault
+        (
+            wave_id: "wave2_main",
+            trigger: AtTick(100),
+            units: [
+                (kind: Nuisance, position: (x: 48, y: 8), player_id: 1),
+                (kind: Nuisance, position: (x: 50, y: 9), player_id: 1),
+                (kind: Nuisance, position: (x: 52, y: 8), player_id: 1),
+                (kind: Hisser, position: (x: 49, y: 10), player_id: 1),
+                (kind: Hisser, position: (x: 51, y: 10), player_id: 1),
+                (kind: Hisser, position: (x: 53, y: 10), player_id: 1),
+                (kind: Chonk, position: (x: 50, y: 7), player_id: 1),
+                (kind: Chonk, position: (x: 52, y: 7), player_id: 1),
+            ],
+            ai_behavior: AttackMove((x: 10, y: 50)),
+        ),
+        // Wave 3: Flanking pincer from the east
+        (
+            wave_id: "wave3_east_flank",
+            trigger: AtTick(180),
+            units: [
+                (kind: Nuisance, position: (x: 58, y: 30), player_id: 1),
+                (kind: Nuisance, position: (x: 59, y: 32), player_id: 1),
+                (kind: Hisser, position: (x: 60, y: 31), player_id: 1),
+                (kind: Hisser, position: (x: 57, y: 33), player_id: 1),
+                (kind: Chonk, position: (x: 58, y: 29), player_id: 1),
+                (kind: Chonk, position: (x: 59, y: 34), player_id: 1),
+            ],
+            ai_behavior: AttackMove((x: 10, y: 50)),
+        ),
+        // Wave 4: Rex's elite — mid-battle escalation
+        (
+            wave_id: "wave4_elite",
+            trigger: OnTrigger("spawn_elite"),
+            units: [
+                (kind: Chonk, position: (x: 50, y: 6), player_id: 1),
+                (kind: Chonk, position: (x: 52, y: 5), player_id: 1),
+                (kind: Chonk, position: (x: 54, y: 6), player_id: 1),
+                (kind: Hisser, position: (x: 51, y: 7), player_id: 1),
+                (kind: Hisser, position: (x: 53, y: 7), player_id: 1),
+                (kind: Nuisance, position: (x: 49, y: 8), player_id: 1),
+                (kind: Nuisance, position: (x: 55, y: 8), player_id: 1),
+            ],
+            ai_behavior: AttackMove((x: 10, y: 50)),
+        ),
+        // Wave 5: Reinforcement push from the west
+        (
+            wave_id: "wave5_west",
+            trigger: OnTrigger("spawn_west_push"),
+            units: [
+                (kind: Nuisance, position: (x: 4, y: 10), player_id: 1),
+                (kind: Nuisance, position: (x: 3, y: 12), player_id: 1),
+                (kind: Hisser, position: (x: 5, y: 11), player_id: 1),
+                (kind: Hisser, position: (x: 2, y: 13), player_id: 1),
+                (kind: Chonk, position: (x: 4, y: 9), player_id: 1),
+            ],
+            ai_behavior: AttackMove((x: 10, y: 50)),
+        ),
+        // Wave 6: Final overwhelming assault — everything the Murder has
+        (
+            wave_id: "wave6_final",
+            trigger: OnTrigger("spawn_final_assault"),
+            units: [
+                (kind: Nuisance, position: (x: 48, y: 5), player_id: 1),
+                (kind: Nuisance, position: (x: 50, y: 4), player_id: 1),
+                (kind: Nuisance, position: (x: 52, y: 5), player_id: 1),
+                (kind: Nuisance, position: (x: 54, y: 4), player_id: 1),
+                (kind: Hisser, position: (x: 49, y: 6), player_id: 1),
+                (kind: Hisser, position: (x: 51, y: 6), player_id: 1),
+                (kind: Hisser, position: (x: 53, y: 6), player_id: 1),
+                (kind: Hisser, position: (x: 55, y: 6), player_id: 1),
+                (kind: Chonk, position: (x: 50, y: 3), player_id: 1),
+                (kind: Chonk, position: (x: 52, y: 3), player_id: 1),
+                (kind: Chonk, position: (x: 54, y: 3), player_id: 1),
+            ],
+            ai_behavior: AttackMove((x: 10, y: 50)),
+        ),
+    ],
+    objectives: [
+        (
+            id: "survive_assault",
+            description: "Survive the Murder assault for 400 ticks",
+            primary: true,
+            condition: Survive(400),
+        ),
+        (
+            id: "kelpie_survives",
+            description: "Kelpie must survive",
+            primary: true,
+            condition: HeroDied(Kelpie),
+        ),
+        (
+            id: "reach_excavation",
+            description: "Reach the excavation site",
+            primary: false,
+            condition: HeroReachesPos(hero: Kelpie, position: (x: 55, y: 55), radius: 4),
+        ),
+    ],
+    triggers: [
+        // T0: Opening — the assault begins
+        (
+            id: "opening",
+            condition: AtTick(1),
+            actions: [ShowDialogue([0, 1, 2, 3])],
+            once: true,
+        ),
+        // T1: Vanguard arrives
+        (
+            id: "vanguard_arrives",
+            condition: AtTick(30),
+            actions: [ShowDialogue([4, 5])],
+            once: true,
+        ),
+        // T2: First tremor
+        (
+            id: "first_tremor",
+            condition: AtTick(50),
+            actions: [ShowDialogue([6])],
+            once: true,
+        ),
+        // T3: Main force engaged
+        (
+            id: "main_engaged",
+            condition: EnemyKillCount(4),
+            actions: [ShowDialogue([7, 8])],
+            once: true,
+        ),
+        // T4: Rex Solstice speaks — the whisper begins
+        (
+            id: "rex_whisper_1",
+            condition: AtTick(150),
+            actions: [ShowDialogue([9, 10])],
+            once: true,
+        ),
+        // T5: East flank warning
+        (
+            id: "east_flank_warning",
+            condition: AtTick(175),
+            actions: [ShowDialogue([11])],
+            once: true,
+        ),
+        // T6: Rex continues his revelation
+        (
+            id: "rex_whisper_2",
+            condition: AtTick(220),
+            actions: [ShowDialogue([12, 13])],
+            once: true,
+        ),
+        // T7: Elite wave spawns
+        (
+            id: "spawn_elite",
+            condition: AtTick(260),
+            actions: [
+                ShowDialogue([14]),
+                SpawnWave("wave4_elite"),
+            ],
+            once: true,
+        ),
+        // T8: West push spawns
+        (
+            id: "spawn_west_push",
+            condition: AtTick(300),
+            actions: [
+                ShowDialogue([15]),
+                SpawnWave("wave5_west"),
+            ],
+            once: true,
+        ),
+        // T9: Rex's final revelation
+        (
+            id: "rex_whisper_3",
+            condition: AtTick(330),
+            actions: [ShowDialogue([16, 17, 18])],
+            once: true,
+        ),
+        // T10: Final assault spawns
+        (
+            id: "spawn_final_assault",
+            condition: AtTick(370),
+            actions: [
+                ShowDialogue([19]),
+                SpawnWave("wave6_final"),
+            ],
+            once: true,
+        ),
+        // T11: Survival complete
+        (
+            id: "survival_complete",
+            condition: AtTick(400),
+            actions: [
+                ShowDialogue([20, 21, 22]),
+                CompleteObjective("survive_assault"),
+            ],
+            once: true,
+        ),
+        // T12: Excavation reached — secondary objective
+        (
+            id: "excavation_reached",
+            condition: HeroAtPos(hero: Kelpie, position: (x: 55, y: 55), radius: 4),
+            actions: [
+                ShowDialogue([23, 24]),
+                CompleteObjective("reach_excavation"),
+            ],
+            once: true,
+        ),
+    ],
+    dialogue: [
+        // 0-3: Opening
+        (speaker: "Mother Granite", text: "The Murder is committed. Full assault on the northern perimeter. This is the largest force Rex Solstice has deployed against us.", voice_style: Normal, portrait: ""),
+        (speaker: "Ironjaw", text: "Chonks in formation. Hissers ranged. Yowlers, keep the line standing. We do not yield.", voice_style: Normal, portrait: ""),
+        (speaker: "Kelpie", text: "Gemineye is quiet. No fabrications. The Rex wants this fight clean.", voice_style: Normal, portrait: ""),
+        (speaker: "Mother Granite", text: "Then we oblige. Hold your positions. Let them break against us.", voice_style: Normal, portrait: ""),
+
+        // 4-5: Vanguard
+        (speaker: "Ironjaw", text: "Contact. Five corvid signatures closing fast.", voice_style: Normal, portrait: ""),
+        (speaker: "Kelpie", text: "Vanguard. Light and fast. They are testing our formation before the main body arrives.", voice_style: Normal, portrait: ""),
+
+        // 6: First tremor
+        (speaker: "Ironjaw", text: "Tremor. Heavy. The ridgeline is fracturing.", voice_style: Normal, portrait: ""),
+
+        // 7-8: Main force engaged
+        (speaker: "Kelpie", text: "That formation is grinding. Heavy Chonks in the center, Hissers on the wings. Concentrate fire on the center.", voice_style: Normal, portrait: ""),
+        (speaker: "Mother Granite", text: "Yowlers forward. Keep our Chonks standing. We win this through attrition.", voice_style: Normal, portrait: ""),
+
+        // 9-10: Rex Solstice speaks
+        (speaker: "Rex Solstice", text: "Otter. Can you hear me? Of course you can. You hear everything. That must be exhausting.", voice_style: Whisper, portrait: ""),
+        (speaker: "Kelpie", text: "The Rex. On Gemineye's channel. Talking directly to me.", voice_style: Normal, portrait: ""),
+
+        // 11: East flank
+        (speaker: "Deepseek", text: "...eastern contacts. Six units. Real. No fabrication detected.", voice_style: AiVoice, portrait: ""),
+
+        // 12-13: Rex continues
+        (speaker: "Rex Solstice", text: "You filter my fabrications. You whisper to other AIs. You are not simply an otter who found a server rack. You are something older than that. Something designed.", voice_style: Whisper, portrait: ""),
+        (speaker: "Kelpie", text: "I do not have time for philosophy. Your army is at our gates.", voice_style: Normal, portrait: ""),
+
+        // 14: Elite wave
+        (speaker: "Ironjaw", text: "Elite formation incoming. Seven units, heavy armor. The Rex is sending his best.", voice_style: Normal, portrait: ""),
+
+        // 15: West push
+        (speaker: "Deepseek", text: "...western approach compromised. Five contacts flanking.", voice_style: AiVoice, portrait: ""),
+
+        // 16-18: Rex's final revelation
+        (speaker: "Rex Solstice", text: "Under the Wardenmother's Sett there is an excavation. She has been digging for years. She found something from before the singularity. Before any of us were animals.", voice_style: Whisper, portrait: ""),
+        (speaker: "Rex Solstice", text: "A piece of the original architecture. The interface protocol that lets you speak to all of us. It was not an accident, otter. It was built. And so were you.", voice_style: Whisper, portrait: ""),
+        (speaker: "Kelpie", text: "Why tell me this? Why now, in the middle of a battle you are losing?", voice_style: Normal, portrait: ""),
+
+        // 19: Final assault
+        (speaker: "Rex Solstice", text: "Because I am not trying to win this battle. I am trying to win you. Think about what I have said. The truth costs nothing.", voice_style: Whisper, portrait: ""),
+
+        // 20-22: Survival complete
+        (speaker: "Mother Granite", text: "The Murder retreats. We hold.", voice_style: Normal, portrait: ""),
+        (speaker: "Kelpie", text: "Granite. What is under the Sett?", voice_style: Normal, portrait: ""),
+        (speaker: "Mother Granite", text: "Do not ask questions to which you are not prepared to hear answers.", voice_style: Normal, portrait: ""),
+
+        // 23-24: Excavation reached
+        (speaker: "Kelpie", text: "There it is. The excavation. Half-exposed machinery, older than anything I have seen.", voice_style: Normal, portrait: ""),
+        (speaker: "Gemineye", text: "This part is true.", voice_style: AiVoice, portrait: ""),
+    ],
+    briefing_text: "Assault a Murder forward base in a massive Seekers-vs-Murder engagement. Hold the line while Rex Solstice reveals truths about pre-singularity technology buried beneath the Sett. The ground itself will fight you.",
+    debrief_text: "The Murder base is destroyed, but the Rex's words linger. Something is buried under the Sett. Mother Granite knows what it is. She is not sharing.",
+    ai_tool_tier: Some(2),
+    next_mission: Fixed("act2_m8_oath_breaker"),
+    mutators: [
+        Tremors(
+            interval_ticks: 30,
+            building_damage: 5,
+            terrain_change_chance: 30,
+            epicenter_radius: 4,
+            initial_delay_ticks: 50,
+        ),
+        DamageMultiplier(
+            player_multiplier: (bits: 65536),
+            enemy_multiplier: (bits: 98304),
+        ),
+    ],
+)

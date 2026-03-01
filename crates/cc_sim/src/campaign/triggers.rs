@@ -5,6 +5,7 @@ use cc_core::mission::{DialogueLine, TriggerAction, TriggerCondition};
 
 use crate::resources::SimClock;
 
+use super::mutator_state::MutatorState;
 use super::state::{CampaignPhase, CampaignState};
 use super::wave_spawner::WaveTracker;
 
@@ -31,6 +32,7 @@ pub struct ObjectiveCompleteEvent {
 pub fn trigger_check_system(
     clock: Res<SimClock>,
     mut campaign: ResMut<CampaignState>,
+    mut mutator_state: ResMut<MutatorState>,
     mut dialogue_writer: MessageWriter<DialogueEvent>,
     mut trigger_writer: MessageWriter<TriggerFiredEvent>,
     mut objective_writer: MessageWriter<ObjectiveCompleteEvent>,
@@ -111,10 +113,14 @@ pub fn trigger_check_system(
                 TriggerAction::SetPersistentFlag(flag) => {
                     campaign.persistent.set_flag(flag.clone());
                 }
-                TriggerAction::ToggleMutator { .. }
-                | TriggerAction::SetTerrain { .. }
+                TriggerAction::ToggleMutator { mutator_index, active } => {
+                    if *mutator_index < mutator_state.active.len() {
+                        mutator_state.active[*mutator_index] = *active;
+                    }
+                }
+                TriggerAction::SetTerrain { .. }
                 | TriggerAction::AreaDamage { .. } => {
-                    // TODO: implement mutator/terrain/damage actions
+                    // TODO: implement terrain/damage actions (needs MapResource + Commands)
                 }
             }
         }
@@ -201,7 +207,7 @@ fn evaluate_condition(
 
         TriggerCondition::HazardLevel { .. } => false, // TODO: implement hazard level tracking
         TriggerCondition::Periodic { interval_ticks, offset_ticks } => {
-            tick >= *offset_ticks && (tick - *offset_ticks) % *interval_ticks == 0
+            *interval_ticks > 0 && tick >= *offset_ticks && (tick - *offset_ticks) % *interval_ticks == 0
         }
     }
 }

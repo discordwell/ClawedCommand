@@ -18,6 +18,8 @@ pub struct MutatorState {
     pub wind_active: bool,
     /// Whether fog is currently cleared (during a periodic clearing window).
     pub fog_cleared: bool,
+    /// Whether the time limit warning has already fired (prevents duplicates).
+    pub time_warning_fired: bool,
 }
 
 impl MutatorState {

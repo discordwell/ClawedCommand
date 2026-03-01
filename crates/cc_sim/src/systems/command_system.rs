@@ -62,6 +62,7 @@ pub fn process_commands(
     mut research_queues: Query<(&Owner, &mut ResearchQueue), With<Researcher>>,
     build_orders: Query<(&BuildOrder, &Owner)>,
     restrictions: Option<Res<crate::campaign::mutator_state::ControlRestrictions>>,
+    unit_owners: Query<&Owner, Without<Building>>,
 ) {
     let pending = cmd_queue.drain_interleaved(sim_clock.tick);
 
@@ -432,6 +433,25 @@ pub fn process_commands(
                             && !pres.completed_upgrades.contains(&UpgradeType::MechPrototype)
                         {
                             continue;
+                        }
+                    }
+
+                    // RestrictedUnits enforcement (player 0 only — campaign missions)
+                    if player_id == 0 {
+                        if let Some(ref r) = restrictions {
+                            if let Some(ref allowed) = r.allowed_unit_kinds {
+                                if !allowed.contains(&unit_kind) {
+                                    continue;
+                                }
+                            }
+                            if let Some(max_count) = r.max_unit_count {
+                                let current = unit_owners.iter()
+                                    .filter(|o| o.player_id == 0)
+                                    .count() as u32;
+                                if current >= max_count {
+                                    continue;
+                                }
+                            }
                         }
                     }
 

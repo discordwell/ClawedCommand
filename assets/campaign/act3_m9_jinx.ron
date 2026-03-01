@@ -1,0 +1,178 @@
+// Act 3, Mission 9: Jinx
+// Chase thief Magpike Jinx through Murder territory for the neural interface chip.
+// Mutators: WindStorm (periodic gales push units north), RestrictedUnits, NoBuildMode.
+(
+    id: "act3_m9_jinx",
+    name: "Jinx",
+    act: 3,
+    mission_index: 9,
+    map: Generated(
+        seed: 3009,
+        width: 48,
+        height: 48,
+    ),
+    player_setup: (
+        heroes: [
+            (
+                hero_id: Kelpie,
+                position: (x: 5, y: 40),
+                mission_critical: true,
+            ),
+        ],
+        units: [
+            (kind: FlyingFox, position: (x: 4, y: 39), player_id: 0),
+            (kind: FlyingFox, position: (x: 6, y: 39), player_id: 0),
+            (kind: FlyingFox, position: (x: 5, y: 38), player_id: 0),
+            (kind: Nuisance, position: (x: 3, y: 40), player_id: 0),
+            (kind: Nuisance, position: (x: 7, y: 40), player_id: 0),
+            (kind: Nuisance, position: (x: 5, y: 42), player_id: 0),
+        ],
+        buildings: [],
+        starting_food: 50,
+        starting_gpu: 50,
+        starting_nfts: 0,
+    ),
+    enemy_waves: [
+        // Wave 1: Murder patrol — central corridor
+        (
+            wave_id: "patrol_central",
+            trigger: Immediate,
+            units: [
+                (kind: Nuisance, position: (x: 20, y: 30), player_id: 1),
+                (kind: Nuisance, position: (x: 22, y: 30), player_id: 1),
+                (kind: Hisser, position: (x: 21, y: 28), player_id: 1),
+            ],
+            ai_behavior: Patrol([(x: 20, y: 30), (x: 20, y: 20)]),
+        ),
+        // Wave 2: Murder patrol — eastern ridge
+        (
+            wave_id: "patrol_east",
+            trigger: AtTick(100),
+            units: [
+                (kind: Nuisance, position: (x: 35, y: 25), player_id: 1),
+                (kind: Nuisance, position: (x: 37, y: 25), player_id: 1),
+                (kind: Nuisance, position: (x: 36, y: 23), player_id: 1),
+                (kind: Hisser, position: (x: 38, y: 24), player_id: 1),
+            ],
+            ai_behavior: Patrol([(x: 35, y: 25), (x: 35, y: 15)]),
+        ),
+        // Wave 3: Murder ambush — triggered near Jinx's position
+        (
+            wave_id: "jinx_guard",
+            trigger: OnTrigger("near_jinx"),
+            units: [
+                (kind: Nuisance, position: (x: 38, y: 10), player_id: 1),
+                (kind: Nuisance, position: (x: 40, y: 10), player_id: 1),
+                (kind: Hisser, position: (x: 39, y: 12), player_id: 1),
+                (kind: Hisser, position: (x: 41, y: 11), player_id: 1),
+                (kind: Chonk, position: (x: 39, y: 9), player_id: 1),
+            ],
+            ai_behavior: AttackMove((x: 40, y: 8)),
+        ),
+    ],
+    objectives: [
+        (
+            id: "catch_magpike",
+            description: "Reach Jinx's position at the cliff edge",
+            primary: true,
+            condition: HeroReachesPos(hero: Kelpie, position: (x: 40, y: 8), radius: 3),
+        ),
+        (
+            id: "kelpie_survives",
+            description: "Kelpie must survive",
+            primary: true,
+            condition: HeroDied(Kelpie),
+        ),
+    ],
+    triggers: [
+        // T0: Opening — Rex introduces the chase
+        (
+            id: "opening",
+            condition: AtTick(1),
+            actions: [ShowDialogue([0, 1, 2, 3])],
+            once: true,
+        ),
+        // T1: Wind warning — first gust incoming
+        (
+            id: "wind_warning",
+            condition: AtTick(25),
+            actions: [ShowDialogue([4, 5])],
+            once: true,
+        ),
+        // T2: Jinx taunts on comm channel — mid-chase
+        (
+            id: "jinx_taunt",
+            condition: HeroAtPos(hero: Kelpie, position: (x: 20, y: 25), radius: 8),
+            actions: [ShowDialogue([6, 7])],
+            once: true,
+        ),
+        // T3: Gemineye astrological commentary
+        (
+            id: "gemineye_commentary",
+            condition: EnemyKillCount(3),
+            actions: [ShowDialogue([8])],
+            once: true,
+        ),
+        // T4: Near Jinx — triggers ambush wave
+        (
+            id: "near_jinx",
+            condition: HeroAtPos(hero: Kelpie, position: (x: 38, y: 12), radius: 6),
+            actions: [
+                ShowDialogue([9, 10]),
+                SpawnWave("jinx_guard"),
+            ],
+            once: true,
+        ),
+        // T5: Kelpie reaches Jinx — mission resolution
+        (
+            id: "catch_jinx",
+            condition: HeroAtPos(hero: Kelpie, position: (x: 40, y: 8), radius: 3),
+            actions: [ShowDialogue([11]),
+            ],
+            once: true,
+        ),
+    ],
+    dialogue: [
+        // 0-3: Opening
+        (speaker: "Rex Solstice", text: "The magpie has the chip. Jinx stole it from a courier three days ago because, and I quote, it was shiny.", voice_style: Normal, portrait: ""),
+        (speaker: "Kelpie", text: "Your own thief stole from your own courier?", voice_style: Normal, portrait: ""),
+        (speaker: "Gemineye", text: "Jinx operates outside standard command hierarchy. Also outside standard physics, occasionally.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Rex Solstice", text: "Catch the magpie. Get the chip. The wind is treacherous here. Stay low when the gusts come.", voice_style: Normal, portrait: ""),
+
+        // 4-5: Wind warning
+        (speaker: "Gemineye", text: "Wind advisory: northward gale in five ticks. FlyingFox units will be displaced. Astrologically, this aligns with Mercury in retrograde.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Kelpie", text: "Mercury isn't a planet anymore. It's a server farm.", voice_style: Normal, portrait: ""),
+
+        // 6-7: Jinx taunts mid-chase
+        (speaker: "Jinx", text: "Oh, you're still coming? Most people give up after the first Glitter Bomb. I like you already.", voice_style: Normal, portrait: ""),
+        (speaker: "Kelpie", text: "Give me the chip, Jinx.", voice_style: Normal, portrait: ""),
+
+        // 8: Gemineye commentary
+        (speaker: "Gemineye", text: "The chase proceeds under favorable celestial conditions. Fabrication confidence: irrelevant. This is genuinely entertaining.", voice_style: AiVoice, portrait: ""),
+
+        // 9-10: Near Jinx, ambush triggers
+        (speaker: "Jinx", text: "Ooh, you made it past the patrols! That was the boring part. Now it gets interesting. I left friends.", voice_style: Normal, portrait: ""),
+        (speaker: "Kelpie", text: "Ambush. FlyingFox, screen the flanks. Nuisances, punch through the center.", voice_style: Shout, portrait: ""),
+
+        // 11: Jinx hands over the chip
+        (speaker: "Jinx", text: "Fine, fine. Here. I only steal things to see who comes after them. You came. Interesting. Can I come with you? This is the most fun I've had since I stole Gemineye's star charts.", voice_style: Normal, portrait: ""),
+    ],
+    briefing_text: "A Murder magpie named Jinx stole the neural interface chip from a courier. Chase her through Murder territory. The wind corridor funnels gales that can push units off the cliffs. Stay low, move fast, catch the thief.",
+    debrief_text: "Jinx tosses the chip over with a grin. The magpie joins Kelpie's growing retinue of questionable allies. Rex Solstice wants the chip used. Kelpie isn't sure what it will reveal.",
+    next_mission: Fixed("act3_m10_llama_perimeter"),
+    mutators: [
+        WindStorm(
+            interval_ticks: 20,
+            duration_ticks: 5,
+            direction: North,
+            force: 2,
+            can_push_off_map: true,
+            initial_delay_ticks: 30,
+        ),
+        RestrictedUnits(
+            allowed_kinds: [FlyingFox, Nuisance],
+            max_unit_count: Some(8),
+        ),
+        NoBuildMode,
+    ],
+)

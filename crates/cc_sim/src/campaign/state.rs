@@ -166,6 +166,10 @@ impl CampaignState {
     }
 }
 
+/// Message sent when the time limit warning threshold is reached.
+#[derive(Message)]
+pub struct TimeLimitWarningEvent;
+
 /// Message sent when a mission fails (hero died, etc.).
 #[derive(Message)]
 pub struct MissionFailedEvent {

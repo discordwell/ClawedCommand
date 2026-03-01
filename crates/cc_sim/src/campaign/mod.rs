@@ -22,6 +22,7 @@ impl Plugin for CampaignPlugin {
             .add_message::<triggers::DialogueEvent>()
             .add_message::<triggers::TriggerFiredEvent>()
             .add_message::<triggers::ObjectiveCompleteEvent>()
+            .add_message::<state::TimeLimitWarningEvent>()
             .add_message::<state::MissionFailedEvent>()
             .add_message::<state::MissionVictoryEvent>()
             .add_systems(
@@ -32,6 +33,7 @@ impl Plugin for CampaignPlugin {
                     wave_spawner::wave_spawner_system,
                     state::mission_objective_system,
                     mutator_systems::environmental_hazard_system,
+                    mutator_systems::wind_displacement_system,
                     mutator_systems::hazard_damage_system,
                     mutator_systems::mutator_tick_system,
                 )

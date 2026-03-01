@@ -10,6 +10,7 @@ use cc_core::hero::{hero_base_kind, hero_modifiers, HeroId};
 use cc_core::map::GameMap;
 use cc_core::mission::*;
 use cc_core::unit_stats::base_stats;
+use cc_sim::campaign::mutator_state::MutatorState;
 use cc_sim::campaign::state::{CampaignPhase, CampaignState, MissionFailedEvent, MissionVictoryEvent};
 use cc_sim::campaign::wave_spawner::{WaveTracker, MissionStarted, wave_spawner_system, wave_tracking_system};
 use cc_sim::campaign::triggers::{
@@ -34,6 +35,7 @@ fn make_campaign_sim(map: GameMap) -> (World, Schedule) {
     world.init_resource::<CampaignState>();
     world.init_resource::<WaveTracker>();
     world.init_resource::<MissionStarted>();
+    world.init_resource::<MutatorState>();
 
     // Register all message types used by campaign systems
     world.init_resource::<Messages<DialogueEvent>>();
@@ -1082,6 +1084,7 @@ fn make_wave_sim(map: GameMap) -> (World, Schedule) {
     world.init_resource::<CampaignState>();
     world.init_resource::<WaveTracker>();
     world.init_resource::<MissionStarted>();
+    world.init_resource::<MutatorState>();
 
     world.init_resource::<Messages<DialogueEvent>>();
     world.init_resource::<Messages<TriggerFiredEvent>>();
@@ -1437,4 +1440,33 @@ fn all_act1_missions_parse_and_validate() {
             panic!("Validation failed for {}: {:?}", filename, errors);
         }
     }
+}
+
+#[test]
+fn all_campaign_missions_parse_and_validate() {
+    let campaign_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent().unwrap()
+        .parent().unwrap()
+        .join("assets/campaign");
+
+    let mut ron_count = 0;
+    for entry in std::fs::read_dir(&campaign_dir)
+        .unwrap_or_else(|e| panic!("Failed to read campaign dir: {}", e))
+    {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if path.extension().is_some_and(|e| e == "ron") {
+            let filename = path.file_name().unwrap().to_string_lossy().to_string();
+            let content = std::fs::read_to_string(&path)
+                .unwrap_or_else(|e| panic!("Failed to read {}: {}", filename, e));
+            let mission: MissionDefinition = ron::from_str(&content)
+                .unwrap_or_else(|e| panic!("Failed to parse {}: {}", filename, e));
+            if let Err(errors) = mission.validate() {
+                panic!("Validation failed for {}: {:?}", filename, errors);
+            }
+            ron_count += 1;
+        }
+    }
+    // We expect at least 23 campaign files (6 original + 17 new)
+    assert!(ron_count >= 23, "Expected at least 23 RON files, found {}", ron_count);
 }

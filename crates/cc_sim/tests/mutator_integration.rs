@@ -4,7 +4,6 @@
 use bevy::ecs::message::Messages;
 use bevy::prelude::*;
 
-use cc_core::commands::{CommandSource, GameCommand};
 use cc_core::components::*;
 use cc_core::coords::{GridPos, WorldPos};
 use cc_core::hero::HeroId;
@@ -17,7 +16,7 @@ use cc_core::unit_stats::base_stats;
 
 use cc_sim::campaign::mutator_state::{ControlRestrictions, FogState, MutatorState};
 use cc_sim::campaign::mutator_systems;
-use cc_sim::campaign::state::{CampaignPhase, CampaignState, MissionFailedEvent, MissionVictoryEvent};
+use cc_sim::campaign::state::{CampaignPhase, CampaignState, MissionFailedEvent, MissionVictoryEvent, TimeLimitWarningEvent};
 use cc_sim::campaign::triggers::{DialogueEvent, ObjectiveCompleteEvent, TriggerFiredEvent};
 use cc_sim::campaign::wave_spawner::{MissionStarted, WaveTracker};
 use cc_sim::resources::{CommandQueue, ControlGroups, MapResource, PlayerResources, SimClock, SimRng};
@@ -27,7 +26,7 @@ use cc_sim::systems::tick_system::tick_system;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Build a sim world with campaign + mutator systems.
+/// Build a sim world with campaign + mutator systems (full chain including triggers/waves/wind).
 fn make_mutator_sim(map: GameMap) -> (World, Schedule) {
     let mut world = World::new();
     world.insert_resource(CommandQueue::default());
@@ -49,12 +48,17 @@ fn make_mutator_sim(map: GameMap) -> (World, Schedule) {
     world.init_resource::<Messages<ObjectiveCompleteEvent>>();
     world.init_resource::<Messages<MissionFailedEvent>>();
     world.init_resource::<Messages<MissionVictoryEvent>>();
+    world.init_resource::<Messages<TimeLimitWarningEvent>>();
 
     let mut schedule = Schedule::new(FixedUpdate);
     schedule.add_systems(
         (
             tick_system,
+            cc_sim::campaign::wave_spawner::wave_tracking_system,
+            cc_sim::campaign::triggers::trigger_check_system,
+            cc_sim::campaign::wave_spawner::wave_spawner_system,
             mutator_systems::environmental_hazard_system,
+            mutator_systems::wind_displacement_system,
             mutator_systems::hazard_damage_system,
             mutator_systems::mutator_tick_system,
         )
@@ -771,4 +775,345 @@ fn lava_rise_all_edges_shrinks_inward() {
 
     // Center should be clear
     assert!(map.get(GridPos::new(4, 4)).unwrap().dynamic_flags & FLAG_LAVA == 0);
+}
+
+// ---------------------------------------------------------------------------
+// Item 1: ToggleMutator Trigger Action Tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn toggle_mutator_activates_inactive_mutator() {
+    let map = GameMap::new(8, 8);
+    let (mut world, mut schedule) = make_mutator_sim(map);
+
+    // DamageZone starts inactive, trigger at tick 5 activates it
+    let mut mission = mission_with_mutators(vec![MissionMutator::DamageZone {
+        tiles: vec![GridPos::new(3, 3)],
+        damage_per_tick: 10,
+        active_from_start: false,
+        toggle_flag: None,
+    }]);
+    mission.triggers = vec![ScriptedTrigger {
+        id: "activate_zone".into(),
+        condition: TriggerCondition::AtTick(5),
+        actions: vec![TriggerAction::ToggleMutator { mutator_index: 0, active: true }],
+        once: true,
+    }];
+    load_mission_with_mutators(&mut world, mission);
+
+    let unit = spawn_unit(&mut world, GridPos::new(3, 3), 0);
+    let hp_before = world.get::<Health>(unit).unwrap().current;
+
+    // Run 4 ticks — zone inactive, no damage
+    run_ticks(&mut world, &mut schedule, 4);
+    let hp_mid = world.get::<Health>(unit).unwrap().current;
+    assert_eq!(hp_mid, hp_before, "No damage before trigger fires");
+
+    // Run 2 more ticks — trigger fires at tick 5, damage zone becomes active
+    run_ticks(&mut world, &mut schedule, 2);
+    let hp_after = world.get::<Health>(unit).unwrap().current;
+    assert!(hp_after < hp_before, "Should take damage after mutator activated");
+}
+
+#[test]
+fn toggle_mutator_deactivates_active_mutator() {
+    let map = GameMap::new(8, 8);
+    let (mut world, mut schedule) = make_mutator_sim(map);
+
+    let mut mission = mission_with_mutators(vec![MissionMutator::DamageZone {
+        tiles: vec![GridPos::new(3, 3)],
+        damage_per_tick: 10,
+        active_from_start: true,
+        toggle_flag: None,
+    }]);
+    mission.triggers = vec![ScriptedTrigger {
+        id: "deactivate_zone".into(),
+        condition: TriggerCondition::AtTick(3),
+        actions: vec![TriggerAction::ToggleMutator { mutator_index: 0, active: false }],
+        once: true,
+    }];
+    load_mission_with_mutators(&mut world, mission);
+
+    let unit = spawn_unit(&mut world, GridPos::new(3, 3), 0);
+    let hp_before = world.get::<Health>(unit).unwrap().current;
+
+    // Run 2 ticks — zone active, unit takes damage
+    run_ticks(&mut world, &mut schedule, 2);
+    let hp_mid = world.get::<Health>(unit).unwrap().current;
+    assert!(hp_mid < hp_before, "Should take damage while zone active");
+
+    // Run 3 more ticks — trigger fires at tick 3 deactivating the zone
+    let hp_at_deactivation = hp_mid;
+    run_ticks(&mut world, &mut schedule, 3);
+    // After deactivation the unit should not take MORE damage (check last 2 ticks)
+    // Actually it may take damage on tick 3 since trigger fires same tick
+    // But ticks 4 and 5 should have no damage — just verify zone is inactive
+    let ms = world.resource::<MutatorState>();
+    assert!(!ms.is_active(0), "Mutator should be inactive after toggle");
+}
+
+// ---------------------------------------------------------------------------
+// Item 2: TimeLimit Warning Event Tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn time_limit_warning_fires_at_warning_tick() {
+    let map = GameMap::new(8, 8);
+    let (mut world, mut schedule) = make_mutator_sim(map);
+
+    let mission = mission_with_mutators(vec![MissionMutator::TimeLimit {
+        max_ticks: 100,
+        warning_at: 5,
+    }]);
+    load_mission_with_mutators(&mut world, mission);
+
+    // Run 4 ticks — no warning yet
+    run_ticks(&mut world, &mut schedule, 4);
+    {
+        let events = world.resource::<Messages<TimeLimitWarningEvent>>();
+        assert!(events.is_empty(), "Warning should not fire before warning_at");
+    }
+
+    // Run 1 more tick — tick reaches 5
+    run_ticks(&mut world, &mut schedule, 1);
+    {
+        let events = world.resource::<Messages<TimeLimitWarningEvent>>();
+        assert!(!events.is_empty(), "Warning should fire at warning_at tick");
+    }
+}
+
+#[test]
+fn time_limit_warning_fires_only_once() {
+    let map = GameMap::new(8, 8);
+    let (mut world, mut schedule) = make_mutator_sim(map);
+
+    let mission = mission_with_mutators(vec![MissionMutator::TimeLimit {
+        max_ticks: 100,
+        warning_at: 3,
+    }]);
+    load_mission_with_mutators(&mut world, mission);
+
+    // Run past the warning tick
+    run_ticks(&mut world, &mut schedule, 6);
+
+    let ms = world.resource::<MutatorState>();
+    assert!(ms.time_warning_fired, "Warning fired flag should be set");
+}
+
+// ---------------------------------------------------------------------------
+// Item 3: DamageZone toggle_flag Tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn damage_zone_toggle_flag_requires_flag() {
+    let map = GameMap::new(8, 8);
+    let (mut world, mut schedule) = make_mutator_sim(map);
+
+    // DamageZone with toggle_flag — starts active but flag not set
+    let mut mission = mission_with_mutators(vec![MissionMutator::DamageZone {
+        tiles: vec![GridPos::new(3, 3)],
+        damage_per_tick: 10,
+        active_from_start: true,
+        toggle_flag: Some("traps".into()),
+    }]);
+    // Trigger at tick 3 sets the "traps" flag
+    mission.triggers = vec![ScriptedTrigger {
+        id: "set_traps".into(),
+        condition: TriggerCondition::AtTick(3),
+        actions: vec![TriggerAction::SetFlag("traps".into())],
+        once: true,
+    }];
+    load_mission_with_mutators(&mut world, mission);
+
+    let unit = spawn_unit(&mut world, GridPos::new(3, 3), 0);
+    let hp_before = world.get::<Health>(unit).unwrap().current;
+
+    // Run 2 ticks — flag not set, zone should not damage
+    run_ticks(&mut world, &mut schedule, 2);
+    let hp_mid = world.get::<Health>(unit).unwrap().current;
+    assert_eq!(hp_mid, hp_before, "No damage before flag is set");
+
+    // Run 2 more ticks — trigger sets flag at tick 3, damage starts
+    run_ticks(&mut world, &mut schedule, 2);
+    let hp_after = world.get::<Health>(unit).unwrap().current;
+    assert!(hp_after < hp_before, "Should take damage after flag is set");
+}
+
+#[test]
+fn damage_zone_no_toggle_flag_uses_active_only() {
+    let map = GameMap::new(8, 8);
+    let (mut world, mut schedule) = make_mutator_sim(map);
+
+    // No toggle_flag → active vec controls it
+    let mission = mission_with_mutators(vec![MissionMutator::DamageZone {
+        tiles: vec![GridPos::new(3, 3)],
+        damage_per_tick: 10,
+        active_from_start: true,
+        toggle_flag: None,
+    }]);
+    load_mission_with_mutators(&mut world, mission);
+
+    let unit = spawn_unit(&mut world, GridPos::new(3, 3), 0);
+    let hp_before = world.get::<Health>(unit).unwrap().current;
+
+    run_ticks(&mut world, &mut schedule, 1);
+    let hp_after = world.get::<Health>(unit).unwrap().current;
+    assert!(hp_after < hp_before, "Active zone without toggle_flag should deal damage");
+}
+
+// ---------------------------------------------------------------------------
+// Item 5: Wind Displacement Tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn wind_displaces_units_in_direction() {
+    let map = GameMap::new(16, 16);
+    let (mut world, mut schedule) = make_mutator_sim(map);
+
+    let mission = mission_with_mutators(vec![MissionMutator::WindStorm {
+        interval_ticks: 10,
+        duration_ticks: 5,
+        direction: HazardDirection::South,
+        force: 2,
+        can_push_off_map: false,
+        initial_delay_ticks: 0,
+    }]);
+    load_mission_with_mutators(&mut world, mission);
+
+    let unit = spawn_unit(&mut world, GridPos::new(8, 5), 0);
+
+    // At tick 1, cycle=1%10=1, 1<5 → wind active, unit pushed south by 2
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let pos = world.get::<Position>(unit).unwrap();
+    let y = pos.world.y.to_num::<i32>();
+    assert_eq!(y, 7, "Unit should be displaced south by force=2");
+}
+
+#[test]
+fn wind_clamps_at_map_edge() {
+    let map = GameMap::new(16, 16);
+    let (mut world, mut schedule) = make_mutator_sim(map);
+
+    let mission = mission_with_mutators(vec![MissionMutator::WindStorm {
+        interval_ticks: 10,
+        duration_ticks: 5,
+        direction: HazardDirection::South,
+        force: 3,
+        can_push_off_map: false,
+        initial_delay_ticks: 0,
+    }]);
+    load_mission_with_mutators(&mut world, mission);
+
+    // Unit near south edge
+    let unit = spawn_unit(&mut world, GridPos::new(8, 14), 0);
+
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let pos = world.get::<Position>(unit).unwrap();
+    let y = pos.world.y.to_num::<i32>();
+    assert_eq!(y, 15, "Unit should be clamped at map edge (15)");
+}
+
+#[test]
+fn wind_kills_pushed_off_map() {
+    let map = GameMap::new(16, 16);
+    let (mut world, mut schedule) = make_mutator_sim(map);
+
+    let mission = mission_with_mutators(vec![MissionMutator::WindStorm {
+        interval_ticks: 10,
+        duration_ticks: 5,
+        direction: HazardDirection::South,
+        force: 3,
+        can_push_off_map: true,
+        initial_delay_ticks: 0,
+    }]);
+    load_mission_with_mutators(&mut world, mission);
+
+    // Unit at south edge — push of 3 will go off map
+    let unit = spawn_unit(&mut world, GridPos::new(8, 14), 0);
+
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let hp_after = world.get::<Health>(unit).unwrap().current;
+    assert!(hp_after <= Fixed::from_num(0), "Unit pushed off map should receive lethal damage (hp: {hp_after})");
+}
+
+#[test]
+fn wind_clears_movement_targets() {
+    let map = GameMap::new(16, 16);
+    let (mut world, mut schedule) = make_mutator_sim(map);
+
+    let mission = mission_with_mutators(vec![MissionMutator::WindStorm {
+        interval_ticks: 10,
+        duration_ticks: 5,
+        direction: HazardDirection::East,
+        force: 1,
+        can_push_off_map: false,
+        initial_delay_ticks: 0,
+    }]);
+    load_mission_with_mutators(&mut world, mission);
+
+    let unit = spawn_unit(&mut world, GridPos::new(5, 5), 0);
+    // Add a MoveTarget component
+    world.entity_mut(unit).insert(MoveTarget { target: WorldPos::from_grid(GridPos::new(10, 10)) });
+
+    run_ticks(&mut world, &mut schedule, 1);
+
+    // MoveTarget should be removed
+    assert!(world.get::<MoveTarget>(unit).is_none(), "Wind should clear MoveTarget");
+}
+
+#[test]
+fn wind_inactive_no_displacement() {
+    let map = GameMap::new(16, 16);
+    let (mut world, mut schedule) = make_mutator_sim(map);
+
+    let mission = mission_with_mutators(vec![MissionMutator::WindStorm {
+        interval_ticks: 10,
+        duration_ticks: 3,
+        direction: HazardDirection::South,
+        force: 2,
+        can_push_off_map: false,
+        initial_delay_ticks: 0,
+    }]);
+    load_mission_with_mutators(&mut world, mission);
+
+    let unit = spawn_unit(&mut world, GridPos::new(8, 5), 0);
+
+    // Run 5 ticks: at tick 5, cycle=5%10=5, 5>=3 → wind inactive
+    run_ticks(&mut world, &mut schedule, 5);
+
+    let pos = world.get::<Position>(unit).unwrap();
+    let y = pos.world.y.to_num::<i32>();
+    // Wind was active ticks 1-3 (cycle 1,2 < 3), pushing 2 each = +6 total,
+    // but tick 3 cycle=3%10=3 which is NOT < 3, so active ticks are 1 and 2 only = +4
+    // Actually: tick 1 → cycle=(1-0)%10=1 <3 → push; tick 2 → 2<3 → push; tick 3 → 3>=3 no
+    // So pushed on ticks 1,2 = 2*2=4 → y=5+4=9
+    assert_eq!(y, 9, "Unit should only be displaced during active wind ticks");
+}
+
+#[test]
+fn wind_all_edges_skipped() {
+    let map = GameMap::new(16, 16);
+    let (mut world, mut schedule) = make_mutator_sim(map);
+
+    let mission = mission_with_mutators(vec![MissionMutator::WindStorm {
+        interval_ticks: 10,
+        duration_ticks: 5,
+        direction: HazardDirection::AllEdges,
+        force: 2,
+        can_push_off_map: false,
+        initial_delay_ticks: 0,
+    }]);
+    load_mission_with_mutators(&mut world, mission);
+
+    let unit = spawn_unit(&mut world, GridPos::new(8, 5), 0);
+
+    // Should not panic, and no displacement
+    run_ticks(&mut world, &mut schedule, 3);
+
+    let pos = world.get::<Position>(unit).unwrap();
+    let y = pos.world.y.to_num::<i32>();
+    assert_eq!(y, 5, "AllEdges wind should not displace units");
 }
