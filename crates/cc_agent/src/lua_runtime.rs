@@ -8,15 +8,26 @@ use mlua::prelude::*;
 
 use crate::script_context::{ScriptContext, UnitState};
 use crate::snapshot::{BuildingSnapshot, ResourceSnapshot, UnitSnapshot};
+use crate::tool_tier::ToolTier;
 
 /// Maximum Lua instructions before termination (prevents infinite loops).
 const INSTRUCTION_LIMIT: u32 = 10_000;
 
 /// Execute a Lua script with full game state access via ScriptContext.
 /// Returns the list of GameCommands the script produced.
+/// The `tier` parameter controls which behavior bindings are available.
 pub fn execute_script_with_context(
     source: &str,
     ctx: &mut ScriptContext,
+) -> Result<Vec<GameCommand>, LuaScriptError> {
+    execute_script_with_context_tiered(source, ctx, ToolTier::Advanced)
+}
+
+/// Execute a Lua script with tier-gated behavior bindings.
+pub fn execute_script_with_context_tiered(
+    source: &str,
+    ctx: &mut ScriptContext,
+    tier: ToolTier,
 ) -> Result<Vec<GameCommand>, LuaScriptError> {
     let lua = Lua::new();
 
@@ -726,134 +737,354 @@ pub fn execute_script_with_context(
 
         // -------------------------------------------------------------------
         // Behavior bindings (ctx.behaviors sub-table)
+        // Tier-gated: only registers behaviors the caller has unlocked.
         // -------------------------------------------------------------------
 
         {
             let behaviors_table = lua.create_table()?;
 
-            // ctx.behaviors:focus_fire(attacker_ids, target_id)
+            // === Basic (Tier 0) behaviors ===
+
+            // ctx.behaviors:assign_idle_workers()
             {
                 let cell = &ctx_cell;
                 let f = scope.create_function(
-                    |_, (_self, attacker_ids, target_id): (LuaValue, Vec<u64>, u64)| {
+                    |_, _self: LuaValue| {
                         let mut ctx = cell.borrow_mut();
-                        let ids: Vec<EntityId> =
-                            attacker_ids.into_iter().map(EntityId).collect();
-                        let result = crate::behaviors::focus_fire(
-                            &mut ctx,
-                            &ids,
-                            EntityId(target_id),
-                        );
+                        let result = crate::behaviors::assign_idle_workers(&mut ctx);
                         Ok(result.commands_issued as u32)
                     },
                 )?;
-                behaviors_table.set("focus_fire", f)?;
+                behaviors_table.set("assign_idle_workers", f)?;
             }
 
-            // ctx.behaviors:kite_squad(unit_ids)
+            // ctx.behaviors:attack_move_group(unit_ids, x, y)
             {
                 let cell = &ctx_cell;
                 let f = scope.create_function(
-                    |_, (_self, unit_ids): (LuaValue, Vec<u64>)| {
+                    |_, (_self, unit_ids, x, y): (LuaValue, Vec<u64>, i32, i32)| {
                         let mut ctx = cell.borrow_mut();
                         let ids: Vec<EntityId> =
                             unit_ids.into_iter().map(EntityId).collect();
-                        let result = crate::behaviors::kite_squad(&mut ctx, &ids);
-                        Ok(result.commands_issued as u32)
-                    },
-                )?;
-                behaviors_table.set("kite_squad", f)?;
-            }
-
-            // ctx.behaviors:retreat_wounded(threshold)
-            {
-                let cell = &ctx_cell;
-                let f = scope.create_function(
-                    |_, (_self, threshold): (LuaValue, f64)| {
-                        let mut ctx = cell.borrow_mut();
-                        let result =
-                            crate::behaviors::retreat_wounded(&mut ctx, threshold);
-                        Ok(result.commands_issued as u32)
-                    },
-                )?;
-                behaviors_table.set("retreat_wounded", f)?;
-            }
-
-            // ctx.behaviors:defend_area(unit_ids, cx, cy, radius)
-            {
-                let cell = &ctx_cell;
-                let f = scope.create_function(
-                    |_, (_self, unit_ids, cx, cy, radius): (LuaValue, Vec<u64>, i32, i32, f64)| {
-                        let mut ctx = cell.borrow_mut();
-                        let ids: Vec<EntityId> =
-                            unit_ids.into_iter().map(EntityId).collect();
-                        let result = crate::behaviors::defend_area(
-                            &mut ctx,
-                            &ids,
-                            GridPos::new(cx, cy),
-                            Fixed::from_num(radius),
+                        let result = crate::behaviors::attack_move_group(
+                            &mut ctx, &ids, GridPos::new(x, y),
                         );
                         Ok(result.commands_issued as u32)
                     },
                 )?;
-                behaviors_table.set("defend_area", f)?;
+                behaviors_table.set("attack_move_group", f)?;
             }
 
-            // ctx.behaviors:harass_economy(raider_ids)
-            {
-                let cell = &ctx_cell;
-                let f = scope.create_function(
-                    |_, (_self, raider_ids): (LuaValue, Vec<u64>)| {
-                        let mut ctx = cell.borrow_mut();
-                        let ids: Vec<EntityId> =
-                            raider_ids.into_iter().map(EntityId).collect();
-                        let result =
-                            crate::behaviors::harass_economy(&mut ctx, &ids);
-                        Ok(result.commands_issued as u32)
-                    },
-                )?;
-                behaviors_table.set("harass_economy", f)?;
+            // === Tactical (Tier 1) behaviors ===
+            if tier >= ToolTier::Tactical {
+                // ctx.behaviors:focus_fire(attacker_ids, target_id)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, attacker_ids, target_id): (LuaValue, Vec<u64>, u64)| {
+                            let mut ctx = cell.borrow_mut();
+                            let ids: Vec<EntityId> =
+                                attacker_ids.into_iter().map(EntityId).collect();
+                            let result = crate::behaviors::focus_fire(
+                                &mut ctx, &ids, EntityId(target_id),
+                            );
+                            Ok(result.commands_issued as u32)
+                        },
+                    )?;
+                    behaviors_table.set("focus_fire", f)?;
+                }
+
+                // ctx.behaviors:kite_squad(unit_ids)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, unit_ids): (LuaValue, Vec<u64>)| {
+                            let mut ctx = cell.borrow_mut();
+                            let ids: Vec<EntityId> =
+                                unit_ids.into_iter().map(EntityId).collect();
+                            let result = crate::behaviors::kite_squad(&mut ctx, &ids);
+                            Ok(result.commands_issued as u32)
+                        },
+                    )?;
+                    behaviors_table.set("kite_squad", f)?;
+                }
+
+                // ctx.behaviors:retreat_wounded(threshold)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, threshold): (LuaValue, f64)| {
+                            let mut ctx = cell.borrow_mut();
+                            let result =
+                                crate::behaviors::retreat_wounded(&mut ctx, threshold);
+                            Ok(result.commands_issued as u32)
+                        },
+                    )?;
+                    behaviors_table.set("retreat_wounded", f)?;
+                }
+
+                // ctx.behaviors:defend_area(unit_ids, cx, cy, radius)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, unit_ids, cx, cy, radius): (LuaValue, Vec<u64>, i32, i32, f64)| {
+                            let mut ctx = cell.borrow_mut();
+                            let ids: Vec<EntityId> =
+                                unit_ids.into_iter().map(EntityId).collect();
+                            let result = crate::behaviors::defend_area(
+                                &mut ctx, &ids, GridPos::new(cx, cy), Fixed::from_num(radius),
+                            );
+                            Ok(result.commands_issued as u32)
+                        },
+                    )?;
+                    behaviors_table.set("defend_area", f)?;
+                }
+
+                // ctx.behaviors:harass_economy(raider_ids)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, raider_ids): (LuaValue, Vec<u64>)| {
+                            let mut ctx = cell.borrow_mut();
+                            let ids: Vec<EntityId> =
+                                raider_ids.into_iter().map(EntityId).collect();
+                            let result =
+                                crate::behaviors::harass_economy(&mut ctx, &ids);
+                            Ok(result.commands_issued as u32)
+                        },
+                    )?;
+                    behaviors_table.set("harass_economy", f)?;
+                }
+
+                // ctx.behaviors:scout_pattern(scout_id, waypoints)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, scout_id, waypoints): (LuaValue, u64, Vec<LuaTable>)| {
+                            let mut ctx = cell.borrow_mut();
+                            let wps: Vec<GridPos> = waypoints.iter()
+                                .filter_map(|wp| {
+                                    let x: i32 = wp.get("x").ok()?;
+                                    let y: i32 = wp.get("y").ok()?;
+                                    Some(GridPos::new(x, y))
+                                })
+                                .collect();
+                            let result = crate::behaviors::scout_pattern(
+                                &mut ctx, EntityId(scout_id), &wps,
+                            );
+                            Ok(result.commands_issued as u32)
+                        },
+                    )?;
+                    behaviors_table.set("scout_pattern", f)?;
+                }
+
+                // ctx.behaviors:focus_weakest(unit_ids, range)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, unit_ids, range): (LuaValue, Vec<u64>, f64)| {
+                            let mut ctx = cell.borrow_mut();
+                            let ids: Vec<EntityId> =
+                                unit_ids.into_iter().map(EntityId).collect();
+                            let result = crate::behaviors::focus_weakest(
+                                &mut ctx, &ids, Fixed::from_num(range),
+                            );
+                            Ok(result.commands_issued as u32)
+                        },
+                    )?;
+                    behaviors_table.set("focus_weakest", f)?;
+                }
+
+                // ctx.behaviors:use_ability(unit_id, slot, target_type, x?, y?, entity_id?)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, unit_id, slot, target_type, x, y, entity_id): (
+                            LuaValue, u64, u8, String, Option<i32>, Option<i32>, Option<u64>,
+                        )| {
+                            let target = match target_type.as_str() {
+                                "self" => AbilityTarget::SelfCast,
+                                "position" => {
+                                    let px = x.ok_or_else(|| mlua::Error::RuntimeError("position requires x".into()))?;
+                                    let py = y.ok_or_else(|| mlua::Error::RuntimeError("position requires y".into()))?;
+                                    AbilityTarget::Position(GridPos::new(px, py))
+                                }
+                                "entity" => {
+                                    let eid = entity_id.ok_or_else(|| mlua::Error::RuntimeError("entity requires entity_id".into()))?;
+                                    AbilityTarget::Entity(EntityId(eid))
+                                }
+                                _ => return Err(mlua::Error::RuntimeError(format!("Unknown target type: {target_type}"))),
+                            };
+                            let mut ctx = cell.borrow_mut();
+                            let result = crate::behaviors::use_ability(
+                                &mut ctx, EntityId(unit_id), slot, target,
+                            );
+                            Ok(result.commands_issued as u32)
+                        },
+                    )?;
+                    behaviors_table.set("use_ability", f)?;
+                }
+
+                // ctx.behaviors:split_squads(unit_ids) → returns {melee={}, ranged={}, support={}}
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |lua, (_self, unit_ids): (LuaValue, Vec<u64>)| {
+                            let mut ctx = cell.borrow_mut();
+                            let ids: Vec<EntityId> =
+                                unit_ids.into_iter().map(EntityId).collect();
+                            let (melee, ranged, support, _) =
+                                crate::behaviors::split_squads(&mut ctx, &ids);
+                            let tbl = lua.create_table()?;
+                            tbl.set("melee", melee.iter().map(|e| e.0).collect::<Vec<_>>())?;
+                            tbl.set("ranged", ranged.iter().map(|e| e.0).collect::<Vec<_>>())?;
+                            tbl.set("support", support.iter().map(|e| e.0).collect::<Vec<_>>())?;
+                            Ok(tbl)
+                        },
+                    )?;
+                    behaviors_table.set("split_squads", f)?;
+                }
+
+                // ctx.behaviors:protect_unit(escort_ids, vip_id, guard_radius?)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, escort_ids, vip_id, guard_radius): (LuaValue, Vec<u64>, u64, Option<f64>)| {
+                            let mut ctx = cell.borrow_mut();
+                            let ids: Vec<EntityId> =
+                                escort_ids.into_iter().map(EntityId).collect();
+                            let radius = Fixed::from_num(guard_radius.unwrap_or(5.0));
+                            let result = crate::behaviors::protect_unit(
+                                &mut ctx, &ids, EntityId(vip_id), radius,
+                            );
+                            Ok(result.commands_issued as u32)
+                        },
+                    )?;
+                    behaviors_table.set("protect_unit", f)?;
+                }
+
+                // ctx.behaviors:surround_target(unit_ids, target_id, ring_radius?)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, unit_ids, target_id, ring_radius): (LuaValue, Vec<u64>, u64, Option<f64>)| {
+                            let mut ctx = cell.borrow_mut();
+                            let ids: Vec<EntityId> =
+                                unit_ids.into_iter().map(EntityId).collect();
+                            let radius = Fixed::from_num(ring_radius.unwrap_or(3.0));
+                            let result = crate::behaviors::surround_target(
+                                &mut ctx, &ids, EntityId(target_id), radius,
+                            );
+                            Ok(result.commands_issued as u32)
+                        },
+                    )?;
+                    behaviors_table.set("surround_target", f)?;
+                }
             }
 
-            // ctx.behaviors:focus_weakest(unit_ids, range)
-            {
-                let cell = &ctx_cell;
-                let f = scope.create_function(
-                    |_, (_self, unit_ids, range): (LuaValue, Vec<u64>, f64)| {
-                        let mut ctx = cell.borrow_mut();
-                        let ids: Vec<EntityId> =
-                            unit_ids.into_iter().map(EntityId).collect();
-                        let result = crate::behaviors::focus_weakest(
-                            &mut ctx,
-                            &ids,
-                            Fixed::from_num(range),
-                        );
-                        Ok(result.commands_issued as u32)
-                    },
-                )?;
-                behaviors_table.set("focus_weakest", f)?;
+            // === Strategic (Tier 2) behaviors ===
+            if tier >= ToolTier::Strategic {
+                // ctx.behaviors:auto_produce(building_id, unit_type_str)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, building_id, unit_type): (LuaValue, u64, String)| {
+                            let kind = unit_type.parse::<UnitKind>().map_err(|_| {
+                                mlua::Error::RuntimeError(format!(
+                                    "Unknown unit type: {unit_type}"
+                                ))
+                            })?;
+                            let mut ctx = cell.borrow_mut();
+                            let result = crate::behaviors::auto_produce(
+                                &mut ctx, EntityId(building_id), kind,
+                            );
+                            Ok(result.commands_issued as u32)
+                        },
+                    )?;
+                    behaviors_table.set("auto_produce", f)?;
+                }
+
+                // ctx.behaviors:balanced_production(building_id)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, building_id): (LuaValue, u64)| {
+                            let mut ctx = cell.borrow_mut();
+                            let result = crate::behaviors::balanced_production(
+                                &mut ctx, EntityId(building_id),
+                            );
+                            Ok(result.commands_issued as u32)
+                        },
+                    )?;
+                    behaviors_table.set("balanced_production", f)?;
+                }
+
+                // ctx.behaviors:expand_economy(builder_id)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, builder_id): (LuaValue, u64)| {
+                            let mut ctx = cell.borrow_mut();
+                            let result = crate::behaviors::expand_economy(
+                                &mut ctx, EntityId(builder_id),
+                            );
+                            Ok(result.commands_issued as u32)
+                        },
+                    )?;
+                    behaviors_table.set("expand_economy", f)?;
+                }
+
+                // ctx.behaviors:coordinate_assault(unit_ids, x, y)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, unit_ids, x, y): (LuaValue, Vec<u64>, i32, i32)| {
+                            let mut ctx = cell.borrow_mut();
+                            let ids: Vec<EntityId> =
+                                unit_ids.into_iter().map(EntityId).collect();
+                            let result = crate::behaviors::coordinate_assault(
+                                &mut ctx, &ids, GridPos::new(x, y),
+                            );
+                            Ok(result.commands_issued as u32)
+                        },
+                    )?;
+                    behaviors_table.set("coordinate_assault", f)?;
+                }
             }
 
-            // ctx.behaviors:auto_produce(building_id, unit_type_str)
-            {
-                let cell = &ctx_cell;
-                let f = scope.create_function(
-                    |_, (_self, building_id, unit_type): (LuaValue, u64, String)| {
-                        let kind = unit_type.parse::<UnitKind>().map_err(|_| {
-                            mlua::Error::RuntimeError(format!(
-                                "Unknown unit type: {unit_type}"
-                            ))
-                        })?;
-                        let mut ctx = cell.borrow_mut();
-                        let result = crate::behaviors::auto_produce(
-                            &mut ctx,
-                            EntityId(building_id),
-                            kind,
-                        );
-                        Ok(result.commands_issued as u32)
-                    },
-                )?;
-                behaviors_table.set("auto_produce", f)?;
+            // === Advanced (Tier 3) behaviors ===
+            if tier >= ToolTier::Advanced {
+                // ctx.behaviors:research_priority(building_id)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, building_id): (LuaValue, u64)| {
+                            let mut ctx = cell.borrow_mut();
+                            let result = crate::behaviors::research_priority(
+                                &mut ctx, EntityId(building_id),
+                            );
+                            Ok(result.commands_issued as u32)
+                        },
+                    )?;
+                    behaviors_table.set("research_priority", f)?;
+                }
+
+                // ctx.behaviors:adaptive_defense(unit_ids, cx, cy, radius)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, unit_ids, cx, cy, radius): (LuaValue, Vec<u64>, i32, i32, f64)| {
+                            let mut ctx = cell.borrow_mut();
+                            let ids: Vec<EntityId> =
+                                unit_ids.into_iter().map(EntityId).collect();
+                            let result = crate::behaviors::adaptive_defense(
+                                &mut ctx, &ids, GridPos::new(cx, cy), Fixed::from_num(radius),
+                            );
+                            Ok(result.commands_issued as u32)
+                        },
+                    )?;
+                    behaviors_table.set("adaptive_defense", f)?;
+                }
             }
 
             ctx_table.set("behaviors", behaviors_table)?;

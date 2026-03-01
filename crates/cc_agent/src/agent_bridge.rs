@@ -4,11 +4,14 @@ use crossbeam_channel::{Receiver, Sender, unbounded};
 use cc_core::commands::GameCommand;
 use cc_sim::resources::CommandQueue;
 
+use crate::tool_tier::ToolTier;
+
 /// Message from Bevy → background LLM thread.
 #[derive(Debug)]
 pub struct AgentRequest {
     pub player_id: u8,
     pub prompt: String,
+    pub tier: ToolTier,
 }
 
 /// Message from background LLM thread → Bevy.

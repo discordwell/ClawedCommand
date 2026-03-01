@@ -22,9 +22,18 @@ pub fn coordinate_assault(
         };
     }
 
+    // Single unit just attack-moves directly, no flanking
+    if unit_ids.len() == 1 {
+        ctx.cmd_attack_move(unit_ids.to_vec(), target);
+        return BehaviorResult {
+            commands_issued: 1,
+            description: "Single unit assault".into(),
+        };
+    }
+
     // Split 70/30
     let split_point = (unit_ids.len() * 7) / 10;
-    let split_point = split_point.max(1).min(unit_ids.len() - 1.max(1));
+    let split_point = split_point.max(1).min(unit_ids.len().saturating_sub(1));
 
     let main_force: Vec<EntityId> = unit_ids[..split_point].to_vec();
     let flank_group: Vec<EntityId> = unit_ids[split_point..].to_vec();

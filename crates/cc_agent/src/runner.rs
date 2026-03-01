@@ -12,6 +12,7 @@ use crate::events::{self, ScriptRegistration};
 use crate::lua_runtime;
 use crate::script_context::ScriptContext;
 use crate::snapshot::{self, GameStateSnapshot};
+use crate::tool_tier::FactionToolStates;
 
 /// Resource: registered scripts that respond to game events.
 #[derive(Resource, Default)]
@@ -44,6 +45,7 @@ pub fn script_runner_system(
     mut cmd_queue: ResMut<CommandQueue>,
     mut registry: ResMut<ScriptRegistry>,
     mut prev_snapshots: ResMut<PreviousSnapshots>,
+    tool_states: Res<FactionToolStates>,
     units: Query<
         (
             Entity,
@@ -168,7 +170,8 @@ pub fn script_runner_system(
                 faction,
             );
 
-            match lua_runtime::execute_script_with_context(&script.source, &mut ctx) {
+            let tier = tool_states.tier_for(player_id);
+            match lua_runtime::execute_script_with_context_tiered(&script.source, &mut ctx, tier) {
                 Ok(commands) => {
                     for cmd in commands {
                         cmd_queue.push(cmd);

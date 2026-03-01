@@ -44,6 +44,7 @@ pub fn agent_chat_system(
                         cc_agent::agent_bridge::AgentRequest {
                             player_id: 0,
                             prompt: "Scout the map and report enemy positions".into(),
+                            tier: cc_agent::tool_tier::ToolTier::Advanced,
                         },
                     );
                 }
@@ -52,6 +53,7 @@ pub fn agent_chat_system(
                         cc_agent::agent_bridge::AgentRequest {
                             player_id: 0,
                             prompt: "Defend our base from incoming threats".into(),
+                            tier: cc_agent::tool_tier::ToolTier::Advanced,
                         },
                     );
                 }
@@ -60,6 +62,7 @@ pub fn agent_chat_system(
                         cc_agent::agent_bridge::AgentRequest {
                             player_id: 0,
                             prompt: "Launch an attack on the enemy base".into(),
+                            tier: cc_agent::tool_tier::ToolTier::Advanced,
                         },
                     );
                 }

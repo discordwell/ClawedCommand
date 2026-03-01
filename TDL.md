@@ -55,6 +55,11 @@
 - [ ] Merge `validate()` three trigger iteration passes into single pass
 - [ ] Unify `BotPersonality` and `AiPersonalityProfile` into single abstraction
 
+## From Agent Harness Code Review
+
+- [ ] Extract `run_behavior` helper in `cc_harness/src/server.rs` to de-duplicate ~18 behavior tools (~200 lines of boilerplate: lock sim, snapshot, create ScriptContext, take commands, inject, return result)
+- [ ] Extract `run_query` helper in `cc_harness/src/server.rs` to de-duplicate ~11 query tools (lock sim, snapshot, create ScriptContext, return JSON)
+
 ## From Voice Pipeline Implementation
 
 - [ ] Run Python voice training tests after setting up PyTorch environment (`cd training/voice && python test_model.py`)

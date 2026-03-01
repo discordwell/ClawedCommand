@@ -356,7 +356,7 @@ impl HeadlessSim {
             &snap,
             map,
             player_id,
-            cc_core::terrain::FactionId::CatGPT,
+            cc_core::terrain::FactionId::from_u8(player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT),
         );
 
         lua_runtime::execute_script_with_context(lua_source, &mut ctx)

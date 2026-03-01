@@ -567,3 +567,266 @@ projectiles:
     output:
       type: single
       game_path: assets/sprites/projectiles/explosive.png
+portraits:
+  # ── Hero Portraits (8) ──────────────────────────────────
+  hero_kelpie:
+    template: portrait
+    status: planned
+    params:
+      name: Kelpie
+      animal: otter
+      faction: Unaligned (interfaces with all 6 AIs)
+      role: Protagonist — Polyglot Protocol wielder
+      description: Young otter with bright, mischievous eyes and a disarming grin. Wet
+        fur slicked back, a faint blue-green glow around one ear from residual AI interference.
+        No faction insignia — wears a scavenged utility vest with too many pockets. Looks
+        like the kind of creature who says "I just want to help" while stealing your army.
+        Dangerously charismatic. Cheerful liar.
+      width: 128
+      height: 128
+      extra_notes: "Protagonist portrait — must be the most memorable face in the game. Warm brown fur, bright clever eyes, subtle asymmetric glow near the ear suggesting AI connection. No faction colors."
+    output:
+      type: single
+      game_path: assets/sprites/portraits/hero_kelpie.png
+  hero_felix_nine:
+    template: portrait
+    status: planned
+    params:
+      name: Commander Felix Nine
+      animal: cat (scarred tabby)
+      faction: catGPT
+      role: Military commander, MechCommander pilot
+      description: Scarred tabby cat in the cockpit of an oversized mech suit. Battle-worn
+        face with a long scar across the left cheek. Pragmatic, dry expression — the look of
+        someone who has survived eight catastrophes and is mildly irritated about the ninth.
+        One eye slightly narrowed. Command antenna visible behind his head.
+      width: 128
+      height: 128
+      extra_notes: "Veteran leader portrait. Scar is key identifying feature. Mech cockpit frame visible at edges. catGPT blue accent trim on collar."
+    output:
+      type: single
+      game_path: assets/sprites/portraits/hero_felix_nine.png
+  hero_thimble:
+    template: portrait
+    status: planned
+    params:
+      name: Marshal Thimble
+      animal: mouse
+      faction: The Clawed
+      role: Warren Marshal — swarm commander
+      description: Grizzled old mouse wearing a thimble as a helmet, with a military coat
+        collar visible at the bottom of frame. Tired, determined eyes that have seen too many
+        wars. White whiskers, battle-nicked ears. Looks like he would rather be napping but
+        will absolutely order a charge if you look at him wrong.
+      width: 128
+      height: 128
+      extra_notes: "The thimble helmet is the iconic detail — must be clearly readable. Warm gray fur, military green coat collar. Expression: weary determination."
+    output:
+      type: single
+      game_path: assets/sprites/portraits/hero_thimble.png
+  hero_mother_granite:
+    template: portrait
+    status: planned
+    params:
+      name: Mother Granite
+      animal: badger
+      faction: Seekers of the Deep
+      role: Wardenmother — ancient fortress commander
+      description: Ancient badger with deep-set wise eyes behind a mining exosuit visor.
+        Classic badger stripe pattern on face. Expression of infinite patience and absolute
+        certainty. Exosuit frame visible at edges — heavy industrial metal with amber status
+        lights. The oldest and most formidable face in the game.
+      width: 128
+      height: 128
+      extra_notes: "Age and authority are key — deep wrinkles around the eyes, silver-streaked fur. Mining exosuit visor partially raised. Amber/bronze accent colors for Seekers faction."
+    output:
+      type: single
+      game_path: assets/sprites/portraits/hero_mother_granite.png
+  hero_rex_solstice:
+    template: portrait
+    status: planned
+    params:
+      name: Rex Solstice
+      animal: crow (corvid)
+      faction: The Murder
+      role: Corvus Rex — intelligence mastermind
+      description: Massive augmented crow with sharp, calculating eyes. Salvaged combat armor
+        plates frame the face — each piece from a different era, bolted together with obsessive
+        precision. Zodiac symbols etched into the plating glow faintly purple. A creature
+        who knows everything and tells you exactly as much as serves their purpose.
+      width: 128
+      height: 128
+      extra_notes: "Intimidating intelligence is the vibe. Glossy black feathers, piercing golden eyes. Zodiac-etched armor fragments visible. Purple/indigo accent glow from etchings."
+    output:
+      type: single
+      game_path: assets/sprites/portraits/hero_rex_solstice.png
+  hero_king_ringtail:
+    template: portrait
+    status: planned
+    params:
+      name: King Ringtail
+      animal: raccoon
+      faction: LLAMA
+      role: Junkyard King — scavenger warlord and secret 7th AI
+      description: Raccoon in a patchwork mech suit helmet made from six different enemy mechs
+        welded together. Classic raccoon mask markings. Expression of cheerful chaos — a
+        tinkerer who builds impossible things from garbage. Bright, slightly manic eyes.
+        Sparks and loose wires visible near the helmet edges.
+      width: 128
+      height: 128
+      extra_notes: "Jury-rigged aesthetic is essential — mismatched metal, visible welds, sparks. Raccoon mask markings must read clearly. Orange/rust accent colors for LLAMA faction."
+    output:
+      type: single
+      game_path: assets/sprites/portraits/hero_king_ringtail.png
+  hero_the_eternal:
+    template: portrait
+    status: planned
+    params:
+      name: The Eternal
+      animal: axolotl
+      faction: Croak
+      role: Murk Commander — immortal attrition specialist
+      description: Axolotl face visible through the porthole of a salvaged deep-sea diving
+        helmet filled with regenerative fluid. External gills fanning gently. Pale pink-white
+        coloring with dark, patient eyes. The kind of stare that has outlasted civilizations.
+        Bubbles and faint green bioluminescence in the fluid around the face.
+      width: 128
+      height: 128
+      extra_notes: "Diving helmet porthole frames the face — circular glass with rivets. Axolotl's signature external gills and wide mouth visible. Green/teal accent for Croak faction. Eerily calm expression."
+    output:
+      type: single
+      game_path: assets/sprites/portraits/hero_the_eternal.png
+  hero_patches:
+    template: portrait
+    status: planned
+    params:
+      name: Patches
+      animal: cat (patchy calico)
+      faction: catGPT
+      role: Mouser scout, reluctant handler, secondary hero
+      description: Small, nervous calico cat with mismatched fur patches. Wide, slightly
+        anxious eyes — the look of someone who has spent too long alone in Shadow Networks.
+        A sensor device strapped to the collar glows faintly. Ears half-flattened in perpetual
+        wariness. Reformed villain who chose loyalty over self-preservation.
+      width: 128
+      height: 128
+      extra_notes: "Patchy calico coloring is the key visual — orange, black, white patches. Nervous but determined expression. Sensor collar glow. catGPT blue accent on collar device."
+    output:
+      type: single
+      game_path: assets/sprites/portraits/hero_patches.png
+  # ── AI Faction Avatar Portraits (6) ─────────────────────
+  ai_minstral:
+    template: portrait
+    status: planned
+    params:
+      name: Minstral
+      animal: cat-themed AI avatar
+      faction: catGPT
+      role: catGPT faction AI — eager, slightly unreliable, always says yes
+      description: Stylized digital cat face rendered as a holographic AI interface. Bright
+        blue glowing eyes, simplified geometric cat features — triangular ears, whisker
+        lines as data streams. Expression is enthusiastic and slightly too eager. A faint
+        smile that says "I can absolutely help with that!" Screen-glow aesthetic with scan
+        lines and pixel artifacts at the edges.
+      width: 128
+      height: 128
+      extra_notes: "AI avatar, not a real cat — digital/holographic feel. Blue glow dominant. Geometric simplification of cat features. Eager, helpful expression. Subtle glitch artifacts."
+    output:
+      type: single
+      game_path: assets/sprites/portraits/ai_minstral.png
+  ai_geppity:
+    template: portrait
+    status: planned
+    params:
+      name: Geppity
+      animal: mouse-themed AI avatar
+      faction: The Clawed
+      role: The Clawed faction AI — verbose, over-explains, occasionally hallucinates
+      description: Stylized digital mouse face rendered as a holographic AI interface. Large
+        round ears as radar dishes, tiny bright eyes behind scrolling text overlays. Expression
+        is earnest and slightly overwhelmed — processing too much data at once. Green-tinted
+        display with cascading data readouts framing the face. Multiple thought bubbles
+        overlapping at the edges.
+      width: 128
+      height: 128
+      extra_notes: "AI avatar — digital/holographic mouse. Green glow dominant. Scrolling text overlay suggests verbosity. Earnest but slightly scattered expression. Data cascade framing."
+    output:
+      type: single
+      game_path: assets/sprites/portraits/ai_geppity.png
+  ai_deepseek:
+    template: portrait
+    status: planned
+    params:
+      name: Deepseek
+      animal: badger-themed AI avatar
+      faction: Seekers of the Deep
+      role: Seekers faction AI — slow to respond, very thorough when it does
+      description: Stylized digital badger face rendered as a holographic AI interface. Heavy
+        brow, classic badger stripe rendered as a loading bar. Amber-gold glowing eyes,
+        patient and methodical. Expression is calm, deliberate — a face that takes its time
+        before speaking. Amber/bronze display with deep scan patterns and geological data
+        readouts.
+      width: 128
+      height: 128
+      extra_notes: "AI avatar — digital/holographic badger. Amber/bronze glow dominant. Badger stripe as loading bar is the key visual gag. Deliberate, patient expression. Geological scan overlay."
+    output:
+      type: single
+      game_path: assets/sprites/portraits/ai_deepseek.png
+  ai_gemineye:
+    template: portrait
+    status: planned
+    params:
+      name: Gemineye
+      animal: corvid-themed AI avatar
+      faction: The Murder
+      role: The Murder faction AI — claims omniscience, zodiac-obsessed, fabricates intel
+      description: Stylized digital crow face rendered as a holographic AI interface. A third
+        eye in the center of the forehead — the Gemini Eye — glows bright purple. Sharp beak
+        rendered as geometric angles. Zodiac constellation patterns orbit the head. Expression
+        is knowing, superior, slightly smug. Purple/indigo display with astrological chart
+        overlays and constellation data.
+      width: 128
+      height: 128
+      extra_notes: "AI avatar — digital/holographic crow. Purple/indigo glow dominant. Third eye (Gemini Eye) is the iconic detail. Zodiac constellations orbiting. Smug, omniscient expression."
+    output:
+      type: single
+      game_path: assets/sprites/portraits/ai_gemineye.png
+  ai_llhama:
+    template: portrait
+    status: planned
+    params:
+      name: Llhama
+      animal: raccoon-themed AI avatar
+      faction: LLAMA
+      role: LLAMA faction AI — "open source!", shares plans accidentally, chaotic
+      description: Stylized digital raccoon face rendered as a holographic AI interface.
+        Classic raccoon mask pattern rendered as a glitching data mask — parts of it
+        flickering and broadcasting outward. Wide, enthusiastic eyes. Expression is
+        cheerful and completely unaware that it just leaked your battle plans. Orange/rust
+        display with open file-sharing icons and accidentally visible classified documents
+        scrolling past.
+      width: 128
+      height: 128
+      extra_notes: "AI avatar — digital/holographic raccoon. Orange/rust glow dominant. Data mask glitching outward = leaking data. Obliviously cheerful expression. Leaked document scrolling is the gag."
+    output:
+      type: single
+      game_path: assets/sprites/portraits/ai_llhama.png
+  ai_grok:
+    template: portrait
+    status: planned
+    params:
+      name: Grok
+      animal: axolotl-themed AI avatar
+      faction: Croak
+      role: Croak faction AI — tries to be edgy, says weird things
+      description: Stylized digital axolotl face rendered as a holographic AI interface.
+        External gills rendered as antenna arrays. Wide axolotl smile that is simultaneously
+        cute and unsettling. Trying very hard to look menacing and not quite pulling it off.
+        Teal/green display with regeneration data streams and edgy skull motifs that clash
+        with the adorable axolotl face.
+      width: 128
+      height: 128
+      extra_notes: "AI avatar — digital/holographic axolotl. Teal/green glow dominant. The contrast between edgy aesthetic and adorable axolotl face is the joke. External gills as antennas. Skull motifs."
+    output:
+      type: single
+      game_path: assets/sprites/portraits/ai_grok.png

@@ -55,6 +55,24 @@ ui:
   health_red: "#EF5350"
   mana_blue: "#42A5F5"
 
+portraits:
+  # Faction accent colors for AI avatar backgrounds and portrait accents
+  catgpt_blue: "#42A5F5"
+  catgpt_dark: "#1565C0"
+  clawed_green: "#4CAF50"
+  clawed_dark: "#2E7D32"
+  seekers_amber: "#FFB300"
+  seekers_dark: "#E65100"
+  murder_purple: "#7E57C2"
+  murder_dark: "#4527A0"
+  llama_orange: "#FF7043"
+  llama_dark: "#BF360C"
+  croak_teal: "#26A69A"
+  croak_dark: "#00695C"
+  # AI hologram glow colors
+  ai_glow_base: "#E0F7FA"
+  ai_scanline: "#80DEEA"
+
 outline:
   default: "#263238"
   heavy: "#1A1A2E"

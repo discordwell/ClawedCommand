@@ -1,110 +1,40 @@
-use cc_core::commands::{EntityId, GameCommand};
+use cc_core::commands::{AbilityTarget, EntityId, GameCommand};
 use cc_core::components::{BuildingKind, UnitKind};
 use cc_core::coords::GridPos;
+use cc_core::map::GameMap;
+use cc_core::math::Fixed;
+use cc_core::terrain::FactionId;
 use serde_json::Value;
 
+use crate::behaviors;
+use crate::script_context::ScriptContext;
 use crate::snapshot::GameStateSnapshot;
+use crate::tool_tier::{ToolRegistry, ToolTier};
 
-/// MCP tool definitions for the AI agent — maps to ARCHITECTURE.md's 13 tools.
-pub fn tool_definitions() -> Vec<super::llm_client::ToolDef> {
-    vec![
-        tool_def("get_units", "Get all units owned by this player, with positions, health, type, and status", serde_json::json!({
-            "type": "object",
-            "properties": {
-                "kind": {"type": "string", "description": "Optional unit type filter (e.g. 'Hisser', 'Chonk')"}
-            }
-        })),
-        tool_def("get_buildings", "Get all buildings owned by this player", serde_json::json!({"type": "object", "properties": {}})),
-        tool_def("get_visible_enemies", "Get all visible enemy units with positions, health, and type", serde_json::json!({"type": "object", "properties": {}})),
-        tool_def("get_resources", "Get current resource amounts (food, GPU cores, NFTs, supply)", serde_json::json!({"type": "object", "properties": {}})),
-        tool_def("get_map_info", "Get map dimensions, tick, and resource deposit locations", serde_json::json!({"type": "object", "properties": {}})),
-        tool_def("move_units", "Move units to a position", serde_json::json!({
-            "type": "object",
-            "properties": {
-                "unit_ids": {"type": "array", "items": {"type": "integer"}},
-                "x": {"type": "integer"},
-                "y": {"type": "integer"}
-            },
-            "required": ["unit_ids", "x", "y"]
-        })),
-        tool_def("attack_units", "Attack a target unit", serde_json::json!({
-            "type": "object",
-            "properties": {
-                "unit_ids": {"type": "array", "items": {"type": "integer"}},
-                "target_id": {"type": "integer"}
-            },
-            "required": ["unit_ids", "target_id"]
-        })),
-        tool_def("build", "Build a structure", serde_json::json!({
-            "type": "object",
-            "properties": {
-                "builder_id": {"type": "integer"},
-                "building_type": {"type": "string"},
-                "x": {"type": "integer"},
-                "y": {"type": "integer"}
-            },
-            "required": ["builder_id", "building_type", "x", "y"]
-        })),
-        tool_def("train_unit", "Train a unit from a building", serde_json::json!({
-            "type": "object",
-            "properties": {
-                "building_id": {"type": "integer"},
-                "unit_type": {"type": "string"}
-            },
-            "required": ["building_id", "unit_type"]
-        })),
-        tool_def("set_rally_point", "Set rally point for a building", serde_json::json!({
-            "type": "object",
-            "properties": {
-                "building_id": {"type": "integer"},
-                "x": {"type": "integer"},
-                "y": {"type": "integer"}
-            },
-            "required": ["building_id", "x", "y"]
-        })),
-        tool_def("patrol", "Patrol between two points", serde_json::json!({
-            "type": "object",
-            "properties": {
-                "unit_ids": {"type": "array", "items": {"type": "integer"}},
-                "x": {"type": "integer"},
-                "y": {"type": "integer"}
-            },
-            "required": ["unit_ids", "x", "y"]
-        })),
-        tool_def("gather_resource", "Send workers to gather from a deposit", serde_json::json!({
-            "type": "object",
-            "properties": {
-                "unit_ids": {"type": "array", "items": {"type": "integer"}},
-                "deposit_id": {"type": "integer"}
-            },
-            "required": ["unit_ids", "deposit_id"]
-        })),
-        tool_def("execute_strategy", "Execute a named strategy script", serde_json::json!({
-            "type": "object",
-            "properties": {
-                "strategy": {"type": "string"}
-            },
-            "required": ["strategy"]
-        })),
-    ]
-}
-
-fn tool_def(name: &str, description: &str, parameters: Value) -> super::llm_client::ToolDef {
-    super::llm_client::ToolDef {
-        name: name.to_string(),
-        description: description.to_string(),
-        parameters,
-    }
+/// Return tier-filtered MCP tool definitions for the AI agent.
+pub fn tool_definitions(tier: ToolTier) -> Vec<super::llm_client::ToolDef> {
+    ToolRegistry::build_default().tool_definitions_for_tier(tier)
 }
 
 /// Execute a tool call, returning JSON result and any game commands to enqueue.
-/// Read tools use the snapshot; write tools produce GameCommands.
+/// Rejects tools above the caller's tier. Read tools use the snapshot;
+/// write/behavior tools produce GameCommands.
 pub fn execute_tool(
     name: &str,
     args: &Value,
-    _player_id: u8,
+    player_id: u8,
     snapshot: Option<&GameStateSnapshot>,
+    tier: ToolTier,
 ) -> (Value, Vec<GameCommand>) {
+    // Tier gate: reject tools the caller hasn't unlocked
+    let registry = ToolRegistry::build_default();
+    if !registry.is_available(name, tier) {
+        return (
+            serde_json::json!({"error": format!("tool '{}' requires higher tier", name)}),
+            vec![],
+        );
+    }
+
     match name {
         // -----------------------------------------------------------------
         // Read tools — return data from snapshot
@@ -186,7 +116,7 @@ pub fn execute_tool(
         }
 
         // -----------------------------------------------------------------
-        // Write tools — produce GameCommands
+        // Command tools — produce GameCommands
         // -----------------------------------------------------------------
         "move_units" => {
             let unit_ids = parse_entity_ids(args, "unit_ids");
@@ -271,12 +201,180 @@ pub fn execute_tool(
             };
             (serde_json::json!({"status": "ok"}), vec![GameCommand::SetRallyPoint { building: EntityId(building_id), target: GridPos::new(x as i32, y as i32) }])
         }
-        "execute_strategy" => {
-            let strategy = args["strategy"].as_str().unwrap_or("");
-            (serde_json::json!({"status": "strategy_lookup_required", "strategy": strategy}), vec![])
+        "stop" => {
+            let unit_ids = parse_entity_ids(args, "unit_ids");
+            (serde_json::json!({"status": "ok"}), vec![GameCommand::Stop { unit_ids }])
         }
+        "hold_position" => {
+            let unit_ids = parse_entity_ids(args, "unit_ids");
+            (serde_json::json!({"status": "ok"}), vec![GameCommand::HoldPosition { unit_ids }])
+        }
+        // -----------------------------------------------------------------
+        // Behavior tools — require snapshot + ScriptContext
+        // -----------------------------------------------------------------
+        "focus_fire" | "focus_weakest" | "kite_squad" | "retreat_wounded"
+        | "defend_area" | "scout_pattern" | "harass_economy" | "auto_produce"
+        | "assign_idle_workers" | "attack_move_group" | "use_ability"
+        | "split_squads" | "protect_unit" | "surround_target"
+        | "balanced_production" | "expand_economy" | "coordinate_assault"
+        | "research_priority" | "adaptive_defense" => {
+            execute_behavior(name, args, player_id, snapshot)
+        }
+
         _ => (serde_json::json!({"error": "unknown tool"}), vec![]),
     }
+}
+
+/// Execute a behavior tool using ScriptContext, returning results + commands.
+fn execute_behavior(
+    name: &str,
+    args: &Value,
+    player_id: u8,
+    snapshot: Option<&GameStateSnapshot>,
+) -> (Value, Vec<GameCommand>) {
+    let Some(snap) = snapshot else {
+        return (serde_json::json!({"error": "no game state available"}), vec![]);
+    };
+    let map = GameMap::new(snap.map_width, snap.map_height);
+    let faction = FactionId::from_u8(player_id).unwrap_or(FactionId::CatGPT);
+    let mut ctx = ScriptContext::new(snap, &map, player_id, faction);
+
+    let result = match name {
+        "focus_fire" => {
+            let ids = parse_entity_ids(args, "attacker_ids");
+            let target = args["target_id"].as_u64().unwrap_or(0);
+            behaviors::focus_fire(&mut ctx, &ids, EntityId(target))
+        }
+        "focus_weakest" => {
+            let ids = parse_entity_ids(args, "unit_ids");
+            let range = args["range"].as_f64().unwrap_or(10.0);
+            behaviors::focus_weakest(&mut ctx, &ids, Fixed::from_num(range))
+        }
+        "kite_squad" => {
+            let ids = parse_entity_ids(args, "unit_ids");
+            behaviors::kite_squad(&mut ctx, &ids)
+        }
+        "retreat_wounded" => {
+            let threshold = args["threshold"].as_f64().unwrap_or(0.3);
+            behaviors::retreat_wounded(&mut ctx, threshold)
+        }
+        "defend_area" => {
+            let ids = parse_entity_ids(args, "unit_ids");
+            let x = args["x"].as_i64().unwrap_or(0) as i32;
+            let y = args["y"].as_i64().unwrap_or(0) as i32;
+            let radius = args["radius"].as_f64().unwrap_or(5.0);
+            behaviors::defend_area(&mut ctx, &ids, GridPos::new(x, y), Fixed::from_num(radius))
+        }
+        "scout_pattern" => {
+            let scout_id = args["scout_id"].as_u64().unwrap_or(0);
+            let waypoints: Vec<GridPos> = args["waypoints"]
+                .as_array()
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|wp| {
+                            let x = wp["x"].as_i64()? as i32;
+                            let y = wp["y"].as_i64()? as i32;
+                            Some(GridPos::new(x, y))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            behaviors::scout_pattern(&mut ctx, EntityId(scout_id), &waypoints)
+        }
+        "harass_economy" => {
+            let ids = parse_entity_ids(args, "raider_ids");
+            behaviors::harass_economy(&mut ctx, &ids)
+        }
+        "auto_produce" => {
+            let building_id = args["building_id"].as_u64().unwrap_or(0);
+            let unit_type = args["unit_type"].as_str().unwrap_or("Pawdler");
+            let kind = unit_type.parse::<UnitKind>().unwrap_or(UnitKind::Pawdler);
+            behaviors::auto_produce(&mut ctx, EntityId(building_id), kind)
+        }
+        "assign_idle_workers" => {
+            behaviors::assign_idle_workers(&mut ctx)
+        }
+        "attack_move_group" => {
+            let ids = parse_entity_ids(args, "unit_ids");
+            let x = args["x"].as_i64().unwrap_or(0) as i32;
+            let y = args["y"].as_i64().unwrap_or(0) as i32;
+            behaviors::attack_move_group(&mut ctx, &ids, GridPos::new(x, y))
+        }
+        "use_ability" => {
+            let unit_id = args["unit_id"].as_u64().unwrap_or(0);
+            let slot = args["slot"].as_u64().unwrap_or(0) as u8;
+            let target_type = args["target_type"].as_str().unwrap_or("self");
+            let target = match target_type {
+                "position" => {
+                    let x = args["x"].as_i64().unwrap_or(0) as i32;
+                    let y = args["y"].as_i64().unwrap_or(0) as i32;
+                    AbilityTarget::Position(GridPos::new(x, y))
+                }
+                "entity" => {
+                    let tid = args["target_id"].as_u64().unwrap_or(0);
+                    AbilityTarget::Entity(EntityId(tid))
+                }
+                _ => AbilityTarget::SelfCast,
+            };
+            behaviors::use_ability(&mut ctx, EntityId(unit_id), slot, target)
+        }
+        "split_squads" => {
+            let ids = parse_entity_ids(args, "unit_ids");
+            let (melee, ranged, support, result) = behaviors::split_squads(&mut ctx, &ids);
+            let cmds = ctx.take_commands();
+            return (serde_json::json!({
+                "commands_issued": result.commands_issued,
+                "description": result.description,
+                "melee_ids": melee.iter().map(|e| e.0).collect::<Vec<_>>(),
+                "ranged_ids": ranged.iter().map(|e| e.0).collect::<Vec<_>>(),
+                "support_ids": support.iter().map(|e| e.0).collect::<Vec<_>>(),
+            }), cmds);
+        }
+        "protect_unit" => {
+            let escort_ids = parse_entity_ids(args, "escort_ids");
+            let vip_id = args["vip_id"].as_u64().unwrap_or(0);
+            let guard_radius = args["guard_radius"].as_f64().unwrap_or(5.0);
+            behaviors::protect_unit(&mut ctx, &escort_ids, EntityId(vip_id), Fixed::from_num(guard_radius))
+        }
+        "surround_target" => {
+            let ids = parse_entity_ids(args, "unit_ids");
+            let target_id = args["target_id"].as_u64().unwrap_or(0);
+            let ring_radius = args["ring_radius"].as_f64().unwrap_or(3.0);
+            behaviors::surround_target(&mut ctx, &ids, EntityId(target_id), Fixed::from_num(ring_radius))
+        }
+        "balanced_production" => {
+            let building_id = args["building_id"].as_u64().unwrap_or(0);
+            behaviors::balanced_production(&mut ctx, EntityId(building_id))
+        }
+        "expand_economy" => {
+            let builder_id = args["builder_id"].as_u64().unwrap_or(0);
+            behaviors::expand_economy(&mut ctx, EntityId(builder_id))
+        }
+        "coordinate_assault" => {
+            let ids = parse_entity_ids(args, "unit_ids");
+            let x = args["target_x"].as_i64().unwrap_or(0) as i32;
+            let y = args["target_y"].as_i64().unwrap_or(0) as i32;
+            behaviors::coordinate_assault(&mut ctx, &ids, GridPos::new(x, y))
+        }
+        "research_priority" => {
+            let building_id = args["building_id"].as_u64().unwrap_or(0);
+            behaviors::research_priority(&mut ctx, EntityId(building_id))
+        }
+        "adaptive_defense" => {
+            let ids = parse_entity_ids(args, "unit_ids");
+            let cx = args["center_x"].as_i64().unwrap_or(0) as i32;
+            let cy = args["center_y"].as_i64().unwrap_or(0) as i32;
+            let radius = args["radius"].as_f64().unwrap_or(5.0);
+            behaviors::adaptive_defense(&mut ctx, &ids, GridPos::new(cx, cy), Fixed::from_num(radius))
+        }
+        _ => unreachable!(),
+    };
+
+    let cmds = ctx.take_commands();
+    (serde_json::json!({
+        "commands_issued": result.commands_issued,
+        "description": result.description,
+    }), cmds)
 }
 
 fn parse_entity_ids(args: &Value, key: &str) -> Vec<EntityId> {
@@ -308,4 +406,3 @@ fn unit_to_json(unit: &crate::snapshot::UnitSnapshot) -> Value {
         "idle": unit.is_idle,
     })
 }
-

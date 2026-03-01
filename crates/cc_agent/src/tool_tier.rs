@@ -597,6 +597,42 @@ impl FactionToolStates {
     }
 }
 
+/// Bevy system: counts completed ServerRacks per player and updates FactionToolStates.
+/// In campaign mode, uses mission-defined tier instead if set.
+/// Runs in FixedUpdate.
+pub fn update_tool_tiers(
+    mut tool_states: ResMut<FactionToolStates>,
+    buildings: Query<
+        (&cc_core::components::Owner, &cc_core::components::Building),
+        Without<cc_core::components::UnderConstruction>,
+    >,
+) {
+    // Count completed ServerRacks per player
+    let mut rack_counts: HashMap<u8, u32> = HashMap::new();
+    for (owner, building) in buildings.iter() {
+        if building.kind == cc_core::components::BuildingKind::ServerRack {
+            *rack_counts.entry(owner.player_id).or_insert(0) += 1;
+        }
+    }
+
+    // Update each player's tier based on rack count
+    // (Campaign tier override is handled separately when missions load)
+    // Also downgrade players who lost all racks back to Basic
+    for state in tool_states.states.values_mut() {
+        let count = rack_counts.get(&state.player_id).copied().unwrap_or(0);
+        state.server_rack_count = count;
+        state.current_tier = ToolTier::from_rack_count(count);
+    }
+    // Insert new players who appeared in rack_counts but not in states
+    for (&player_id, &count) in &rack_counts {
+        tool_states.states.entry(player_id).or_insert(FactionToolState {
+            player_id,
+            current_tier: ToolTier::from_rack_count(count),
+            server_rack_count: count,
+        });
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

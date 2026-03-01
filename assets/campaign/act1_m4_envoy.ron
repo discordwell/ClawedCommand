@@ -1,0 +1,218 @@
+// Act 1, Mission 4: The Envoy
+// Escort mission through the Borderlands to reach the Seekers border
+(
+    id: "act1_m4_envoy",
+    name: "The Envoy",
+    act: 1,
+    mission_index: 4,
+    map: Generated(
+        seed: 2004,
+        width: 64,
+        height: 48,
+    ),
+    player_setup: (
+        heroes: [
+            (
+                hero_id: Kelpie,
+                position: (x: 5, y: 24),
+                mission_critical: true,
+            ),
+            (
+                hero_id: Patches,
+                position: (x: 7, y: 24),
+                mission_critical: false,
+            ),
+        ],
+        units: [
+            (kind: Nuisance, position: (x: 4, y: 22), player_id: 0),
+            (kind: Nuisance, position: (x: 6, y: 22), player_id: 0),
+            (kind: Nuisance, position: (x: 4, y: 26), player_id: 0),
+            (kind: Nuisance, position: (x: 6, y: 26), player_id: 0),
+            (kind: Hisser, position: (x: 3, y: 24), player_id: 0),
+            (kind: Hisser, position: (x: 8, y: 24), player_id: 0),
+        ],
+        buildings: [],
+        starting_food: 100,
+        starting_gpu: 25,
+        starting_nfts: 0,
+    ),
+    enemy_waves: [
+        // Ambush 1: Ruins west of midpoint
+        (
+            wave_id: "ambush_1",
+            trigger: OnTrigger("trigger_ambush_1"),
+            units: [
+                (kind: Nuisance, position: (x: 25, y: 20), player_id: 1),
+                (kind: Nuisance, position: (x: 26, y: 21), player_id: 1),
+                (kind: Nuisance, position: (x: 27, y: 20), player_id: 1),
+                (kind: Nuisance, position: (x: 25, y: 22), player_id: 1),
+                (kind: Nuisance, position: (x: 27, y: 22), player_id: 1),
+            ],
+            ai_behavior: AttackMove((x: 10, y: 24)),
+        ),
+        // Ambush 2: Mid-route interception
+        (
+            wave_id: "ambush_2",
+            trigger: OnTrigger("trigger_ambush_2"),
+            units: [
+                (kind: Nuisance, position: (x: 35, y: 18), player_id: 1),
+                (kind: Nuisance, position: (x: 36, y: 19), player_id: 1),
+                (kind: Nuisance, position: (x: 37, y: 18), player_id: 1),
+                (kind: Nuisance, position: (x: 35, y: 20), player_id: 1),
+            ],
+            ai_behavior: AttackMove((x: 20, y: 24)),
+        ),
+        // Ambush 3: Near the border approach
+        (
+            wave_id: "ambush_3",
+            trigger: OnTrigger("trigger_ambush_3"),
+            units: [
+                (kind: Nuisance, position: (x: 45, y: 22), player_id: 1),
+                (kind: Nuisance, position: (x: 46, y: 23), player_id: 1),
+                (kind: Nuisance, position: (x: 47, y: 22), player_id: 1),
+            ],
+            ai_behavior: AttackMove((x: 30, y: 24)),
+        ),
+        // Border fight: Final blockade at the pass
+        (
+            wave_id: "border_fight",
+            trigger: OnTrigger("trigger_border"),
+            units: [
+                (kind: Nuisance, position: (x: 52, y: 20), player_id: 1),
+                (kind: Nuisance, position: (x: 53, y: 21), player_id: 1),
+                (kind: Nuisance, position: (x: 54, y: 20), player_id: 1),
+                (kind: Nuisance, position: (x: 52, y: 24), player_id: 1),
+                (kind: Nuisance, position: (x: 53, y: 25), player_id: 1),
+                (kind: Nuisance, position: (x: 54, y: 24), player_id: 1),
+            ],
+            ai_behavior: AttackMove((x: 50, y: 22)),
+        ),
+    ],
+    objectives: [
+        (
+            id: "reach_border",
+            description: "Reach the Seekers border",
+            primary: true,
+            condition: HeroReachesPos(hero: Kelpie, position: (x: 58, y: 22), radius: 3),
+        ),
+        (
+            id: "kelpie_survives",
+            description: "Kelpie must survive",
+            primary: true,
+            condition: HeroDied(Kelpie),
+        ),
+    ],
+    triggers: [
+        // T0: Opening — Felix sends Kelpie as envoy
+        (
+            id: "opening",
+            condition: AtTick(1),
+            actions: [ShowDialogue([0, 1, 2, 3])],
+            once: true,
+        ),
+        // T1: March begins — entering the Borderlands
+        (
+            id: "march_begins",
+            condition: AtTick(15),
+            actions: [ShowDialogue([4, 5])],
+            once: true,
+        ),
+        // T2: First ambush from the ruins
+        (
+            id: "trigger_ambush_1",
+            condition: HeroAtPos(hero: Kelpie, position: (x: 22, y: 22), radius: 4),
+            actions: [
+                ShowDialogue([6, 7]),
+                SpawnWave("ambush_1"),
+            ],
+            once: true,
+        ),
+        // T3: Second ambush — mid-route
+        (
+            id: "trigger_ambush_2",
+            condition: HeroAtPos(hero: Kelpie, position: (x: 33, y: 20), radius: 4),
+            actions: [
+                ShowDialogue([8, 9]),
+                SpawnWave("ambush_2"),
+            ],
+            once: true,
+        ),
+        // T4: Third ambush — near the border
+        (
+            id: "trigger_ambush_3",
+            condition: HeroAtPos(hero: Kelpie, position: (x: 44, y: 22), radius: 4),
+            actions: [
+                ShowDialogue([10, 11]),
+                SpawnWave("ambush_3"),
+            ],
+            once: true,
+        ),
+        // T5: Border blockade — final fight at the pass
+        (
+            id: "trigger_border",
+            condition: HeroAtPos(hero: Kelpie, position: (x: 50, y: 22), radius: 3),
+            actions: [
+                ShowDialogue([12, 13]),
+                SpawnWave("border_fight"),
+            ],
+            once: true,
+        ),
+        // T6: Border reached — Seekers receive the envoy
+        (
+            id: "border_reached",
+            condition: HeroAtPos(hero: Kelpie, position: (x: 58, y: 22), radius: 3),
+            actions: [
+                ShowDialogue([14, 15, 16, 17]),
+                CompleteObjective("reach_border"),
+            ],
+            once: true,
+        ),
+        // T7: Victory wrap-up
+        (
+            id: "victory_wrap",
+            condition: TriggerFired("border_reached"),
+            actions: [ShowDialogue([18, 19])],
+            once: true,
+        ),
+    ],
+    dialogue: [
+        // 0-3: Opening — Felix sends Kelpie
+        (speaker: "Felix", text: "The Seekers want to talk. I'm sending you.", voice_style: Normal, portrait: ""),
+        (speaker: "Kelpie", text: "Me? I've been here a week.", voice_style: Normal, portrait: ""),
+        (speaker: "Felix", text: "And in that week you've won every engagement. You're my best option. Or my biggest problem. Either way, you're going.", voice_style: Normal, portrait: ""),
+        (speaker: "Patches", text: "Small escort. Fast and light. Through the Borderlands.", voice_style: Normal, portrait: ""),
+
+        // 4-5: March begins
+        (speaker: "Minstral", text: "The Borderlands! Open hills, old ruins, very pretty. Also The Clawed patrol out here.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Patches", text: "Stay alert. Thimble won't want us reaching the Seekers.", voice_style: Normal, portrait: ""),
+
+        // 6-7: Ambush 1
+        (speaker: "Kelpie", text: "COVER! West side! Ambush!", voice_style: Normal, portrait: ""),
+        (speaker: "Minstral", text: "Five contacts from the ruins! They were waiting for us!", voice_style: AiVoice, portrait: ""),
+
+        // 8-9: Ambush 2
+        (speaker: "Patches", text: "More movement ahead. They're trying to slow us down.", voice_style: Normal, portrait: ""),
+        (speaker: "Minstral", text: "Four more! Thimble really doesn't want you reaching that border!", voice_style: AiVoice, portrait: ""),
+
+        // 10-11: Ambush 3
+        (speaker: "Kelpie", text: "Another group. Persistent little mice.", voice_style: Normal, portrait: ""),
+        (speaker: "Patches", text: "We're close. Push through. The border pillar is in sight.", voice_style: Normal, portrait: ""),
+
+        // 12-13: Border fight
+        (speaker: "Minstral", text: "Big contact at the pass! They're trying to block us before the border!", voice_style: AiVoice, portrait: ""),
+        (speaker: "Kelpie", text: "Last push. Everything we have. Chonk clears the path.", voice_style: Normal, portrait: ""),
+
+        // 14-17: Border reached — Seekers contact
+        (speaker: "Deepseek", text: "You are at the border of the Seekers of the Deep. The envoy is expected.", voice_style: Whisper, portrait: ""),
+        (speaker: "Kelpie", text: "That's us. We're the envoy.", voice_style: Normal, portrait: ""),
+        (speaker: "Deepseek", text: "The Clawed are not expected. They have twelve seconds to choose.", voice_style: Whisper, portrait: ""),
+        (speaker: "Minstral", text: "The Ironhides are MASSIVE. The Clawed are pulling back. Smart mice.", voice_style: AiVoice, portrait: ""),
+
+        // 18-19: Victory wrap
+        (speaker: "Patches", text: "We made it. I wasn't sure we would.", voice_style: Normal, portrait: ""),
+        (speaker: "Minstral", text: "Act 1 complete! The mountain awaits. Felix is scared of you. He's right to be.", voice_style: AiVoice, portrait: ""),
+    ],
+    briefing_text: "Escort mission to the Seekers border. Survive Clawed ambushes in the Borderlands and deliver the catGPT diplomatic envoy.",
+    debrief_text: "The Seekers' Ironhides stand at the border. The Clawed retreat. The mountain opens. Act 2 begins.",
+    next_mission: Fixed("act2_m5_false_front"),
+)

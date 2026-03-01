@@ -184,6 +184,107 @@ struct FocusWeakestParams {
 }
 
 #[derive(Deserialize, Serialize, JsonSchema)]
+struct AssignIdleWorkersParams {
+    player_id: u8,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct AttackMoveGroupParams {
+    player_id: u8,
+    unit_ids: Vec<u64>,
+    x: i32,
+    y: i32,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct UseAbilityParams {
+    player_id: u8,
+    unit_id: u64,
+    slot: u8,
+    target_type: String,
+    x: Option<i32>,
+    y: Option<i32>,
+    target_entity_id: Option<u64>,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct SplitSquadsParams {
+    player_id: u8,
+    unit_ids: Vec<u64>,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct ProtectUnitParams {
+    player_id: u8,
+    escort_ids: Vec<u64>,
+    vip_id: u64,
+    guard_radius: Option<f64>,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct SurroundTargetParams {
+    player_id: u8,
+    unit_ids: Vec<u64>,
+    target_id: u64,
+    ring_radius: Option<f64>,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct AutoProduceParams {
+    player_id: u8,
+    building_id: u64,
+    unit_kind: String,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct BalancedProductionParams {
+    player_id: u8,
+    building_id: u64,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct ExpandEconomyParams {
+    player_id: u8,
+    builder_id: u64,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct CoordinateAssaultParams {
+    player_id: u8,
+    unit_ids: Vec<u64>,
+    target_x: i32,
+    target_y: i32,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct ResearchPriorityParams {
+    player_id: u8,
+    building_id: u64,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct AdaptiveDefenseParams {
+    player_id: u8,
+    unit_ids: Vec<u64>,
+    center_x: i32,
+    center_y: i32,
+    radius: f64,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct ScoutPatternParams {
+    player_id: u8,
+    scout_id: u64,
+    waypoints: Vec<WaypointParam>,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
+struct WaypointParam {
+    x: i32,
+    y: i32,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema)]
 struct LuaScriptParams {
     player_id: u8,
     source: String,
@@ -259,7 +360,7 @@ impl HarnessServer {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let map = sim.map();
-        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::CatGPT);
+        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
         let enemies = ctx.enemies_in_range(GridPos::new(params.x, params.y), Fixed::from_num(params.range));
         let json = serde_json::to_string_pretty(&enemies.iter().map(|u| {
             serde_json::json!({"id": u.id.0, "kind": format!("{:?}", u.kind), "hp": u.health_current.to_num::<f64>()})
@@ -275,7 +376,7 @@ impl HarnessServer {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let map = sim.map();
-        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::CatGPT);
+        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
         let result = match ctx.nearest_enemy(GridPos::new(params.x, params.y)) {
             Some(u) => serde_json::json!({"id": u.id.0, "kind": format!("{:?}", u.kind), "x": u.pos.x, "y": u.pos.y, "hp": u.health_current.to_num::<f64>()}),
             None => serde_json::json!(null),
@@ -291,7 +392,7 @@ impl HarnessServer {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let map = sim.map();
-        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::CatGPT);
+        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
         let mut all_threats = Vec::new();
         for unit in &snap.my_units {
             let threats = ctx.threats_to(unit);
@@ -311,7 +412,7 @@ impl HarnessServer {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let map = sim.map();
-        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::CatGPT);
+        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
         let mut all_targets = Vec::new();
         for unit in &snap.my_units {
             let targets = ctx.targets_for(unit);
@@ -345,7 +446,7 @@ impl HarnessServer {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let map = sim.map();
-        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::CatGPT);
+        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
         let pos = GridPos::new(params.x, params.y);
         let json = serde_json::json!({
             "terrain": ctx.terrain_at(pos).map(|t| t.to_string()),
@@ -570,7 +671,7 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::CatGPT);
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
             let ids: Vec<EntityId> = params.attacker_ids.into_iter().map(EntityId).collect();
             let result = behaviors::focus_fire(&mut ctx, &ids, EntityId(params.target_id));
             (result, ctx.take_commands())
@@ -590,7 +691,7 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::CatGPT);
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
             let result = behaviors::kite_squad(&mut ctx, &ids);
             (result, ctx.take_commands())
@@ -610,7 +711,7 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::CatGPT);
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
             let result = behaviors::retreat_wounded(&mut ctx, params.threshold);
             (result, ctx.take_commands())
         };
@@ -629,7 +730,7 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::CatGPT);
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
             let result = behaviors::defend_area(&mut ctx, &ids, GridPos::new(params.x, params.y), Fixed::from_num(params.radius));
             (result, ctx.take_commands())
@@ -649,7 +750,7 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::CatGPT);
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
             let ids: Vec<EntityId> = params.raider_ids.into_iter().map(EntityId).collect();
             let result = behaviors::harass_economy(&mut ctx, &ids);
             (result, ctx.take_commands())
@@ -669,7 +770,7 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::CatGPT);
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
             let result = behaviors::focus_weakest(&mut ctx, &ids, Fixed::from_num(params.range));
             (result, ctx.take_commands())
@@ -677,6 +778,259 @@ impl HarnessServer {
         for cmd in commands {
             sim.inject_command(cmd);
         }
+        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+    }
+
+    // =======================================================================
+    // New behavior tools (10)
+    // =======================================================================
+
+    #[tool(description = "Send idle Pawdlers to nearest resource deposit.")]
+    async fn assign_idle_workers(
+        &self,
+        Parameters(params): Parameters<AssignIdleWorkersParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let (result, commands) = {
+            let map = sim.map();
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let result = behaviors::assign_idle_workers(&mut ctx);
+            (result, ctx.take_commands())
+        };
+        for cmd in commands { sim.inject_command(cmd); }
+        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+    }
+
+    #[tool(description = "Group attack-move with ranged positioned behind melee.")]
+    async fn attack_move_group(
+        &self,
+        Parameters(params): Parameters<AttackMoveGroupParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let (result, commands) = {
+            let map = sim.map();
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
+            let result = behaviors::attack_move_group(&mut ctx, &ids, GridPos::new(params.x, params.y));
+            (result, ctx.take_commands())
+        };
+        for cmd in commands { sim.inject_command(cmd); }
+        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+    }
+
+    #[tool(description = "Smart ability activation (validates unit, issues command).")]
+    async fn use_ability(
+        &self,
+        Parameters(params): Parameters<UseAbilityParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let target = match params.target_type.as_str() {
+            "self" => AbilityTarget::SelfCast,
+            "position" => {
+                let x = params.x.ok_or_else(|| McpError::invalid_params("position target requires x", None))?;
+                let y = params.y.ok_or_else(|| McpError::invalid_params("position target requires y", None))?;
+                AbilityTarget::Position(GridPos::new(x, y))
+            }
+            "entity" => {
+                let eid = params.target_entity_id.ok_or_else(|| McpError::invalid_params("entity target requires target_entity_id", None))?;
+                AbilityTarget::Entity(EntityId(eid))
+            }
+            _ => return Err(McpError::invalid_params(format!("Unknown target_type: {}", params.target_type), None)),
+        };
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let (result, commands) = {
+            let map = sim.map();
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let result = behaviors::use_ability(&mut ctx, EntityId(params.unit_id), params.slot, target);
+            (result, ctx.take_commands())
+        };
+        for cmd in commands { sim.inject_command(cmd); }
+        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+    }
+
+    #[tool(description = "Categorize units into melee/ranged/support groups. Returns group IDs.")]
+    async fn split_squads(
+        &self,
+        Parameters(params): Parameters<SplitSquadsParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let json = {
+            let map = sim.map();
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
+            let (melee, ranged, support, result) = behaviors::split_squads(&mut ctx, &ids);
+            serde_json::json!({
+                "melee": melee.iter().map(|e| e.0).collect::<Vec<_>>(),
+                "ranged": ranged.iter().map(|e| e.0).collect::<Vec<_>>(),
+                "support": support.iter().map(|e| e.0).collect::<Vec<_>>(),
+                "description": result.description,
+            })
+        };
+        Ok(CallToolResult::success(vec![Content::text(json.to_string())]))
+    }
+
+    #[tool(description = "Escort units stay near a VIP and engage threats within guard radius.")]
+    async fn protect_unit(
+        &self,
+        Parameters(params): Parameters<ProtectUnitParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let (result, commands) = {
+            let map = sim.map();
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let ids: Vec<EntityId> = params.escort_ids.into_iter().map(EntityId).collect();
+            let radius = Fixed::from_num(params.guard_radius.unwrap_or(5.0));
+            let result = behaviors::protect_unit(&mut ctx, &ids, EntityId(params.vip_id), radius);
+            (result, ctx.take_commands())
+        };
+        for cmd in commands { sim.inject_command(cmd); }
+        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+    }
+
+    #[tool(description = "Position units in ring around enemy target, then attack.")]
+    async fn surround_target(
+        &self,
+        Parameters(params): Parameters<SurroundTargetParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let (result, commands) = {
+            let map = sim.map();
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
+            let radius = Fixed::from_num(params.ring_radius.unwrap_or(3.0));
+            let result = behaviors::surround_target(&mut ctx, &ids, EntityId(params.target_id), radius);
+            (result, ctx.take_commands())
+        };
+        for cmd in commands { sim.inject_command(cmd); }
+        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+    }
+
+    #[tool(description = "Check resources and train unit if affordable.")]
+    async fn auto_produce(
+        &self,
+        Parameters(params): Parameters<AutoProduceParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let kind = params.unit_kind.parse::<UnitKind>()
+            .map_err(|_| McpError::invalid_params(format!("Unknown unit kind: {}", params.unit_kind), None))?;
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let (result, commands) = {
+            let map = sim.map();
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let result = behaviors::auto_produce(&mut ctx, EntityId(params.building_id), kind);
+            (result, ctx.take_commands())
+        };
+        for cmd in commands { sim.inject_command(cmd); }
+        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+    }
+
+    #[tool(description = "Analyze army comp and auto-queue the least-represented combat unit type.")]
+    async fn balanced_production(
+        &self,
+        Parameters(params): Parameters<BalancedProductionParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let (result, commands) = {
+            let map = sim.map();
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let result = behaviors::balanced_production(&mut ctx, EntityId(params.building_id));
+            (result, ctx.take_commands())
+        };
+        for cmd in commands { sim.inject_command(cmd); }
+        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+    }
+
+    #[tool(description = "Build economic infrastructure: FishMarkets near deposits, LitterBoxes for supply.")]
+    async fn expand_economy(
+        &self,
+        Parameters(params): Parameters<ExpandEconomyParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let (result, commands) = {
+            let map = sim.map();
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let result = behaviors::expand_economy(&mut ctx, EntityId(params.builder_id));
+            (result, ctx.take_commands())
+        };
+        for cmd in commands { sim.inject_command(cmd); }
+        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+    }
+
+    #[tool(description = "Split army into main force (70%) + flanking group (30%) for coordinated attack.")]
+    async fn coordinate_assault(
+        &self,
+        Parameters(params): Parameters<CoordinateAssaultParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let (result, commands) = {
+            let map = sim.map();
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
+            let result = behaviors::coordinate_assault(&mut ctx, &ids, GridPos::new(params.target_x, params.target_y));
+            (result, ctx.take_commands())
+        };
+        for cmd in commands { sim.inject_command(cmd); }
+        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+    }
+
+    #[tool(description = "Auto-queue the best available research upgrade at a building.")]
+    async fn research_priority(
+        &self,
+        Parameters(params): Parameters<ResearchPriorityParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let (result, commands) = {
+            let map = sim.map();
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let result = behaviors::research_priority(&mut ctx, EntityId(params.building_id));
+            (result, ctx.take_commands())
+        };
+        for cmd in commands { sim.inject_command(cmd); }
+        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+    }
+
+    #[tool(description = "Position defenses adaptively: melee forward, ranged back, support center.")]
+    async fn adaptive_defense(
+        &self,
+        Parameters(params): Parameters<AdaptiveDefenseParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let (result, commands) = {
+            let map = sim.map();
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
+            let result = behaviors::adaptive_defense(&mut ctx, &ids, GridPos::new(params.center_x, params.center_y), Fixed::from_num(params.radius));
+            (result, ctx.take_commands())
+        };
+        for cmd in commands { sim.inject_command(cmd); }
+        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+    }
+
+    #[tool(description = "Move scout to nearest unvisited waypoint from a list.")]
+    async fn scout_pattern(
+        &self,
+        Parameters(params): Parameters<ScoutPatternParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut sim = self.sim.lock().await;
+        let snap = sim.snapshot(params.player_id);
+        let (result, commands) = {
+            let map = sim.map();
+            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let waypoints: Vec<GridPos> = params.waypoints.iter().map(|wp| GridPos::new(wp.x, wp.y)).collect();
+            let result = behaviors::scout_pattern(&mut ctx, EntityId(params.scout_id), &waypoints);
+            (result, ctx.take_commands())
+        };
+        for cmd in commands { sim.inject_command(cmd); }
         Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
     }
 

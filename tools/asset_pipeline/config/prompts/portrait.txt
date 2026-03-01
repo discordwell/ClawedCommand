@@ -1,0 +1,23 @@
+Create a character portrait for a 2D RTS game with a Redwall-meets-Into-the-Breach art style.
+
+Character: {name}
+Animal: {animal}
+Faction: {faction}
+Role: {role}
+Description: {description}
+
+Specifications:
+- Output size: {width}x{height} pixels (square portrait)
+- Front-facing or 3/4 view, head and upper shoulders visible
+- Expressive face — personality should be immediately readable
+- Clean dark outline (2-3px) around the character
+- Muted, painterly background — a single flat color or simple gradient suggesting the faction's theme
+- Should read clearly as a thumbnail at small sizes (64x64 downscale)
+- {extra_notes}
+
+Portrait-specific rules:
+- This is a UI portrait, NOT an isometric game sprite — use a natural front/3/4 perspective
+- The character should fill most of the frame (no large empty margins)
+- Eyes are the focal point — make them expressive and characterful
+- Include faction-identifying details (armor trim, insignia, accessories) but keep the focus on the face
+- Backgrounds should be simple and non-distracting — a flat color wash or subtle vignette

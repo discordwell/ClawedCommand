@@ -311,6 +311,7 @@ def cmd_add(args):
         "resources": "resource",
         "projectiles": "projectile",
         "ui": "ui",
+        "portraits": "portrait",
     }
     template = template_map.get(category, "unit_static")
 
@@ -365,6 +366,10 @@ def cmd_add(args):
             entry["params"]["frame_count"] = 1
         elif template == "ui":
             entry["params"]["context"] = "HUD overlay"
+        elif template == "portrait":
+            entry["params"]["animal"] = "TODO: animal species"
+            entry["params"]["faction"] = "TODO: faction name"
+            entry["params"]["role"] = "TODO: character role"
 
     catalog[category][name] = entry
     save_catalog(catalog)

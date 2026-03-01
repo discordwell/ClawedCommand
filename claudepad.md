@@ -1,12 +1,11 @@
 # Claudepad - ClawedCommand
 
 ## Session Summaries
-- **2026-02-28T110:00:00Z** — Wet Test Continuation: Ran wet tests after linter changes. Fixed: cc_harness excluded from workspace (rmcp 72 compile errors, added to TDL.md), missing SpiteCarryBuff match arm in stat_modifier_system, incorrect test_supply_cap_from_buildings (Build command needs builder walk, not instant), idle worker GatherResource regression (re-added after linter removed). Linter also committed stale gatherer detection, deposit proximity checks, tuning constants consolidation, campaign system, AI personalities. 355 workspace tests + 10 wet tests pass. All games produce victories (0 violations).
-- **2026-02-28T105:00:00Z** — Campaign System Implementation. Hero system, mission definitions, campaign state machine, dialogue UI, 6 AI personality profiles, prologue mission. 360 tests pass. Pushed as 95464a9.
+- **2026-02-28T130:00:00Z** — Agent Harness Code Review Fixes: Fixed 3 critical issues from code review: (1) added player_id param to all 8+13 MCP tool param structs, (2) replaced all GameMap::new() with sim.map() using scoped block pattern for borrow safety, (3) renamed distance_between→distance_squared_between. Fixed FactionId::CatGPT hardcoding (25 occurrences) to use from_u8(player_id). Fixed economy.rs borrow checker errors. All 238 tests pass (109 cc_core + 35 cc_sim + 89 cc_agent + 5 cc_harness).
+- **2026-02-28T120:00:00Z** — Tiered Agent Tools: Implemented 4-tier tool unlock system (Basic/Tactical/Strategic/Advanced). Created tool_tier.rs, refactored behaviors.rs → behaviors/ module (economy.rs, tactical.rs, strategic.rs), added 10 new behavior primitives. Wired tier-gating into MCP tools, Lua runtime, agent bridge, runner, harness server. 89 cc_agent + 109 cc_core + 5 cc_harness + 80 cc_sim tests pass (1 pre-existing sim failure).
+- **2026-02-28T110:00:00Z** — Wet Test Continuation: Fixed rmcp exclusion, SpiteCarryBuff, supply cap test, idle worker regression. 355 tests + 10 wet tests pass.
+- **2026-02-28T105:00:00Z** — Campaign System Implementation. Hero system, mission definitions, campaign state machine, dialogue UI, 6 AI personality profiles, prologue mission. 360 tests pass.
 - **2026-02-28T99:00:00Z** — Agent Harness Implementation. Extended cc_agent ScriptContext, behaviors.rs with 8 composable primitives, cc_harness crate with HeadlessSim + MCP server. 62 cc_agent + 5 cc_harness tests pass.
-- **2026-02-28T95:00:00Z** — Wet Test Run & Fixes: Ran full wet test suite, found and fixed 3 issues. All seeds produce victories. 296 workspace tests + 10 wet tests pass.
-- **2026-02-28T90:00:00Z** — Wet Test Harness Fixes: Fixed 3 critical issues (dead entity cleanup, elimination counting, AttackMove sight range). 287 workspace tests + 9 wet tests pass.
-- **2026-02-28T85:00:00Z** — Phase 4A: Abilities, Buildings, Tech Tree. 258 tests pass.
 - (older entries moved to oldpad.md)
 ## Key Findings
 - Player wants hybrid control: direct unit micro + AI agent delegation
