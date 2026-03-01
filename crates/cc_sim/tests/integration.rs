@@ -1414,17 +1414,27 @@ fn test_supply_cap_from_buildings() {
 
     let initial_cap = world.resource::<PlayerResources>().players[0].supply_cap;
 
-    // Build a LitterBox (provides +10 supply)
+    // Build a LitterBox (provides +10 supply, build_time = 75 ticks)
     issue_build(&mut world, builder, BuildingKind::LitterBox, GridPos::new(12, 10));
 
     // Builder walks from (10,10) to adjacent (12,10) — ~20 ticks for arrival
     run_ticks(&mut world, &mut schedule, 20);
 
+    // Supply cap should NOT increase yet — building is still under construction
+    let mid_cap = world.resource::<PlayerResources>().players[0].supply_cap;
+    assert_eq!(
+        mid_cap, initial_cap,
+        "LitterBox should NOT add supply cap on placement (still under construction)"
+    );
+
+    // Run enough ticks to complete construction (75 tick build time)
+    run_ticks(&mut world, &mut schedule, 80);
+
     let new_cap = world.resource::<PlayerResources>().players[0].supply_cap;
     assert_eq!(
         new_cap,
         initial_cap + 10,
-        "LitterBox should add 10 supply cap when builder arrives and places it"
+        "LitterBox should add 10 supply cap when construction completes"
     );
 }
 
@@ -2624,5 +2634,184 @@ fn construction_health_scales_during_build() {
     assert!(
         world.get::<UnderConstruction>(entity).is_none(),
         "UnderConstruction component should be removed after completion"
+    );
+}
+
+#[test]
+fn supply_cap_not_granted_during_construction() {
+    // Verifies that supply_cap is deferred to construction completion,
+    // not granted at building spawn time.
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+
+    let initial_cap = world.resource::<PlayerResources>().players[0].supply_cap;
+
+    // Manually spawn a LitterBox under construction (simulating builder_system placement)
+    let bstats = cc_core::building_stats::building_stats(BuildingKind::LitterBox);
+    let starting_hp = bstats.health * Fixed::from_num(0.1f32);
+
+    let entity = world
+        .spawn((
+            Position { world: WorldPos::from_grid(GridPos::new(5, 5)) },
+            Velocity::zero(),
+            GridCell { pos: GridPos::new(5, 5) },
+            Owner { player_id: 0 },
+            Building { kind: BuildingKind::LitterBox },
+            Health { current: starting_hp, max: bstats.health },
+            UnderConstruction {
+                remaining_ticks: bstats.build_time,
+                total_ticks: bstats.build_time,
+            },
+        ))
+        .id();
+
+    // Run a few ticks — construction is in progress
+    run_ticks(&mut world, &mut schedule, 10);
+
+    let mid_cap = world.resource::<PlayerResources>().players[0].supply_cap;
+    assert_eq!(
+        mid_cap, initial_cap,
+        "Supply cap must not increase while building is under construction"
+    );
+
+    // Complete construction (LitterBox build_time = 75)
+    run_ticks(&mut world, &mut schedule, 70);
+
+    // UnderConstruction should be removed now
+    assert!(
+        world.get::<UnderConstruction>(entity).is_none(),
+        "Construction should be complete after 75+ ticks"
+    );
+
+    let final_cap = world.resource::<PlayerResources>().players[0].supply_cap;
+    assert_eq!(
+        final_cap,
+        initial_cap + 10,
+        "Supply cap should increase by 10 when LitterBox construction completes"
+    );
+}
+
+#[test]
+fn build_hq_command_rejected() {
+    // Verifies that the server-side guard rejects GameCommand::Build for HQ buildings.
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let builder = spawn_combat_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Pawdler);
+
+    // Give player plenty of resources
+    world.resource_mut::<PlayerResources>().players[0].food = 9999;
+    world.resource_mut::<PlayerResources>().players[0].gpu_cores = 9999;
+
+    let initial_food = world.resource::<PlayerResources>().players[0].food;
+
+    // Try to build TheBox (HQ) — should be rejected
+    issue_build(&mut world, builder, BuildingKind::TheBox, GridPos::new(12, 10));
+
+    // Run ticks for builder to arrive
+    run_ticks(&mut world, &mut schedule, 30);
+
+    // Resources should NOT be deducted (command was rejected before resource check)
+    let final_food = world.resource::<PlayerResources>().players[0].food;
+    assert_eq!(
+        initial_food, final_food,
+        "Building TheBox should be rejected — resources must not be deducted"
+    );
+
+    // No building should have been placed
+    let building_count = world
+        .query::<&Building>()
+        .iter(&world)
+        .filter(|b| b.kind == BuildingKind::TheBox)
+        .count();
+    assert_eq!(
+        building_count, 0,
+        "No TheBox building should exist — Build command should be rejected"
+    );
+
+    // Builder should not have a BuildOrder
+    assert!(
+        world.get::<BuildOrder>(builder).is_none(),
+        "Builder should not have a BuildOrder for rejected HQ build"
+    );
+}
+
+#[test]
+fn build_all_hq_types_rejected() {
+    // Verifies that ALL faction HQ types are rejected by the server-side guard.
+    let hq_kinds = [
+        BuildingKind::TheBox,
+        BuildingKind::TheParliament,
+        BuildingKind::TheBurrow,
+        BuildingKind::TheSett,
+        BuildingKind::TheGrotto,
+        BuildingKind::TheDumpster,
+    ];
+
+    for hq_kind in hq_kinds {
+        let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+        let builder = spawn_combat_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Pawdler);
+        world.resource_mut::<PlayerResources>().players[0].food = 9999;
+        world.resource_mut::<PlayerResources>().players[0].gpu_cores = 9999;
+
+        issue_build(&mut world, builder, hq_kind, GridPos::new(12, 10));
+        run_ticks(&mut world, &mut schedule, 30);
+
+        let building_count = world
+            .query::<&Building>()
+            .iter(&world)
+            .filter(|b| b.kind == hq_kind)
+            .count();
+        assert_eq!(
+            building_count, 0,
+            "HQ building {hq_kind:?} should be rejected by server-side guard"
+        );
+    }
+}
+
+#[test]
+fn under_construction_building_death_no_supply_cap_reduction() {
+    // Verifies that killing a building still under construction does not
+    // reduce supply_cap (since supply was never granted for it).
+    // Uses a targeted schedule with only cleanup_system to avoid production_system
+    // healing the building back up (production runs before cleanup in the full chain).
+    let mut world = World::new();
+    world.insert_resource(PlayerResources::default());
+    world.insert_resource(cc_sim::resources::SimClock::default());
+
+    // Set initial supply_cap
+    world.resource_mut::<PlayerResources>().players[0].supply_cap = 20;
+
+    // Spawn a LitterBox still under construction with zero HP (killed by enemy)
+    let bstats = cc_core::building_stats::building_stats(BuildingKind::LitterBox);
+
+    let entity = world
+        .spawn((
+            Position { world: WorldPos::from_grid(GridPos::new(5, 5)) },
+            Velocity::zero(),
+            GridCell { pos: GridPos::new(5, 5) },
+            Owner { player_id: 0 },
+            Building { kind: BuildingKind::LitterBox },
+            Health { current: Fixed::ZERO, max: bstats.health },
+            UnderConstruction {
+                remaining_ticks: bstats.build_time,
+                total_ticks: bstats.build_time,
+            },
+        ))
+        .id();
+
+    // Run just cleanup_system (isolated from production_system which would heal it)
+    let mut cleanup_schedule = Schedule::new(FixedUpdate);
+    cleanup_schedule.add_systems(cleanup_system);
+    cleanup_schedule.run(&mut world);
+
+    // Building should be marked Dead
+    assert!(
+        world.get::<Dead>(entity).is_some(),
+        "Building with zero HP should be marked Dead"
+    );
+
+    // Supply cap should NOT decrease — supply was never granted for this building
+    let cap = world.resource::<PlayerResources>().players[0].supply_cap;
+    assert_eq!(
+        cap, 20,
+        "Supply cap should not decrease when under-construction building dies"
     );
 }

@@ -34,7 +34,7 @@ pub fn production_system(
         Option<&RallyPoint>,
         &mut Health,
     )>,
-    _player_resources: ResMut<PlayerResources>,
+    mut player_resources: ResMut<PlayerResources>,
     deposits: Query<(Entity, &Position, &ResourceDeposit), Without<Building>>,
 ) {
     for (entity, building, owner, pos, under_construction, prod_queue, rally, mut health) in
@@ -65,6 +65,16 @@ pub fn production_system(
                 // Construction complete - promote to producer if applicable
                 commands.entity(entity).remove::<UnderConstruction>();
                 let bstats = building_stats(building.kind);
+
+                // Grant supply cap on construction completion (not on build start)
+                if bstats.supply_provided > 0 {
+                    if let Some(pres) = player_resources
+                        .players
+                        .get_mut(owner.player_id as usize)
+                    {
+                        pres.supply_cap += bstats.supply_provided;
+                    }
+                }
                 if !bstats.can_produce.is_empty() {
                     commands
                         .entity(entity)
@@ -248,7 +258,7 @@ pub fn production_system(
 
                     // Apply completed upgrades to newly spawned unit
                     let player_id = owner.player_id as usize;
-                    if let Some(pres) = _player_resources.players.get(player_id) {
+                    if let Some(pres) = player_resources.players.get(player_id) {
                         apply_upgrades_to_new_unit(
                             kind,
                             &pres.completed_upgrades,

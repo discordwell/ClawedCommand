@@ -308,6 +308,12 @@ pub fn process_commands(
                 building_kind,
                 position,
             } => {
+                // Reject attempts to build HQ buildings (TheBox, TheParliament, etc.)
+                // HQs are pre-placed at game start and must not be player-buildable.
+                if building_kind.is_hq() {
+                    continue;
+                }
+
                 // Validate terrain is passable at build site (reject out-of-bounds too)
                 let Some(terrain) = map_res.map.terrain_at(position) else {
                     continue; // Out of bounds

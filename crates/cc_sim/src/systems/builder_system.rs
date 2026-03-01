@@ -65,7 +65,11 @@ pub fn builder_system(
                 }
             }
 
-            if bstats.supply_provided > 0 {
+            // Supply cap for buildings with construction time is granted on
+            // construction completion in production_system, not on build start.
+            // Pre-built buildings (build_time == 0) grant supply immediately since
+            // they never go through the construction pipeline.
+            if bstats.build_time == 0 && bstats.supply_provided > 0 {
                 if let Some(pres) = player_resources
                     .players
                     .get_mut(owner.player_id as usize)

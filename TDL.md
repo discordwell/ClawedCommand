@@ -80,7 +80,7 @@
 - [ ] GravitationalChonk: don't pull through buildings (needs pathfinding query for line-of-sight)
 - [ ] GravitationalPullCommand: add map bounds clamping (unlike RevulsionAoeCommand, currently can pull units off-map)
 - [ ] Corroded stack decay guard: add `remaining_ticks > 0` check before `% 80 == 0` (fires spuriously on expiry tick)
-- [ ] Supply cap should be granted on construction completion, not on build start (LitterBox +10 cap immediately on placement)
+- [x] Supply cap should be granted on construction completion, not on build start (LitterBox +10 cap immediately on placement)
 - [ ] ScratchingPost research queue not shown in building_info panel (only shows generic text)
 
 ## Code Quality (from code review)
@@ -117,8 +117,8 @@
 - [ ] **HIGH**: Q/W training hotkeys conflict with WASD camera pan — pressing W to train slot 1 also pans camera upward. Need to suppress camera pan when a producer building is selected and Q/W/E/R are pressed, or use different training hotkeys
 - [ ] Consolidate `LOCAL_PLAYER` constant (duplicated 10x across cc_client with inconsistent types: u8 vs usize)
 - [ ] Gate `resource_hud` behind `#[cfg(not(feature = "native"))]` to prevent duplicate display with egui `resource_bar` when native feature is active
-- [ ] Supply cap is granted at building spawn (builder arrival), not construction completion — consider deferring to `construction_system` completion
-- [ ] No server-side guard against `GameCommand::Build { building_kind: TheBox }` — only protected by client hotkey menu omission
+- [x] Supply cap is granted at building spawn (builder arrival), not construction completion — consider deferring to `construction_system` completion
+- [x] No server-side guard against `GameCommand::Build { building_kind: TheBox }` — only protected by client hotkey menu omission
 - [ ] Add visual indicator for BuildMenu mode (show available sub-keys on screen)
 
 ## From AI FSM Code Review

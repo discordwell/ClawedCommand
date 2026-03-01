@@ -4,8 +4,8 @@ use cc_core::abilities::AbilityId;
 use cc_core::building_stats::building_stats;
 use cc_core::commands::EntityId;
 use cc_core::components::{
-    AbilitySlots, Building, Dead, HairballObstacle, Health, NineLivesTracker, Owner, UnitType,
-    VisibleThroughFog,
+    AbilitySlots, Building, Dead, HairballObstacle, Health, NineLivesTracker, Owner,
+    UnderConstruction, UnitType, VisibleThroughFog,
 };
 use cc_core::math::FIXED_ZERO;
 use cc_core::status_effects::StatusEffectId;
@@ -31,6 +31,7 @@ pub fn cleanup_system(
             Option<&Building>,
             Option<&AbilitySlots>,
             Option<&mut NineLivesTracker>,
+            Option<&UnderConstruction>,
         ),
         Without<Dead>,
     >,
@@ -39,7 +40,7 @@ pub fn cleanup_system(
     mut hairballs: Query<(Entity, &mut HairballObstacle)>,
     mut vis_fog: Query<(Entity, &mut VisibleThroughFog)>,
 ) {
-    for (entity, mut health, owner, unit_type, building, slots, nine_lives) in
+    for (entity, mut health, owner, unit_type, building, slots, nine_lives, under_construction) in
         newly_dead.iter_mut()
     {
         if health.current <= FIXED_ZERO {
@@ -89,11 +90,16 @@ pub fn cleanup_system(
                         let supply_cost = base_stats(ut.kind).supply_cost;
                         pres.supply = pres.supply.saturating_sub(supply_cost);
                     }
+                    // Only reclaim supply_cap for completed buildings (not under construction).
+                    // Supply cap is granted on construction completion, so buildings
+                    // that die while still under construction never had supply granted.
                     if let Some(bld) = building {
-                        let supply_provided = building_stats(bld.kind).supply_provided;
-                        if supply_provided > 0 {
-                            pres.supply_cap = pres.supply_cap.saturating_sub(supply_provided);
-                            pres.supply = pres.supply.min(pres.supply_cap);
+                        if under_construction.is_none() {
+                            let supply_provided = building_stats(bld.kind).supply_provided;
+                            if supply_provided > 0 {
+                                pres.supply_cap = pres.supply_cap.saturating_sub(supply_provided);
+                                pres.supply = pres.supply.min(pres.supply_cap);
+                            }
                         }
                     }
                 }
