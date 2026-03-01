@@ -110,18 +110,7 @@ pub fn generate_unit_sprites(
     }
 
     commands.insert_resource(UnitSprites {
-        sprites: [
-            handles[0].clone(),
-            handles[1].clone(),
-            handles[2].clone(),
-            handles[3].clone(),
-            handles[4].clone(),
-            handles[5].clone(),
-            handles[6].clone(),
-            handles[7].clone(),
-            handles[8].clone(),
-            handles[9].clone(),
-        ],
+        sprites: handles.try_into().expect("exactly 10 unit sprites"),
         art_loaded: any_art_loaded,
     });
 }
