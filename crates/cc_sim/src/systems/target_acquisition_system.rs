@@ -20,6 +20,8 @@ pub fn target_acquisition_system(
             Option<&AttackTarget>,
             Option<&HoldPosition>,
             Option<&AttackMoveTarget>,
+            Option<&MoveTarget>,
+            Option<&ChasingTarget>,
         ),
         (With<UnitType>, Without<Dead>),
     >,
@@ -28,7 +30,7 @@ pub fn target_acquisition_system(
         (Or<(With<UnitType>, With<Building>)>, Without<Dead>),
     >,
 ) {
-    for (entity, pos, owner, stats, current_target, hold, atk_move) in units.iter() {
+    for (entity, pos, owner, stats, current_target, hold, atk_move, move_target, chasing) in units.iter() {
         // Check if current target is still alive
         if let Some(target) = current_target {
             let target_entity = Entity::from_bits(target.target.0);
@@ -39,6 +41,13 @@ pub fn target_acquisition_system(
                 // Already have a valid target
                 continue;
             }
+        }
+
+        // Units executing a pure Move command (right-click ground) should not
+        // auto-acquire targets. Only idle, hold-position, attack-move, and
+        // chasing units should scan for enemies.
+        if move_target.is_some() && atk_move.is_none() && chasing.is_none() {
+            continue;
         }
 
         // Determine scan radius: weapon range for idle/hold, sight range for AttackMove

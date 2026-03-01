@@ -2839,3 +2839,54 @@ fn test_resume_from_paused() {
         "Sim should resume ticking after Paused -> Playing"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Move vs AttackMove target acquisition tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn move_command_does_not_auto_acquire() {
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    // Place our unit and an enemy right next to each other
+    let unit = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    let enemy = spawn_combat_unit(&mut world, GridPos::new(6, 5), 1, UnitKind::Chonk);
+
+    let enemy_initial_hp = world.get::<Health>(enemy).unwrap().current;
+
+    // Issue a pure Move command past the enemy
+    issue_move(&mut world, &[unit], GridPos::new(15, 5));
+    run_ticks(&mut world, &mut schedule, 80);
+
+    // Enemy should NOT have taken damage — unit should walk past without fighting
+    let enemy_hp = world.get::<Health>(enemy).unwrap().current;
+    assert_eq!(
+        enemy_hp, enemy_initial_hp,
+        "Move-commanded unit should NOT auto-acquire and attack enemies"
+    );
+
+    // Unit should NOT have an AttackTarget
+    assert!(
+        world.get::<AttackTarget>(unit).is_none(),
+        "Move-commanded unit should not have AttackTarget"
+    );
+}
+
+#[test]
+fn idle_unit_still_auto_acquires() {
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    // Place idle unit and enemy adjacent (within melee range)
+    let _unit = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    let enemy = spawn_combat_unit(&mut world, GridPos::new(6, 5), 1, UnitKind::Chonk);
+
+    let enemy_initial_hp = world.get::<Health>(enemy).unwrap().current;
+
+    // No command issued — unit is idle
+    run_ticks(&mut world, &mut schedule, 30);
+
+    // Idle unit should auto-acquire and deal damage
+    let enemy_hp = world.get::<Health>(enemy).unwrap().current;
+    assert!(
+        enemy_hp < enemy_initial_hp,
+        "Idle unit should auto-acquire nearby enemy and deal damage"
+    );
+}
