@@ -1119,6 +1119,7 @@ mod tests {
                 under_construction: false,
                 construction_progress: 1.0,
                 production_queue: vec![],
+                research_queue: vec![],
             }],
             resource_deposits: vec![],
             my_resources: PlayerResourceState::default(),

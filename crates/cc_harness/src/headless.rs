@@ -200,7 +200,12 @@ impl HeadlessSim {
     /// Build a game state snapshot for a given player.
     pub fn snapshot(&mut self, player_id: u8) -> GameStateSnapshot {
         use cc_core::math::Fixed;
-        use cc_agent::snapshot::{UnitSnapshot, BuildingSnapshot, ResourceSnapshot};
+        use cc_core::abilities::unit_abilities;
+        use cc_core::status_effects::StatusEffects;
+        use cc_agent::snapshot::{
+            UnitSnapshot, BuildingSnapshot, ResourceSnapshot,
+            StatusEffectSnapshot, AbilitySnapshot,
+        };
 
         // Clone resources upfront to release borrows before queries
         let (width, height) = {
@@ -218,13 +223,18 @@ impl HeadlessSim {
                 Entity, &Position, &Owner, &UnitType, &Health, &MovementSpeed,
                 Option<&AttackStats>, Option<&AttackTypeMarker>,
                 Option<&MoveTarget>, Option<&AttackTarget>, Option<&Path>,
-                Option<&Gathering>, Option<&ChasingTarget>,
-                Option<&AttackMoveTarget>, Option<&Dead>,
+                Option<&Gathering>,
+                (
+                    Option<&ChasingTarget>,
+                    Option<&AttackMoveTarget>, Option<&Dead>,
+                    Option<&StatusEffects>, Option<&AbilitySlots>,
+                ),
             )>();
             for (entity, pos, owner, unit_type, health, speed,
                  attack_stats, attack_type_marker,
                  move_target, attack_target, path,
-                 gathering, chasing, attack_move, dead)
+                 gathering,
+                 (chasing, attack_move, dead, status_effects, ability_slots))
                 in query.iter(&self.world)
             {
                 let is_moving = move_target.is_some() || path.is_some() || chasing.is_some();
@@ -239,6 +249,43 @@ impl HeadlessSim {
                 let atk_type = attack_type_marker
                     .map(|m| m.attack_type)
                     .unwrap_or(AttackType::Melee);
+
+                let se_snaps: Vec<StatusEffectSnapshot> = status_effects
+                    .map(|se| {
+                        se.effects
+                            .iter()
+                            .filter(|e| e.remaining_ticks > 0)
+                            .map(|e| StatusEffectSnapshot {
+                                effect_type: format!("{:?}", e.effect),
+                                remaining_ticks: e.remaining_ticks,
+                                stacks: e.stacks,
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default();
+
+                let ability_snaps: Vec<AbilitySnapshot> = ability_slots
+                    .map(|slots| {
+                        slots.slots.iter().enumerate().map(|(i, state)| {
+                            AbilitySnapshot {
+                                slot: i as u8,
+                                id: format!("{:?}", state.id),
+                                cooldown_remaining: state.cooldown_remaining,
+                                ready: state.cooldown_remaining == 0,
+                            }
+                        }).collect()
+                    })
+                    .unwrap_or_else(|| {
+                        let ids = unit_abilities(unit_type.kind);
+                        ids.iter().enumerate().map(|(i, id)| {
+                            AbilitySnapshot {
+                                slot: i as u8,
+                                id: format!("{:?}", id),
+                                cooldown_remaining: 0,
+                                ready: true,
+                            }
+                        }).collect()
+                    });
 
                 let snap = UnitSnapshot {
                     id: EntityId(entity.to_bits()),
@@ -255,10 +302,11 @@ impl HeadlessSim {
                     attack_type: atk_type,
                     is_moving,
                     is_attacking,
-                    in_combat: attack_target.is_some(),
                     is_idle,
                     is_dead,
                     is_gathering: gathering.is_some(),
+                    status_effects: se_snaps,
+                    abilities: ability_snaps,
                 };
 
                 if owner.player_id == player_id {
@@ -276,8 +324,9 @@ impl HeadlessSim {
             let mut query = self.world.query::<(
                 Entity, &Position, &Owner, &Building, &Health,
                 Option<&UnderConstruction>, Option<&ProductionQueue>,
+                Option<&ResearchQueue>,
             )>();
-            for (entity, pos, owner, building, health, under_construction, production_queue)
+            for (entity, pos, owner, building, health, under_construction, production_queue, research_queue)
                 in query.iter(&self.world)
             {
                 let (is_constructing, progress) = under_construction
@@ -292,6 +341,10 @@ impl HeadlessSim {
                     .map(|pq| pq.queue.iter().map(|(kind, _)| *kind).collect())
                     .unwrap_or_default();
 
+                let rq: Vec<String> = research_queue
+                    .map(|rq| rq.queue.iter().map(|(upgrade, _)| format!("{}", upgrade)).collect())
+                    .unwrap_or_default();
+
                 let snap = BuildingSnapshot {
                     id: EntityId(entity.to_bits()),
                     kind: building.kind,
@@ -302,6 +355,7 @@ impl HeadlessSim {
                     under_construction: is_constructing,
                     construction_progress: progress,
                     production_queue: queue,
+                    research_queue: rq,
                 };
 
                 if owner.player_id == player_id {
@@ -498,5 +552,184 @@ mod tests {
         assert_eq!(snap1.enemy_units.len(), 1);
         assert_eq!(snap1.my_units[0].kind, UnitKind::Chonk);
         assert_eq!(snap1.enemy_units[0].kind, UnitKind::Hisser);
+    }
+
+    #[test]
+    fn snapshot_captures_status_effects_from_ecs() {
+        use cc_core::status_effects::{StatusEffects, StatusInstance, StatusEffectId};
+
+        let mut sim = HeadlessSim::new(32, 32);
+        let entity_bits = sim.spawn_unit(UnitKind::Hisser, GridPos::new(5, 5), 0);
+
+        // Manually add StatusEffects component to the entity
+        let entity = Entity::from_bits(entity_bits);
+        let mut se = StatusEffects::default();
+        se.effects.push(StatusInstance {
+            effect: StatusEffectId::Corroded,
+            remaining_ticks: 20,
+            stacks: 3,
+            source: EntityId(0),
+        });
+        se.effects.push(StatusInstance {
+            effect: StatusEffectId::Stunned,
+            remaining_ticks: 5,
+            stacks: 1,
+            source: EntityId(0),
+        });
+        // Also add an expired effect that should be filtered out
+        se.effects.push(StatusInstance {
+            effect: StatusEffectId::Zoomies,
+            remaining_ticks: 0,
+            stacks: 1,
+            source: EntityId(0),
+        });
+        sim.world.entity_mut(entity).insert(se);
+
+        let snap = sim.snapshot(0);
+        assert_eq!(snap.my_units.len(), 1);
+        let unit = &snap.my_units[0];
+        // Only 2 active effects (Zoomies expired with 0 ticks)
+        assert_eq!(unit.status_effects.len(), 2);
+        assert_eq!(unit.status_effects[0].effect_type, "Corroded");
+        assert_eq!(unit.status_effects[0].remaining_ticks, 20);
+        assert_eq!(unit.status_effects[0].stacks, 3);
+        assert_eq!(unit.status_effects[1].effect_type, "Stunned");
+    }
+
+    #[test]
+    fn snapshot_empty_status_effects_without_component() {
+        let mut sim = HeadlessSim::new(32, 32);
+        sim.spawn_unit(UnitKind::Hisser, GridPos::new(5, 5), 0);
+
+        let snap = sim.snapshot(0);
+        assert_eq!(snap.my_units.len(), 1);
+        // No StatusEffects component => empty vec
+        assert!(snap.my_units[0].status_effects.is_empty());
+    }
+
+    #[test]
+    fn snapshot_captures_ability_slots_from_ecs() {
+        let mut sim = HeadlessSim::new(32, 32);
+        let entity_bits = sim.spawn_unit(UnitKind::Hisser, GridPos::new(5, 5), 0);
+
+        // Add AbilitySlots component
+        let entity = Entity::from_bits(entity_bits);
+        let mut ability_slots = AbilitySlots::from_abilities(
+            cc_core::abilities::unit_abilities(UnitKind::Hisser),
+        );
+        // Put slot 1 on cooldown
+        ability_slots.slots[1].cooldown_remaining = 25;
+        sim.world.entity_mut(entity).insert(ability_slots);
+
+        let snap = sim.snapshot(0);
+        assert_eq!(snap.my_units.len(), 1);
+        let unit = &snap.my_units[0];
+        assert_eq!(unit.abilities.len(), 3);
+        // Slot 0: ready
+        assert_eq!(unit.abilities[0].slot, 0);
+        assert_eq!(unit.abilities[0].id, "CorrosiveSpit");
+        assert!(unit.abilities[0].ready);
+        assert_eq!(unit.abilities[0].cooldown_remaining, 0);
+        // Slot 1: on cooldown
+        assert_eq!(unit.abilities[1].slot, 1);
+        assert_eq!(unit.abilities[1].id, "DisgustMortar");
+        assert!(!unit.abilities[1].ready);
+        assert_eq!(unit.abilities[1].cooldown_remaining, 25);
+        // Slot 2: ready
+        assert_eq!(unit.abilities[2].slot, 2);
+        assert!(unit.abilities[2].ready);
+    }
+
+    #[test]
+    fn snapshot_fallback_abilities_without_component() {
+        let mut sim = HeadlessSim::new(32, 32);
+        sim.spawn_unit(UnitKind::Hisser, GridPos::new(5, 5), 0);
+
+        let snap = sim.snapshot(0);
+        assert_eq!(snap.my_units.len(), 1);
+        let unit = &snap.my_units[0];
+        // Without AbilitySlots component, falls back to unit_abilities lookup
+        assert_eq!(unit.abilities.len(), 3);
+        assert_eq!(unit.abilities[0].id, "CorrosiveSpit");
+        assert_eq!(unit.abilities[1].id, "DisgustMortar");
+        assert_eq!(unit.abilities[2].id, "Misinformation");
+        // All should be ready (default)
+        assert!(unit.abilities.iter().all(|a| a.ready));
+    }
+
+    #[test]
+    fn snapshot_captures_research_queue_from_ecs() {
+        let mut sim = HeadlessSim::new(32, 32);
+        let building_bits = sim.spawn_building(BuildingKind::ScratchingPost, GridPos::new(10, 10), 0);
+
+        // Add ResearchQueue to the building
+        let entity = Entity::from_bits(building_bits);
+        let mut rq = ResearchQueue::default();
+        rq.queue.push_back((UpgradeType::SharperClaws, 100));
+        rq.queue.push_back((UpgradeType::ThickerFur, 150));
+        sim.world.entity_mut(entity).insert(rq);
+
+        let snap = sim.snapshot(0);
+        assert_eq!(snap.my_buildings.len(), 1);
+        let bld = &snap.my_buildings[0];
+        assert_eq!(bld.research_queue.len(), 2);
+        assert_eq!(bld.research_queue[0], "SharperClaws");
+        assert_eq!(bld.research_queue[1], "ThickerFur");
+    }
+
+    #[test]
+    fn snapshot_empty_research_queue_without_component() {
+        let mut sim = HeadlessSim::new(32, 32);
+        sim.spawn_building(BuildingKind::ScratchingPost, GridPos::new(10, 10), 0);
+
+        let snap = sim.snapshot(0);
+        assert_eq!(snap.my_buildings.len(), 1);
+        assert!(snap.my_buildings[0].research_queue.is_empty());
+    }
+
+    #[test]
+    fn get_unit_details_via_snapshot() {
+        use cc_core::status_effects::{StatusEffects, StatusInstance, StatusEffectId};
+
+        let mut sim = HeadlessSim::new(32, 32);
+        let entity_bits = sim.spawn_unit(UnitKind::Chonk, GridPos::new(8, 8), 0);
+
+        // Add status effects and ability slots
+        let entity = Entity::from_bits(entity_bits);
+        let mut se = StatusEffects::default();
+        se.effects.push(StatusInstance {
+            effect: StatusEffectId::LoafModeActive,
+            remaining_ticks: 50,
+            stacks: 1,
+            source: EntityId(0),
+        });
+        let ability_slots = AbilitySlots::from_abilities(
+            cc_core::abilities::unit_abilities(UnitKind::Chonk),
+        );
+        sim.world.entity_mut(entity).insert((se, ability_slots));
+
+        let snap = sim.snapshot(0);
+        let unit = snap.unit_by_id(EntityId(entity_bits)).unwrap();
+        assert_eq!(unit.kind, UnitKind::Chonk);
+        assert_eq!(unit.status_effects.len(), 1);
+        assert_eq!(unit.status_effects[0].effect_type, "LoafModeActive");
+        assert_eq!(unit.abilities.len(), 3);
+        assert_eq!(unit.abilities[0].id, "GravitationalChonk");
+    }
+
+    #[test]
+    fn completed_upgrades_accessible_via_player_resources() {
+        let mut sim = HeadlessSim::new(32, 32);
+
+        // Add a completed upgrade
+        sim.world
+            .resource_mut::<PlayerResources>()
+            .players[0]
+            .completed_upgrades
+            .insert(UpgradeType::SharperClaws);
+
+        let res = sim.player_resources(0);
+        assert!(res.completed_upgrades.contains(&UpgradeType::SharperClaws));
+        assert!(!res.completed_upgrades.contains(&UpgradeType::ThickerFur));
     }
 }

@@ -9,10 +9,11 @@ use std::collections::HashSet;
 use bevy::prelude::*;
 
 use cc_core::components::{
-    AttackMoveTarget, AttackStats, AttackTarget, AttackTypeMarker, Building, ChasingTarget, Dead,
-    Gathering, Health, MoveTarget, MovementSpeed, Owner, Path, Position, ProductionQueue,
-    ResourceDeposit, UnitType, UnderConstruction,
+    AbilitySlots, AttackMoveTarget, AttackStats, AttackTarget, AttackTypeMarker, Building,
+    ChasingTarget, Dead, Gathering, Health, MoveTarget, MovementSpeed, Owner, Path, Position,
+    ProductionQueue, ResearchQueue, ResourceDeposit, UnitType, UnderConstruction,
 };
+use cc_core::status_effects::StatusEffects;
 use cc_sim::resources::{MapResource, PlayerResources, SimClock};
 
 use crate::agent_bridge::{AgentBridge, AgentRequest, AgentSource};
@@ -65,9 +66,13 @@ pub fn agent_decision_system(
             Option<&AttackTarget>,
             Option<&Path>,
             Option<&Gathering>,
-            Option<&ChasingTarget>,
-            Option<&AttackMoveTarget>,
-            Option<&Dead>,
+            (
+                Option<&ChasingTarget>,
+                Option<&AttackMoveTarget>,
+                Option<&Dead>,
+                Option<&StatusEffects>,
+                Option<&AbilitySlots>,
+            ),
         ),
         With<UnitType>,
     >,
@@ -80,6 +85,7 @@ pub fn agent_decision_system(
             &Health,
             Option<&UnderConstruction>,
             Option<&ProductionQueue>,
+            Option<&ResearchQueue>,
         ),
         With<Building>,
     >,
@@ -98,15 +104,15 @@ pub fn agent_decision_system(
     let unit_data: Vec<_> = units
         .iter()
         .map(
-            |(e, pos, own, ut, hp, spd, atk, atk_type, mt, at, path, gath, chase, amove, dead)| {
-                (e, pos, own, ut, hp, spd, atk, atk_type, mt, at, path, gath, chase, amove, dead)
+            |(e, pos, own, ut, hp, spd, atk, atk_type, mt, at, path, gath, (chase, amove, dead, se, abs))| {
+                (e, pos, own, ut, hp, spd, atk, atk_type, mt, at, path, gath, chase, amove, dead, se, abs)
             },
         )
         .collect();
 
     let building_data: Vec<_> = buildings
         .iter()
-        .map(|(e, pos, own, bld, hp, uc, pq)| (e, pos, own, bld, hp, uc, pq))
+        .map(|(e, pos, own, bld, hp, uc, pq, rq)| (e, pos, own, bld, hp, uc, pq, rq))
         .collect();
 
     let deposit_data: Vec<_> = deposits
