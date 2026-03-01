@@ -589,3 +589,270 @@ fn entrenched_status_modifies_stats() {
         "Entrenched should reduce damage taken"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Bug fix verification tests
+// ---------------------------------------------------------------------------
+
+/// Bug 1: Hop should have non-zero duration (was 0, now 15).
+#[test]
+fn bug_fix_hop_duration_nonzero() {
+    let def = cc_core::abilities::ability_def(cc_core::abilities::AbilityId::Hop);
+    assert!(
+        def.duration_ticks > 0,
+        "Hop should have non-zero duration_ticks, got {}",
+        def.duration_ticks
+    );
+}
+
+/// Bug 2: Transfusion should have non-zero cooldown (was 0, now 80).
+#[test]
+fn bug_fix_transfusion_has_cooldown() {
+    let def = cc_core::abilities::ability_def(cc_core::abilities::AbilityId::Transfusion);
+    assert!(
+        def.cooldown_ticks > 0,
+        "Transfusion should have non-zero cooldown_ticks, got {}",
+        def.cooldown_ticks
+    );
+}
+
+/// Bug 3: MiasmaTrail toggle should apply DamageBuff via ability_effect_system.
+#[test]
+fn bug_fix_miasma_trail_gives_damage_buff() {
+    let (mut world, mut schedule) = make_sim();
+    let plaguetail = spawn_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Plaguetail);
+
+    // Slot 1 = MiasmaTrail (Toggle, 0 GPU)
+    issue_ability(&mut world, plaguetail, 1);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let effects = world.get::<StatusEffects>(plaguetail).unwrap();
+    assert!(
+        effects.has(StatusEffectId::DamageBuff),
+        "Plaguetail should have DamageBuff from MiasmaTrail toggle"
+    );
+}
+
+/// Bug 4: Omen should have non-zero range in AbilityDef.
+#[test]
+fn bug_fix_omen_has_range() {
+    let def = cc_core::abilities::ability_def(cc_core::abilities::AbilityId::Omen);
+    assert!(
+        def.range > Fixed::ZERO,
+        "Omen should have non-zero range"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// New ability implementation spot checks
+// ---------------------------------------------------------------------------
+
+/// Clawed: BurrowUndermine (Tunneler slot 1) stuns nearby enemies.
+#[test]
+fn clawed_burrow_undermine_stuns() {
+    let (mut world, mut schedule) = make_sim();
+    let tunneler = spawn_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Tunneler);
+    let enemy = spawn_unit(&mut world, GridPos::new(11, 10), 1, UnitKind::Nuisance);
+
+    give_gpu(&mut world, 0, 50);
+    // Slot 1 = BurrowUndermine
+    issue_ability(&mut world, tunneler, 1);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let effects = world.get::<StatusEffects>(enemy).unwrap();
+    assert!(
+        effects.has(StatusEffectId::Stunned),
+        "Enemy should be Stunned by BurrowUndermine"
+    );
+}
+
+/// Clawed: WhiskernetRelay (WarrenMarshal slot 2) gives DamageBuff.
+#[test]
+fn clawed_whiskernet_relay_gives_damage_buff() {
+    let (mut world, mut schedule) = make_sim();
+    let marshal = spawn_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::WarrenMarshal);
+
+    give_gpu(&mut world, 0, 100);
+    // Slot 2 = WhiskernetRelay
+    issue_ability(&mut world, marshal, 2);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let effects = world.get::<StatusEffects>(marshal).unwrap();
+    assert!(
+        effects.has(StatusEffectId::DamageBuff),
+        "WarrenMarshal should have DamageBuff from WhiskernetRelay"
+    );
+}
+
+/// Seekers: FortressProtocol (Wardenmother slot 1) gives ArmorBuff.
+#[test]
+fn seekers_fortress_protocol_gives_armor_buff() {
+    let (mut world, mut schedule) = make_sim();
+    let wardenmother = spawn_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Wardenmother);
+
+    give_gpu(&mut world, 0, 50);
+    // Slot 1 = FortressProtocol
+    issue_ability(&mut world, wardenmother, 1);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let effects = world.get::<StatusEffects>(wardenmother).unwrap();
+    assert!(
+        effects.has(StatusEffectId::ArmorBuff),
+        "Wardenmother should have ArmorBuff from FortressProtocol"
+    );
+}
+
+/// Seekers: Lockjaw (Sapjaw slot 2) stuns nearby enemy.
+#[test]
+fn seekers_lockjaw_stuns() {
+    let (mut world, mut schedule) = make_sim();
+    let sapjaw = spawn_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Sapjaw);
+    let enemy = spawn_unit(&mut world, GridPos::new(11, 10), 1, UnitKind::Nuisance);
+
+    // Slot 2 = Lockjaw (0 GPU)
+    issue_ability(&mut world, sapjaw, 2);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let effects = world.get::<StatusEffects>(enemy).unwrap();
+    assert!(
+        effects.has(StatusEffectId::Stunned),
+        "Enemy should be Stunned by Lockjaw"
+    );
+}
+
+/// Murder: MimicCall (MurderScrounger slot 2) disorients enemies.
+#[test]
+fn murder_mimic_call_disorients() {
+    let (mut world, mut schedule) = make_sim();
+    let scrounger = spawn_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::MurderScrounger);
+    let enemy = spawn_unit(&mut world, GridPos::new(11, 10), 1, UnitKind::Nuisance);
+
+    give_gpu(&mut world, 0, 50);
+    // Slot 2 = MimicCall
+    issue_ability(&mut world, scrounger, 2);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let effects = world.get::<StatusEffects>(enemy).unwrap();
+    assert!(
+        effects.has(StatusEffectId::Disoriented),
+        "Enemy should be Disoriented by MimicCall"
+    );
+}
+
+/// Murder: SilentStrike (Dusktalon slot 1) deals AoE damage.
+#[test]
+fn murder_silent_strike_deals_damage() {
+    let (mut world, mut schedule) = make_sim();
+    let dusktalon = spawn_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Dusktalon);
+    let enemy = spawn_unit(&mut world, GridPos::new(11, 10), 1, UnitKind::Nuisance);
+
+    world.get_mut::<Health>(enemy).unwrap().current = Fixed::from_num(500);
+    world.get_mut::<Health>(enemy).unwrap().max = Fixed::from_num(500);
+
+    // Slot 1 = SilentStrike (0 GPU)
+    issue_ability(&mut world, dusktalon, 1);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let hp = world.get::<Health>(enemy).unwrap().current;
+    assert!(
+        hp < Fixed::from_num(500),
+        "Enemy should take damage from SilentStrike, HP={hp}"
+    );
+}
+
+/// LLAMA: JuryRig (Bandit slot 1) gives ArmorBuff.
+#[test]
+fn llama_jury_rig_gives_armor_buff() {
+    let (mut world, mut schedule) = make_sim();
+    let bandit = spawn_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Bandit);
+
+    // Slot 1 = JuryRig (0 GPU)
+    issue_ability(&mut world, bandit, 1);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let effects = world.get::<StatusEffects>(bandit).unwrap();
+    assert!(
+        effects.has(StatusEffectId::ArmorBuff),
+        "Bandit should have ArmorBuff from JuryRig"
+    );
+}
+
+/// LLAMA: FrankensteinProtocol (JunkyardKing slot 1) deals AoE damage.
+#[test]
+fn llama_frankenstein_protocol_deals_damage() {
+    let (mut world, mut schedule) = make_sim();
+    let king = spawn_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::JunkyardKing);
+    let enemy = spawn_unit(&mut world, GridPos::new(11, 10), 1, UnitKind::Nuisance);
+
+    world.get_mut::<Health>(enemy).unwrap().current = Fixed::from_num(500);
+    world.get_mut::<Health>(enemy).unwrap().max = Fixed::from_num(500);
+
+    give_gpu(&mut world, 0, 50);
+    // Slot 1 = FrankensteinProtocol
+    issue_ability(&mut world, king, 1);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let hp = world.get::<Health>(enemy).unwrap().current;
+    assert!(
+        hp < Fixed::from_num(500),
+        "Enemy should take damage from FrankensteinProtocol, HP={hp}"
+    );
+}
+
+/// Croak: Transfusion (Broodmother slot 1) applies Waterlogged on enemies.
+#[test]
+fn croak_transfusion_waterlogged() {
+    let (mut world, mut schedule) = make_sim();
+    let broodmother = spawn_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Broodmother);
+    let enemy = spawn_unit(&mut world, GridPos::new(11, 10), 1, UnitKind::Nuisance);
+
+    // Slot 1 = Transfusion (0 GPU)
+    issue_ability(&mut world, broodmother, 1);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let effects = world.get::<StatusEffects>(enemy).unwrap();
+    assert!(
+        effects.has(StatusEffectId::Waterlogged),
+        "Enemy should be Waterlogged from Transfusion"
+    );
+}
+
+/// Croak: GrokProtocol (MurkCommander slot 1) gives DamageBuff + SpeedBuff.
+#[test]
+fn croak_grok_protocol_gives_dual_buff() {
+    let (mut world, mut schedule) = make_sim();
+    let commander = spawn_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::MurkCommander);
+
+    give_gpu(&mut world, 0, 50);
+    // Slot 1 = GrokProtocol
+    issue_ability(&mut world, commander, 1);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let effects = world.get::<StatusEffects>(commander).unwrap();
+    assert!(
+        effects.has(StatusEffectId::DamageBuff),
+        "MurkCommander should have DamageBuff from GrokProtocol"
+    );
+    assert!(
+        effects.has(StatusEffectId::SpeedBuff),
+        "MurkCommander should have SpeedBuff from GrokProtocol"
+    );
+}
+
+/// Croak: TongueLash (Leapfrog slot 1) stuns enemies.
+#[test]
+fn croak_tongue_lash_stuns() {
+    let (mut world, mut schedule) = make_sim();
+    let leapfrog = spawn_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Leapfrog);
+    let enemy = spawn_unit(&mut world, GridPos::new(11, 10), 1, UnitKind::Nuisance);
+
+    // Slot 1 = TongueLash (0 GPU)
+    issue_ability(&mut world, leapfrog, 1);
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let effects = world.get::<StatusEffects>(enemy).unwrap();
+    assert!(
+        effects.has(StatusEffectId::Stunned),
+        "Enemy should be Stunned by TongueLash"
+    );
+}

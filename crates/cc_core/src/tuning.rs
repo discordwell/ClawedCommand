@@ -141,8 +141,20 @@ pub const SHORT_CIRCUIT_SILENCE_TICKS: u32 = 30;
 /// SonicSpit (Shrieker/The Clawed): AoE stun duration (ticks).
 pub const SONIC_SPIT_STUN_TICKS: u32 = 15;
 
-/// Omen (Hootseer/Murder): AoE Tilted debuff radius (tiles).
-pub const OMEN_RADIUS: Fixed = Fixed::from_bits(3 << 16);
+/// DeepBore (SeekerTunneler/Seekers): long-range bore AoE damage.
+pub const DEEP_BORE_DAMAGE: Fixed = Fixed::from_bits(20 << 16);
+
+/// SilentStrike (Dusktalon/Murder): assassin burst AoE damage.
+pub const SILENT_STRIKE_DAMAGE: Fixed = Fixed::from_bits(25 << 16);
+
+/// SalvageTurret (GreaseMonkey/LLAMA): turret burst AoE damage.
+pub const SALVAGE_TURRET_DAMAGE: Fixed = Fixed::from_bits(15 << 16);
+
+/// FrankensteinProtocol (JunkyardKing/LLAMA): construct burst AoE damage.
+pub const FRANKENSTEIN_DAMAGE: Fixed = Fixed::from_bits(20 << 16);
+
+/// Regurgitate (Gulper/Croak): spit AoE damage.
+pub const REGURGITATE_DAMAGE: Fixed = Fixed::from_bits(20 << 16);
 
 // ---------------------------------------------------------------------------
 // AI

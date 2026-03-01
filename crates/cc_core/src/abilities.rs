@@ -520,7 +520,7 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
         },
         AbilityId::TrashHeapAmbush => AbilityDef {
             id, activation: Activated, cooldown_ticks: 80, gpu_cost: 0,
-            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+            duration_ticks: 20, range: Fixed::ZERO, max_charges: 0,
         },
         AbilityId::LeakInjection => AbilityDef {
             id, activation: Activated, cooldown_ticks: 300, gpu_cost: 5,
@@ -607,7 +607,7 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
         // --- Murder: Magpike ---
         AbilityId::Pilfer => AbilityDef {
             id, activation: Activated, cooldown_ticks: 180, gpu_cost: 0,
-            duration_ticks: 0, range: Fixed::from_bits(4 << 16), max_charges: 0,
+            duration_ticks: 10, range: Fixed::from_bits(4 << 16), max_charges: 0,
         },
         AbilityId::GlitterBomb => AbilityDef {
             id, activation: Activated, cooldown_ticks: 150, gpu_cost: 0,
@@ -680,7 +680,7 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
         },
         AbilityId::Omen => AbilityDef {
             id, activation: Activated, cooldown_ticks: 300, gpu_cost: 3,
-            duration_ticks: 100, range: Fixed::ZERO, max_charges: 0,
+            duration_ticks: 100, range: Fixed::from_bits(3 << 16), max_charges: 0,
         },
         // --- Murder: CorvusRex ---
         AbilityId::CorvidNetworkAbility => AbilityDef {
@@ -715,7 +715,7 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
         },
         AbilityId::RegrowthBurst => AbilityDef {
             id, activation: Activated, cooldown_ticks: 250, gpu_cost: 0,
-            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+            duration_ticks: 30, range: Fixed::ZERO, max_charges: 0,
         },
         AbilityId::PhantomLimb => AbilityDef {
             id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0,
@@ -727,7 +727,7 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
             duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
         },
         AbilityId::Transfusion => AbilityDef {
-            id, activation: Activated, cooldown_ticks: 0, gpu_cost: 0,
+            id, activation: Activated, cooldown_ticks: 80, gpu_cost: 0,
             duration_ticks: 50, range: Fixed::from_bits(3 << 16), max_charges: 0,
         },
         AbilityId::PrimordialSoup => AbilityDef {
@@ -754,7 +754,7 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
         },
         AbilityId::Waterway => AbilityDef {
             id, activation: Activated, cooldown_ticks: 50, gpu_cost: 0,
-            duration_ticks: 0, range: Fixed::ZERO, max_charges: 0,
+            duration_ticks: 15, range: Fixed::ZERO, max_charges: 0,
         },
         AbilityId::Venomstrike => AbilityDef {
             id, activation: Activated, cooldown_ticks: 120, gpu_cost: 0,
@@ -776,7 +776,7 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
         // --- Croak: Leapfrog ---
         AbilityId::Hop => AbilityDef {
             id, activation: Activated, cooldown_ticks: 60, gpu_cost: 0,
-            duration_ticks: 0, range: Fixed::from_bits(4 << 16), max_charges: 0,
+            duration_ticks: 15, range: Fixed::from_bits(4 << 16), max_charges: 0,
         },
         AbilityId::TongueLash => AbilityDef {
             id, activation: Activated, cooldown_ticks: 100, gpu_cost: 0,
@@ -852,7 +852,7 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
         AbilityId::ScorchedEarth => AbilityDef { id, activation: Activated, cooldown_ticks: 250, gpu_cost: 0, duration_ticks: 0, range: Fixed::from_bits(4 << 16), max_charges: 0 },
         AbilityId::DustCloud => AbilityDef { id, activation: Activated, cooldown_ticks: 140, gpu_cost: 0, duration_ticks: 50, range: Fixed::from_bits(3 << 16), max_charges: 0 },
         AbilityId::AmbushInstinct => AbilityDef { id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0, duration_ticks: 0, range: Fixed::ZERO, max_charges: 0 },
-        AbilityId::SentryBurrow => AbilityDef { id, activation: Activated, cooldown_ticks: 80, gpu_cost: 0, duration_ticks: 0, range: Fixed::ZERO, max_charges: 0 },
+        AbilityId::SentryBurrow => AbilityDef { id, activation: Activated, cooldown_ticks: 80, gpu_cost: 0, duration_ticks: 40, range: Fixed::ZERO, max_charges: 0 },
         AbilityId::Frenzy => AbilityDef { id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0, duration_ticks: 0, range: Fixed::from_bits(3 << 16), max_charges: 0 },
         AbilityId::Bloodgreed => AbilityDef { id, activation: Passive, cooldown_ticks: 0, gpu_cost: 0, duration_ticks: 0, range: Fixed::ZERO, max_charges: 0 },
         AbilityId::RecklessLunge => AbilityDef { id, activation: Activated, cooldown_ticks: 150, gpu_cost: 0, duration_ticks: 30, range: Fixed::from_bits(4 << 16), max_charges: 0 },

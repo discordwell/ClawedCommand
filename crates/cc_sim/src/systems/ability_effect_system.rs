@@ -107,6 +107,12 @@ pub fn ability_effect_system(
                         ensure_effect(&mut effects, StatusEffectId::ArmorBuff, 2, entity);
                     }
                 }
+                AbilityId::MiasmaTrail => {
+                    // Toggle: poison trail damage buff on self
+                    if slot.active {
+                        ensure_effect(&mut effects, StatusEffectId::DamageBuff, 2, entity);
+                    }
+                }
                 AbilityId::PileOn => {
                     // Activated: damage boost for duration
                     if slot.active {
@@ -141,6 +147,28 @@ pub fn ability_effect_system(
                         ensure_effect(
                             &mut effects,
                             StatusEffectId::ArmorBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::BurrowExpress => {
+                    // Activated: tunnel dash speed burst
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::SpeedBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::WhiskernetRelay => {
+                    // Activated: network buff (damage boost)
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::DamageBuff,
                             slot.duration_remaining.max(1),
                             entity,
                         );
@@ -184,6 +212,78 @@ pub fn ability_effect_system(
                         );
                     }
                 }
+                AbilityId::SubterraneanHaul => {
+                    // Activated: mining speed boost
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::SpeedBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::EmergencyBurrow => {
+                    // Activated: emergency damage reduction
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::ArmorBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::Intercept => {
+                    // Activated: protective dash (speed + armor)
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::SpeedBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::ArmorBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::FortressProtocol => {
+                    // Activated: fortress stance (armor buff)
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::ArmorBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::CalculatedCounterstrike => {
+                    // Activated: reactive counter (damage buff)
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::DamageBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::SentryBurrow => {
+                    // Activated: dig in (armor buff)
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::ArmorBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
 
                 // =============================================
                 // The Murder (Corvids) — self-buff bridges
@@ -192,6 +292,28 @@ pub fn ability_effect_system(
                     // Toggle: increased attack range (using ArmorBuff as proxy)
                     if slot.active {
                         ensure_effect(&mut effects, StatusEffectId::ArmorBuff, 2, entity);
+                    }
+                }
+                AbilityId::Pilfer => {
+                    // Activated: quick steal speed burst
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::SpeedBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::MirrorPosition => {
+                    // Activated: dash speed burst
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::SpeedBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
                     }
                 }
 
@@ -231,6 +353,95 @@ pub fn ability_effect_system(
                         );
                     }
                 }
+                AbilityId::JuryRig => {
+                    // Activated: field repair armor buff
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::ArmorBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::DuctTapeFix => {
+                    // Activated: patch up armor buff
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::ArmorBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::Overcharge => {
+                    // Activated: overclock damage buff
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::DamageBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::TrashHeapAmbush => {
+                    // Activated: ambush (damage + speed)
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::DamageBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::SpeedBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::LeakInjection => {
+                    // Activated: poison damage buff
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::DamageBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::RefuseShield => {
+                    // Activated: shield armor buff
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::ArmorBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::OverclockCascade => {
+                    // Activated: overclock cascade (damage + speed)
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::DamageBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::SpeedBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
 
                 // =============================================
                 // Croak (Axolotls) — self-buff bridges
@@ -255,6 +466,73 @@ pub fn ability_effect_system(
                 AbilityId::Hop => {
                     // Activated: speed burst
                     if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::SpeedBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::RegrowthBurst => {
+                    // Activated: regen shield (armor buff)
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::ArmorBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::PrimordialSoup => {
+                    // Activated: primordial (armor + damage)
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::ArmorBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::DamageBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::Waterway => {
+                    // Activated: water dash (speed buff)
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::SpeedBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::TidalMemory => {
+                    // Activated: ancient defense (armor buff)
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::ArmorBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::GrokProtocol => {
+                    // Activated: protocol buff (damage + speed)
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::DamageBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
                         ensure_effect(
                             &mut effects,
                             StatusEffectId::SpeedBuff,
