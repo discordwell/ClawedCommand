@@ -69,7 +69,7 @@ pub fn handle_keyboard(
 
     // B — Enter build menu (when a unit is selected)
     if keyboard.just_pressed(KeyCode::KeyB) {
-        if selected_units.iter().count() > 0 {
+        if !selected_units.is_empty() {
             *input_mode = InputMode::BuildMenu;
         }
     }
