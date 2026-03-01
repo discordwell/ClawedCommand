@@ -1213,8 +1213,30 @@ mod tests {
             AbilityId::HunkerAbility, AbilityId::AncientMossAbility, AbilityId::TidalMemory,
             AbilityId::MireCurse, AbilityId::Prophecy, AbilityId::BogSongAbility,
             AbilityId::UndyingPresenceAbility, AbilityId::GrokProtocol, AbilityId::MurkUplinkAbility,
+            // Seekers (30)
+            AbilityId::SubterraneanHaul, AbilityId::Earthsense, AbilityId::EmergencyBurrow,
+            AbilityId::Unbowed, AbilityId::ShieldWall, AbilityId::GrudgeCharge,
+            AbilityId::BoulderBarrage, AbilityId::Entrench, AbilityId::SeismicSlam,
+            AbilityId::VigilanceAura, AbilityId::Intercept, AbilityId::RallyCry,
+            AbilityId::ArmorRend, AbilityId::PatientStrike, AbilityId::Lockjaw,
+            AbilityId::DeepseekUplink, AbilityId::FortressProtocol, AbilityId::CalculatedCounterstrike,
+            AbilityId::DeepBore, AbilityId::Undermine, AbilityId::TremorNetwork,
+            AbilityId::MoltenShot, AbilityId::FuelReserve, AbilityId::ScorchedEarth,
+            AbilityId::DustCloud, AbilityId::AmbushInstinct, AbilityId::SentryBurrow,
+            AbilityId::Frenzy, AbilityId::Bloodgreed, AbilityId::RecklessLunge,
+            // The Clawed (30)
+            AbilityId::CrumbTrail, AbilityId::StashNetwork, AbilityId::PanicProductivity,
+            AbilityId::SafetyInNumbers, AbilityId::PileOn, AbilityId::Scatter,
+            AbilityId::StructuralWeakness, AbilityId::ChewThrough, AbilityId::IncisorsNeverStop,
+            AbilityId::SonicSpit, AbilityId::EcholocationPing, AbilityId::FuryOfTheSmall,
+            AbilityId::BurrowExpress, AbilityId::BurrowUndermine, AbilityId::SwarmTremorSense,
+            AbilityId::StaticCharge, AbilityId::ShortCircuit, AbilityId::DaisyChain,
+            AbilityId::SpineWall, AbilityId::QuillBurst, AbilityId::StubbornAdvance,
+            AbilityId::HexOfMultiplication, AbilityId::WhiskerWeave, AbilityId::DatacromanticRitual,
+            AbilityId::ContagionCloud, AbilityId::MiasmaTrail, AbilityId::SympathySickness,
+            AbilityId::RallyTheSwarm, AbilityId::ExpendableHeroism, AbilityId::WhiskernetRelay,
         ];
-        assert_eq!(all_ids.len(), 120);
+        assert_eq!(all_ids.len(), 180);
         for id in all_ids {
             let def = ability_def(id);
             assert_eq!(def.id, id, "{id:?} def should match its id");
@@ -1245,6 +1267,16 @@ mod tests {
             UnitKind::Gulper, UnitKind::Eftsaber, UnitKind::Croaker,
             UnitKind::Leapfrog, UnitKind::Shellwarden, UnitKind::Bogwhisper,
             UnitKind::MurkCommander,
+            // Seekers
+            UnitKind::Delver, UnitKind::Ironhide, UnitKind::Cragback,
+            UnitKind::Warden, UnitKind::Sapjaw, UnitKind::Wardenmother,
+            UnitKind::SeekerTunneler, UnitKind::Embermaw, UnitKind::Dustclaw,
+            UnitKind::Gutripper,
+            // The Clawed
+            UnitKind::Nibblet, UnitKind::Swarmer, UnitKind::Gnawer,
+            UnitKind::Shrieker, UnitKind::Tunneler, UnitKind::Sparks,
+            UnitKind::Quillback, UnitKind::Whiskerwitch, UnitKind::Plaguetail,
+            UnitKind::WarrenMarshal,
         ];
         for kind in kinds {
             let abilities = unit_abilities(kind);

@@ -70,7 +70,9 @@ def create_task(api_key: str, image_token: str, face_limit: int) -> str:
             "pbr": True,
         },
     )
-    resp.raise_for_status()
+    if not resp.ok:
+        print(f"Task creation failed ({resp.status_code}): {resp.text}", file=sys.stderr)
+        resp.raise_for_status()
     data = resp.json()
     if data.get("code") != 0:
         print(f"Task creation failed: {data}", file=sys.stderr)

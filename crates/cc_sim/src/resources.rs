@@ -7,18 +7,68 @@ use cc_core::coords::GridPos;
 use cc_core::map::GameMap;
 
 /// Queue of commands to process each simulation tick.
+///
+/// Commands are tagged with an optional player_id so the command processor
+/// can interleave per-player commands for fairness (avoid first/last-mover bias).
 #[derive(Resource, Default)]
 pub struct CommandQueue {
-    pub commands: Vec<GameCommand>,
+    pub commands: Vec<(Option<u8>, GameCommand)>,
 }
 
 impl CommandQueue {
     pub fn push(&mut self, cmd: GameCommand) {
-        self.commands.push(cmd);
+        self.commands.push((None, cmd));
+    }
+
+    /// Push a command tagged with the issuing player's ID.
+    pub fn push_for_player(&mut self, player_id: u8, cmd: GameCommand) {
+        self.commands.push((Some(player_id), cmd));
+    }
+
+    /// Drain all commands, interleaving per-player commands for fairness.
+    /// On even ticks player 0's commands go first in each pair; on odd ticks player 1 goes first.
+    pub fn drain_interleaved(&mut self, tick: u64) -> Vec<GameCommand> {
+        let all = std::mem::take(&mut self.commands);
+        let mut p0: Vec<GameCommand> = Vec::new();
+        let mut p1: Vec<GameCommand> = Vec::new();
+        let mut other: Vec<GameCommand> = Vec::new();
+
+        for (player, cmd) in all {
+            match player {
+                Some(0) => p0.push(cmd),
+                Some(1) => p1.push(cmd),
+                _ => other.push(cmd),
+            }
+        }
+
+        let mut result = Vec::with_capacity(p0.len() + p1.len() + other.len());
+
+        let (first, second) = if tick % 2 == 0 {
+            (p0, p1)
+        } else {
+            (p1, p0)
+        };
+
+        // Interleave: one from first, one from second, repeat
+        let mut i = 0;
+        let mut j = 0;
+        while i < first.len() || j < second.len() {
+            if i < first.len() {
+                result.push(first[i].clone());
+                i += 1;
+            }
+            if j < second.len() {
+                result.push(second[j].clone());
+                j += 1;
+            }
+        }
+
+        result.extend(other);
+        result
     }
 
     pub fn drain(&mut self) -> Vec<GameCommand> {
-        std::mem::take(&mut self.commands)
+        std::mem::take(&mut self.commands).into_iter().map(|(_, cmd)| cmd).collect()
     }
 }
 

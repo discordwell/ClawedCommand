@@ -19,7 +19,7 @@ use cc_core::map::GameMap;
 use cc_core::map_gen::{self, MapGenParams};
 use cc_core::unit_stats::base_stats;
 
-use cc_sim::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState, AiTier};
+use cc_sim::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState, AiTier, BotConfig};
 use cc_sim::ai::MultiAiState;
 use cc_sim::harness::invariants::{InvariantChecker, InvariantViolation, Severity};
 use cc_sim::harness::MatchOutcome;
@@ -64,14 +64,6 @@ pub enum ScriptSource {
     Inline { name: String, source: String },
 }
 
-/// Configuration for a single bot player.
-#[derive(Debug, Clone)]
-pub struct BotConfig {
-    pub player_id: u8,
-    pub difficulty: AiDifficulty,
-    pub profile: AiPersonalityProfile,
-}
-
 /// Configuration for an arena match.
 #[derive(Debug, Clone)]
 pub struct ArenaConfig {
@@ -98,11 +90,13 @@ impl Default for ArenaConfig {
                     player_id: 0,
                     difficulty: AiDifficulty::Medium,
                     profile: AiPersonalityProfile::balanced(),
+                    faction: cc_core::components::Faction::CatGpt,
                 },
                 BotConfig {
                     player_id: 1,
                     difficulty: AiDifficulty::Medium,
                     profile: AiPersonalityProfile::balanced(),
+                    faction: cc_core::components::Faction::CatGpt,
                 },
             ],
             scripts: [None, None],
@@ -333,19 +327,38 @@ fn make_arena_sim(
     world.insert_resource(player_res);
     world.insert_resource(MapResource { map });
 
+    let spawn_positions: Vec<(u8, GridPos)> = map_def
+        .spawn_points
+        .iter()
+        .map(|sp| (sp.player, GridPos::new(sp.pos.0, sp.pos.1)))
+        .collect();
+    world.insert_resource(SpawnPositions {
+        positions: spawn_positions.clone(),
+    });
+
+    // Pre-seed enemy_spawn from SpawnPositions so both AIs have symmetric
+    // information from tick 0 (previously discovered at runtime, giving P0/P1
+    // different amounts of "blind" time).
     let multi_ai = MultiAiState {
         players: config
             .bots
             .iter()
-            .map(|bot| AiState {
-                player_id: bot.player_id,
-                phase: AiPhase::EarlyGame,
-                difficulty: bot.difficulty,
-                profile: bot.profile.clone(),
-                enemy_spawn: None,
-                attack_ordered: false,
-                last_attack_tick: 0,
-                tier: AiTier::Basic,
+            .map(|bot| {
+                let enemy_pos = spawn_positions
+                    .iter()
+                    .find(|(pid, _)| *pid != bot.player_id)
+                    .map(|(_, pos)| *pos);
+                AiState {
+                    player_id: bot.player_id,
+                    phase: AiPhase::EarlyGame,
+                    difficulty: bot.difficulty,
+                    profile: bot.profile.clone(),
+                    fmap: cc_sim::ai::fsm::faction_map(bot.faction),
+                    enemy_spawn: enemy_pos,
+                    attack_ordered: false,
+                    last_attack_tick: 0,
+                    tier: AiTier::Basic,
+                }
             })
             .collect(),
     };
@@ -361,15 +374,6 @@ fn make_arena_sim(
     world.insert_resource(PreviousSnapshots::default());
     world.insert_resource(FactionToolStates::default());
     world.insert_resource(ArenaStats::default());
-
-    let spawn_positions: Vec<(u8, GridPos)> = map_def
-        .spawn_points
-        .iter()
-        .map(|sp| (sp.player, GridPos::new(sp.pos.0, sp.pos.1)))
-        .collect();
-    world.insert_resource(SpawnPositions {
-        positions: spawn_positions.clone(),
-    });
 
     // Schedule: tick → FSM → scripts → process_commands → sim → cleanup
     // Split into two chained groups to stay within Bevy's 20-tuple limit.
@@ -407,7 +411,8 @@ fn make_arena_sim(
 
     // Spawn starting entities for each player
     for (player_id, spawn_pos) in &spawn_positions {
-        spawn_starting_entities(&mut world, *player_id, *spawn_pos, map_def);
+        let faction = config.bots[*player_id as usize].faction;
+        spawn_starting_entities(&mut world, *player_id, *spawn_pos, faction, map_def);
     }
 
     // Seed ArenaStats prev counts so starting units aren't counted as "trained"
@@ -442,9 +447,11 @@ fn spawn_starting_entities(
     world: &mut World,
     player_id: u8,
     spawn_pos: GridPos,
+    faction: cc_core::components::Faction,
     map_def: &cc_core::map_format::MapDefinition,
 ) {
-    let box_stats = building_stats(BuildingKind::TheBox);
+    let fmap = cc_sim::ai::fsm::faction_map(faction);
+    let hq_stats = building_stats(fmap.hq);
     world.spawn((
         Position {
             world: WorldPos::from_grid(spawn_pos),
@@ -452,11 +459,11 @@ fn spawn_starting_entities(
         GridCell { pos: spawn_pos },
         Owner { player_id },
         Building {
-            kind: BuildingKind::TheBox,
+            kind: fmap.hq,
         },
         Health {
-            current: box_stats.health,
-            max: box_stats.health,
+            current: hq_stats.health,
+            max: hq_stats.health,
         },
         Producer,
         ProductionQueue::default(),
@@ -465,15 +472,15 @@ fn spawn_starting_entities(
     {
         let mut player_res = world.resource_mut::<PlayerResources>();
         if let Some(pres) = player_res.players.get_mut(player_id as usize) {
-            pres.supply_cap += box_stats.supply_provided;
+            pres.supply_cap += hq_stats.supply_provided;
             pres.food = 200;
         }
     }
 
-    let unit_supply_cost = base_stats(UnitKind::Pawdler).supply_cost;
+    let unit_supply_cost = base_stats(fmap.worker).supply_cost;
     for i in 0..2 {
         let offset = GridPos::new(spawn_pos.x + 1 + i, spawn_pos.y);
-        spawn_combat_unit(world, offset, player_id, UnitKind::Pawdler);
+        spawn_combat_unit(world, offset, player_id, fmap.worker);
     }
 
     {

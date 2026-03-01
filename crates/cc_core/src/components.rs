@@ -174,6 +174,21 @@ pub enum BuildingKind {
     TetanusTower,    // Defense Tower (LLAMA) — shoots rusty nails, applies Corroded
 }
 
+impl BuildingKind {
+    /// Returns true if this building is a faction HQ (victory condition target).
+    pub fn is_hq(&self) -> bool {
+        matches!(
+            self,
+            BuildingKind::TheBox
+                | BuildingKind::TheParliament
+                | BuildingKind::TheBurrow
+                | BuildingKind::TheSett
+                | BuildingKind::TheGrotto
+                | BuildingKind::TheDumpster
+        )
+    }
+}
+
 impl std::fmt::Display for BuildingKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Debug::fmt(self, f)
@@ -751,6 +766,10 @@ pub enum AuraType {
     ScrapArmorAura,
     DumpsterRelayAura,
     StenchCloudAura,
+    // Toggle-specific aura types
+    WhiskerWeave,
+    SwarmTremorSense,
+    PanopticGaze,
 }
 
 /// Component for units that emit an area-of-effect aura.
@@ -1276,6 +1295,10 @@ mod tests {
             BuildingKind::TheBurrow, BuildingKind::NestingBox, BuildingKind::SeedVault,
             BuildingKind::JunkTransmitter, BuildingKind::GnawLab, BuildingKind::WarrenExpansion,
             BuildingKind::Mousehole, BuildingKind::SqueakTower,
+            // Seekers of the Deep (Badgers)
+            BuildingKind::TheSett, BuildingKind::WarHollow, BuildingKind::BurrowDepot,
+            BuildingKind::CoreTap, BuildingKind::ClawMarks, BuildingKind::DeepWarren,
+            BuildingKind::BulwarkGate, BuildingKind::SlagThrower,
             // Croak (Axolotls)
             BuildingKind::TheGrotto, BuildingKind::SpawningPools, BuildingKind::LilyMarket,
             BuildingKind::SunkenServer, BuildingKind::FossilStones, BuildingKind::ReedBed,
@@ -1298,6 +1321,14 @@ mod tests {
             UnitKind::Pawdler, UnitKind::Nuisance, UnitKind::Chonk, UnitKind::FlyingFox,
             UnitKind::Hisser, UnitKind::Yowler, UnitKind::Mouser, UnitKind::Catnapper,
             UnitKind::FerretSapper, UnitKind::MechCommander,
+            // The Murder (Corvids)
+            UnitKind::MurderScrounger, UnitKind::Sentinel, UnitKind::Rookclaw, UnitKind::Magpike,
+            UnitKind::Magpyre, UnitKind::Jaycaller, UnitKind::Jayflicker, UnitKind::Dusktalon,
+            UnitKind::Hootseer, UnitKind::CorvusRex,
+            // Seekers of the Deep (Badgers)
+            UnitKind::Delver, UnitKind::Ironhide, UnitKind::Cragback, UnitKind::Warden,
+            UnitKind::Sapjaw, UnitKind::Wardenmother, UnitKind::SeekerTunneler, UnitKind::Embermaw,
+            UnitKind::Dustclaw, UnitKind::Gutripper,
             // The Clawed (Mice)
             UnitKind::Nibblet, UnitKind::Swarmer, UnitKind::Gnawer, UnitKind::Shrieker,
             UnitKind::Tunneler, UnitKind::Sparks, UnitKind::Quillback, UnitKind::Whiskerwitch,
@@ -1402,6 +1433,30 @@ mod tests {
             let parsed: UpgradeType = s.parse().unwrap();
             assert_eq!(parsed, ut);
         }
+    }
+
+    #[test]
+    fn upgrade_type_seekers_round_trip() {
+        for ut in [
+            UpgradeType::SharperFangs, UpgradeType::ReinforcedHide,
+            UpgradeType::SteadyStance, UpgradeType::SiegeEngineering,
+            UpgradeType::ExosuitPrototype,
+        ] {
+            let s = ut.to_string();
+            let parsed: UpgradeType = s.parse().unwrap();
+            assert_eq!(parsed, ut);
+        }
+    }
+
+    #[test]
+    fn seekers_faction_components_defaults() {
+        let timer = StationaryTimer::default();
+        assert_eq!(timer.ticks_stationary, 0);
+        assert!(!timer.dug_in);
+
+        let stacks = FrenzyStacks::default();
+        assert_eq!(stacks.current_stacks, 0);
+        assert_eq!(stacks.frozen_until_tick, 0);
     }
 }
 

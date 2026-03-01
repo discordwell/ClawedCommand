@@ -92,6 +92,178 @@ pub fn ability_effect_system(
                         }
                     }
                 }
+                // =============================================
+                // The Clawed (Mice) — self-buff bridges
+                // =============================================
+                AbilityId::ChewThrough => {
+                    // Toggle: building damage bonus (using DamageBuff)
+                    if slot.active {
+                        ensure_effect(&mut effects, StatusEffectId::DamageBuff, 2, entity);
+                    }
+                }
+                AbilityId::SpineWall => {
+                    // Toggle: damage reduction (using ArmorBuff)
+                    if slot.active {
+                        ensure_effect(&mut effects, StatusEffectId::ArmorBuff, 2, entity);
+                    }
+                }
+                AbilityId::PileOn => {
+                    // Activated: damage boost for duration
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::DamageBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::Scatter => {
+                    // Activated: speed boost for duration
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::SpeedBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::StubbornAdvance => {
+                    // Activated: damage boost + armor for duration
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::DamageBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::ArmorBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+
+                // =============================================
+                // Seekers of the Deep (Badgers) — self-buff bridges
+                // =============================================
+                AbilityId::Entrench => {
+                    // Toggle: immobile + damage reduction + damage boost
+                    if slot.active {
+                        ensure_effect(&mut effects, StatusEffectId::Entrenched, 2, entity);
+                    }
+                }
+                AbilityId::ShieldWall => {
+                    // Activated: damage reduction for duration
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::ArmorBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::GrudgeCharge | AbilityId::RecklessLunge => {
+                    // Activated: speed + damage boost for charge
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::SpeedBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::DamageBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+
+                // =============================================
+                // The Murder (Corvids) — self-buff bridges
+                // =============================================
+                AbilityId::Overwatch => {
+                    // Toggle: increased attack range (using ArmorBuff as proxy)
+                    if slot.active {
+                        ensure_effect(&mut effects, StatusEffectId::ArmorBuff, 2, entity);
+                    }
+                }
+
+                // =============================================
+                // LLAMA (Raccoons) — self-buff bridges
+                // =============================================
+                AbilityId::Getaway => {
+                    // Activated: speed boost to escape
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::SpeedBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::PlayDead => {
+                    // Activated: invulnerable + immobile (playing dead)
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::PlayingDead,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::Scavenge => {
+                    // Activated: gather speed boost
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::SpiteCarryBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+
+                // =============================================
+                // Croak (Axolotls) — self-buff bridges
+                // =============================================
+                AbilityId::HunkerAbility => {
+                    // Toggle: immobile + damage reduction (like LoafMode)
+                    if slot.active {
+                        ensure_effect(&mut effects, StatusEffectId::Entrenched, 2, entity);
+                    }
+                }
+                AbilityId::Inflate => {
+                    // Activated: armor buff for duration
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::ArmorBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+                AbilityId::Hop => {
+                    // Activated: speed burst
+                    if slot.active {
+                        ensure_effect(
+                            &mut effects,
+                            StatusEffectId::SpeedBuff,
+                            slot.duration_remaining.max(1),
+                            entity,
+                        );
+                    }
+                }
+
                 _ => {}
             }
         }

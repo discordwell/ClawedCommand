@@ -40,13 +40,32 @@ pub enum StatusEffectId {
     // --- Croak (Axolotls) ---
     /// Croak debuff — -10% move speed, applied by many Croak abilities.
     Waterlogged,
+
+    // --- Cross-faction status effects ---
+    /// Hard stun CC — immobile, can't attack, silenced.
+    Stunned,
+    /// Silenced — can't activate abilities, but can still move/attack.
+    Silenced,
+    /// Entrenched — immobile, 30% damage reduction, 20% damage boost.
+    Entrenched,
+    /// Generic speed buff — +50% speed (no attack penalty unlike Zoomies).
+    SpeedBuff,
+    /// Generic armor buff — 30% damage reduction.
+    ArmorBuff,
+    /// Generic damage buff — +25% damage.
+    DamageBuff,
+    /// Playing dead — invulnerable, immobile, can't attack/cast.
+    PlayingDead,
 }
 
 /// Returns true if this status effect is crowd control (CC).
 pub fn is_cc(id: StatusEffectId) -> bool {
     matches!(
         id,
-        StatusEffectId::Disoriented | StatusEffectId::Drowsed | StatusEffectId::Tilted
+        StatusEffectId::Disoriented
+            | StatusEffectId::Drowsed
+            | StatusEffectId::Tilted
+            | StatusEffectId::Stunned
     )
 }
 

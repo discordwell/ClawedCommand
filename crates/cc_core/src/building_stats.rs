@@ -335,15 +335,7 @@ pub fn building_stats(kind: BuildingKind) -> BuildingBaseStats {
         BuildingKind::TrashPile => BuildingBaseStats { health: Fixed::from_bits(90 << 16), build_time: 70, food_cost: 70, gpu_cost: 0, supply_provided: 10, can_produce: &[] },
         BuildingKind::DumpsterRelay => BuildingBaseStats { health: Fixed::from_bits(150 << 16), build_time: 80, food_cost: 80, gpu_cost: 30, supply_provided: 0, can_produce: &[] },
         BuildingKind::TetanusTower => BuildingBaseStats { health: Fixed::from_bits(140 << 16), build_time: 75, food_cost: 70, gpu_cost: 20, supply_provided: 0, can_produce: &[] },
-        // Remaining faction buildings — placeholder stats
-        _ => BuildingBaseStats {
-            health: Fixed::from_bits(200 << 16),
-            build_time: 100,
-            food_cost: 100,
-            gpu_cost: 0,
-            supply_provided: 0,
-            can_produce: &[],
-        },
+        other => unimplemented!("building_stats not yet defined for {other:?}"),
     }
 }
 

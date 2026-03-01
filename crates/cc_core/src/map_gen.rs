@@ -793,29 +793,34 @@ fn place_tiered_resources(
     let cy = h as i32 / 2;
 
     for &(sx, sy) in spawns {
+        // Direction from spawn toward center — used for all offsets to ensure
+        // rotationally symmetric resource placement across spawn positions.
+        let dx = (cx - sx).signum();
+        let dy = (cy - sy).signum();
+
         // T0 (safe): FishPond + GpuDeposit within 5 tiles of spawn
-        let fish_pos = find_passable_near(map, sx + 3, sy + 1, 5);
+        // Fish: 3 tiles toward center along x, 1 tile toward center along y
+        let fish_pos = find_passable_near(map, sx + dx * 3, sy + dy * 1, 5);
         resources.push(ResourcePlacement {
             kind: ResourceKind::FishPond,
             pos: fish_pos,
         });
-        let gpu_pos = find_passable_near(map, sx - 3, sy + 2, 5);
+        // GPU: 3 tiles away from center along x, 2 tiles toward center along y
+        let gpu_pos = find_passable_near(map, sx - dx * 3, sy + dy * 2, 5);
         resources.push(ResourcePlacement {
             kind: ResourceKind::GpuDeposit,
             pos: gpu_pos,
         });
 
         // T1 (natural): FishPond + BerryBush ~12 tiles toward center
-        let dx_to_center = (cx - sx).signum();
-        let dy_to_center = (cy - sy).signum();
-        let t1_x = sx + dx_to_center * 12;
-        let t1_y = sy + dy_to_center * 12;
+        let t1_x = sx + dx * 12;
+        let t1_y = sy + dy * 12;
         let t1_fish = find_passable_near(map, t1_x, t1_y, 5);
         resources.push(ResourcePlacement {
             kind: ResourceKind::FishPond,
             pos: t1_fish,
         });
-        let t1_berry = find_passable_near(map, t1_x + 2, t1_y + 1, 5);
+        let t1_berry = find_passable_near(map, t1_x + dx * 2, t1_y + dy * 1, 5);
         resources.push(ResourcePlacement {
             kind: ResourceKind::BerryBush,
             pos: t1_berry,
@@ -824,12 +829,12 @@ fn place_tiered_resources(
         // T2 (contested): GpuDeposit + BerryBush ~60% toward center
         let t2_x = sx + (cx - sx) * 6 / 10;
         let t2_y = sy + (cy - sy) * 6 / 10;
-        let t2_gpu = find_passable_near(map, t2_x + 3, t2_y - 2, 5);
+        let t2_gpu = find_passable_near(map, t2_x + dx * 3, t2_y - dy * 2, 5);
         resources.push(ResourcePlacement {
             kind: ResourceKind::GpuDeposit,
             pos: t2_gpu,
         });
-        let t2_berry = find_passable_near(map, t2_x - 2, t2_y + 3, 5);
+        let t2_berry = find_passable_near(map, t2_x - dx * 2, t2_y + dy * 3, 5);
         resources.push(ResourcePlacement {
             kind: ResourceKind::BerryBush,
             pos: t2_berry,

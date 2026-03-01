@@ -1,11 +1,12 @@
 use bevy::prelude::*;
 
-use cc_core::components::{Building, BuildingKind, Dead, Owner};
+use cc_core::components::{Building, Dead, Owner};
 
 use crate::resources::{GameState, PlayerResources};
 
-/// Check win condition: if a player's TheBox is destroyed, the other player wins.
-/// Supports any number of players — the last player with a living TheBox wins.
+/// Check win condition: if a player's HQ is destroyed, the other player wins.
+/// Supports any number of players — the last player with a living HQ wins.
+/// Recognizes all faction HQs (TheBox, TheParliament, TheBurrow, TheSett, TheGrotto, TheDumpster).
 pub fn victory_system(
     mut game_state: ResMut<GameState>,
     player_resources: Res<PlayerResources>,
@@ -20,21 +21,21 @@ pub fn victory_system(
         return;
     }
 
-    // Collect which players still have a living TheBox
-    let mut players_with_box: Vec<u8> = Vec::new();
+    // Collect which players still have a living HQ
+    let mut players_with_hq: Vec<u8> = Vec::new();
     for (building, owner) in buildings.iter() {
-        if building.kind == BuildingKind::TheBox && !players_with_box.contains(&owner.player_id) {
-            players_with_box.push(owner.player_id);
+        if building.kind.is_hq() && !players_with_hq.contains(&owner.player_id) {
+            players_with_hq.push(owner.player_id);
         }
     }
 
-    // If exactly one player has a TheBox remaining, they win
-    if players_with_box.len() == 1 {
+    // If exactly one player has an HQ remaining, they win
+    if players_with_hq.len() == 1 {
         *game_state = GameState::Victory {
-            winner: players_with_box[0],
+            winner: players_with_hq[0],
         };
-    } else if players_with_box.is_empty() {
-        // All boxes destroyed simultaneously — attacker advantage tiebreak (player 0 wins)
+    } else if players_with_hq.is_empty() {
+        // All HQs destroyed simultaneously — attacker advantage tiebreak (player 0 wins)
         *game_state = GameState::Victory { winner: 0 };
     }
 }

@@ -20,9 +20,13 @@ use cc_core::unit_stats::base_stats;
 use cc_core::upgrade_stats::upgrade_stats;
 
 use cc_core::tuning::{
+    CHAIN_BREAK_BUILDING_MULT, CHAIN_BREAK_DAMAGE, CHAIN_BREAK_RADIUS,
     DISGUST_MORTAR_DAMAGE, DISGUST_MORTAR_RADIUS, ECHOLOCATION_REVEAL_TICKS,
-    HAIRBALL_DURATION_TICKS, SHAPED_CHARGE_BUILDING_MULT, SHAPED_CHARGE_DAMAGE,
-    SHAPED_CHARGE_RADIUS,
+    HAIRBALL_DURATION_TICKS, LIMB_TOSS_DAMAGE, QUILL_BURST_DAMAGE, QUILL_BURST_RADIUS,
+    SCORCHED_EARTH_DAMAGE, SCORCHED_EARTH_RADIUS, SEISMIC_SLAM_STUN_TICKS,
+    SHAPED_CHARGE_BUILDING_MULT, SHAPED_CHARGE_DAMAGE, SHAPED_CHARGE_RADIUS,
+    TALON_DIVE_DAMAGE, TALON_DIVE_RADIUS, VENOMSTRIKE_DAMAGE,
+    WRECK_BALL_DAMAGE, WRECK_BALL_RADIUS,
 };
 use crate::systems::damage::{
     AoeCcCommand, AoeDamageCommand, EcholocationRevealCommand, RevulsionAoeCommand,
@@ -30,8 +34,13 @@ use crate::systems::damage::{
 };
 
 /// Process all queued commands for this tick.
+///
+/// Commands are interleaved by player to avoid systematic first/last-mover
+/// advantage from the shared command queue. Player commands alternate so
+/// neither player consistently processes their batch first.
 pub fn process_commands(
     mut cmd_queue: ResMut<CommandQueue>,
+    sim_clock: Res<crate::resources::SimClock>,
     map_res: Res<MapResource>,
     mut commands: Commands,
     mut query: Query<(
@@ -50,7 +59,7 @@ pub fn process_commands(
     mut research_queues: Query<(&Owner, &mut ResearchQueue), With<Researcher>>,
     build_orders: Query<(&BuildOrder, &Owner)>,
 ) {
-    let pending = cmd_queue.drain();
+    let pending = cmd_queue.drain_interleaved(sim_clock.tick);
 
     for cmd in pending {
         match cmd {
@@ -586,6 +595,46 @@ pub fn process_commands(
                                         active: is_now_active,
                                     });
                                 }
+                                // --- The Clawed (Mice) ---
+                                AbilityId::RallyTheSwarm => {
+                                    commands.entity(entity).insert(Aura {
+                                        aura_type: AuraType::RallyTheSwarm,
+                                        radius: def.range,
+                                        active: is_now_active,
+                                    });
+                                }
+                                AbilityId::WhiskerWeave => {
+                                    commands.entity(entity).insert(Aura {
+                                        aura_type: AuraType::WhiskerWeave,
+                                        radius: def.range,
+                                        active: is_now_active,
+                                    });
+                                }
+                                AbilityId::SwarmTremorSense => {
+                                    commands.entity(entity).insert(Aura {
+                                        aura_type: AuraType::SwarmTremorSense,
+                                        radius: def.range,
+                                        active: is_now_active,
+                                    });
+                                }
+                                // --- The Murder (Corvids) ---
+                                AbilityId::PanopticGaze => {
+                                    commands.entity(entity).insert(Aura {
+                                        aura_type: AuraType::PanopticGaze,
+                                        radius: def.range,
+                                        active: is_now_active,
+                                    });
+                                }
+                                // --- Toggle self-buffs (no aura, effect handled by ability_effect_system) ---
+                                AbilityId::ChewThrough
+                                | AbilityId::SpineWall
+                                | AbilityId::MiasmaTrail
+                                | AbilityId::Entrench
+                                | AbilityId::Overwatch
+                                | AbilityId::HunkerAbility => {
+                                    // Self-buffs: slot.active toggle is sufficient,
+                                    // ability_effect_system bridges to StatusEffect
+                                }
                                 _ => {}
                             }
                         }
@@ -684,6 +733,331 @@ pub fn process_commands(
                                         });
                                     }
                                 }
+
+                                // =============================================
+                                // The Clawed (Mice) — Activated abilities
+                                // =============================================
+                                AbilityId::SonicSpit => {
+                                    // Shrieker AoE stun
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Stunned,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::EcholocationPing => {
+                                    // Shrieker reveal (same pattern as FlyingFox)
+                                    if let Ok((_, unit_pos, _, _, _)) = query.get(entity) {
+                                        commands.queue(EcholocationRevealCommand {
+                                            source_pos: unit_pos.world,
+                                            radius: def.range,
+                                            reveal_ticks: ECHOLOCATION_REVEAL_TICKS,
+                                            source_owner: owner_player_id,
+                                        });
+                                    }
+                                }
+                                AbilityId::ShortCircuit => {
+                                    // Sparks AoE silence
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Silenced,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::DaisyChain => {
+                                    // Sparks chain stun
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Stunned,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::QuillBurst => {
+                                    // Quillback AoE damage
+                                    if let Ok((_, unit_pos, _, _, _)) = query.get(entity) {
+                                        commands.queue(AoeDamageCommand {
+                                            source_entity: entity,
+                                            source_pos: unit_pos.world,
+                                            radius: QUILL_BURST_RADIUS,
+                                            damage: QUILL_BURST_DAMAGE,
+                                            building_multiplier: FIXED_ONE,
+                                            source_owner: owner_player_id,
+                                        });
+                                    }
+                                }
+                                AbilityId::ExpendableHeroism => {
+                                    // WarrenMarshal AoE damage buff to allies (simplified as AoE CC on enemies)
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Stunned,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+
+                                // =============================================
+                                // Seekers of the Deep (Badgers) — Activated
+                                // =============================================
+                                AbilityId::SeismicSlam => {
+                                    // Cragback AoE stun
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Stunned,
+                                        duration: SEISMIC_SLAM_STUN_TICKS,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::DustCloud => {
+                                    // Dustclaw AoE disorient
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Disoriented,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::RallyCry => {
+                                    // Warden AoE damage buff (using AoeCcCommand on enemies as simplified)
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Disoriented,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::ScorchedEarth => {
+                                    // Embermaw AoE damage
+                                    if let Ok((_, unit_pos, _, _, _)) = query.get(entity) {
+                                        commands.queue(AoeDamageCommand {
+                                            source_entity: entity,
+                                            source_pos: unit_pos.world,
+                                            radius: SCORCHED_EARTH_RADIUS,
+                                            damage: SCORCHED_EARTH_DAMAGE,
+                                            building_multiplier: FIXED_ONE,
+                                            source_owner: owner_player_id,
+                                        });
+                                    }
+                                }
+
+                                // =============================================
+                                // The Murder (Corvids) — Activated
+                                // =============================================
+                                AbilityId::TalonDive => {
+                                    // Rookclaw dive-bomb AoE damage
+                                    if let Ok((_, unit_pos, _, _, _)) = query.get(entity) {
+                                        commands.queue(AoeDamageCommand {
+                                            source_entity: entity,
+                                            source_pos: unit_pos.world,
+                                            radius: TALON_DIVE_RADIUS,
+                                            damage: TALON_DIVE_DAMAGE,
+                                            building_multiplier: FIXED_ONE,
+                                            source_owner: owner_player_id,
+                                        });
+                                    }
+                                }
+                                AbilityId::GlitterBomb => {
+                                    // Magpike AoE disorient (glitter blind)
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Disoriented,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::SignalJam => {
+                                    // Magpyre AoE silence
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Silenced,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::MurderRallyCry => {
+                                    // Jaycaller AoE disorient on enemies
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Tilted,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::Cacophony => {
+                                    // Jaycaller AoE stun
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Stunned,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::Omen => {
+                                    // Hootseer AoE Tilted debuff
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Tilted,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+
+                                // =============================================
+                                // LLAMA (Raccoons) — Activated
+                                // =============================================
+                                AbilityId::WreckBall => {
+                                    // HeapTitan AoE damage
+                                    if let Ok((_, unit_pos, _, _, _)) = query.get(entity) {
+                                        commands.queue(AoeDamageCommand {
+                                            source_entity: entity,
+                                            source_pos: unit_pos.world,
+                                            radius: WRECK_BALL_RADIUS,
+                                            damage: WRECK_BALL_DAMAGE,
+                                            building_multiplier: FIXED_ONE,
+                                            source_owner: owner_player_id,
+                                        });
+                                    }
+                                }
+                                AbilityId::MagneticPulse => {
+                                    // HeapTitan AoE pull (reverse Revulsion)
+                                    commands.queue(RevulsionAoeCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        push_distance: Fixed::from_num(-2), // negative = pull
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::SignalScramble => {
+                                    // GlitchRat AoE silence
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Silenced,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::StenchCloudAbility => {
+                                    // DumpsterDiver AoE disorient
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Disoriented,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::ChainBreak => {
+                                    // Wrecker AoE damage with building bonus
+                                    if let Ok((_, unit_pos, _, _, _)) = query.get(entity) {
+                                        commands.queue(AoeDamageCommand {
+                                            source_entity: entity,
+                                            source_pos: unit_pos.world,
+                                            radius: CHAIN_BREAK_RADIUS,
+                                            damage: CHAIN_BREAK_DAMAGE,
+                                            building_multiplier: CHAIN_BREAK_BUILDING_MULT,
+                                            source_owner: owner_player_id,
+                                        });
+                                    }
+                                }
+
+                                // =============================================
+                                // Croak (Axolotls) — Activated
+                                // =============================================
+                                AbilityId::LimbToss => {
+                                    // Regeneron ranged damage (simplified as small AoE)
+                                    if let Ok((_, unit_pos, _, _, _)) = query.get(entity) {
+                                        commands.queue(AoeDamageCommand {
+                                            source_entity: entity,
+                                            source_pos: unit_pos.world,
+                                            radius: Fixed::from_bits(1 << 16), // 1 tile
+                                            damage: LIMB_TOSS_DAMAGE,
+                                            building_multiplier: FIXED_ONE,
+                                            source_owner: owner_player_id,
+                                        });
+                                    }
+                                }
+                                AbilityId::Venomstrike => {
+                                    // Eftsaber single-target damage (small AoE + Waterlogged)
+                                    if let Ok((_, unit_pos, _, _, _)) = query.get(entity) {
+                                        commands.queue(AoeDamageCommand {
+                                            source_entity: entity,
+                                            source_pos: unit_pos.world,
+                                            radius: Fixed::from_bits(1 << 16),
+                                            damage: VENOMSTRIKE_DAMAGE,
+                                            building_multiplier: FIXED_ONE,
+                                            source_owner: owner_player_id,
+                                        });
+                                    }
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Waterlogged,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::MireCurse => {
+                                    // Bogwhisper AoE Waterlogged
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Waterlogged,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+
+                                // =============================================
+                                // Self-buff activated abilities
+                                // (set slot.active, effect handled by ability_effect_system)
+                                // =============================================
+                                AbilityId::PileOn
+                                | AbilityId::Scatter
+                                | AbilityId::StubbornAdvance
+                                | AbilityId::ShieldWall
+                                | AbilityId::GrudgeCharge
+                                | AbilityId::RecklessLunge
+                                | AbilityId::Getaway
+                                | AbilityId::PlayDead
+                                | AbilityId::Inflate
+                                | AbilityId::Hop
+                                | AbilityId::Scavenge => {
+                                    // Self-buffs: slot.active + duration already set above,
+                                    // ability_effect_system bridges to StatusEffect
+                                }
+
                                 _ => {}
                             }
                         }

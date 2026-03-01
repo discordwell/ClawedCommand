@@ -114,8 +114,50 @@ pub fn stat_modifier_system(
                 StatusEffectId::Tagged | StatusEffectId::CcImmune => {
                     // These don't affect stats
                 }
-                _ => {
-                    // Non-cat faction status effects — no stat modifiers yet
+                StatusEffectId::Waterlogged => {
+                    // -10% speed (Croak debuff)
+                    modifiers.speed_multiplier = modifiers.speed_multiplier
+                        * Fixed::from_bits((1 << 16) - (1 << 16) * 10 / 100); // 0.90
+                }
+                StatusEffectId::Stunned => {
+                    // Hard stun CC: immobile, can't attack, silenced
+                    modifiers.immobilized = true;
+                    modifiers.cannot_attack = true;
+                    modifiers.silenced = true;
+                }
+                StatusEffectId::Silenced => {
+                    // Can't use abilities
+                    modifiers.silenced = true;
+                }
+                StatusEffectId::Entrenched => {
+                    // Immobile, 30% damage reduction, 20% damage boost
+                    modifiers.immobilized = true;
+                    modifiers.damage_reduction = modifiers.damage_reduction
+                        * Fixed::from_bits((1 << 16) - (1 << 16) * 30 / 100); // 0.70
+                    modifiers.damage_multiplier = modifiers.damage_multiplier
+                        * Fixed::from_bits((1 << 16) + (1 << 16) * 20 / 100); // 1.20
+                }
+                StatusEffectId::SpeedBuff => {
+                    // +50% speed (no attack penalty)
+                    modifiers.speed_multiplier = modifiers.speed_multiplier
+                        * Fixed::from_bits((1 << 16) + (1 << 16) * 50 / 100); // 1.50
+                }
+                StatusEffectId::ArmorBuff => {
+                    // 30% damage reduction
+                    modifiers.damage_reduction = modifiers.damage_reduction
+                        * Fixed::from_bits((1 << 16) - (1 << 16) * 30 / 100); // 0.70
+                }
+                StatusEffectId::DamageBuff => {
+                    // +25% damage
+                    modifiers.damage_multiplier = modifiers.damage_multiplier
+                        * Fixed::from_bits((1 << 16) + (1 << 16) * 25 / 100); // 1.25
+                }
+                StatusEffectId::PlayingDead => {
+                    // Invulnerable, immobile, can't attack, silenced
+                    modifiers.invulnerable = true;
+                    modifiers.immobilized = true;
+                    modifiers.cannot_attack = true;
+                    modifiers.silenced = true;
                 }
             }
         }

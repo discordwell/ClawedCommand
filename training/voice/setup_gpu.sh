@@ -19,7 +19,7 @@ sudo apt-get install -y -qq ffmpeg sox libsndfile1 libsox-dev wget unzip git
 # Python virtual environment
 echo ""
 echo "--- Setting up Python environment ---"
-VENV_DIR="${WORKSPACE:-/workspace}/venv"
+VENV_DIR="${WORKSPACE:-$HOME}/venv"
 if [ ! -d "$VENV_DIR" ]; then
     python3 -m venv "$VENV_DIR"
 fi
@@ -47,14 +47,18 @@ pip install -q bark || echo "WARNING: bark install failed (may need manual setup
 # Download Speech Commands v2
 echo ""
 echo "--- Downloading Google Speech Commands v2 ---"
-DATA_DIR="${WORKSPACE:-/workspace}/data"
+DATA_DIR="${WORKSPACE:-$HOME}/data"
 mkdir -p "$DATA_DIR"
-python3 -c "
-import torchaudio
-print('Downloading Speech Commands v2...')
-torchaudio.datasets.SPEECHCOMMANDS('$DATA_DIR', url='speech_commands_v2', download=True)
-print('Done')
-" || echo "WARNING: Speech Commands download failed — will retry in pipeline"
+SC_DIR="$DATA_DIR/speech_commands_v2"
+if [ ! -d "$SC_DIR" ] || [ -z "$(ls -A "$SC_DIR" 2>/dev/null)" ]; then
+    mkdir -p "$SC_DIR"
+    wget -q -P "$SC_DIR" http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz
+    tar xzf "$SC_DIR/speech_commands_v0.02.tar.gz" -C "$SC_DIR"
+    rm -f "$SC_DIR/speech_commands_v0.02.tar.gz"
+    echo "Downloaded $(ls -d "$SC_DIR"/*/ 2>/dev/null | wc -l) word directories"
+else
+    echo "Speech Commands already present at $SC_DIR"
+fi
 
 echo ""
 echo "=== Setup complete ==="

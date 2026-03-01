@@ -11,7 +11,7 @@
 
 set -e
 
-WORKSPACE="${WORKSPACE:-/workspace}"
+WORKSPACE="${WORKSPACE:-$HOME}"
 DATA_DIR="$WORKSPACE/data"
 CKPT_DIR="$WORKSPACE/checkpoints"
 EVAL_DIR="$WORKSPACE/eval_results"

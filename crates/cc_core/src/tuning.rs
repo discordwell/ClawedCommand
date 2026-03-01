@@ -94,6 +94,46 @@ pub const SHAPED_CHARGE_BUILDING_MULT: Fixed = Fixed::from_bits(3 << 16);
 pub const ECHOLOCATION_REVEAL_TICKS: u32 = 20;
 
 // ---------------------------------------------------------------------------
+// Multi-faction Abilities
+// ---------------------------------------------------------------------------
+
+/// QuillBurst (Quillback/Clawed): AoE damage.
+pub const QUILL_BURST_DAMAGE: Fixed = Fixed::from_bits(20 << 16);
+/// QuillBurst: AoE radius (tiles).
+pub const QUILL_BURST_RADIUS: Fixed = Fixed::from_bits(2 << 16);
+
+/// ScorchedEarth (Embermaw/Seekers): AoE damage.
+pub const SCORCHED_EARTH_DAMAGE: Fixed = Fixed::from_bits(25 << 16);
+/// ScorchedEarth: AoE radius (tiles).
+pub const SCORCHED_EARTH_RADIUS: Fixed = Fixed::from_bits(4 << 16);
+
+/// SeismicSlam (Cragback/Seekers): AoE stun duration (ticks).
+pub const SEISMIC_SLAM_STUN_TICKS: u32 = 20;
+
+/// TalonDive (Rookclaw/Murder): AoE damage on impact.
+pub const TALON_DIVE_DAMAGE: Fixed = Fixed::from_bits(30 << 16);
+/// TalonDive: impact AoE radius (tiles).
+pub const TALON_DIVE_RADIUS: Fixed = Fixed::from_bits(1 << 16);
+
+/// WreckBall (HeapTitan/LLAMA): AoE damage.
+pub const WRECK_BALL_DAMAGE: Fixed = Fixed::from_bits(30 << 16);
+/// WreckBall: AoE radius (tiles).
+pub const WRECK_BALL_RADIUS: Fixed = Fixed::from_bits(3 << 16);
+
+/// ChainBreak (Wrecker/LLAMA): AoE damage with building bonus.
+pub const CHAIN_BREAK_DAMAGE: Fixed = Fixed::from_bits(15 << 16);
+/// ChainBreak: AoE radius (tiles).
+pub const CHAIN_BREAK_RADIUS: Fixed = Fixed::from_bits(3 << 16);
+/// ChainBreak: damage multiplier vs buildings.
+pub const CHAIN_BREAK_BUILDING_MULT: Fixed = Fixed::from_bits(2 << 16);
+
+/// LimbToss (Regeneron/Croak): single-target ranged damage.
+pub const LIMB_TOSS_DAMAGE: Fixed = Fixed::from_bits(10 << 16);
+
+/// Venomstrike (Eftsaber/Croak): single-target damage + Waterlogged.
+pub const VENOMSTRIKE_DAMAGE: Fixed = Fixed::from_bits(15 << 16);
+
+// ---------------------------------------------------------------------------
 // AI
 // ---------------------------------------------------------------------------
 

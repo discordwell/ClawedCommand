@@ -8,7 +8,7 @@ pub mod minimap;
 pub mod report;
 pub mod snapshot;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Instant;
 
 use bevy::prelude::*;
@@ -21,7 +21,7 @@ use cc_core::map::GameMap;
 use cc_core::map_gen::{self, MapGenParams};
 use cc_core::unit_stats::base_stats;
 
-use crate::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState};
+use crate::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState, BotConfig};
 use crate::ai::MultiAiState;
 use crate::resources::{
     CombatStats, CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock,
@@ -47,14 +47,6 @@ use snapshot::GameStateSnapshot;
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
-
-/// Configuration for a single bot player.
-#[derive(Debug, Clone)]
-pub struct BotConfig {
-    pub player_id: u8,
-    pub difficulty: AiDifficulty,
-    pub profile: AiPersonalityProfile,
-}
 
 /// A synthetic voice command to inject at a specific tick.
 #[derive(Debug, Clone)]
@@ -94,11 +86,13 @@ impl Default for HarnessConfig {
                     player_id: 0,
                     difficulty: AiDifficulty::Medium,
                     profile: AiPersonalityProfile::balanced(),
+                    faction: cc_core::components::Faction::CatGpt,
                 },
                 BotConfig {
                     player_id: 1,
                     difficulty: AiDifficulty::Medium,
                     profile: AiPersonalityProfile::balanced(),
+                    faction: cc_core::components::Faction::CatGpt,
                 },
             ],
             voice_script: None,
@@ -156,12 +150,16 @@ pub struct MatchResult {
 impl MatchResult {
     /// A match passes if there are no Error/Fatal violations and no Error outcome.
     pub fn passed(&self) -> bool {
-        let has_fatal = self
-            .violations
-            .iter()
-            .any(|v| matches!(v.severity, Severity::Error | Severity::Fatal));
         let is_error = matches!(self.outcome, MatchOutcome::Error { .. });
-        !has_fatal && !is_error
+        self.fatal_violations().is_empty() && !is_error
+    }
+
+    /// Returns only Error/Fatal severity violations.
+    pub fn fatal_violations(&self) -> Vec<&invariants::InvariantViolation> {
+        self.violations
+            .iter()
+            .filter(|v| matches!(v.severity, Severity::Error | Severity::Fatal))
+            .collect()
     }
 }
 
@@ -416,6 +414,7 @@ fn make_harness_sim(
                 phase: AiPhase::EarlyGame,
                 difficulty: bot.difficulty,
                 profile: bot.profile.clone(),
+                fmap: crate::ai::fsm::faction_map(bot.faction),
                 enemy_spawn: None,
                 attack_ordered: false,
                 last_attack_tick: 0,
@@ -464,7 +463,8 @@ fn make_harness_sim(
     schedule.add_systems(victory_system.after(headless_despawn_system));
 
     for (player_id, spawn_pos) in &spawn_positions {
-        spawn_starting_entities(&mut world, *player_id, *spawn_pos, map_def);
+        let faction = config.bots[*player_id as usize].faction;
+        spawn_starting_entities(&mut world, *player_id, *spawn_pos, faction, map_def);
     }
 
     (world, schedule)
@@ -474,9 +474,11 @@ fn spawn_starting_entities(
     world: &mut World,
     player_id: u8,
     spawn_pos: GridPos,
+    faction: cc_core::components::Faction,
     map_def: &cc_core::map_format::MapDefinition,
 ) {
-    let box_stats = building_stats(BuildingKind::TheBox);
+    let fmap = crate::ai::fsm::faction_map(faction);
+    let hq_stats = building_stats(fmap.hq);
     world.spawn((
         Position {
             world: WorldPos::from_grid(spawn_pos),
@@ -484,29 +486,29 @@ fn spawn_starting_entities(
         GridCell { pos: spawn_pos },
         Owner { player_id },
         Building {
-            kind: BuildingKind::TheBox,
+            kind: fmap.hq,
         },
         Health {
-            current: box_stats.health,
-            max: box_stats.health,
+            current: hq_stats.health,
+            max: hq_stats.health,
         },
         Producer,
         ProductionQueue::default(),
     ));
 
-    // Grant supply_cap from TheBox and starting resources
+    // Grant supply_cap from HQ and starting resources
     {
         let mut player_res = world.resource_mut::<PlayerResources>();
         if let Some(pres) = player_res.players.get_mut(player_id as usize) {
-            pres.supply_cap += box_stats.supply_provided;
+            pres.supply_cap += hq_stats.supply_provided;
             pres.food = 200; // Starting resources
         }
     }
 
-    let unit_supply_cost = base_stats(UnitKind::Pawdler).supply_cost;
+    let unit_supply_cost = base_stats(fmap.worker).supply_cost;
     for i in 0..2 {
         let offset = GridPos::new(spawn_pos.x + 1 + i, spawn_pos.y);
-        spawn_combat_unit(world, offset, player_id, UnitKind::Pawdler);
+        spawn_combat_unit(world, offset, player_id, fmap.worker);
     }
 
     // Track supply used by starting units

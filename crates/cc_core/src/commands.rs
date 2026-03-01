@@ -79,6 +79,14 @@ pub enum GameCommand {
     CancelResearch { building: EntityId },
 }
 
+impl GameCommand {
+    /// Hint which player issued this command (for interleaving fairness).
+    /// Returns None when the issuing player is unknown.
+    pub fn player_hint(&self) -> Option<u8> {
+        None
+    }
+}
+
 /// Target for an ability activation.
 #[derive(Debug, Clone, Copy)]
 pub enum AbilityTarget {
