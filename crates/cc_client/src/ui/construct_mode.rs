@@ -12,7 +12,7 @@ const CONSTRUCT_MODE_SYSTEM_PROMPT: &str = r#"You are Minstral, an AI assistant 
 Generate a Lua script using the ctx API. Available methods:
 
 Queries:
-- ctx:my_units(kind?) -> [{id, kind, x, y, is_idle, is_dead, is_moving, is_attacking, hp_current, hp_max}]
+- ctx:my_units(kind?) -> [{id, kind, x, y, idle, moving, attacking, gathering, hp, hp_max, speed, damage, range, owner}]
 - ctx:enemy_units() -> same format
 - ctx:my_buildings(kind?) -> [{id, kind, x, y, under_construction}]
 - ctx:enemy_buildings() -> same format
@@ -172,7 +172,9 @@ pub fn construct_mode_system(
 
                     let send_enabled = !state.waiting_for_response;
                     ui.horizontal(|ui| {
-                        ui.set_enabled(send_enabled);
+                        if !send_enabled {
+                            ui.disable();
+                        }
                         let response = ui.add(
                             egui::TextEdit::singleline(&mut state.chat_input)
                                 .desired_width(150.0)
@@ -223,8 +225,8 @@ pub fn construct_mode_system(
                 // Save Script
                 if ui.button("Save Script").clicked() && !state.editable_source.is_empty() {
                     let intents =
-                        cc_agent::agent_bridge::extract_intents_from_source_pub(&state.editable_source);
-                    let name = cc_agent::agent_bridge::extract_name_from_source_pub(&state.editable_source)
+                        cc_agent::agent_bridge::extract_intents_from_source(&state.editable_source);
+                    let name = cc_agent::agent_bridge::extract_name_from_source(&state.editable_source)
                         .unwrap_or_else(|| format!("script_{}", library.scripts.len()));
 
                     let script = LuaScript {

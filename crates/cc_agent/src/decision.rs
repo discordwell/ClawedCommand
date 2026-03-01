@@ -150,23 +150,6 @@ pub fn agent_decision_system(
     }
 }
 
-/// Bevy system: clear in-flight flag when responses arrive.
-/// Must run after poll_agent_responses.
-pub fn clear_in_flight(
-    bridge: Res<AgentBridge>,
-    mut decision_state: ResMut<AgentDecisionState>,
-) {
-    // We can't peek at the channel (poll_agent_responses drains it),
-    // so we use a simple approach: clear all in-flight flags when
-    // the response channel is empty (all processed).
-    if bridge.response_rx.is_empty() && !decision_state.in_flight.is_empty() {
-        // Only clear after at least one timer tick has passed since we sent
-        if decision_state.timer.elapsed_secs() > 0.5 {
-            decision_state.in_flight.clear();
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

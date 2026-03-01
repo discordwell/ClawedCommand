@@ -1,20 +1,13 @@
--- basic_build: Order a Pawdler to build a Cat Tree near the base
--- Intents: build, construct, make building
-local units = ctx:get_units()
-local buildings = ctx:get_buildings()
+-- basic_build: Order an idle Pawdler to build a Cat Tree
+-- Intents: build, construct
 
--- Find a Pawdler
-local pawdler = nil
-for _, u in ipairs(units) do
-    if u.kind == "Pawdler" then
-        pawdler = u
-        break
-    end
-end
+local res = ctx:get_resources()
+if res.food < 150 then return end
 
-if not pawdler then return end
+local units = ctx:my_units("Pawdler")
+local buildings = ctx:my_buildings()
 
--- Find The Box for reference position
+-- Find our Box position as reference
 local base_x, base_y = 5, 5
 for _, b in ipairs(buildings) do
     if b.kind == "TheBox" then
@@ -24,5 +17,10 @@ for _, b in ipairs(buildings) do
     end
 end
 
--- Build Cat Tree offset from base
-ctx:build(pawdler.id, "CatTree", base_x + 3, base_y + 2)
+-- Find an idle Pawdler
+for _, u in ipairs(units) do
+    if u.idle then
+        ctx:build(u.id, "CatTree", base_x + 3, base_y + 3)
+        return
+    end
+end

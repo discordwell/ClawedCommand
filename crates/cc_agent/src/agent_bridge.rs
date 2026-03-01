@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use bevy::prelude::*;
 use crossbeam_channel::{Receiver, Sender, unbounded};
 
@@ -50,15 +52,15 @@ pub struct AgentChatEntry {
 /// Stores agent responses for the side panel chat display.
 #[derive(Resource, Default)]
 pub struct AgentChatLog {
-    pub entries: Vec<AgentChatEntry>,
+    pub entries: VecDeque<AgentChatEntry>,
 }
 
 impl AgentChatLog {
     pub fn push(&mut self, content: String, error: Option<String>) {
-        self.entries.push(AgentChatEntry { content, error });
+        self.entries.push_back(AgentChatEntry { content, error });
         // Keep last 50 entries
         if self.entries.len() > 50 {
-            self.entries.remove(0);
+            self.entries.pop_front();
         }
     }
 }
@@ -105,13 +107,18 @@ impl Default for AgentBridge {
 }
 
 /// Bevy system: poll for LLM responses and route by source.
+/// Also clears in-flight flags per-player as responses arrive.
 pub fn poll_agent_responses(
     bridge: Res<AgentBridge>,
     mut cmd_queue: ResMut<CommandQueue>,
     mut construct_state: ResMut<ConstructModeState>,
     mut chat_log: ResMut<AgentChatLog>,
+    mut decision_state: ResMut<crate::decision::AgentDecisionState>,
 ) {
     while let Ok(response) = bridge.response_rx.try_recv() {
+        // Clear in-flight flag for this player so the decision system
+        // can send new requests on the next timer tick.
+        decision_state.in_flight.remove(&response.player_id);
         if let Some(err) = &response.error {
             log::warn!("Agent error: {err}");
         }
@@ -178,18 +185,8 @@ pub fn extract_lua_script(content: &str) -> Option<LuaScript> {
     })
 }
 
-/// Parse `-- Intents: gather, harvest` from Lua source (public for UI).
-pub fn extract_intents_from_source_pub(source: &str) -> Vec<String> {
-    extract_intents_from_source(source)
-}
-
-/// Parse `-- script_name` from first comment (public for UI).
-pub fn extract_name_from_source_pub(source: &str) -> Option<String> {
-    extract_name_from_source(source)
-}
-
 /// Parse `-- Intents: gather, harvest` from Lua source.
-fn extract_intents_from_source(source: &str) -> Vec<String> {
+pub fn extract_intents_from_source(source: &str) -> Vec<String> {
     for line in source.lines() {
         let trimmed = line.trim();
         if let Some(rest) = trimmed.strip_prefix("-- Intents:") {
@@ -204,7 +201,7 @@ fn extract_intents_from_source(source: &str) -> Vec<String> {
 }
 
 /// Parse `-- script_name` or `-- script_name: description` from first comment.
-fn extract_name_from_source(source: &str) -> Option<String> {
+pub fn extract_name_from_source(source: &str) -> Option<String> {
     for line in source.lines() {
         let trimmed = line.trim();
         if let Some(rest) = trimmed.strip_prefix("-- ") {

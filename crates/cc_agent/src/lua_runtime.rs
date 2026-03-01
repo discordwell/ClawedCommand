@@ -1251,7 +1251,8 @@ pub fn execute_script_with_context_tiered(
                         d.set("x", dep.pos.x)?;
                         d.set("y", dep.pos.y)?;
                         d.set("remaining", dep.remaining as f64)?;
-                        d.set("resource_type", format!("{:?}", dep.resource_type))?;
+                        d.set("resource_type", dep.resource_type.to_string())?;
+                        d.set("kind", dep.resource_type.to_string())?;
                         tbl.set(i + 1, d)?;
                     }
                     Ok(tbl)
@@ -1337,6 +1338,11 @@ fn unit_to_lua_table(lua: &Lua, unit: &UnitSnapshot) -> LuaResult<LuaTable> {
     tbl.set("hp", fixed_to_f64(unit.health_current))?;
     tbl.set("hp_max", fixed_to_f64(unit.health_max))?;
     tbl.set("speed", fixed_to_f64(unit.speed))?;
+    tbl.set("damage", fixed_to_f64(unit.attack_damage))?;
+    tbl.set("range", fixed_to_f64(unit.attack_range))?;
+    tbl.set("attack_speed", unit.attack_speed)?;
+    tbl.set("attack_type", unit.attack_type.to_string())?;
+    // Backward-compatible short aliases
     tbl.set("atk_dmg", fixed_to_f64(unit.attack_damage))?;
     tbl.set("atk_range", fixed_to_f64(unit.attack_range))?;
     tbl.set("atk_speed", unit.attack_speed)?;
@@ -1362,6 +1368,7 @@ fn building_to_lua_table(
     tbl.set("hp_max", fixed_to_f64(building.health_max))?;
     tbl.set("under_construction", building.under_construction)?;
     tbl.set("construction_progress", building.construction_progress)?;
+    tbl.set("producing", !building.production_queue.is_empty())?;
     tbl.set("owner", building.owner)?;
     Ok(tbl)
 }

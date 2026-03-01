@@ -1,23 +1,25 @@
--- basic_retreat: Move all selected units back toward the player's base
--- Intents: retreat, run, fall back, go home
-local units = ctx:get_units()
-local buildings = ctx:get_buildings()
+-- basic_retreat: Move all units back toward the base
+-- Intents: retreat, run, fall back
 
-if #units == 0 then return end
+local buildings = ctx:my_buildings()
 
--- Find The Box (home base)
-local home_x, home_y = 5, 5
+-- Find our Box (HQ) position as rally point
+local rally_x, rally_y = 5, 5
 for _, b in ipairs(buildings) do
     if b.kind == "TheBox" then
-        home_x = b.x
-        home_y = b.y
+        rally_x = b.x
+        rally_y = b.y
         break
     end
 end
 
+-- Move all units toward the base
+local units = ctx:my_units()
 local ids = {}
-for _, unit in ipairs(units) do
-    table.insert(ids, unit.id)
+for _, u in ipairs(units) do
+    table.insert(ids, u.id)
 end
 
-ctx:move_units(ids, home_x, home_y)
+if #ids > 0 then
+    ctx:move_units(ids, rally_x, rally_y)
+end

@@ -1,28 +1,27 @@
--- basic_attack: Attack-move all selected units toward the nearest enemy
--- Intents: attack, fight, charge, go get them
-local units = ctx:get_units()
-local enemies = ctx:get_visible_enemies()
+-- basic_attack: Attack-move combat units toward nearest enemy
+-- Intents: attack, fight, charge
 
-if #units == 0 or #enemies == 0 then return end
+local enemies = ctx:enemy_units()
+if #enemies == 0 then return end
 
--- Find nearest enemy to first unit
-local best_dist = math.huge
-local best_enemy = nil
-local u = units[1]
+-- Find centroid of visible enemies
+local cx, cy = 0, 0
 for _, e in ipairs(enemies) do
-    local dx = e.x - u.x
-    local dy = e.y - u.y
-    local dist = dx * dx + dy * dy
-    if dist < best_dist then
-        best_dist = dist
-        best_enemy = e
+    cx = cx + e.x
+    cy = cy + e.y
+end
+cx = math.floor(cx / #enemies)
+cy = math.floor(cy / #enemies)
+
+-- Gather all non-worker combat units
+local units = ctx:my_units()
+local attackers = {}
+for _, u in ipairs(units) do
+    if u.kind ~= "Pawdler" then
+        table.insert(attackers, u.id)
     end
 end
 
-if best_enemy then
-    local ids = {}
-    for _, unit in ipairs(units) do
-        table.insert(ids, unit.id)
-    end
-    ctx:attack_move(ids, best_enemy.x, best_enemy.y)
+if #attackers > 0 then
+    ctx:attack_move(attackers, cx, cy)
 end

@@ -37,7 +37,6 @@ impl Plugin for AgentPlugin {
                 (
                     agent_bridge::poll_agent_responses,
                     decision::agent_decision_system,
-                    decision::clear_in_flight.after(agent_bridge::poll_agent_responses),
                 ),
             )
             .add_systems(FixedUpdate, tool_tier::update_tool_tiers);
