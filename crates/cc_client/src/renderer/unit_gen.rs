@@ -53,9 +53,9 @@ fn sprite_size(kind: UnitKind) -> (usize, usize) {
     (w * 2, h * 2)
 }
 
-/// Return the asset path for a unit's idle sprite PNG (relative to `assets/`).
-pub fn sprite_file_path(kind: UnitKind) -> String {
-    let name = match kind {
+/// Return the file name slug for a unit kind (e.g. "pawdler", "flying_fox").
+pub fn unit_slug(kind: UnitKind) -> &'static str {
+    match kind {
         UnitKind::Pawdler => "pawdler",
         UnitKind::Nuisance => "nuisance",
         UnitKind::Chonk => "chonk",
@@ -67,7 +67,12 @@ pub fn sprite_file_path(kind: UnitKind) -> String {
         UnitKind::FerretSapper => "ferret_sapper",
         UnitKind::MechCommander => "mech_commander",
         _ => "pawdler",
-    };
+    }
+}
+
+/// Return the asset path for a unit's idle sprite PNG (relative to `assets/`).
+pub fn sprite_file_path(kind: UnitKind) -> String {
+    let name = unit_slug(kind);
     format!("sprites/units/{name}_idle.png")
 }
 

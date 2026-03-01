@@ -60,12 +60,15 @@ pub fn sync_projectile_sprites(
         // Projectiles render above units
         transform.translation.z = depth_z(pos.world) + 0.5;
 
-        // Rotate to face travel direction
+        // Rotate to face travel direction (project velocity to screen space)
         if vel.dx != FIXED_ZERO || vel.dy != FIXED_ZERO {
             let vx: f32 = vel.dx.to_num();
             let vy: f32 = vel.dy.to_num();
-            // atan2(-vy, vx) because screen Y is inverted in isometric
-            let angle = (-vy).atan2(vx);
+            // Isometric projection: screen_x = (dx + dy), screen_y = (dy - dx) / 2
+            // Y is negated for screen coords
+            let screen_vx = vx + vy;
+            let screen_vy = -(vy - vx) * 0.5;
+            let angle = screen_vy.atan2(screen_vx);
             transform.rotation = Quat::from_rotation_z(angle);
         }
     }

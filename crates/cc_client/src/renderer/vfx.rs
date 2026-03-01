@@ -9,10 +9,6 @@ use crate::renderer::projectiles::ProjectileSprite;
 /// Global particle cap to prevent performance degradation.
 const MAX_PARTICLES: usize = 200;
 
-/// Frame counter for trail spawning (every 3rd frame).
-#[derive(Resource, Default)]
-pub struct VfxFrameCounter(pub u32);
-
 /// A single particle with linear interpolation over its lifetime.
 #[derive(Component)]
 pub struct Particle {
@@ -75,7 +71,7 @@ pub fn update_emitters(
     particle_count: Query<(), With<Particle>>,
     mut emitters: Query<(Entity, &mut ParticleEmitter, &Transform)>,
 ) {
-    let current_particles = particle_count.iter().count();
+    let mut current_particles = particle_count.iter().count();
 
     for (entity, mut emitter, transform) in emitters.iter_mut() {
         if emitter.remaining == 0 {
@@ -114,6 +110,7 @@ pub fn update_emitters(
             ));
 
             emitter.remaining -= 1;
+            current_particles += 1;
         }
     }
 }
@@ -130,7 +127,7 @@ pub fn spawn_trail_particles(
         return;
     }
 
-    let current_particles = particle_count.iter().count();
+    let mut current_particles = particle_count.iter().count();
     if current_particles >= MAX_PARTICLES {
         return;
     }
@@ -160,6 +157,7 @@ pub fn spawn_trail_particles(
             },
             Transform::from_translation(transform.translation + Vec3::new(0.0, 0.0, -0.01)),
         ));
+        current_particles += 1;
     }
 }
 

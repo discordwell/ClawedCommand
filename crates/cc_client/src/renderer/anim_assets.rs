@@ -1,8 +1,6 @@
 use bevy::prelude::*;
 
-use cc_core::components::UnitKind;
-
-use crate::renderer::unit_gen::ALL_KINDS;
+use crate::renderer::unit_gen::{ALL_KINDS, unit_slug};
 
 /// Sprite sheet asset handles for walk and attack animations.
 /// Each unit has up to two sheets (walk, attack) stored as texture atlas layouts.
@@ -20,23 +18,6 @@ pub struct AnimSheets {
 const SHEET_FRAME_SIZE: UVec2 = UVec2::new(128, 128);
 const SHEET_COLUMNS: u32 = 4;
 const SHEET_ROWS: u32 = 1;
-
-/// Return the unit name slug used in file paths.
-fn unit_slug(kind: UnitKind) -> &'static str {
-    match kind {
-        UnitKind::Pawdler => "pawdler",
-        UnitKind::Nuisance => "nuisance",
-        UnitKind::Chonk => "chonk",
-        UnitKind::FlyingFox => "flying_fox",
-        UnitKind::Hisser => "hisser",
-        UnitKind::Yowler => "yowler",
-        UnitKind::Mouser => "mouser",
-        UnitKind::Catnapper => "catnapper",
-        UnitKind::FerretSapper => "ferret_sapper",
-        UnitKind::MechCommander => "mech_commander",
-        _ => "pawdler",
-    }
-}
 
 /// Load animation sprite sheet assets at startup.
 /// Checks for `assets/sprites/units/{slug}_{walk|attack}.png` on disk.
@@ -84,6 +65,7 @@ pub fn load_anim_assets(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cc_core::components::UnitKind;
 
     #[test]
     fn unit_slugs_all_valid() {
@@ -94,6 +76,16 @@ mod tests {
                 slug.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'),
                 "Slug for {kind:?} has invalid chars: {slug}"
             );
+        }
+    }
+
+    #[test]
+    fn unit_slug_matches_idle_path() {
+        // Verify slug is consistent with the idle sprite path
+        for kind in ALL_KINDS {
+            let slug = unit_slug(kind);
+            let idle_path = crate::renderer::unit_gen::sprite_file_path(kind);
+            assert!(idle_path.contains(slug), "Slug {slug} not found in path {idle_path}");
         }
     }
 
