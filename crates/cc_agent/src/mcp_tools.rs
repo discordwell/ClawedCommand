@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use cc_core::commands::{AbilityTarget, EntityId, GameCommand};
 use cc_core::components::{BuildingKind, UnitKind};
 use cc_core::coords::GridPos;
@@ -11,9 +13,18 @@ use crate::script_context::ScriptContext;
 use crate::snapshot::GameStateSnapshot;
 use crate::tool_tier::{ToolRegistry, ToolTier};
 
+/// Singleton registry — built once, shared across all `tool_definitions` /
+/// `execute_tool` calls. Safe for both native (Send+Sync) and WASM (single-threaded).
+static REGISTRY: LazyLock<ToolRegistry> = LazyLock::new(ToolRegistry::build_default);
+
+/// Return a reference to the global singleton `ToolRegistry`.
+pub fn global_registry() -> &'static ToolRegistry {
+    &REGISTRY
+}
+
 /// Return tier-filtered MCP tool definitions for the AI agent.
 pub fn tool_definitions(tier: ToolTier) -> Vec<super::llm_client::ToolDef> {
-    ToolRegistry::build_default().tool_definitions_for_tier(tier)
+    global_registry().tool_definitions_for_tier(tier)
 }
 
 /// Execute a tool call, returning JSON result and any game commands to enqueue.
@@ -27,7 +38,7 @@ pub fn execute_tool(
     tier: ToolTier,
 ) -> (Value, Vec<GameCommand>) {
     // Tier gate: reject tools the caller hasn't unlocked
-    let registry = ToolRegistry::build_default();
+    let registry = global_registry();
     if !registry.is_available(name, tier) {
         return (
             serde_json::json!({"error": format!("tool '{}' requires higher tier", name)}),
@@ -405,4 +416,59 @@ fn unit_to_json(unit: &crate::snapshot::UnitSnapshot) -> Value {
         "attacking": unit.is_attacking,
         "idle": unit.is_idle,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn global_registry_returns_same_instance() {
+        let a = global_registry() as *const ToolRegistry;
+        let b = global_registry() as *const ToolRegistry;
+        assert_eq!(a, b, "global_registry() should return the same singleton on every call");
+    }
+
+    #[test]
+    fn global_registry_has_tools() {
+        let reg = global_registry();
+        assert!(reg.is_available("get_units", ToolTier::Basic));
+        assert!(reg.is_available("focus_fire", ToolTier::Tactical));
+        assert!(reg.is_available("adaptive_defense", ToolTier::Advanced));
+    }
+
+    #[test]
+    fn tool_definitions_uses_singleton() {
+        let defs = tool_definitions(ToolTier::Basic);
+        assert!(!defs.is_empty());
+        // Calling again should also work (same LazyLock)
+        let defs2 = tool_definitions(ToolTier::Advanced);
+        assert!(defs2.len() > defs.len());
+    }
+
+    #[test]
+    fn execute_tool_tier_gate_uses_singleton() {
+        let (result, cmds) = execute_tool(
+            "adaptive_defense",
+            &serde_json::json!({}),
+            0,
+            None,
+            ToolTier::Basic,
+        );
+        assert!(result["error"].as_str().unwrap().contains("higher tier"));
+        assert!(cmds.is_empty());
+    }
+
+    #[test]
+    fn execute_tool_unknown_tool() {
+        let (result, cmds) = execute_tool(
+            "nonexistent_tool",
+            &serde_json::json!({}),
+            0,
+            None,
+            ToolTier::Advanced,
+        );
+        assert!(result["error"].as_str().unwrap().contains("higher tier") || result["error"].as_str().unwrap().contains("unknown tool"));
+        assert!(cmds.is_empty());
+    }
 }
