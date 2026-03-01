@@ -359,6 +359,7 @@ mod tests {
             debrief_text: "Done!".into(),
             ai_tool_tier: None,
             next_mission: NextMission::default(),
+            mutators: vec![],
         }
     }
 

@@ -123,7 +123,7 @@ fn drain_commands(world: &mut World) -> Vec<GameCommand> {
         .resource_mut::<CommandQueue>()
         .commands
         .drain(..)
-        .map(|qc| qc.1)
+        .map(|qc| qc.command)
         .collect()
 }
 
@@ -788,7 +788,7 @@ fn voice_commands_tagged_with_player_0() {
     let raw = &world.resource::<CommandQueue>().commands;
     assert_eq!(raw.len(), 1);
     assert_eq!(
-        raw[0].0,
+        raw[0].player_id,
         Some(0),
         "voice commands should be tagged with player_id 0"
     );

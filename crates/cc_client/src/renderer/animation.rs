@@ -4,7 +4,7 @@ use cc_core::components::{AttackStats, Dead, UnitType, Velocity};
 use cc_core::math::FIXED_ZERO;
 
 use crate::renderer::anim_assets::AnimSheets;
-use crate::renderer::unit_gen::kind_index;
+use crate::renderer::unit_gen::{UnitSprites, kind_index};
 use crate::setup::UnitMesh;
 
 /// Current animation state for a unit, derived from sim state each frame.
@@ -88,6 +88,7 @@ pub fn derive_anim_state(
 pub fn advance_animation(
     time: Res<Time>,
     anim_sheets: Option<Res<AnimSheets>>,
+    unit_sprites: Option<Res<UnitSprites>>,
     mut query: Query<(
         &UnitType,
         &AnimState,
@@ -104,37 +105,31 @@ pub fn advance_animation(
             timer.set_duration(std::time::Duration::from_secs_f32(frame_duration(*anim_state)));
             timer.reset();
 
-            // Swap sheet image + reset atlas index on transition
-            if let Some(ref sheets) = anim_sheets {
-                let idx = kind_index(unit_type.kind);
+            // Look up the sheet for this state (if any)
+            let idx = kind_index(unit_type.kind);
+            let sheet_opt = anim_sheets.as_ref().and_then(|sheets| {
                 match anim_state {
-                    AnimState::Walk => {
-                        if let Some((ref img, ref layout)) = sheets.walk[idx] {
-                            sprite.image = img.clone();
-                            sprite.texture_atlas = Some(TextureAtlas {
-                                layout: layout.clone(),
-                                index: 0,
-                            });
-                            indices.first = 0;
-                            indices.last = 3;
-                        }
-                    }
-                    AnimState::Attack => {
-                        if let Some((ref img, ref layout)) = sheets.attack[idx] {
-                            sprite.image = img.clone();
-                            sprite.texture_atlas = Some(TextureAtlas {
-                                layout: layout.clone(),
-                                index: 0,
-                            });
-                            indices.first = 0;
-                            indices.last = 3;
-                        }
-                    }
-                    AnimState::Idle => {
-                        // Return to idle: clear atlas (single-frame idle sprite)
-                        sprite.texture_atlas = None;
-                    }
+                    AnimState::Walk => sheets.walk[idx].as_ref(),
+                    AnimState::Attack => sheets.attack[idx].as_ref(),
+                    AnimState::Idle => None,
                 }
+            });
+
+            if let Some((img, layout)) = sheet_opt {
+                // Swap to animation sheet
+                sprite.image = img.clone();
+                sprite.texture_atlas = Some(TextureAtlas {
+                    layout: layout.clone(),
+                    index: 0,
+                });
+                indices.first = 0;
+                indices.last = 3;
+            } else {
+                // No sheet for this state (or Idle) — fallback to idle sprite
+                if let Some(ref sprites) = unit_sprites {
+                    sprite.image = sprites.sprites[idx].clone();
+                }
+                sprite.texture_atlas = None;
             }
         }
 

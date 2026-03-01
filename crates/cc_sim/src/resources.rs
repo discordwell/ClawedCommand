@@ -1,10 +1,18 @@
 use bevy::prelude::*;
 use std::collections::HashSet;
 
-use cc_core::commands::{EntityId, GameCommand};
+use cc_core::commands::{CommandSource, EntityId, GameCommand};
 use cc_core::components::UpgradeType;
 use cc_core::coords::GridPos;
 use cc_core::map::GameMap;
+
+/// A queued command with its metadata.
+#[derive(Debug, Clone)]
+pub struct QueuedCommand {
+    pub player_id: Option<u8>,
+    pub source: CommandSource,
+    pub command: GameCommand,
+}
 
 /// Queue of commands to process each simulation tick.
 ///
@@ -12,32 +20,51 @@ use cc_core::map::GameMap;
 /// can interleave per-player commands for fairness (avoid first/last-mover bias).
 #[derive(Resource, Default)]
 pub struct CommandQueue {
-    pub commands: Vec<(Option<u8>, GameCommand)>,
+    pub commands: Vec<QueuedCommand>,
 }
 
 impl CommandQueue {
     pub fn push(&mut self, cmd: GameCommand) {
-        self.commands.push((None, cmd));
+        self.commands.push(QueuedCommand {
+            player_id: None,
+            source: CommandSource::default(),
+            command: cmd,
+        });
     }
 
     /// Push a command tagged with the issuing player's ID.
     pub fn push_for_player(&mut self, player_id: u8, cmd: GameCommand) {
-        self.commands.push((Some(player_id), cmd));
+        self.commands.push(QueuedCommand {
+            player_id: Some(player_id),
+            source: CommandSource::default(),
+            command: cmd,
+        });
+    }
+
+    /// Push a command with explicit source and player ID.
+    pub fn push_sourced(&mut self, player_id: Option<u8>, source: CommandSource, cmd: GameCommand) {
+        self.commands.push(QueuedCommand {
+            player_id,
+            source,
+            command: cmd,
+        });
     }
 
     /// Drain all commands, interleaving per-player commands for fairness.
     /// On even ticks player 0's commands go first in each pair; on odd ticks player 1 goes first.
-    pub fn drain_interleaved(&mut self, tick: u64) -> Vec<GameCommand> {
+    /// Returns (source, command) pairs for filtering by ControlRestrictions.
+    pub fn drain_interleaved(&mut self, tick: u64) -> Vec<(CommandSource, GameCommand)> {
         let all = std::mem::take(&mut self.commands);
-        let mut p0: Vec<GameCommand> = Vec::new();
-        let mut p1: Vec<GameCommand> = Vec::new();
-        let mut other: Vec<GameCommand> = Vec::new();
+        let mut p0: Vec<(CommandSource, GameCommand)> = Vec::new();
+        let mut p1: Vec<(CommandSource, GameCommand)> = Vec::new();
+        let mut other: Vec<(CommandSource, GameCommand)> = Vec::new();
 
-        for (player, cmd) in all {
-            match player {
-                Some(0) => p0.push(cmd),
-                Some(1) => p1.push(cmd),
-                _ => other.push(cmd),
+        for qc in all {
+            let pair = (qc.source, qc.command);
+            match qc.player_id {
+                Some(0) => p0.push(pair),
+                Some(1) => p1.push(pair),
+                _ => other.push(pair),
             }
         }
 
@@ -68,7 +95,10 @@ impl CommandQueue {
     }
 
     pub fn drain(&mut self) -> Vec<GameCommand> {
-        std::mem::take(&mut self.commands).into_iter().map(|(_, cmd)| cmd).collect()
+        std::mem::take(&mut self.commands)
+            .into_iter()
+            .map(|qc| qc.command)
+            .collect()
     }
 }
 
@@ -136,7 +166,7 @@ impl Default for PlayerResourceState {
             gpu_cores: 50,
             nfts: 0,
             supply: 0,
-            supply_cap: 0, // All supply comes from buildings (TheBox provides 10)
+            supply_cap: 0,
             completed_upgrades: HashSet::new(),
         }
     }
@@ -190,8 +220,6 @@ impl Default for PlayerResources {
 }
 
 /// Cumulative combat event counters for observability.
-/// Tracks both melee and ranged attacks so combat can be detected
-/// even when no projectiles happen to be in flight at snapshot time.
 #[derive(Resource, Default, Debug, Clone)]
 pub struct CombatStats {
     /// Total melee attacks that dealt damage.

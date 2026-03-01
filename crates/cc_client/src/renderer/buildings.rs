@@ -1,8 +1,9 @@
 use bevy::prelude::*;
 
-use crate::input::PlacementPreview;
-use crate::setup::{BuildingMesh, building_color};
-use cc_core::components::{Building, BuildingKind, Owner, Position, UnderConstruction};
+use crate::input::{InputMode, PlacementPreview};
+use crate::renderer::building_gen::{BuildingSprites, building_kind_index, building_scale};
+use crate::setup::{BuildingMesh, building_color, team_color};
+use cc_core::components::{Building, BuildingKind, Health, Owner, Position, UnderConstruction};
 use cc_core::coords::{depth_z, world_to_screen};
 use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
 use cc_sim::resources::MapResource;
@@ -23,6 +24,10 @@ pub struct ConstructionBarFg;
 #[derive(Component)]
 pub struct ConstructionBarBg;
 
+/// Marker for buildings that use Sprite-based rendering (vs MeshMaterial2d fallback).
+#[derive(Component)]
+pub struct SpriteBuilding;
+
 const CONSTRUCTION_BAR_HEIGHT: f32 = 4.0;
 const CONSTRUCTION_BAR_Y_OFFSET: f32 = 22.0;
 
@@ -38,31 +43,54 @@ fn construction_bar_width(kind: BuildingKind) -> f32 {
 }
 
 // ---------------------------------------------------------------------------
-// Existing systems
+// Spawn / sync building visuals
 // ---------------------------------------------------------------------------
 
 /// Spawn visual components for buildings that lack a BuildingMesh marker.
+/// Uses sprite-based rendering when BuildingSprites is available, Mesh2d fallback otherwise.
 pub fn spawn_building_visuals(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     map_res: Res<MapResource>,
+    building_sprites: Option<Res<BuildingSprites>>,
     new_buildings: Query<(Entity, &Building, &Owner, &Position), Without<BuildingMesh>>,
 ) {
-    for (entity, _building, owner, pos) in new_buildings.iter() {
+    for (entity, building, owner, pos) in new_buildings.iter() {
         let screen = world_to_screen(pos.world);
         let grid = pos.world.to_grid();
         let elev = map_res.map.elevation_at(grid) as f32 * ELEVATION_PIXEL_OFFSET;
+        let z = depth_z(pos.world) - 0.05;
 
-        let mesh = meshes.add(Rectangle::new(28.0, 28.0));
-        let mat = materials.add(ColorMaterial::from_color(building_color(owner.player_id)));
+        if let Some(ref sprites) = building_sprites {
+            let idx = building_kind_index(building.kind);
+            let image = sprites.sprites[idx].clone();
+            let scale = building_scale(building.kind, sprites.art_loaded);
+            let tint = team_color(owner.player_id);
 
-        commands.entity(entity).insert((
-            BuildingMesh,
-            Mesh2d(mesh),
-            MeshMaterial2d(mat),
-            Transform::from_xyz(screen.x, -screen.y + elev, depth_z(pos.world) - 0.05),
-        ));
+            commands.entity(entity).insert((
+                BuildingMesh,
+                SpriteBuilding,
+                Sprite {
+                    image,
+                    color: tint,
+                    ..default()
+                },
+                Transform::from_xyz(screen.x, -screen.y + elev, z)
+                    .with_scale(Vec3::splat(scale)),
+            ));
+        } else {
+            // Fallback: colored rectangle mesh
+            let mesh = meshes.add(Rectangle::new(28.0, 28.0));
+            let mat = materials.add(ColorMaterial::from_color(building_color(owner.player_id)));
+
+            commands.entity(entity).insert((
+                BuildingMesh,
+                Mesh2d(mesh),
+                MeshMaterial2d(mat),
+                Transform::from_xyz(screen.x, -screen.y + elev, z),
+            ));
+        }
     }
 }
 
@@ -82,12 +110,15 @@ pub fn sync_building_sprites(
 }
 
 /// Render a semi-transparent ghost at the cursor grid position during build placement.
+/// Uses the building sprite as a ghost when BuildingSprites is available.
 pub fn render_placement_preview(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     preview: Res<PlacementPreview>,
+    input_mode: Res<InputMode>,
     map_res: Res<MapResource>,
+    building_sprites: Option<Res<BuildingSprites>>,
     existing_preview: Query<Entity, With<PlacementGhost>>,
 ) {
     // Despawn old ghost
@@ -103,21 +134,48 @@ pub fn render_placement_preview(
     let screen = world_to_screen(world);
     let elev = map_res.map.elevation_at(grid_pos) as f32 * ELEVATION_PIXEL_OFFSET;
 
-    let color = if preview.valid {
-        Color::srgba(0.2, 0.8, 0.2, 0.4) // Green ghost
+    // Determine ghost color based on placement validity
+    let ghost_alpha = 0.4;
+    let (gr, gg, gb) = if preview.valid {
+        (0.2, 0.8, 0.2) // green
     } else {
-        Color::srgba(0.8, 0.2, 0.2, 0.4) // Red ghost
+        (0.8, 0.2, 0.2) // red
     };
 
-    let mesh = meshes.add(Rectangle::new(28.0, 28.0));
-    let mat = materials.add(ColorMaterial::from_color(color));
+    // Try to use the building sprite for the ghost when in BuildPlacement mode
+    let placement_kind = match *input_mode {
+        InputMode::BuildPlacement { kind } => Some(kind),
+        _ => None,
+    };
 
-    commands.spawn((
-        PlacementGhost,
-        Mesh2d(mesh),
-        MeshMaterial2d(mat),
-        Transform::from_xyz(screen.x, -screen.y + elev, depth_z(world) + 0.5),
-    ));
+    if let (Some(kind), Some(sprites)) = (placement_kind, &building_sprites) {
+        let idx = building_kind_index(kind);
+        let image = sprites.sprites[idx].clone();
+        let scale = building_scale(kind, sprites.art_loaded);
+
+        commands.spawn((
+            PlacementGhost,
+            Sprite {
+                image,
+                color: Color::srgba(gr, gg, gb, ghost_alpha),
+                ..default()
+            },
+            Transform::from_xyz(screen.x, -screen.y + elev, depth_z(world) + 0.5)
+                .with_scale(Vec3::splat(scale)),
+        ));
+    } else {
+        // Fallback: colored rectangle mesh
+        let color = Color::srgba(gr, gg, gb, ghost_alpha);
+        let mesh = meshes.add(Rectangle::new(28.0, 28.0));
+        let mat = materials.add(ColorMaterial::from_color(color));
+
+        commands.spawn((
+            PlacementGhost,
+            Mesh2d(mesh),
+            MeshMaterial2d(mat),
+            Transform::from_xyz(screen.x, -screen.y + elev, depth_z(world) + 0.5),
+        ));
+    }
 }
 
 /// Marker for the placement preview ghost entity.
@@ -220,11 +278,34 @@ pub fn remove_construction_bars(
 // Construction alpha (semi-transparent during build)
 // ---------------------------------------------------------------------------
 
-/// Make buildings semi-transparent while under construction, solid when complete.
-pub fn update_construction_alpha(
+/// Construction alpha for Sprite-based buildings — modify sprite.color alpha.
+pub fn update_construction_alpha_sprite(
+    mut buildings: Query<
+        (Option<&UnderConstruction>, &mut Sprite, &Owner),
+        (With<BuildingMesh>, With<SpriteBuilding>),
+    >,
+) {
+    for (uc, mut sprite, owner) in buildings.iter_mut() {
+        let base_tint = team_color(owner.player_id);
+        if let Some(uc) = uc {
+            let progress = if uc.total_ticks > 0 {
+                1.0 - (uc.remaining_ticks as f32 / uc.total_ticks as f32)
+            } else {
+                1.0
+            };
+            let alpha = 0.4 + 0.6 * progress;
+            sprite.color = base_tint.with_alpha(alpha);
+        } else if sprite.color.alpha() < 1.0 {
+            sprite.color = base_tint.with_alpha(1.0);
+        }
+    }
+}
+
+/// Construction alpha for MeshMaterial2d-based buildings (legacy fallback).
+pub fn update_construction_alpha_mesh(
     buildings: Query<
         (Option<&UnderConstruction>, &MeshMaterial2d<ColorMaterial>),
-        With<BuildingMesh>,
+        (With<BuildingMesh>, Without<SpriteBuilding>),
     >,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
@@ -242,11 +323,76 @@ pub fn update_construction_alpha(
             let alpha = 0.4 + 0.6 * progress;
             mat.color = mat.color.with_alpha(alpha);
         } else {
-            // Ensure fully opaque when not under construction
             let current_alpha = mat.color.alpha();
             if current_alpha < 1.0 {
                 mat.color = mat.color.with_alpha(1.0);
             }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Damage tint (darkens + red cast when HP < 50%)
+// ---------------------------------------------------------------------------
+
+/// Darken and add red cast to buildings below 50% HP. Only applies to completed buildings.
+/// Smoothly scales from normal at 50% HP to maximum damage tint at 0% HP.
+pub fn update_building_damage_tint(
+    mut sprite_buildings: Query<
+        (&Health, &Owner, &mut Sprite),
+        (With<BuildingMesh>, With<SpriteBuilding>, Without<UnderConstruction>),
+    >,
+    mesh_buildings: Query<
+        (&Health, &MeshMaterial2d<ColorMaterial>),
+        (With<BuildingMesh>, Without<SpriteBuilding>, Without<UnderConstruction>),
+    >,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    // Sprite-based buildings: modify sprite.color
+    for (health, owner, mut sprite) in sprite_buildings.iter_mut() {
+        let max_f = health.max.to_num::<f32>();
+        if max_f <= 0.0 {
+            continue;
+        }
+        let ratio = health.current.to_num::<f32>() / max_f;
+        let base = team_color(owner.player_id);
+
+        if ratio < 0.5 {
+            // Damage factor: 0.0 at 50% HP, 1.0 at 0% HP
+            let damage = 1.0 - (ratio / 0.5);
+            // Darken by up to 40% and add red cast
+            let darken = 1.0 - 0.4 * damage;
+            let red_boost = 0.3 * damage;
+            let r = (base.to_srgba().red * darken + red_boost).min(1.0);
+            let g = (base.to_srgba().green * darken * (1.0 - 0.3 * damage)).min(1.0);
+            let b = (base.to_srgba().blue * darken * (1.0 - 0.3 * damage)).min(1.0);
+            sprite.color = Color::srgba(r, g, b, sprite.color.alpha());
+        } else {
+            // Reset to base team color, preserving alpha
+            sprite.color = base.with_alpha(sprite.color.alpha());
+        }
+    }
+
+    // MeshMaterial2d-based buildings: modify material color
+    for (health, mat_handle) in mesh_buildings.iter() {
+        let max_f = health.max.to_num::<f32>();
+        if max_f <= 0.0 {
+            continue;
+        }
+        let ratio = health.current.to_num::<f32>() / max_f;
+
+        let Some(mat) = materials.get_mut(&mat_handle.0) else {
+            continue;
+        };
+
+        if ratio < 0.5 {
+            let damage = 1.0 - (ratio / 0.5);
+            let darken = 1.0 - 0.4 * damage;
+            let base = mat.color.to_srgba();
+            let r = (base.red * darken + 0.3 * damage).min(1.0);
+            let g = (base.green * darken * (1.0 - 0.3 * damage)).min(1.0);
+            let b = (base.blue * darken * (1.0 - 0.3 * damage)).min(1.0);
+            mat.color = Color::srgba(r, g, b, base.alpha);
         }
     }
 }

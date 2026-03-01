@@ -346,13 +346,205 @@ fn crossroads_layout() -> TemplateLayout {
     }
 }
 
+fn islands_layout() -> TemplateLayout {
+    TemplateLayout {
+        zones: vec![
+            // Water base layer — fills entire map at elevation 0
+            TemplateZone {
+                center: (0.50, 0.50),
+                radius: 0.70,
+                zone_type: ZoneType::Obstacle,
+                terrain: TerrainType::Water,
+                elevation: 0,
+            },
+            // === BASE ISLANDS (elevation 2, safe from flooding) ===
+            TemplateZone {
+                center: (0.14, 0.14),
+                radius: 0.15,
+                zone_type: ZoneType::Base,
+                terrain: TerrainType::Grass,
+                elevation: 2,
+            },
+            TemplateZone {
+                center: (0.86, 0.86),
+                radius: 0.15,
+                zone_type: ZoneType::Base,
+                terrain: TerrainType::Grass,
+                elevation: 2,
+            },
+            // === CENTRAL GROTTO (large island, elevation 1 — will flood late) ===
+            // Grass ring around grotto
+            TemplateZone {
+                center: (0.50, 0.50),
+                radius: 0.15,
+                zone_type: ZoneType::Center,
+                terrain: TerrainType::Grass,
+                elevation: 1,
+            },
+            // TechRuins core
+            TemplateZone {
+                center: (0.50, 0.50),
+                radius: 0.09,
+                zone_type: ZoneType::Center,
+                terrain: TerrainType::TechRuins,
+                elevation: 1,
+            },
+            // === EXPANSION ISLANDS (elevation 1, main diagonal) ===
+            TemplateZone {
+                center: (0.30, 0.28),
+                radius: 0.11,
+                zone_type: ZoneType::Expansion,
+                terrain: TerrainType::Grass,
+                elevation: 1,
+            },
+            TemplateZone {
+                center: (0.70, 0.72),
+                radius: 0.11,
+                zone_type: ZoneType::Expansion,
+                terrain: TerrainType::Grass,
+                elevation: 1,
+            },
+            // === FLANKING ISLANDS (elevation 1, off-diagonal) ===
+            TemplateZone {
+                center: (0.20, 0.58),
+                radius: 0.09,
+                zone_type: ZoneType::Expansion,
+                terrain: TerrainType::Grass,
+                elevation: 1,
+            },
+            TemplateZone {
+                center: (0.80, 0.42),
+                radius: 0.09,
+                zone_type: ZoneType::Expansion,
+                terrain: TerrainType::Grass,
+                elevation: 1,
+            },
+            // === CONTESTED FOREST ISLANDS (near center) ===
+            TemplateZone {
+                center: (0.38, 0.42),
+                radius: 0.07,
+                zone_type: ZoneType::Contested,
+                terrain: TerrainType::Forest,
+                elevation: 1,
+            },
+            TemplateZone {
+                center: (0.62, 0.58),
+                radius: 0.07,
+                zone_type: ZoneType::Contested,
+                terrain: TerrainType::Forest,
+                elevation: 1,
+            },
+            // === SMALL OUTPOST ISLANDS ===
+            TemplateZone {
+                center: (0.50, 0.22),
+                radius: 0.05,
+                zone_type: ZoneType::Contested,
+                terrain: TerrainType::Grass,
+                elevation: 1,
+            },
+            TemplateZone {
+                center: (0.50, 0.78),
+                radius: 0.05,
+                zone_type: ZoneType::Contested,
+                terrain: TerrainType::Grass,
+                elevation: 1,
+            },
+            // === ROCK OUTCROPS (impassable, chokepoints) ===
+            TemplateZone {
+                center: (0.32, 0.68),
+                radius: 0.03,
+                zone_type: ZoneType::Obstacle,
+                terrain: TerrainType::Rock,
+                elevation: 2,
+            },
+            TemplateZone {
+                center: (0.68, 0.32),
+                radius: 0.03,
+                zone_type: ZoneType::Obstacle,
+                terrain: TerrainType::Rock,
+                elevation: 2,
+            },
+            // === SAND FRINGES (elevation 0, flood first) ===
+            TemplateZone {
+                center: (0.22, 0.18),
+                radius: 0.06,
+                zone_type: ZoneType::Expansion,
+                terrain: TerrainType::Sand,
+                elevation: 0,
+            },
+            TemplateZone {
+                center: (0.78, 0.82),
+                radius: 0.06,
+                zone_type: ZoneType::Expansion,
+                terrain: TerrainType::Sand,
+                elevation: 0,
+            },
+        ],
+        lanes: vec![
+            // Main diagonal: bases through expansions to grotto
+            TemplateLane {
+                waypoints: vec![
+                    (0.14, 0.14),
+                    (0.30, 0.28),
+                    (0.38, 0.42),
+                    (0.50, 0.50),
+                    (0.62, 0.58),
+                    (0.70, 0.72),
+                    (0.86, 0.86),
+                ],
+                width: 0.025,
+                terrain: TerrainType::Shallows,
+            },
+            // Upper flank: base → outpost → flanking island → grotto
+            TemplateLane {
+                waypoints: vec![
+                    (0.14, 0.14),
+                    (0.30, 0.15),
+                    (0.50, 0.22),
+                    (0.68, 0.32),
+                    (0.80, 0.42),
+                    (0.86, 0.86),
+                ],
+                width: 0.02,
+                terrain: TerrainType::Shallows,
+            },
+            // Lower flank: base → flanking island → outpost → base
+            TemplateLane {
+                waypoints: vec![
+                    (0.14, 0.14),
+                    (0.15, 0.30),
+                    (0.20, 0.58),
+                    (0.32, 0.68),
+                    (0.50, 0.78),
+                    (0.86, 0.86),
+                ],
+                width: 0.02,
+                terrain: TerrainType::Shallows,
+            },
+            // Cross-lane: flanking islands through grotto center
+            TemplateLane {
+                waypoints: vec![
+                    (0.20, 0.58),
+                    (0.38, 0.52),
+                    (0.50, 0.50),
+                    (0.62, 0.48),
+                    (0.80, 0.42),
+                ],
+                width: 0.018,
+                terrain: TerrainType::Shallows,
+            },
+        ],
+        preferred_symmetry: MapSymmetry::Rotational180,
+    }
+}
+
 fn get_layout(template: MapTemplate) -> TemplateLayout {
     match template {
         MapTemplate::Valley => valley_layout(),
         MapTemplate::Crossroads => crossroads_layout(),
-        // Stubs delegate to Valley
+        // Stub delegates to Valley
         MapTemplate::Fortress => valley_layout(),
-        MapTemplate::Islands => valley_layout(),
+        MapTemplate::Islands => islands_layout(),
     }
 }
 
@@ -571,10 +763,12 @@ fn walk_lane_points(lane: &TemplateLane, w: u32, h: u32, mut callback: impl FnMu
 }
 
 /// Carve lanes using multi-waypoint linear interpolation with circular brush.
+/// Shallows lanes only convert Water tiles (preserving island landmasses).
 fn carve_lanes(map: &mut GameMap, layout: &TemplateLayout, w: u32, h: u32) {
     for lane in &layout.lanes {
         let brush_r = (lane.width * w.max(h) as f32).max(1.0) as i32;
         let terrain = lane.terrain;
+        let water_only = terrain == TerrainType::Shallows;
 
         walk_lane_points(lane, w, h, |px, py| {
             for dy in -brush_r..=brush_r {
@@ -582,7 +776,13 @@ fn carve_lanes(map: &mut GameMap, layout: &TemplateLayout, w: u32, h: u32) {
                     if dx * dx + dy * dy <= brush_r * brush_r {
                         let pos = GridPos::new(px + dx, py + dy);
                         if let Some(tile) = map.get_mut(pos) {
-                            tile.terrain = terrain;
+                            if water_only {
+                                if tile.terrain == TerrainType::Water {
+                                    tile.terrain = terrain;
+                                }
+                            } else {
+                                tile.terrain = terrain;
+                            }
                         }
                     }
                 }
@@ -602,6 +802,10 @@ fn paint_center_features(map: &mut GameMap, layout: &TemplateLayout, w: u32, h: 
     let threshold = 0.02f32;
 
     for zone in &layout.zones {
+        // Skip obstacle zones (e.g. water base layers) — only restore structural features
+        if zone.zone_type == ZoneType::Obstacle {
+            continue;
+        }
         if (zone.center.0 - mid_x).abs() < threshold && (zone.center.1 - mid_y).abs() < threshold {
             let cx = (zone.center.0 * w as f32) as i32;
             let cy = (zone.center.1 * h as f32) as i32;
@@ -736,8 +940,12 @@ fn sculpt_base_areas(map: &mut GameMap, spawns: &[(i32, i32)]) {
 }
 
 /// Place ramps at elevation transitions along lane paths.
+/// Shallows lanes (water crossings) skip ramp placement — shores aren't ramps.
 fn place_ramps_on_lanes(map: &mut GameMap, layout: &TemplateLayout, w: u32, h: u32) {
     for lane in &layout.lanes {
+        if lane.terrain == TerrainType::Shallows {
+            continue;
+        }
         walk_lane_points(lane, w, h, |px, py| {
             let pos = GridPos::new(px, py);
             let Some(tile) = map.get(pos) else { return };
@@ -1440,6 +1648,150 @@ mod tests {
         assert_eq!(def.width, 96);
         assert_eq!(def.height, 96);
         assert!(def.validate().is_ok());
+    }
+
+    #[test]
+    fn islands_has_water_dominant_terrain() {
+        let params = MapGenParams {
+            template: MapTemplate::Islands,
+            seed: 42,
+            ..Default::default()
+        };
+        let def = generate_map(&params);
+
+        let mut water_count = 0u32;
+        let mut land_count = 0u32;
+        for &(terrain_u8, _) in &def.tiles {
+            let t = TerrainType::from_u8(terrain_u8).unwrap();
+            if t == TerrainType::Water {
+                water_count += 1;
+            } else if t != TerrainType::Shallows {
+                land_count += 1;
+            }
+        }
+        let total = (def.width * def.height) as f32;
+        let water_pct = water_count as f32 / total;
+        assert!(
+            water_pct > 0.40,
+            "Islands should have >40% water, got {:.1}%",
+            water_pct * 100.0
+        );
+        assert!(
+            land_count > 500,
+            "Islands should have substantial landmass, got only {} land tiles",
+            land_count
+        );
+    }
+
+    #[test]
+    fn islands_has_tech_ruins_at_center() {
+        let params = MapGenParams {
+            template: MapTemplate::Islands,
+            seed: 42,
+            ..Default::default()
+        };
+        let def = generate_map(&params);
+        let map = def.to_game_map();
+        let cx = def.width as i32 / 2;
+        let cy = def.height as i32 / 2;
+
+        let center_terrain = map.terrain_at(GridPos::new(cx, cy)).unwrap();
+        assert_eq!(
+            center_terrain,
+            TerrainType::TechRuins,
+            "Islands center should be TechRuins (grotto), got {:?}",
+            center_terrain
+        );
+    }
+
+    #[test]
+    fn islands_shallows_connect_spawns() {
+        let params = MapGenParams {
+            template: MapTemplate::Islands,
+            seed: 42,
+            ..Default::default()
+        };
+        let def = generate_map(&params);
+
+        // Must have shallows tiles (the paths between islands)
+        let shallows_count = def
+            .tiles
+            .iter()
+            .filter(|&&(t, _)| t == TerrainType::Shallows as u8)
+            .count();
+        assert!(
+            shallows_count > 100,
+            "Islands should have >100 shallows tiles for paths, got {}",
+            shallows_count
+        );
+    }
+
+    #[test]
+    fn islands_deterministic_across_seeds() {
+        for seed in [42u64, 100, 777, 12345] {
+            let params = MapGenParams {
+                template: MapTemplate::Islands,
+                seed,
+                ..Default::default()
+            };
+            let def1 = generate_map(&params);
+            let def2 = generate_map(&params);
+            assert_eq!(
+                def1.tiles, def2.tiles,
+                "Islands should be deterministic for seed {}",
+                seed
+            );
+        }
+    }
+
+    #[test]
+    fn islands_elevation_layered_for_flooding() {
+        let params = MapGenParams {
+            template: MapTemplate::Islands,
+            seed: 42,
+            ..Default::default()
+        };
+        let def = generate_map(&params);
+
+        let mut elev_counts = [0u32; 3]; // elevation 0, 1, 2
+        for &(_, elev) in &def.tiles {
+            if (elev as usize) < elev_counts.len() {
+                elev_counts[elev as usize] += 1;
+            }
+        }
+        // Must have all three elevation levels for flooding mechanic
+        assert!(elev_counts[0] > 100, "Should have elevation 0 tiles (floodable)");
+        assert!(elev_counts[1] > 100, "Should have elevation 1 tiles (islands)");
+        assert!(elev_counts[2] > 50, "Should have elevation 2 tiles (safe bases)");
+    }
+
+    #[test]
+    fn shallows_lanes_preserve_island_terrain() {
+        // Verify that Shallows lanes only convert Water tiles, not island grass
+        let params = MapGenParams {
+            template: MapTemplate::Islands,
+            seed: 42,
+            ..Default::default()
+        };
+        let def = generate_map(&params);
+        let map = def.to_game_map();
+
+        // The central grotto should still be TechRuins, not Shallows
+        let cx = def.width as i32 / 2;
+        let cy = def.height as i32 / 2;
+        for dy in -3..=3 {
+            for dx in -3..=3 {
+                let pos = GridPos::new(cx + dx, cy + dy);
+                let terrain = map.terrain_at(pos).unwrap();
+                assert_ne!(
+                    terrain,
+                    TerrainType::Shallows,
+                    "Grotto center at ({},{}) should not be Shallows",
+                    cx + dx,
+                    cy + dy
+                );
+            }
+        }
     }
 
     #[test]

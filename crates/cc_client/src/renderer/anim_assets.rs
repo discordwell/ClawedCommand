@@ -38,23 +38,13 @@ pub fn load_anim_assets(
 
         // Walk sheet
         let walk_path = format!("sprites/units/{slug}_walk.png");
-        #[cfg(not(target_arch = "wasm32"))]
-        let walk_exists = std::path::Path::new("assets").join(&walk_path).exists();
-        #[cfg(target_arch = "wasm32")]
-        let walk_exists = false;
-
-        if walk_exists {
+        if super::asset_exists_on_disk(&walk_path) {
             walk[i] = Some((asset_server.load(walk_path), layout_handle.clone()));
         }
 
         // Attack sheet
         let attack_path = format!("sprites/units/{slug}_attack.png");
-        #[cfg(not(target_arch = "wasm32"))]
-        let attack_exists = std::path::Path::new("assets").join(&attack_path).exists();
-        #[cfg(target_arch = "wasm32")]
-        let attack_exists = false;
-
-        if attack_exists {
+        if super::asset_exists_on_disk(&attack_path) {
             attack[i] = Some((asset_server.load(attack_path), layout_handle.clone()));
         }
     }

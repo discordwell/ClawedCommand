@@ -17,7 +17,13 @@ pub fn handle_keyboard(
     mut cmd_queue: ResMut<CommandQueue>,
     mut input_mode: ResMut<InputMode>,
     mut dbl_click: ResMut<DoubleClickState>,
+    restrictions: Option<Res<cc_sim::campaign::mutator_state::ControlRestrictions>>,
 ) {
+    // Gate: skip all keyboard commands (except camera, handled separately) if restricted
+    if restrictions.as_ref().is_some_and(|r| !r.mouse_keyboard_enabled) {
+        return;
+    }
+
     // --- Build menu sub-key handling ---
     if *input_mode == InputMode::BuildMenu {
         let building = if keyboard.just_pressed(KeyCode::KeyT) {

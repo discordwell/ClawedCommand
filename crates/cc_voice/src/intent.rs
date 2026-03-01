@@ -464,7 +464,13 @@ pub fn voice_intent_system(
     mut pending_selector: Local<Option<SelectorKind>>,
     mut pending_direction: Local<Option<DirectionKind>>,
     mut pending_building: Local<Option<BuildingKind>>,
+    restrictions: Option<Res<cc_sim::campaign::mutator_state::ControlRestrictions>>,
 ) {
+    // Gate: skip voice commands if voice is disabled by mission mutator
+    if restrictions.as_ref().is_some_and(|r| !r.voice_enabled) {
+        return;
+    }
+
     for event in voice_events.read() {
         log::info!(
             "Voice: '{}' (confidence: {:.2})",

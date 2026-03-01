@@ -111,6 +111,11 @@ pub fn trigger_check_system(
                 TriggerAction::SetPersistentFlag(flag) => {
                     campaign.persistent.set_flag(flag.clone());
                 }
+                TriggerAction::ToggleMutator { .. }
+                | TriggerAction::SetTerrain { .. }
+                | TriggerAction::AreaDamage { .. } => {
+                    // TODO: implement mutator/terrain/damage actions
+                }
             }
         }
 
@@ -193,6 +198,11 @@ fn evaluate_condition(
         }
 
         TriggerCondition::PersistentFlag(flag) => campaign.persistent.has_flag(flag),
+
+        TriggerCondition::HazardLevel { .. } => false, // TODO: implement hazard level tracking
+        TriggerCondition::Periodic { interval_ticks, offset_ticks } => {
+            tick >= *offset_ticks && (tick - *offset_ticks) % *interval_ticks == 0
+        }
     }
 }
 

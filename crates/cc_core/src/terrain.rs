@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::math::{Fixed, FIXED_ONE, FIXED_ZERO};
+use crate::mutator::HazardDirection;
 
 /// Terrain type for each tile on the map.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -227,6 +228,12 @@ pub enum OverlayEffect {
     WaterConvert,
     /// Creates a speed-modifying trail.
     Trail { speed_modifier: Fixed },
+    /// Lava hazard — damages units on this tile.
+    Lava { damage_per_tick: u32 },
+    /// Toxic hazard — damages units on this tile.
+    Toxic { damage_per_tick: u32 },
+    /// Wind zone — displaces units in a direction.
+    WindZone { direction: HazardDirection, force: u32 },
 }
 
 /// A temporary terrain modification applied by an ability.
@@ -241,6 +248,8 @@ pub struct TerrainOverlay {
 // Dynamic flags bit definitions
 pub const FLAG_TEMP_BLOCKED: u8 = 0b0000_0001;
 pub const FLAG_WATER_CONVERTED: u8 = 0b0000_0010;
+pub const FLAG_LAVA: u8 = 0b0000_0100;
+pub const FLAG_TOXIC: u8 = 0b0000_1000;
 
 /// Elevation constants.
 pub const MAX_ELEVATION: u8 = 2;
@@ -421,5 +430,25 @@ mod tests {
         assert_ne!(flags & FLAG_TEMP_BLOCKED, 0);
         assert_ne!(flags & FLAG_WATER_CONVERTED, 0);
         assert_eq!(FLAG_TEMP_BLOCKED & FLAG_WATER_CONVERTED, 0); // no overlap
+    }
+
+    #[test]
+    fn hazard_flags_no_overlap() {
+        // All four dynamic flags must use distinct bits
+        let all_flags = [FLAG_TEMP_BLOCKED, FLAG_WATER_CONVERTED, FLAG_LAVA, FLAG_TOXIC];
+        for i in 0..all_flags.len() {
+            for j in (i + 1)..all_flags.len() {
+                assert_eq!(
+                    all_flags[i] & all_flags[j],
+                    0,
+                    "Flags at index {} and {} overlap",
+                    i,
+                    j
+                );
+            }
+        }
+        // Combined should have exactly 4 bits set
+        let combined = FLAG_TEMP_BLOCKED | FLAG_WATER_CONVERTED | FLAG_LAVA | FLAG_TOXIC;
+        assert_eq!(combined.count_ones(), 4);
     }
 }

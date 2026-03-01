@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::components::{BuildingKind, UnitKind, UpgradeType};
 use crate::coords::GridPos;
 
@@ -6,6 +8,21 @@ use crate::coords::GridPos;
 /// stays engine-agnostic so we use a simple u64 wrapper.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EntityId(pub u64);
+
+/// Where a command originated — used by control restriction mutators
+/// to filter commands by input source.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum CommandSource {
+    /// Mouse/keyboard input from the player.
+    #[default]
+    PlayerInput,
+    /// Voice command (on-device keyword spotting).
+    VoiceCommand,
+    /// AI agent (Lua script or LLM).
+    AiAgent,
+    /// Scripted trigger or mission system.
+    Script,
+}
 
 /// All commands that can be issued to the game simulation.
 /// Both player input and AI agents produce these.
@@ -84,6 +101,11 @@ impl GameCommand {
     /// Returns None when the issuing player is unknown.
     pub fn player_hint(&self) -> Option<u8> {
         None
+    }
+
+    /// Check if this command is a Build action.
+    pub fn is_build(&self) -> bool {
+        matches!(self, GameCommand::Build { .. })
     }
 }
 

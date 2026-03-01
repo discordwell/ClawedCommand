@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::components::{BuildingKind, UnitKind};
 use crate::coords::GridPos;
 use crate::hero::HeroId;
+use crate::mutator::MissionMutator;
 use crate::terrain::TerrainType;
 
 // ---------------------------------------------------------------------------
@@ -42,6 +43,9 @@ pub struct MissionDefinition {
     /// What mission comes next.
     #[serde(default)]
     pub next_mission: NextMission,
+    /// Gameplay mutators active during this mission.
+    #[serde(default)]
+    pub mutators: Vec<MissionMutator>,
 }
 
 /// Map source for a mission.
@@ -236,6 +240,10 @@ pub enum TriggerCondition {
     },
     /// Fires when a persistent campaign flag is set.
     PersistentFlag(String),
+    /// Fires when a hazard reaches a certain level.
+    HazardLevel { hazard_type: String, level: u32 },
+    /// Fires periodically at fixed intervals.
+    Periodic { interval_ticks: u64, offset_ticks: u64 },
 }
 
 /// Actions performed when a trigger fires.
@@ -253,6 +261,12 @@ pub enum TriggerAction {
     PanCamera(GridPos),
     /// Set a persistent campaign flag (survives across missions).
     SetPersistentFlag(String),
+    /// Toggle a mutator on or off by its index in the mission's mutators vec.
+    ToggleMutator { mutator_index: usize, active: bool },
+    /// Set terrain type at specific positions.
+    SetTerrain { positions: Vec<GridPos>, terrain: TerrainType },
+    /// Deal damage to all units in an area.
+    AreaDamage { center: GridPos, radius: u32, damage: u32 },
 }
 
 /// What mission comes after this one.
@@ -350,7 +364,8 @@ impl MissionDefinition {
         let wave_ids: Vec<&str> = self.enemy_waves.iter().map(|w| w.wave_id.as_str()).collect();
         let obj_ids: Vec<&str> = self.objectives.iter().map(|o| o.id.as_str()).collect();
 
-        // Single pass over triggers: check dialogue indices, wave refs, and objective refs
+        // Single pass over triggers: check dialogue indices, wave refs, objective refs,
+        // and mutator index bounds.
         for trigger in &self.triggers {
             for action in &trigger.actions {
                 match action {
@@ -382,9 +397,21 @@ impl MissionDefinition {
                             ));
                         }
                     }
+                    TriggerAction::ToggleMutator { mutator_index, .. } => {
+                        if *mutator_index >= self.mutators.len() {
+                            errors.push(format!(
+                                "Trigger '{}' references mutator index {} but only {} mutators exist",
+                                trigger.id,
+                                mutator_index,
+                                self.mutators.len()
+                            ));
+                        }
+                    }
                     TriggerAction::SetFlag(_)
                     | TriggerAction::PanCamera(_)
-                    | TriggerAction::SetPersistentFlag(_) => {}
+                    | TriggerAction::SetPersistentFlag(_)
+                    | TriggerAction::SetTerrain { .. }
+                    | TriggerAction::AreaDamage { .. } => {}
                 }
             }
         }
@@ -462,6 +489,7 @@ mod tests {
             debrief_text: "Test debrief".into(),
             ai_tool_tier: None,
             next_mission: NextMission::None,
+            mutators: vec![],
         }
     }
 
@@ -475,6 +503,7 @@ mod tests {
         assert_eq!(parsed.name, "Test Mission");
         assert_eq!(parsed.objectives.len(), 1);
         assert_eq!(parsed.dialogue.len(), 1);
+        assert!(parsed.mutators.is_empty());
     }
 
     #[test]
@@ -521,7 +550,7 @@ mod tests {
         mission.map = MissionMap::Inline {
             width: 3,
             height: 3,
-            tiles: vec![TerrainType::Grass; 4], // should be 9
+            tiles: vec![TerrainType::Grass; 4],
             elevation: vec![0; 9],
         };
         let errs = mission.validate().unwrap_err();
@@ -543,25 +572,22 @@ mod tests {
 
     #[test]
     fn validate_single_pass_catches_all_action_errors() {
-        // Verify all three error types (dialogue, wave, objective) are caught
-        // in a single pass rather than requiring separate iterations.
         let mut mission = minimal_mission();
         mission.triggers = vec![ScriptedTrigger {
             id: "multi_error".into(),
             condition: TriggerCondition::AtTick(1),
             actions: vec![
-                TriggerAction::ShowDialogue(vec![42]),           // bad dialogue
-                TriggerAction::SpawnWave("phantom_wave".into()), // bad wave
-                TriggerAction::CompleteObjective("phantom_obj".into()), // bad objective
+                TriggerAction::ShowDialogue(vec![42]),
+                TriggerAction::SpawnWave("phantom_wave".into()),
+                TriggerAction::CompleteObjective("phantom_obj".into()),
             ],
             once: true,
         }];
         let errs = mission.validate().unwrap_err();
-        // All three errors should be caught
         assert!(errs.iter().any(|e| e.contains("dialogue index 42")));
         assert!(errs.iter().any(|e| e.contains("unknown wave 'phantom_wave'")));
         assert!(errs.iter().any(|e| e.contains("unknown objective 'phantom_obj'")));
-        assert_eq!(errs.len(), 3, "Should find exactly 3 errors from the single trigger");
+        assert_eq!(errs.len(), 3);
     }
 
     #[test]
@@ -621,4 +647,122 @@ mod tests {
         assert!(parsed.ai_tool_tier.is_none());
     }
 
+    #[test]
+    fn mutators_default_empty() {
+        let ron_str = r#"(
+            id: "test",
+            name: "Test",
+            act: 0,
+            mission_index: 0,
+            map: Generated(seed: 1, width: 32, height: 32),
+            player_setup: (heroes: [], units: [], buildings: [], starting_food: 0, starting_gpu: 0, starting_nfts: 0),
+            enemy_waves: [],
+            objectives: [(id: "obj", description: "Win", primary: true, condition: EliminateAll)],
+            triggers: [],
+            dialogue: [],
+            briefing_text: "",
+            debrief_text: "",
+        )"#;
+        let parsed: MissionDefinition = ron::from_str(ron_str).unwrap();
+        assert!(parsed.mutators.is_empty());
+    }
+
+    #[test]
+    fn mission_with_mutators_round_trip() {
+        use crate::mutator::MissionMutator;
+        let mut mission = minimal_mission();
+        mission.mutators = vec![
+            MissionMutator::TimeLimit { max_ticks: 3000, warning_at: 2500 },
+            MissionMutator::NoBuildMode,
+        ];
+        let ron_str =
+            ron::ser::to_string_pretty(&mission, ron::ser::PrettyConfig::default()).unwrap();
+        let parsed: MissionDefinition = ron::from_str(&ron_str).unwrap();
+        assert_eq!(parsed.mutators.len(), 2);
+    }
+
+    #[test]
+    fn validation_catches_bad_mutator_index() {
+        use crate::mutator::MissionMutator;
+        let mut mission = minimal_mission();
+        mission.mutators = vec![MissionMutator::NoBuildMode];
+        mission.triggers[0].actions = vec![TriggerAction::ToggleMutator {
+            mutator_index: 5,
+            active: false,
+        }];
+        let errs = mission.validate().unwrap_err();
+        assert!(errs.iter().any(|e| e.contains("mutator index 5")));
+    }
+
+    #[test]
+    fn validation_accepts_valid_mutator_index() {
+        use crate::mutator::MissionMutator;
+        let mut mission = minimal_mission();
+        mission.mutators = vec![MissionMutator::NoBuildMode, MissionMutator::NoAiControl];
+        mission.triggers[0].actions = vec![TriggerAction::ToggleMutator {
+            mutator_index: 1,
+            active: true,
+        }];
+        assert!(mission.validate().is_ok());
+    }
+
+    #[test]
+    fn new_trigger_conditions_serialize() {
+        let cond = TriggerCondition::Periodic { interval_ticks: 100, offset_ticks: 10 };
+        let ron_str = ron::to_string(&cond).unwrap();
+        let parsed: TriggerCondition = ron::from_str(&ron_str).unwrap();
+        assert!(matches!(parsed, TriggerCondition::Periodic { interval_ticks: 100, .. }));
+
+        let cond2 = TriggerCondition::HazardLevel { hazard_type: "lava".into(), level: 3 };
+        let ron_str2 = ron::to_string(&cond2).unwrap();
+        let parsed2: TriggerCondition = ron::from_str(&ron_str2).unwrap();
+        assert!(matches!(parsed2, TriggerCondition::HazardLevel { level: 3, .. }));
+    }
+
+    #[test]
+    fn new_trigger_actions_serialize() {
+        let action = TriggerAction::ToggleMutator { mutator_index: 0, active: true };
+        let ron_str = ron::to_string(&action).unwrap();
+        let parsed: TriggerAction = ron::from_str(&ron_str).unwrap();
+        assert!(matches!(parsed, TriggerAction::ToggleMutator { mutator_index: 0, active: true }));
+
+        let action2 = TriggerAction::SetTerrain {
+            positions: vec![GridPos::new(1, 2)],
+            terrain: TerrainType::Rock,
+        };
+        let ron_str2 = ron::to_string(&action2).unwrap();
+        let parsed2: TriggerAction = ron::from_str(&ron_str2).unwrap();
+        assert!(matches!(parsed2, TriggerAction::SetTerrain { .. }));
+
+        let action3 = TriggerAction::AreaDamage { center: GridPos::new(5, 5), radius: 3, damage: 50 };
+        let ron_str3 = ron::to_string(&action3).unwrap();
+        let parsed3: TriggerAction = ron::from_str(&ron_str3).unwrap();
+        assert!(matches!(parsed3, TriggerAction::AreaDamage { damage: 50, .. }));
+    }
+
+    #[test]
+    fn parse_act5_m1_grotto_assembly_ron() {
+        let ron_str = include_str!("../../../assets/campaign/act5_m1_grotto_assembly.ron");
+        let mission: MissionDefinition = ron::from_str(ron_str)
+            .expect("Failed to parse act5_m1_grotto_assembly.ron");
+        assert_eq!(mission.id, "act5_m1_grotto_assembly");
+        assert_eq!(mission.act, 5);
+        assert_eq!(mission.mission_index, 1);
+        // Two heroes: Kelpie and TheEternal
+        assert_eq!(mission.player_setup.heroes.len(), 2);
+        // Four enemy waves
+        assert_eq!(mission.enemy_waves.len(), 4);
+        // Three objectives
+        assert_eq!(mission.objectives.len(), 3);
+        // Two mutators: Flooding + TimeLimit
+        assert_eq!(mission.mutators.len(), 2);
+        assert!(matches!(mission.mutators[0], crate::mutator::MissionMutator::Flooding { .. }));
+        assert!(matches!(mission.mutators[1], crate::mutator::MissionMutator::TimeLimit { .. }));
+        // Triggers include flood activation and wave spawning
+        assert!(mission.triggers.len() >= 8);
+        // Dialogue lines
+        assert_eq!(mission.dialogue.len(), 21);
+        // Validate internal consistency
+        mission.validate().expect("Mission validation failed");
+    }
 }

@@ -1,3 +1,5 @@
+pub mod mutator_state;
+pub mod mutator_systems;
 pub mod state;
 pub mod triggers;
 pub mod wave_spawner;
@@ -14,6 +16,9 @@ impl Plugin for CampaignPlugin {
         app.init_resource::<state::CampaignState>()
             .init_resource::<wave_spawner::WaveTracker>()
             .init_resource::<wave_spawner::MissionStarted>()
+            .init_resource::<mutator_state::ControlRestrictions>()
+            .init_resource::<mutator_state::MutatorState>()
+            .init_resource::<mutator_state::FogState>()
             .add_message::<triggers::DialogueEvent>()
             .add_message::<triggers::TriggerFiredEvent>()
             .add_message::<triggers::ObjectiveCompleteEvent>()
@@ -26,6 +31,9 @@ impl Plugin for CampaignPlugin {
                     triggers::trigger_check_system,
                     wave_spawner::wave_spawner_system,
                     state::mission_objective_system,
+                    mutator_systems::environmental_hazard_system,
+                    mutator_systems::hazard_damage_system,
+                    mutator_systems::mutator_tick_system,
                 )
                     .chain()
                     .after(cleanup_system::cleanup_system),

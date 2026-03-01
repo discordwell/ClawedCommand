@@ -103,10 +103,7 @@ pub fn generate_unit_sprites(
     for kind in ALL_KINDS {
         let asset_path = sprite_file_path(kind);
 
-        #[cfg(not(target_arch = "wasm32"))]
-        let use_disk = std::path::Path::new("assets").join(&asset_path).exists();
-        #[cfg(target_arch = "wasm32")]
-        let use_disk = false;
+        let use_disk = super::asset_exists_on_disk(&asset_path);
 
         if use_disk {
             handles.push(asset_server.load(asset_path));
@@ -505,6 +502,23 @@ mod tests {
     #[test]
     fn all_kinds_constant_has_ten_entries() {
         assert_eq!(ALL_KINDS.len(), 10);
+    }
+
+    #[test]
+    fn sprite_files_exist_on_disk() {
+        // Verify all idle sprite PNGs exist at the workspace-level assets/ directory.
+        // AssetPlugin is configured with file_path "../../assets" relative to cc_client crate.
+        // Tests run from the crate dir, so we use the same relative path.
+        let asset_root = std::path::Path::new("../../assets");
+        for kind in ALL_KINDS {
+            let asset_path = sprite_file_path(kind);
+            let full_path = asset_root.join(&asset_path);
+            assert!(
+                full_path.exists(),
+                "Sprite file missing for {kind:?}: {}",
+                full_path.display()
+            );
+        }
     }
 
     #[test]

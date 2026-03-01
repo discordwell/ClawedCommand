@@ -10,6 +10,8 @@ use cc_core::unit_stats::base_stats;
 use cc_sim::resources::{MapResource, PlayerResources, SpawnPositions};
 
 use crate::renderer::animation::{AnimIndices, AnimState, AnimTimer, PrevAnimState};
+use crate::renderer::building_gen::{BuildingSprites, building_kind_index, building_scale};
+use crate::renderer::buildings::SpriteBuilding;
 use crate::renderer::resource_nodes::ResourceNodeSprites;
 use crate::renderer::unit_gen::{UnitSprites, kind_index};
 use crate::renderer::zoom_lod::{self, ZoomTier};
@@ -65,6 +67,7 @@ pub fn setup_game(
     mut spawn_positions: ResMut<SpawnPositions>,
     unit_sprites: Option<Res<UnitSprites>>,
     resource_sprites: Option<Res<ResourceNodeSprites>>,
+    building_sprites: Option<Res<BuildingSprites>>,
     tier: Res<ZoomTier>,
 ) {
     let params = MapGenParams {
@@ -164,22 +167,48 @@ pub fn setup_game(
         let box_elev = map_res.map.elevation_at(base_pos) as f32 * ELEVATION_PIXEL_OFFSET;
         let bstats = building_stats(BuildingKind::TheBox);
 
-        let box_mesh = meshes.add(Rectangle::new(28.0, 28.0));
-        let box_mat = materials.add(ColorMaterial::from_color(building_color(sp.player)));
-        commands.spawn((
-            Position { world: box_world },
-            Velocity::zero(),
-            GridCell { pos: base_pos },
-            Owner { player_id: sp.player },
-            Building { kind: BuildingKind::TheBox },
-            Health { current: bstats.health, max: bstats.health },
-            Producer,
-            ProductionQueue::default(),
-            BuildingMesh,
-            Mesh2d(box_mesh),
-            MeshMaterial2d(box_mat),
-            Transform::from_xyz(box_screen.x, -box_screen.y + box_elev, depth_z(box_world) - 0.05),
-        ));
+        if let Some(ref bsprites) = building_sprites {
+            let idx = building_kind_index(BuildingKind::TheBox);
+            let image = bsprites.sprites[idx].clone();
+            let scale = building_scale(BuildingKind::TheBox, bsprites.art_loaded);
+            let tint = team_color(sp.player);
+            commands.spawn((
+                Position { world: box_world },
+                Velocity::zero(),
+                GridCell { pos: base_pos },
+                Owner { player_id: sp.player },
+                Building { kind: BuildingKind::TheBox },
+                Health { current: bstats.health, max: bstats.health },
+                Producer,
+                ProductionQueue::default(),
+                BuildingMesh,
+                SpriteBuilding,
+                Sprite {
+                    image,
+                    color: tint,
+                    ..default()
+                },
+                Transform::from_xyz(box_screen.x, -box_screen.y + box_elev, depth_z(box_world) - 0.05)
+                    .with_scale(Vec3::splat(scale)),
+            ));
+        } else {
+            let box_mesh = meshes.add(Rectangle::new(28.0, 28.0));
+            let box_mat = materials.add(ColorMaterial::from_color(building_color(sp.player)));
+            commands.spawn((
+                Position { world: box_world },
+                Velocity::zero(),
+                GridCell { pos: base_pos },
+                Owner { player_id: sp.player },
+                Building { kind: BuildingKind::TheBox },
+                Health { current: bstats.health, max: bstats.health },
+                Producer,
+                ProductionQueue::default(),
+                BuildingMesh,
+                Mesh2d(box_mesh),
+                MeshMaterial2d(box_mat),
+                Transform::from_xyz(box_screen.x, -box_screen.y + box_elev, depth_z(box_world) - 0.05),
+            ));
+        }
 
         // Update supply cap for TheBox
         if let Some(pres) = player_resources.players.get_mut(sp.player as usize) {

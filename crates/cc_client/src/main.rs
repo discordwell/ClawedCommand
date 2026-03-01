@@ -3,6 +3,7 @@ mod renderer;
 mod setup;
 mod ui;
 
+use bevy::asset::AssetPlugin;
 use bevy::prelude::*;
 #[cfg(any(feature = "native", feature = "wasm-agent"))]
 use cc_agent::AgentPlugin;
@@ -21,6 +22,10 @@ fn main() {
                     resolution: (1280u32, 720u32).into(),
                     ..default()
                 }),
+                ..default()
+            })
+            .set(AssetPlugin {
+                file_path: "../../assets".to_string(),
                 ..default()
             })
             .set(ImagePlugin::default_nearest()),

@@ -126,10 +126,7 @@ pub fn load_projectile_assets(
         let slug = kind_slug(kind);
         let asset_path = format!("sprites/projectiles/{slug}.png");
 
-        #[cfg(not(target_arch = "wasm32"))]
-        let use_disk = std::path::Path::new("assets").join(&asset_path).exists();
-        #[cfg(target_arch = "wasm32")]
-        let use_disk = false;
+        let use_disk = super::asset_exists_on_disk(&asset_path);
 
         if use_disk {
             handles.push(asset_server.load(asset_path));

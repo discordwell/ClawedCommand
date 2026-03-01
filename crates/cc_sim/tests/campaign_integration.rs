@@ -202,6 +202,7 @@ fn test_mission() -> MissionDefinition {
         debrief_text: "Test debrief".into(),
         ai_tool_tier: None,
         next_mission: NextMission::None,
+        mutators: vec![],
     }
 }
 
@@ -1166,6 +1167,7 @@ fn wave_test_mission() -> MissionDefinition {
         debrief_text: "Test".into(),
         ai_tool_tier: None,
         next_mission: NextMission::None,
+        mutators: vec![],
     }
 }
 

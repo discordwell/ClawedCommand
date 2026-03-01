@@ -61,10 +61,24 @@ pub fn process_commands(
     mut ability_query: Query<(&mut AbilitySlots, Option<&StatModifiers>)>,
     mut research_queues: Query<(&Owner, &mut ResearchQueue), With<Researcher>>,
     build_orders: Query<(&BuildOrder, &Owner)>,
+    restrictions: Option<Res<crate::campaign::mutator_state::ControlRestrictions>>,
 ) {
     let pending = cmd_queue.drain_interleaved(sim_clock.tick);
 
-    for cmd in pending {
+    for (source, cmd) in pending {
+        // Filter commands based on active control restrictions
+        if let Some(ref r) = restrictions {
+            use cc_core::commands::CommandSource;
+            match source {
+                CommandSource::PlayerInput if !r.mouse_keyboard_enabled => continue,
+                CommandSource::VoiceCommand if !r.voice_enabled => continue,
+                CommandSource::AiAgent if !r.ai_enabled => continue,
+                _ => {}
+            }
+            if !r.building_enabled && cmd.is_build() {
+                continue;
+            }
+        }
         match cmd {
             GameCommand::Move { unit_ids, target } => {
                 for (entity, pos, owner, move_target, path) in query.iter_mut() {

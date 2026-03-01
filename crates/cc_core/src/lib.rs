@@ -9,6 +9,7 @@ pub mod map_format;
 pub mod map_gen;
 pub mod math;
 pub mod mission;
+pub mod mutator;
 pub mod status_effects;
 pub mod terrain;
 pub mod tuning;

@@ -56,7 +56,8 @@ impl Plugin for InputPlugin {
                     mouse::handle_mouse_input,
                     keyboard::handle_keyboard,
                 )
-                    .chain(),
+                    .chain()
+                    .after(crate::renderer::minimap::minimap_click),
             );
     }
 }

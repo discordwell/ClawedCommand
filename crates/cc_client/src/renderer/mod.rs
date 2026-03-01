@@ -2,6 +2,7 @@ pub mod anim_assets;
 pub mod animation;
 pub mod autotile;
 pub mod box_select;
+pub mod building_gen;
 pub mod buildings;
 pub mod camera;
 pub mod death;
@@ -27,6 +28,20 @@ pub mod zoom_lod;
 
 use bevy::prelude::*;
 
+/// Check whether an asset file exists on disk relative to the workspace assets/ directory.
+/// Returns `false` on WASM (no filesystem access).
+#[cfg(not(target_arch = "wasm32"))]
+pub fn asset_exists_on_disk(relative_path: &str) -> bool {
+    std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets"))
+        .join(relative_path)
+        .exists()
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn asset_exists_on_disk(_relative_path: &str) -> bool {
+    false
+}
+
 pub struct RenderPlugin;
 
 impl Plugin for RenderPlugin {
@@ -35,12 +50,14 @@ impl Plugin for RenderPlugin {
             .init_resource::<screenshot::ScreenshotConfig>()
             .init_resource::<fog::FogOfWar>()
             .init_resource::<zoom_lod::ZoomTier>()
+            .init_resource::<minimap::MinimapClickConsumed>()
             // Phase 0: Generate sprite assets before anything else (PreStartup)
             .add_systems(
                 PreStartup,
                 (
                     unit_gen::generate_unit_sprites,
                     resource_nodes::generate_resource_sprites,
+                    building_gen::generate_building_sprites,
                     anim_assets::load_anim_assets,
                     projectile_assets::load_projectile_assets,
                 ),
@@ -97,6 +114,8 @@ impl Plugin for RenderPlugin {
                     selection::pulse_selection_rings
                         .run_if(zoom_lod::is_tactical),
                     minimap::update_minimap,
+                    minimap::minimap_click
+                        .after(camera::camera_system),
                 ),
             )
             // Construction visuals (separate block to avoid tuple size limit)
@@ -107,7 +126,9 @@ impl Plugin for RenderPlugin {
                         .after(buildings::spawn_building_visuals),
                     buildings::update_construction_bars,
                     buildings::remove_construction_bars,
-                    buildings::update_construction_alpha,
+                    buildings::update_construction_alpha_sprite,
+                    buildings::update_construction_alpha_mesh,
+                    buildings::update_building_damage_tint,
                 ),
             )
             .add_systems(

@@ -1,9 +1,12 @@
 use bevy::prelude::*;
+use bevy::ecs::system::SystemParam;
 
 use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::{Building, CursorGridPos, Owner, Position, Producer, ResourceDeposit, Selected, UnitType};
 use cc_core::coords::{ScreenPos, screen_to_world};
 use cc_sim::resources::{CommandQueue, MapResource};
+
+use crate::renderer::minimap::MinimapClickConsumed;
 
 use super::{DoubleClickState, DragSelectState, InputMode, PlacementPreview};
 
@@ -16,6 +19,16 @@ const DRAG_THRESHOLD: f32 = 5.0;
 /// Maximum time between clicks for double-click (seconds).
 const DOUBLE_CLICK_WINDOW: f64 = 0.3;
 
+/// Bundled mutable input state to stay under Bevy's 16-param limit.
+#[derive(SystemParam)]
+pub struct InputState<'w> {
+    cmd_queue: ResMut<'w, CommandQueue>,
+    drag_state: ResMut<'w, DragSelectState>,
+    input_mode: ResMut<'w, InputMode>,
+    placement_preview: ResMut<'w, PlacementPreview>,
+    dbl_click: ResMut<'w, DoubleClickState>,
+}
+
 pub fn handle_mouse_input(
     mouse_button: Res<ButtonInput<MouseButton>>,
     keyboard: Res<ButtonInput<KeyCode>>,
@@ -27,12 +40,20 @@ pub fn handle_mouse_input(
     selected_buildings_q: Query<(Entity, &Owner, Option<&Producer>), (With<Building>, With<Selected>)>,
     deposits: Query<(Entity, &Position), With<ResourceDeposit>>,
     map_res: Res<MapResource>,
-    mut cmd_queue: ResMut<CommandQueue>,
-    mut drag_state: ResMut<DragSelectState>,
-    mut input_mode: ResMut<InputMode>,
-    mut placement_preview: ResMut<PlacementPreview>,
-    mut dbl_click: ResMut<DoubleClickState>,
+    mut state: InputState,
+    minimap_consumed: Res<MinimapClickConsumed>,
+    restrictions: Option<Res<cc_sim::campaign::mutator_state::ControlRestrictions>>,
 ) {
+    // Gate: skip all mouse commands (except camera, handled separately) if restricted
+    if restrictions.as_ref().is_some_and(|r| !r.mouse_keyboard_enabled) {
+        return;
+    }
+
+    // Skip if minimap consumed this click
+    if minimap_consumed.0 {
+        return;
+    }
+
     let Some(cursor_pos) = window.cursor_position() else {
         return;
     };
@@ -52,13 +73,13 @@ pub fn handle_mouse_input(
     let cursor_grid = iso_world.to_grid();
 
     // --- BuildPlacement mode ---
-    if let InputMode::BuildPlacement { kind } = *input_mode {
+    if let InputMode::BuildPlacement { kind } = *state.input_mode {
         let valid = map_res.map.is_passable(cursor_grid)
             && !buildings_q
                 .iter()
                 .any(|(_, pos, _)| pos.world.to_grid() == cursor_grid);
-        placement_preview.grid_pos = Some(cursor_grid);
-        placement_preview.valid = valid;
+        state.placement_preview.grid_pos = Some(cursor_grid);
+        state.placement_preview.valid = valid;
 
         if mouse_button.just_pressed(MouseButton::Left) && valid {
             // Find a selected unit to be the builder
@@ -66,20 +87,20 @@ pub fn handle_mouse_input(
                 .iter()
                 .find(|(_, _, owner, sel, _)| sel.is_some() && owner.player_id == LOCAL_PLAYER);
             if let Some((builder_entity, _, _, _, _)) = builder {
-                cmd_queue.push(GameCommand::Build {
+                state.cmd_queue.push(GameCommand::Build {
                     builder: EntityId(builder_entity.to_bits()),
                     building_kind: kind,
                     position: cursor_grid,
                 });
             }
-            *input_mode = InputMode::Normal;
-            placement_preview.grid_pos = None;
+            *state.input_mode = InputMode::Normal;
+            state.placement_preview.grid_pos = None;
             return;
         }
 
         if mouse_button.just_pressed(MouseButton::Right) {
-            *input_mode = InputMode::Normal;
-            placement_preview.grid_pos = None;
+            *state.input_mode = InputMode::Normal;
+            state.placement_preview.grid_pos = None;
             return;
         }
 
@@ -87,15 +108,15 @@ pub fn handle_mouse_input(
     }
 
     // Clear placement preview when not in placement mode
-    placement_preview.grid_pos = None;
+    state.placement_preview.grid_pos = None;
 
     // --- Left click down: start drag ---
     if mouse_button.just_pressed(MouseButton::Left) {
-        drag_state.start = Some(cursor_pos);
-        drag_state.active = false;
+        state.drag_state.start = Some(cursor_pos);
+        state.drag_state.active = false;
 
         // In AttackMove mode, left-click issues attack-move and reverts
-        if *input_mode == InputMode::AttackMove {
+        if *state.input_mode == InputMode::AttackMove {
             let selected_ids: Vec<EntityId> = units
                 .iter()
                 .filter(|(_, _, _, sel, _)| sel.is_some())
@@ -103,23 +124,23 @@ pub fn handle_mouse_input(
                 .collect();
             if !selected_ids.is_empty() {
                 let target = iso_world.to_grid();
-                cmd_queue.push(GameCommand::AttackMove {
+                state.cmd_queue.push(GameCommand::AttackMove {
                     unit_ids: selected_ids,
                     target,
                 });
             }
-            *input_mode = InputMode::Normal;
-            drag_state.start = None;
+            *state.input_mode = InputMode::Normal;
+            state.drag_state.start = None;
             return;
         }
     }
 
     // --- Left click held: check drag threshold ---
     if mouse_button.pressed(MouseButton::Left) {
-        if let Some(start) = drag_state.start {
+        if let Some(start) = state.drag_state.start {
             let delta = cursor_pos - start;
             if delta.length() > DRAG_THRESHOLD {
-                drag_state.active = true;
+                state.drag_state.active = true;
             }
         }
     }
@@ -128,16 +149,16 @@ pub fn handle_mouse_input(
     if mouse_button.just_released(MouseButton::Left) {
         let shift = keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight);
 
-        if drag_state.active {
+        if state.drag_state.active {
             // Box select: select all own units within the screen-space rectangle
-            if let Some(start) = drag_state.start {
+            if let Some(start) = state.drag_state.start {
                 let min_x = start.x.min(cursor_pos.x);
                 let max_x = start.x.max(cursor_pos.x);
                 let min_y = start.y.min(cursor_pos.y);
                 let max_y = start.y.max(cursor_pos.y);
 
                 if !shift {
-                    cmd_queue.push(GameCommand::Deselect);
+                    state.cmd_queue.push(GameCommand::Deselect);
                 }
 
                 let mut box_selected = Vec::new();
@@ -153,7 +174,7 @@ pub fn handle_mouse_input(
                     }
                 }
                 if !box_selected.is_empty() {
-                    cmd_queue.push(GameCommand::Select {
+                    state.cmd_queue.push(GameCommand::Select {
                         unit_ids: box_selected,
                     });
                 }
@@ -189,11 +210,11 @@ pub fn handle_mouse_input(
 
                 // Double-click detection: if same unit kind within window, select all of type
                 if let Some(kind) = clicked_unit_kind {
-                    if dbl_click.last_click_kind == Some(kind)
-                        && (now - dbl_click.last_click_time) < DOUBLE_CLICK_WINDOW
+                    if state.dbl_click.last_click_kind == Some(kind)
+                        && (now - state.dbl_click.last_click_time) < DOUBLE_CLICK_WINDOW
                     {
                         // Double-click: select all on-screen own units of this type
-                        cmd_queue.push(GameCommand::Deselect);
+                        state.cmd_queue.push(GameCommand::Deselect);
                         let win_w = window.width();
                         let win_h = window.height();
                         let mut all_of_type = Vec::new();
@@ -209,53 +230,53 @@ pub fn handle_mouse_input(
                             }
                         }
                         if !all_of_type.is_empty() {
-                            cmd_queue.push(GameCommand::Select {
+                            state.cmd_queue.push(GameCommand::Select {
                                 unit_ids: all_of_type,
                             });
                         }
-                        dbl_click.last_click_kind = None;
-                        dbl_click.last_click_time = 0.0;
+                        state.dbl_click.last_click_kind = None;
+                        state.dbl_click.last_click_time = 0.0;
                     } else {
                         // Single click
-                        dbl_click.last_click_time = now;
-                        dbl_click.last_click_kind = Some(kind);
+                        state.dbl_click.last_click_time = now;
+                        state.dbl_click.last_click_kind = Some(kind);
 
                         if !shift {
-                            cmd_queue.push(GameCommand::Deselect);
+                            state.cmd_queue.push(GameCommand::Deselect);
                         }
-                        cmd_queue.push(GameCommand::Select {
+                        state.cmd_queue.push(GameCommand::Select {
                             unit_ids: vec![EntityId(entity.to_bits())],
                         });
                     }
                 } else {
                     // Clicked a building — no double-click behavior
-                    dbl_click.last_click_kind = None;
+                    state.dbl_click.last_click_kind = None;
                     if !shift {
-                        cmd_queue.push(GameCommand::Deselect);
+                        state.cmd_queue.push(GameCommand::Deselect);
                     }
-                    cmd_queue.push(GameCommand::Select {
+                    state.cmd_queue.push(GameCommand::Select {
                         unit_ids: vec![EntityId(entity.to_bits())],
                     });
                 }
             } else {
-                dbl_click.last_click_kind = None;
+                state.dbl_click.last_click_kind = None;
                 if !shift {
-                    cmd_queue.push(GameCommand::Deselect);
+                    state.cmd_queue.push(GameCommand::Deselect);
                 }
             }
         }
 
         // Reset drag state
-        drag_state.start = None;
-        drag_state.active = false;
+        state.drag_state.start = None;
+        state.drag_state.active = false;
     }
 
     // --- Right click: smart command ---
     if mouse_button.just_pressed(MouseButton::Right) {
         // Cancel special modes on right-click
-        if *input_mode != InputMode::Normal {
-            *input_mode = InputMode::Normal;
-            placement_preview.grid_pos = None;
+        if *state.input_mode != InputMode::Normal {
+            *state.input_mode = InputMode::Normal;
+            state.placement_preview.grid_pos = None;
             return;
         }
 
@@ -272,7 +293,7 @@ pub fn handle_mouse_input(
                 if owner.player_id != LOCAL_PLAYER || producer.is_none() {
                     continue;
                 }
-                cmd_queue.push(GameCommand::SetRallyPoint {
+                state.cmd_queue.push(GameCommand::SetRallyPoint {
                     building: EntityId(entity.to_bits()),
                     target: cursor_grid,
                 });
@@ -296,7 +317,7 @@ pub fn handle_mouse_input(
         }
 
         if let Some(enemy) = clicked_enemy {
-            cmd_queue.push(GameCommand::Attack {
+            state.cmd_queue.push(GameCommand::Attack {
                 unit_ids: selected_ids,
                 target: EntityId(enemy.to_bits()),
             });
@@ -316,7 +337,7 @@ pub fn handle_mouse_input(
         }
 
         if let Some(enemy) = clicked_enemy {
-            cmd_queue.push(GameCommand::Attack {
+            state.cmd_queue.push(GameCommand::Attack {
                 unit_ids: selected_ids,
                 target: EntityId(enemy.to_bits()),
             });
@@ -336,7 +357,7 @@ pub fn handle_mouse_input(
         }
 
         if let Some(deposit) = clicked_deposit {
-            cmd_queue.push(GameCommand::GatherResource {
+            state.cmd_queue.push(GameCommand::GatherResource {
                 unit_ids: selected_ids,
                 deposit: EntityId(deposit.to_bits()),
             });
@@ -345,7 +366,7 @@ pub fn handle_mouse_input(
 
         // Default: right-click on ground → Move
         let target = iso_world.to_grid();
-        cmd_queue.push(GameCommand::Move {
+        state.cmd_queue.push(GameCommand::Move {
             unit_ids: selected_ids,
             target,
         });
