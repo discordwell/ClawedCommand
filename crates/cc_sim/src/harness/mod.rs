@@ -8,7 +8,7 @@ pub mod minimap;
 pub mod report;
 pub mod snapshot;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Instant;
 
 use bevy::prelude::*;
@@ -159,12 +159,16 @@ pub struct MatchResult {
 impl MatchResult {
     /// A match passes if there are no Error/Fatal violations and no Error outcome.
     pub fn passed(&self) -> bool {
-        let has_fatal = self
-            .violations
-            .iter()
-            .any(|v| matches!(v.severity, Severity::Error | Severity::Fatal));
         let is_error = matches!(self.outcome, MatchOutcome::Error { .. });
-        !has_fatal && !is_error
+        self.fatal_violations().is_empty() && !is_error
+    }
+
+    /// Returns only Error/Fatal severity violations.
+    pub fn fatal_violations(&self) -> Vec<&invariants::InvariantViolation> {
+        self.violations
+            .iter()
+            .filter(|v| matches!(v.severity, Severity::Error | Severity::Fatal))
+            .collect()
     }
 }
 

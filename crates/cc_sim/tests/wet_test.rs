@@ -23,14 +23,7 @@ mod wet {
         assert!(
             result.passed(),
             "Match should pass with no Error/Fatal violations. Violations: {:?}",
-            result
-                .violations
-                .iter()
-                .filter(|v| matches!(
-                    v.severity,
-                    invariants::Severity::Error | invariants::Severity::Fatal
-                ))
-                .collect::<Vec<_>>()
+            result.fatal_violations()
         );
     }
 
@@ -106,9 +99,7 @@ mod wet {
             );
 
             assert!(result.passed(), "seed {seed} failed: {:?}",
-                result.violations.iter()
-                    .filter(|v| matches!(v.severity, invariants::Severity::Error | invariants::Severity::Fatal))
-                    .collect::<Vec<_>>()
+                result.fatal_violations()
             );
         }
     }
@@ -677,9 +668,7 @@ mod wet {
                 result.passed(),
                 "Mirror match for {} should pass. Violations: {:?}",
                 faction,
-                result.violations.iter()
-                    .filter(|v| matches!(v.severity, invariants::Severity::Error | invariants::Severity::Fatal))
-                    .collect::<Vec<_>>()
+                result.fatal_violations()
             );
         }
     }
@@ -713,9 +702,7 @@ mod wet {
                 result.passed(),
                 "CatGpt vs {} should pass. Violations: {:?}",
                 opponent,
-                result.violations.iter()
-                    .filter(|v| matches!(v.severity, invariants::Severity::Error | invariants::Severity::Fatal))
-                    .collect::<Vec<_>>()
+                result.fatal_violations()
             );
         }
     }
@@ -814,9 +801,7 @@ mod wet {
                 result.passed(),
                 "{} vs {} (seed {}) should pass. Violations: {:?}",
                 a, b, seed,
-                result.violations.iter()
-                    .filter(|v| matches!(v.severity, invariants::Severity::Error | invariants::Severity::Fatal))
-                    .collect::<Vec<_>>()
+                result.fatal_violations()
             );
         }
     }
