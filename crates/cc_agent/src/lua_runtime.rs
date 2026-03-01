@@ -1243,9 +1243,10 @@ pub fn execute_script_with_context_tiered(
             let cell = &ctx_cell;
             let f = scope
                 .create_function(|lua, _self: LuaValue| {
-                    let ctx = cell.borrow();
+                    let mut ctx = cell.borrow_mut();
+                    let deposits = ctx.resource_deposits();
                     let tbl = lua.create_table()?;
-                    for (i, dep) in ctx.state.resource_deposits.iter().enumerate() {
+                    for (i, dep) in deposits.iter().enumerate() {
                         let d = lua.create_table()?;
                         d.set("id", dep.id.0)?;
                         d.set("x", dep.pos.x)?;
@@ -1623,6 +1624,41 @@ mod tests {
         "#;
         let cmds = execute_script_with_context(script, &mut ctx).unwrap();
         assert_eq!(cmds.len(), 3);
+    }
+
+    #[test]
+    fn ctx_resource_deposits_spends_budget() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            local deps = ctx:resource_deposits()
+            if #deps ~= 1 then error("Expected 1 deposit, got " .. #deps) end
+            if deps[1].kind ~= "Food" then error("Wrong type: " .. deps[1].kind) end
+            if deps[1].remaining ~= 200 then error("Wrong remaining: " .. deps[1].remaining) end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+
+        // Verify budget was spent (COST_SIMPLE = 1)
+        assert!(
+            ctx.budget.remaining() < 500,
+            "Budget should have been spent by resource_deposits call"
+        );
+    }
+
+    #[test]
+    fn ctx_resource_deposits_returns_empty_when_budget_exhausted() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+        ctx.budget = crate::script_context::ComputeBudget::new(0);
+
+        let script = r#"
+            local deps = ctx:resource_deposits()
+            if #deps ~= 0 then error("Expected 0 deposits when budget exhausted, got " .. #deps) end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
     }
 
     #[test]

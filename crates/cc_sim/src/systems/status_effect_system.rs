@@ -20,7 +20,11 @@ pub fn status_effect_system(
             }
 
             // Decay Corroded stacks: lose 1 stack per 80 ticks
-            if instance.effect == StatusEffectId::Corroded && instance.remaining_ticks % 80 == 0 {
+            // Guard: only decay when remaining_ticks > 0 to avoid spurious decay on expiry tick
+            if instance.effect == StatusEffectId::Corroded
+                && instance.remaining_ticks > 0
+                && instance.remaining_ticks % 80 == 0
+            {
                 instance.stacks = instance.stacks.saturating_sub(1);
             }
         }
