@@ -470,6 +470,23 @@ pub fn execute_script_with_context_tiered(
                 ?;
         }
 
+        // ctx:movement_cost(x, y) → number (multiplier) or nil if impassable
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, (_self, x, y): (LuaValue, i32, i32)| {
+                    let mut ctx = cell.borrow_mut();
+                    match ctx.movement_cost(GridPos::new(x, y)) {
+                        Some(cost) => Ok(LuaValue::Number(fixed_to_f64(cost))),
+                        None => Ok(LuaValue::Nil),
+                    }
+                })
+                ?;
+            ctx_table
+                .set("movement_cost", f)
+                ?;
+        }
+
         // ctx:can_reach(from_x, from_y, to_x, to_y)
         {
             let cell = &ctx_cell;
@@ -1623,6 +1640,26 @@ mod tests {
         "#;
         let cmds = execute_script_with_context(script, &mut ctx).unwrap();
         assert_eq!(cmds.len(), 3);
+    }
+
+    #[test]
+    fn ctx_movement_cost() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        // Default map tiles are Grass (cost 1.0), should return a number
+        let script = r#"
+            local cost = ctx:movement_cost(5, 5)
+            if cost == nil then
+                error("Expected number, got nil")
+            end
+            if cost <= 0 then
+                error("Expected positive cost, got " .. cost)
+            end
+        "#;
+        let cmds = execute_script_with_context(script, &mut ctx).unwrap();
+        assert!(cmds.is_empty());
     }
 
     #[test]

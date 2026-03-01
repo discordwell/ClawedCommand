@@ -40,7 +40,7 @@ use cc_sim::systems::{
     grid_sync_system::grid_sync_system,
     movement_system::movement_system,
     production_system::production_system,
-    projectile_system::projectile_system,
+    projectile_system::{projectile_system, ProjectileHit},
     research_system::research_system,
     resource_system::gathering_system,
     stat_modifier_system::stat_modifier_system,
@@ -321,7 +321,7 @@ fn make_arena_sim(
     }
     world.insert_resource(player_res);
     world.insert_resource(MapResource { map });
-    world.init_resource::<bevy::prelude::Messages<projectile_system::ProjectileHit>>();
+    world.init_resource::<bevy::prelude::Messages<ProjectileHit>>();
 
     let spawn_positions: Vec<(u8, GridPos)> = map_def
         .spawn_points
