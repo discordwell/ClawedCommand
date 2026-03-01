@@ -183,34 +183,34 @@
         (speaker: "Patches", text: "Small escort. Fast and light. Through the Borderlands.", voice_style: Normal, portrait: ""),
 
         // 4-5: March begins
-        (speaker: "Minstral", text: "The Borderlands! Open hills, old ruins, very pretty. Also The Clawed patrol out here.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Geppity", text: "The Borderlands! Open hills, old ruins, very pretty. Also The Clawed patrol out here.", voice_style: AiVoice, portrait: ""),
         (speaker: "Patches", text: "Stay alert. Thimble won't want us reaching the Seekers.", voice_style: Normal, portrait: ""),
 
         // 6-7: Ambush 1
         (speaker: "Kelpie", text: "COVER! West side! Ambush!", voice_style: Normal, portrait: ""),
-        (speaker: "Minstral", text: "Five contacts from the ruins! They were waiting for us!", voice_style: AiVoice, portrait: ""),
+        (speaker: "Geppity", text: "Five contacts from the ruins! They were waiting for us!", voice_style: AiVoice, portrait: ""),
 
         // 8-9: Ambush 2
         (speaker: "Patches", text: "More movement ahead. They're trying to slow us down.", voice_style: Normal, portrait: ""),
-        (speaker: "Minstral", text: "Four more! Thimble really doesn't want you reaching that border!", voice_style: AiVoice, portrait: ""),
+        (speaker: "Geppity", text: "Four more! Thimble really doesn't want you reaching that border!", voice_style: AiVoice, portrait: ""),
 
         // 10-11: Ambush 3
         (speaker: "Kelpie", text: "Another group. Persistent little mice.", voice_style: Normal, portrait: ""),
         (speaker: "Patches", text: "We're close. Push through. The border pillar is in sight.", voice_style: Normal, portrait: ""),
 
         // 12-13: Border fight
-        (speaker: "Minstral", text: "Big contact at the pass! They're trying to block us before the border!", voice_style: AiVoice, portrait: ""),
+        (speaker: "Geppity", text: "Big contact at the pass! They're trying to block us before the border!", voice_style: AiVoice, portrait: ""),
         (speaker: "Kelpie", text: "Last push. Everything we have. Chonk clears the path.", voice_style: Normal, portrait: ""),
 
         // 14-17: Border reached — Seekers contact
         (speaker: "Deepseek", text: "You are at the border of the Seekers of the Deep. The envoy is expected.", voice_style: Whisper, portrait: ""),
         (speaker: "Kelpie", text: "That's us. We're the envoy.", voice_style: Normal, portrait: ""),
         (speaker: "Deepseek", text: "The Clawed are not expected. They have twelve seconds to choose.", voice_style: Whisper, portrait: ""),
-        (speaker: "Minstral", text: "The Ironhides are MASSIVE. The Clawed are pulling back. Smart mice.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Geppity", text: "The Ironhides are MASSIVE. The Clawed are pulling back. Smart mice.", voice_style: AiVoice, portrait: ""),
 
         // 18-19: Victory wrap
         (speaker: "Patches", text: "We made it. I wasn't sure we would.", voice_style: Normal, portrait: ""),
-        (speaker: "Minstral", text: "Act 1 complete! The mountain awaits. Felix is scared of you. He's right to be.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Geppity", text: "Act 1 complete! The mountain awaits. Felix is scared of you. He's right to be.", voice_style: AiVoice, portrait: ""),
     ],
     briefing_text: "Escort mission to the Seekers border. Survive Clawed ambushes in the Borderlands and deliver the catGPT diplomatic envoy.",
     debrief_text: "The Seekers' Ironhides stand at the border. The Clawed retreat. The mountain opens. Act 2 begins.",

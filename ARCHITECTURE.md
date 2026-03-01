@@ -1,10 +1,10 @@
 # ClawedCommand Architecture
 
-> Post-singularity cat RTS where players hybrid-control cute animal armies directly and through AI agents powered by fine-tuned Mistral models. Humanity uploaded, chose animal forms, and forgot why. You're a cat with an AI named Minstral pursuing world domination. Other Redwall-esque factions oppose you with their own (worse) AI agents. Light comedic tone, mechanically serious. Full game identity in **[GAME_DESIGN.md](./GAME_DESIGN.md)**.
+> Post-singularity cat RTS where players hybrid-control cute animal armies directly and through AI agents powered by fine-tuned Mistral models. Humanity uploaded, chose animal forms, and forgot why. You're a cat with an AI named Geppity pursuing world domination. Other Redwall-esque factions oppose you with their own (worse) AI agents. Light comedic tone, mechanically serious. Full game identity in **[GAME_DESIGN.md](./GAME_DESIGN.md)**.
 
 ## Vision
 
-Players command armies through a dual interface: traditional RTS point-and-click micro **and** natural language instructions to an AI commander (Minstral) that generates strategy code. The AI agent uses MCP tools to issue game commands, creating a gameplay loop where strategic thinking and AI coaching are as important as mechanical skill.
+Players command armies through a dual interface: traditional RTS point-and-click micro **and** natural language instructions to an AI commander (Geppity) that generates strategy code. The AI agent uses MCP tools to issue game commands, creating a gameplay loop where strategic thinking and AI coaching are as important as mechanical skill.
 
 ---
 

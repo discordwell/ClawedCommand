@@ -283,7 +283,7 @@ impl Default for NextMission {
 /// A single line of dialogue.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DialogueLine {
-    /// Speaker name (e.g. "Kelpie", "Minstral").
+    /// Speaker name (e.g. "Kelpie", "Geppity").
     pub speaker: String,
     /// The dialogue text.
     pub text: String,
@@ -531,10 +531,10 @@ mod tests {
     #[test]
     fn voice_style_serializes() {
         let line = DialogueLine {
-            speaker: "Minstral".into(),
+            speaker: "Geppity".into(),
             text: "Hello!".into(),
             voice_style: VoiceStyle::AiVoice,
-            portrait: "portrait_minstral".into(),
+            portrait: "portrait_geppity".into(),
         };
         let ron_str = ron::to_string(&line).unwrap();
         let parsed: DialogueLine = ron::from_str(&ron_str).unwrap();

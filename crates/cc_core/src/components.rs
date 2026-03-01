@@ -16,9 +16,9 @@ use crate::math::Fixed;
 pub enum Faction {
     /// Neutral / unaligned (e.g. Kelpie before joining a faction).
     Neutral,
-    /// catGPT — cats led by AI "Minstral".
+    /// catGPT — cats led by AI "Geppity".
     CatGpt,
-    /// The Clawed — mice led by AI "Geppity".
+    /// The Clawed — mice led by AI "Claudeus Maximus".
     TheClawed,
     /// Seekers of the Deep — badgers led by AI "Deepseek".
     SeekersOfTheDeep,
@@ -522,7 +522,7 @@ pub enum AuraType {
     Lullaby,
     ContagiousYawning,
     TacticalUplink,
-    MinstralUplink,
+    GeppityUplink,
 }
 
 /// Component for units that emit an area-of-effect aura.

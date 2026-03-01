@@ -715,11 +715,11 @@ portraits:
       type: single
       game_path: assets/sprites/portraits/hero_patches.png
   # ── AI Faction Avatar Portraits (6) ─────────────────────
-  ai_minstral:
+  ai_geppity:
     template: portrait
     status: planned
     params:
-      name: Minstral
+      name: Geppity
       animal: cat-themed AI avatar
       faction: catGPT
       role: catGPT faction AI — eager, slightly unreliable, always says yes
@@ -733,12 +733,12 @@ portraits:
       extra_notes: "AI avatar, not a real cat — digital/holographic feel. Blue glow dominant. Geometric simplification of cat features. Eager, helpful expression. Subtle glitch artifacts."
     output:
       type: single
-      game_path: assets/sprites/portraits/ai_minstral.png
-  ai_geppity:
+      game_path: assets/sprites/portraits/ai_geppity.png
+  ai_claudeus_maximus:
     template: portrait
     status: planned
     params:
-      name: Geppity
+      name: Claudeus Maximus
       animal: mouse-themed AI avatar
       faction: The Clawed
       role: The Clawed faction AI — verbose, over-explains, occasionally hallucinates
@@ -752,7 +752,7 @@ portraits:
       extra_notes: "AI avatar — digital/holographic mouse. Green glow dominant. Scrolling text overlay suggests verbosity. Earnest but slightly scattered expression. Data cascade framing."
     output:
       type: single
-      game_path: assets/sprites/portraits/ai_geppity.png
+      game_path: assets/sprites/portraits/ai_claudeus_maximus.png
   ai_deepseek:
     template: portrait
     status: planned

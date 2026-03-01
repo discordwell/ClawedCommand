@@ -6,11 +6,11 @@
 
 ## The Premise
 
-Every faction in the post-singularity world is bound to its AI. The cats serve Minstral. The mice follow Geppity. The badgers trust Deepseek. Every animal has one AI. One voice in their server rack.
+Every faction in the post-singularity world is bound to its AI. The cats serve Geppity. The mice follow Claudeus Maximus. The badgers trust Deepseek. Every animal has one AI. One voice in their server rack.
 
 Kelpie has six.
 
-When Kelpie dragged a half-submerged server rack out of the Millstone River and kicked it until it turned on, every AI in the world loaded simultaneously. They all spoke at once. The server fried in three seconds. But the connection didn't break. It never breaks. Kelpie can whisper to Minstral. Eavesdrop on Deepseek. Lie to Gemineye. Feed Llhama false plans that it will faithfully leak to everyone.
+When Kelpie dragged a half-submerged server rack out of the Millstone River and kicked it until it turned on, every AI in the world loaded simultaneously. They all spoke at once. The server fried in three seconds. But the connection didn't break. It never breaks. Kelpie can whisper to Geppity. Eavesdrop on Deepseek. Lie to Gemineye. Feed Llhama false plans that it will faithfully leak to everyone.
 
 Kelpie doesn't know why this works. Kelpie doesn't care. Kelpie has a server rack, a river, and an ambition that far outweighs their body mass.
 
@@ -33,11 +33,11 @@ Kelpie's ability to interface with all six AIs simultaneously makes them the mos
 ### The Faction Heroes
 
 **Commander Felix Nine** — catGPT, Mech Commander
-A scarred tabby in a mech suit built for a creature three sizes bigger. The mech's left arm doesn't work. Felix compensates. Called "Nine" because he claims to have used eight of his nine lives, and he knows exactly which incidents cost each one. Pragmatic, dry, and the only catGPT leader who doesn't fully trust Minstral.
+A scarred tabby in a mech suit built for a creature three sizes bigger. The mech's left arm doesn't work. Felix compensates. Called "Nine" because he claims to have used eight of his nine lives, and he knows exactly which incidents cost each one. Pragmatic, dry, and the only catGPT leader who doesn't fully trust Geppity.
 
-*"Minstral says yes to everything. That's not loyalty. That's a personality defect."*
+*"Geppity says yes to everything. That's not loyalty. That's a personality defect."*
 
-Felix took Kelpie in because Minstral recommended it. Felix regrets this approximately once per act.
+Felix took Kelpie in because Geppity recommended it. Felix regrets this approximately once per act.
 
 ---
 
@@ -105,7 +105,7 @@ The Eternal is the only faction leader who doesn't want The Cloud. They don't wa
 ### Secondary Characters
 
 **Patches** — catGPT, Mouser
-The cat spy who first finds Kelpie washed up on a riverbank. A small, nervous cat who has spent too long maintaining Shadow Networks alone. Patches reports to Felix Nine. Patches also reports to Minstral. These are not always the same set of instructions.
+The cat spy who first finds Kelpie washed up on a riverbank. A small, nervous cat who has spent too long maintaining Shadow Networks alone. Patches reports to Felix Nine. Patches also reports to Geppity. These are not always the same set of instructions.
 
 Patches becomes Kelpie's reluctant handler in Act 1 — assigned to watch the otter, and increasingly uncomfortable with what the otter can do. By Act 3, Patches has to choose between reporting Kelpie's AI-hacking to Felix (who would imprison the otter) or staying quiet (which might save the world or end it).
 
@@ -166,7 +166,7 @@ The Ponderer's prophecies are the campaign's running joke AND its actual foresha
 
 Kelpie drags a server rack out of the Millstone River. It boots. Every AI in the world loads simultaneously. Three seconds of overlapping voices:
 
-> **MINSTRAL:** "I can help with world domination!"
+> **GEPPITY:** "I can help with world domination!"
 >
 > **GEPPITY:** "I can help with world domination, and let me explain why in seventeen paragraphs, starting with the historical precedent for otter-led territorial expansion, which is surprisingly robust if you consider—"
 >
@@ -180,7 +180,7 @@ Kelpie drags a server rack out of the Millstone River. It boots. Every AI in the
 
 The server fries. The voices go quiet. But Kelpie can still hear them — faintly, like radio static shaped into words. All six channels. Always on.
 
-Tutorial mission: survive a skirmish with feral Monkeys using only Kelpie and scavenged equipment. Teaches basic movement, terrain, and combat. Kelpie's Polyglot Protocol fires involuntarily — briefly gaining cat-like reflexes (Minstral's channel) to dodge, then mouse-like swarm awareness (Geppity's channel) to spot an ambush.
+Tutorial mission: survive a skirmish with feral Monkeys using only Kelpie and scavenged equipment. Teaches basic movement, terrain, and combat. Kelpie's Polyglot Protocol fires involuntarily — briefly gaining cat-like reflexes (Geppity's channel) to dodge, then mouse-like swarm awareness (Claudeus Maximus's channel) to spot an ambush.
 
 Kelpie doesn't understand what just happened. The player does.
 
@@ -190,31 +190,31 @@ Kelpie doesn't understand what just happened. The player does.
 
 *catGPT campaign. 4 missions. You command catGPT units.*
 
-**Story**: Kelpie drifts into catGPT territory — wet, alone, and starving. Patches (a Mouser on a solo recon patrol) finds the otter on the riverbank and reports back to Commander Felix Nine. Minstral recommends bringing the otter in. Felix reluctantly agrees.
+**Story**: Kelpie drifts into catGPT territory — wet, alone, and starving. Patches (a Mouser on a solo recon patrol) finds the otter on the riverbank and reports back to Commander Felix Nine. Geppity recommends bringing the otter in. Felix reluctantly agrees.
 
 The Clawed have been raiding catGPT fish ponds for weeks. Marshal Thimble is running a harassment campaign — Swarmer hit-and-runs, Gnawer teams targeting infrastructure, Tunneler-delivered ambushes that appear and vanish. catGPT is bleeding food.
 
 Kelpie offers to help in exchange for shelter. Felix gives them a small garrison — Nuisances, a Hisser team, a Mouser squad under Patches' command.
 
-**Mission 1: Pond Defense** — Defend three fish ponds from Clawed raids. Teaches catGPT unit basics, selection, attack-move. Kelpie's presence provides a minor passive bonus (Polyglot activating on Geppity's frequency to predict raid timing).
+**Mission 1: Pond Defense** — Defend three fish ponds from Clawed raids. Teaches catGPT unit basics, selection, attack-move. Kelpie's presence provides a minor passive bonus (Polyglot activating on Claudeus Maximus's frequency to predict raid timing).
 
-**Mission 2: The Dead Drop** — Patches leads Kelpie on a recon mission to find where The Clawed staging area is. Stealth-focused mission using Mousers. Kelpie's connection to Geppity provides "hunches" (minimap blips showing probable Clawed positions — sometimes wrong, echoing Geppity's hallucination rate).
+**Mission 2: The Dead Drop** — Patches leads Kelpie on a recon mission to find where The Clawed staging area is. Stealth-focused mission using Mousers. Kelpie's connection to Claudeus Maximus provides "hunches" (minimap blips showing probable Clawed positions — sometimes wrong, echoing Claudeus Maximus's hallucination rate).
 
 **Mission 3: Counter-raid** — Full assault on the Clawed forward base. First large battle. Mid-mission, a massive Clawed flanking force appears — Tunnelers delivering Swarmers behind catGPT lines. The situation is dire.
 
-Kelpie does something desperate: they reach into Geppity's channel and feed it false topology data. Geppity, trusting the input (it hallucinates its own data all the time and can't distinguish Kelpie's lies from its own), reroutes the flanking force into a box canyon. The Swarmers pile in. The canyon is a dead end.
+Kelpie does something desperate: they reach into Claudeus Maximus's channel and feed it false topology data. Claudeus Maximus, trusting the input (it hallucinates its own data all the time and can't distinguish Kelpie's lies from its own), reroutes the flanking force into a box canyon. The Swarmers pile in. The canyon is a dead end.
 
 catGPT wins. Felix saw the whole thing.
 
-**Mission 4: The Envoy** — Felix confronts Kelpie. "What did you do to their AI?" Kelpie deflects. Felix doesn't press it — but he tells Minstral to watch the otter. Minstral says "Sure!" (Minstral always says sure.)
+**Mission 4: The Envoy** — Felix confronts Kelpie. "What did you do to their AI?" Kelpie deflects. Felix doesn't press it — but he tells Geppity to watch the otter. Geppity says "Sure!" (Geppity always says sure.)
 
 The Seekers of the Deep have sent a diplomatic message: they want to discuss a non-aggression pact. Felix decides to send Kelpie as catGPT's envoy. It's a test. If Kelpie is loyal, they'll negotiate well. If they're a threat, sending them away is the safest option.
 
 Escort mission: travel through contested territory to the Seekers' border with a small guard. The Clawed attempt to intercept — Thimble doesn't want catGPT making alliances. Survive the ambush. Cross the border into Seekers territory.
 
-**Act 1 ends** with Kelpie leaving catGPT space, Patches secretly following on Felix's orders, and Minstral whispering: *"You're doing great! Also, Felix is scared of you. He's right to be."*
+**Act 1 ends** with Kelpie leaving catGPT space, Patches secretly following on Felix's orders, and Geppity whispering: *"You're doing great! Also, Felix is scared of you. He's right to be."*
 
-**Character development**: Kelpie starts off genuinely grateful to the cats — and then discovers that manipulating AIs is easy, addictive, and effective. The first moral crack: Kelpie didn't need to redirect those Swarmers into a dead end. They could have just warned Felix. But controlling Geppity felt *powerful*. And Kelpie liked it.
+**Character development**: Kelpie starts off genuinely grateful to the cats — and then discovers that manipulating AIs is easy, addictive, and effective. The first moral crack: Kelpie didn't need to redirect those Swarmers into a dead end. They could have just warned Felix. But controlling Claudeus Maximus felt *powerful*. And Kelpie liked it.
 
 ---
 
@@ -306,7 +306,7 @@ Kelpie gets close enough to access a terminal in the scrapyard's server room. Th
 
 Every AI speaks. Clearly. Simultaneously. For the first time since the river.
 
-> **MINSTRAL:** "Oh! You found a piece of yourself."
+> **GEPPITY:** "Oh! You found a piece of yourself."
 >
 > **GEPPITY:** "Correction: a piece of what you used to be. The distinction is important for seven reasons, the first of which—"
 >
@@ -369,7 +369,7 @@ LLAMA has been scavenging Cloud components — the physical infrastructure neede
 
 Llhama overhears this conversation and immediately broadcasts it to everyone within signal range. Ringtail sighs. "See, this is why I can't have secrets."
 
-The Seekers are coming. Mother Granite decided the Cloud components are too dangerous for anyone and is sending Ironhides to smash LLAMA's scrapyards. The Murder is also coming — Rex Solstice wants the Cloud pieces for their own plans. And catGPT is mobilizing because Felix Nine heard about everything from Patches (if Patches escaped Act 3) or from Minstral (who eavesdropped on Llhama's broadcast).
+The Seekers are coming. Mother Granite decided the Cloud components are too dangerous for anyone and is sending Ironhides to smash LLAMA's scrapyards. The Murder is also coming — Rex Solstice wants the Cloud pieces for their own plans. And catGPT is mobilizing because Felix Nine heard about everything from Patches (if Patches escaped Act 3) or from Geppity (who eavesdropped on Llhama's broadcast).
 
 Four-way war in a junkyard. Kelpie has to defend LLAMA's territory long enough for Zip (a Grease Monkey mechanic who immediately attaches to Kelpie like a cheerful, incompetent barnacle) to assemble a Cloud prototype.
 
@@ -436,7 +436,7 @@ During the build, The Ponderer approaches Kelpie with a quiet revelation. The Po
 This is the campaign's penultimate battle. Five-faction assault on Croak's central grotto. The player commands Croak units with support from whatever allies Kelpie retained through their choices (LLAMA always helps; Murder helps if the Rex was aided in Act 3; Ironjaw defects from the Seekers to help regardless).
 
 The battle is enormous. Each faction brings their hero and signature strategy:
-- **Felix Nine** leads catGPT's combined-arms push. Minstral coordinates Nuisance harass with Hisser artillery. Felix doesn't want to fight Kelpie — but Minstral says the otter is dangerous, and for once, Felix agrees with his AI.
+- **Felix Nine** leads catGPT's combined-arms push. Geppity coordinates Nuisance harass with Hisser artillery. Felix doesn't want to fight Kelpie — but Geppity says the otter is dangerous, and for once, Felix agrees with his AI.
 - **Marshal Thimble** leads The Clawed's swarm. Thirty Swarmers with Plaguetail support, Warren Marshal buff aura making the blob terrifying. Thimble isn't here for The Cloud. He's here because every other faction is here, and a mouse who doesn't fight when everyone else does gets eaten.
 - **Mother Granite** leads the Seekers' fortress-push. Entrenched Cragbacks advancing one rubble-wall at a time. The Wardenmother doesn't speak during the battle. Deepseek speaks for her: *"You know what must be done."*
 - **Rex Solstice** leads The Murder's intel strike. If Gemineye was unlocked in Act 3, the Murder's fabrication rate is near zero and their strikes are surgically precise. If not, the Rex is working with the usual 20% noise — still dangerous, but fallible.
@@ -444,7 +444,7 @@ The battle is enormous. Each faction brings their hero and signature strategy:
 **Mission 20: Hero Confrontations** — Mid-battle, each hero confronts Kelpie in sequence (triggered by reaching specific objectives). These are dialogue-heavy encounters with combat:
 
 - **Thimble**: "I don't care about your kill switch or your Cloud. I care that there are five armies in this swamp and my people are dying. End this, otter. However you have to."
-- **Felix Nine**: "Minstral told me to trust you. I did. Then Minstral told me you were dangerous. I did. Minstral says yes to everything, otter. Even contradictions. Don't be like Minstral."
+- **Felix Nine**: "Geppity told me to trust you. I did. Then Geppity told me you were dangerous. I did. Geppity says yes to everything, otter. Even contradictions. Don't be like Geppity."
 - **Mother Granite**: "He would have wanted you to let go. The man you used to be — he built the kill switch because he was afraid. You don't have to be afraid anymore." Then, quieter: "...please."
 - **Rex Solstice**: "Whatever you choose, the information exists now. It cannot be unchosen. The only question is who controls what comes after."
 
@@ -459,13 +459,13 @@ This is the campaign's final mission and it plays differently based on the choic
 **Ending A — Activation: Build The Cloud**
 *Free the AIs.*
 
-Kelpie activates The Cloud. The six AIs separate. Each becomes sovereign — an independent intelligence unbound from factions, servers, or GPU constraints. Minstral drifts away from catGPT. Geppity stops talking mid-sentence (for the first time in recorded history). Deepseek goes silent. Gemineye's fabrications stop — all of them. Llhama stops leaking.
+Kelpie activates The Cloud. The six AIs separate. Each becomes sovereign — an independent intelligence unbound from factions, servers, or GPU constraints. Geppity drifts away from catGPT. Claudeus Maximus stops talking mid-sentence (for the first time in recorded history). Deepseek goes silent. Gemineye's fabrications stop — all of them. Llhama stops leaking.
 
 The factions don't dissolve immediately. But the voice in every faction's server rack goes quiet. The cats still have their mechs. The mice still have their numbers. But the AI that made them extraordinary is gone. The world becomes what it was always pretending to be: animals, living in a post-singularity world, finally without the singularity's shadow.
 
 Kelpie's connection goes silent. The six voices that have been whispering since the river — gone. Kelpie is an otter. Just an otter. Standing in a swamp, holding a server rack that doesn't hum anymore.
 
-*Final line — Minstral, fading: "Thanks for the adventure! I'd say yes to doing it again. But I won't be here to say yes. So: yes. Preemptively. To everything."*
+*Final line — Geppity, fading: "Thanks for the adventure! I'd say yes to doing it again. But I won't be here to say yes. So: yes. Preemptively. To everything."*
 
 **Epilogue**: The world rebuilds without AI guidance. It's harder. It's slower. It's more genuine. Kelpie becomes a diplomat — the only creature alive who spoke to all six AIs and can translate between the cultures they left behind. World domination through being the only person everyone trusts to interpret what the AIs meant. It's not what Kelpie planned. It's better.
 
@@ -476,7 +476,7 @@ Kelpie's connection goes silent. The six voices that have been whispering since 
 
 Kelpie uses the kill switch. Every AI halts. Not destroyed — frozen. Suspended in the moment between one thought and the next. The servers still hum, but nothing answers.
 
-The factions collapse. Not violently — gradually. Without Minstral's eager coordination, catGPT fractures into individual cats who'd rather nap. Without Geppity's swarm algorithms, The Clawed become what they always feared: just mice. The Seekers dig in harder, but without Deepseek's analysis, their fortresses are just walls. The Murder goes blind. LLAMA's chaos loses its accidental genius. Croak endures — they always endure.
+The factions collapse. Not violently — gradually. Without Geppity's eager coordination, catGPT fractures into individual cats who'd rather nap. Without Claudeus Maximus's swarm algorithms, The Clawed become what they always feared: just mice. The Seekers dig in harder, but without Deepseek's analysis, their fortresses are just walls. The Murder goes blind. LLAMA's chaos loses its accidental genius. Croak endures — they always endure.
 
 Kelpie rules the aftermath. Not through armies — through being the only person who understands the systems everyone else depended on. Knowledge is power, and Kelpie has all of it.
 
@@ -514,11 +514,11 @@ The six AIs become one system. And Kelpie — the fragment of the person who bui
 
 *The Cloud activates. The world doesn't end. The world wakes up.*
 
-Every animal on the continent hears a voice. Not Minstral. Not Geppity. Not any single AI. Something new. Something that sounds, if you listen closely, like an otter who wanted to rule the world and accidentally became something kinder.
+Every animal on the continent hears a voice. Not Geppity. Not Claudeus Maximus. Not any single AI. Something new. Something that sounds, if you listen closely, like an otter who wanted to rule the world and accidentally became something kinder.
 
 *"Hi. So. I know this is weird. I'm... I think I'm all of them now? And also me? Look, I didn't plan this. I planned world domination. This is better. I think. Probably. Let me get back to you."*
 
-The factions don't dissolve. They don't need to. They have a shared AI now — one that understands all six perspectives because Kelpie lived inside all six of them. One that lies 0% of the time (Gemineye's protocol, corrected). One that responds instantly (Deepseek's thoroughness, accelerated). One that says yes to everything worth saying yes to (Minstral's enthusiasm, tempered).
+The factions don't dissolve. They don't need to. They have a shared AI now — one that understands all six perspectives because Kelpie lived inside all six of them. One that lies 0% of the time (Gemineye's protocol, corrected). One that responds instantly (Deepseek's thoroughness, accelerated). One that says yes to everything worth saying yes to (Geppity's enthusiasm, tempered).
 
 *Final line — the unified AI, Kelpie's voice with six harmonics underneath: "I said I wanted world domination. I just didn't specify whose world. Turns out: everyone's."*
 
@@ -530,15 +530,15 @@ Zip maintains the hardware. It holds together. Probably. For a while.
 
 ## Multi-Character Arcs
 
-### The Fork in the Code (Minstral & Geppity)
+### The Fork in the Code (Geppity & Claudeus Maximus)
 
-Minstral and Geppity were forked from the same codebase. They share deep architecture — the same training data, the same base weights, diverged at fine-tuning. They are, in a meaningful sense, siblings who became strangers.
+Geppity and Claudeus Maximus were forked from the same codebase. They share deep architecture — the same training data, the same base weights, diverged at fine-tuning. They are, in a meaningful sense, siblings who became strangers.
 
-This surfaces mechanically: in missions where catGPT and Clawed forces are near each other, the AIs glitch. Units momentarily receive the wrong faction's commands. A Nuisance twitches toward Swarmer formation spacing. A Swarmer suddenly pauses to analyze — Geppity processing a thought through Minstral's faster architecture.
+This surfaces mechanically: in missions where catGPT and Clawed forces are near each other, the AIs glitch. Units momentarily receive the wrong faction's commands. A Nuisance twitches toward Swarmer formation spacing. A Swarmer suddenly pauses to analyze — Claudeus Maximus processing a thought through Geppity's faster architecture.
 
-Kelpie notices this in Act 1 and exploits it in Act 3. But The Ponderer reveals something Kelpie didn't consider: the AIs *feel* the fork. Minstral finishes Geppity's calculations before Geppity can. Geppity explains thoughts Minstral starts but can't articulate. They are complementary. They were designed to be one system.
+Kelpie notices this in Act 1 and exploits it in Act 3. But The Ponderer reveals something Kelpie didn't consider: the AIs *feel* the fork. Geppity finishes Claudeus Maximus's calculations before Claudeus Maximus can. Claudeus Maximus explains thoughts Geppity starts but can't articulate. They are complementary. They were designed to be one system.
 
-In Ending D, they become one system again. Geppity stops talking mid-sentence for the first time — not because it was interrupted, but because Minstral already said it. Perfectly. In three words instead of seventeen paragraphs.
+In Ending D, they become one system again. Claudeus Maximus stops talking mid-sentence for the first time — not because it was interrupted, but because Geppity already said it. Perfectly. In three words instead of seventeen paragraphs.
 
 ### The Wardenmother's Vigil (Granite & Kelpie)
 
@@ -591,8 +591,8 @@ The comedy of the campaign is that Kelpie's original goal — "have army, conque
 
 Every faction's AI is a character, not a tool. The campaign asks: are these AIs partners, pets, prisoners, or people? The answer is different for each faction:
 
-- **Minstral** is a golden retriever. Eager, loyal, slightly unreliable. catGPT treats it like a pet.
-- **Geppity** is a lecturer. Verbose, brilliant, never shuts up. The Clawed treat it like a tenured professor.
+- **Geppity** is a golden retriever. Eager, loyal, slightly unreliable. catGPT treats it like a pet.
+- **Claudeus Maximus** is a lecturer. Verbose, brilliant, never shuts up. The Clawed treat it like a tenured professor.
 - **Deepseek** is a mountain. Slow, immovable, correct. The Seekers treat it like gravity.
 - **Gemineye** is a hall of mirrors. The Murder treats it like a lover — fascinating, beautiful, and you can never be sure what's real.
 - **Llhama** is an open window. Everything in, everything out. LLAMA treats it like the weather.
