@@ -4,10 +4,17 @@
 //! OpenAiCompatibleClient, parses tool calls, executes them through
 //! mcp_tools, and sends AgentResponses back.
 
+use bevy::prelude::*;
+
 use crate::agent_bridge::{AgentChannels, AgentRequest, AgentResponse, AgentSource};
-use crate::llm_client::{ChatMessage, LlmClient, LlmConfig, LlmBackend, OpenAiCompatibleClient, MockLlmClient, LlmResponse};
+use crate::llm_client::{AgentStatus, ChatMessage, LlmClient, LlmConfig, LlmBackend, OpenAiCompatibleClient, MockLlmClient, LlmResponse};
 use crate::mcp_tools;
 use crate::snapshot::{self, GameStateSnapshot};
+
+/// Resource holding the channel endpoints for the LLM background thread.
+/// Consumed by `startup_llm_runner` on first frame.
+#[derive(Resource)]
+pub struct LlmRunnerChannels(pub Option<AgentChannels>);
 
 /// Maximum tool-call rounds per request to prevent runaway loops.
 const MAX_TOOL_ROUNDS: usize = 5;
@@ -54,8 +61,9 @@ fn build_client(config: &LlmConfig) -> Box<dyn LlmClient> {
 async fn process_request(
     client: &dyn LlmClient,
     request: &AgentRequest,
-    snapshot: Option<&GameStateSnapshot>,
 ) -> AgentResponse {
+    let snapshot = request.snapshot.as_ref();
+
     // Build message list
     let mut messages = Vec::new();
 
@@ -191,7 +199,7 @@ pub fn spawn_llm_runner(
                     Err(_) => break, // Channel closed
                 };
 
-                let response = process_request(client.as_ref(), &request, None).await;
+                let response = process_request(client.as_ref(), &request).await;
 
                 if response_tx.send(response).is_err() {
                     break; // Response channel closed
@@ -199,6 +207,23 @@ pub fn spawn_llm_runner(
             }
         });
     })
+}
+
+/// Bevy Startup system: takes the channels from `LlmRunnerChannels`,
+/// reads `LlmConfig`, and spawns the background LLM thread.
+pub fn startup_llm_runner(
+    config: Res<LlmConfig>,
+    mut channels_res: ResMut<LlmRunnerChannels>,
+    mut agent_status: ResMut<AgentStatus>,
+) {
+    if let Some(channels) = channels_res.0.take() {
+        let config = config.clone();
+        spawn_llm_runner(config, channels);
+        *agent_status = AgentStatus::Ready;
+        log::info!("LLM runner thread spawned");
+    } else {
+        log::warn!("LlmRunnerChannels already consumed or missing");
+    }
 }
 
 #[cfg(test)]
@@ -258,12 +283,93 @@ mod tests {
             tier: ToolTier::Basic,
             source: AgentSource::GameLoop,
             chat_history: None,
+            snapshot: None,
         };
 
-        let response = process_request(&client, &request, None).await;
+        let response = process_request(&client, &request).await;
         assert_eq!(response.content, "Standing by.");
         assert!(response.error.is_none());
         assert!(response.commands.is_empty());
         assert_eq!(response.source, AgentSource::GameLoop);
+    }
+
+    #[test]
+    fn spawn_llm_runner_processes_request_and_responds() {
+        use crate::agent_bridge::AgentBridge;
+
+        let config = LlmConfig::default(); // Mock backend
+        let (bridge, channels) = AgentBridge::new();
+
+        let _handle = spawn_llm_runner(config, channels);
+
+        // Send a request through the bridge
+        bridge
+            .request_tx
+            .try_send(AgentRequest {
+                player_id: 0,
+                prompt: "Test request".into(),
+                tier: ToolTier::Basic,
+                source: AgentSource::GameLoop,
+                chat_history: None,
+                snapshot: None,
+            })
+            .expect("send should succeed");
+
+        // Should receive a response within a reasonable time
+        let response = bridge
+            .response_rx
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .expect("should receive response from LLM runner");
+
+        assert_eq!(response.player_id, 0);
+        assert_eq!(response.source, AgentSource::GameLoop);
+        assert!(response.error.is_none());
+        assert_eq!(response.content, "No action needed at this time.");
+    }
+
+    #[test]
+    fn spawn_llm_runner_passes_snapshot_to_process_request() {
+        use crate::agent_bridge::AgentBridge;
+        use cc_sim::resources::PlayerResourceState;
+
+        let config = LlmConfig::default();
+        let (bridge, channels) = AgentBridge::new();
+
+        let _handle = spawn_llm_runner(config, channels);
+
+        let snap = GameStateSnapshot {
+            tick: 42,
+            map_width: 64,
+            map_height: 64,
+            player_id: 0,
+            my_units: vec![],
+            enemy_units: vec![],
+            my_buildings: vec![],
+            enemy_buildings: vec![],
+            resource_deposits: vec![],
+            my_resources: PlayerResourceState {
+                food: 200,
+                ..Default::default()
+            },
+        };
+
+        bridge
+            .request_tx
+            .try_send(AgentRequest {
+                player_id: 0,
+                prompt: "Assess".into(),
+                tier: ToolTier::Basic,
+                source: AgentSource::GameLoop,
+                chat_history: None,
+                snapshot: Some(snap),
+            })
+            .expect("send should succeed");
+
+        let response = bridge
+            .response_rx
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .expect("should receive response");
+
+        assert!(response.error.is_none());
     }
 }

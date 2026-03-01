@@ -13,6 +13,7 @@ use cc_sim::resources::CommandQueue;
 
 use crate::construct_mode::{ConstructModeState, LuaScript};
 use crate::llm_client::ChatMessage;
+use crate::snapshot::GameStateSnapshot;
 use crate::tool_tier::ToolTier;
 
 /// Where an agent request originated — determines response routing.
@@ -35,6 +36,8 @@ pub struct AgentRequest {
     pub source: AgentSource,
     /// For ConstructMode: the full chat history to send as context.
     pub chat_history: Option<Vec<ChatMessage>>,
+    /// Game state snapshot for tool execution context.
+    pub snapshot: Option<GameStateSnapshot>,
 }
 
 /// Message from background LLM thread → Bevy.

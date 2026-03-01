@@ -40,27 +40,37 @@ impl Plugin for AgentPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<construct_mode::ConstructModeState>()
             .insert_resource(construct_mode::ScriptLibrary::with_starters())
-            .init_resource::<agent_bridge::AgentBridge>()
             .init_resource::<agent_bridge::AgentChatLog>()
             .init_resource::<tool_tier::ToolRegistry>()
             .init_resource::<tool_tier::FactionToolStates>()
             .init_resource::<decision::AgentDecisionState>()
-            .init_resource::<llm_client::AgentStatus>()
-            .add_systems(
-                Update,
-                (
-                    agent_bridge::poll_agent_responses,
-                    decision::agent_decision_system,
-                ),
-            )
-            .add_systems(FixedUpdate, tool_tier::update_tool_tiers);
+            .init_resource::<llm_client::AgentStatus>();
 
-        // Native: add Lua script runner + spawn LLM background thread
+        // Native: create connected bridge + channels, spawn LLM thread on Startup
         #[cfg(not(target_arch = "wasm32"))]
-        app.add_plugins(runner::ScriptRunnerPlugin);
+        {
+            let (bridge, channels) = agent_bridge::AgentBridge::new();
+            app.insert_resource(bridge);
+            app.insert_resource(llm_runner::LlmRunnerChannels(Some(channels)));
+            app.init_resource::<llm_client::LlmConfig>();
+            app.add_plugins(runner::ScriptRunnerPlugin);
+            app.add_systems(Startup, llm_runner::startup_llm_runner);
+        }
 
-        // WASM: spawn async agent loop on browser event loop
+        // WASM: dead-channel bridge (wasm_runner handles its own channels)
         #[cfg(target_arch = "wasm32")]
-        app.add_systems(Startup, wasm_runner::init_wasm_agent);
+        {
+            app.init_resource::<agent_bridge::AgentBridge>();
+            app.add_systems(Startup, wasm_runner::init_wasm_agent);
+        }
+
+        app.add_systems(
+            Update,
+            (
+                agent_bridge::poll_agent_responses,
+                decision::agent_decision_system,
+            ),
+        )
+        .add_systems(FixedUpdate, tool_tier::update_tool_tiers);
     }
 }

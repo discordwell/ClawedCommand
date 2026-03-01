@@ -134,13 +134,13 @@ pub fn agent_decision_system(
 
         let tier = tool_states.tier_for(player_id);
 
-        let summary = snapshot::summarize_snapshot(&snap);
         let request = AgentRequest {
             player_id,
-            prompt: format!("{}\n\nAssess the situation and issue commands.", summary),
+            prompt: "Assess the situation and issue commands.".into(),
             tier,
             source: AgentSource::GameLoop,
             chat_history: None,
+            snapshot: Some(snap),
         };
 
         if bridge.request_tx.try_send(request).is_ok() {

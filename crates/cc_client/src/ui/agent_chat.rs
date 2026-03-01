@@ -147,6 +147,7 @@ pub fn agent_quick_commands(
             tier,
             source: AgentSource::QuickCommand,
             chat_history: None,
+            snapshot: None,
         });
     }
     if keys.just_pressed(KeyCode::F6) {
@@ -156,6 +157,7 @@ pub fn agent_quick_commands(
             tier,
             source: AgentSource::QuickCommand,
             chat_history: None,
+            snapshot: None,
         });
     }
     if keys.just_pressed(KeyCode::F7) {
@@ -165,6 +167,7 @@ pub fn agent_quick_commands(
             tier,
             source: AgentSource::QuickCommand,
             chat_history: None,
+            snapshot: None,
         });
     }
 }
