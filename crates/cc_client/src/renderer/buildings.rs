@@ -343,7 +343,7 @@ pub fn update_building_damage_tint(
         (With<BuildingMesh>, With<SpriteBuilding>, Without<UnderConstruction>),
     >,
     mesh_buildings: Query<
-        (&Health, &MeshMaterial2d<ColorMaterial>),
+        (&Health, &Owner, &MeshMaterial2d<ColorMaterial>),
         (With<BuildingMesh>, Without<SpriteBuilding>, Without<UnderConstruction>),
     >,
     mut materials: ResMut<Assets<ColorMaterial>>,
@@ -374,7 +374,8 @@ pub fn update_building_damage_tint(
     }
 
     // MeshMaterial2d-based buildings: modify material color
-    for (health, mat_handle) in mesh_buildings.iter() {
+    // Use building_color(owner) as base to avoid compounding tint each frame.
+    for (health, owner, mat_handle) in mesh_buildings.iter() {
         let max_f = health.max.to_num::<f32>();
         if max_f <= 0.0 {
             continue;
@@ -385,14 +386,19 @@ pub fn update_building_damage_tint(
             continue;
         };
 
+        let base = building_color(owner.player_id);
         if ratio < 0.5 {
             let damage = 1.0 - (ratio / 0.5);
             let darken = 1.0 - 0.4 * damage;
-            let base = mat.color.to_srgba();
-            let r = (base.red * darken + 0.3 * damage).min(1.0);
-            let g = (base.green * darken * (1.0 - 0.3 * damage)).min(1.0);
-            let b = (base.blue * darken * (1.0 - 0.3 * damage)).min(1.0);
-            mat.color = Color::srgba(r, g, b, base.alpha);
+            let red_boost = 0.3 * damage;
+            let base_srgba = base.to_srgba();
+            let r = (base_srgba.red * darken + red_boost).min(1.0);
+            let g = (base_srgba.green * darken * (1.0 - 0.3 * damage)).min(1.0);
+            let b = (base_srgba.blue * darken * (1.0 - 0.3 * damage)).min(1.0);
+            mat.color = Color::srgba(r, g, b, mat.color.alpha());
+        } else {
+            // Reset to base building color when above 50% HP
+            mat.color = base.with_alpha(mat.color.alpha());
         }
     }
 }

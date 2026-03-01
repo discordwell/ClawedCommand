@@ -260,6 +260,612 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/laser_pointer.png
+  # --- The Murder (Corvids) ---
+  the_parliament:
+    template: building
+    status: planned
+    params:
+      name: The Parliament
+      description: Command center. A gnarled dead tree festooned with wires and blinking LEDs.
+        The hollow trunk is filled with stolen trinkets and scavenged server components.
+        Crow nests cluster in the upper branches.
+      faction: The Murder (corvids)
+      width: 256
+      height: 256
+      footprint: 3x3
+      extra_notes: Dark gothic nest-structure. Woven branches, stolen shiny objects. Must feel ominous but bird-made.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/the_parliament.png
+  rookery:
+    template: building
+    status: planned
+    params:
+      name: Rookery
+      description: Barracks. Dense cluster of nests and landing platforms woven from dark branches.
+        Training dummies made of straw hang from perches. Aerial units launch from the top.
+      faction: The Murder (corvids)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Woven branch construction with stolen shiny objects woven in. Dark, gothic aesthetic.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/rookery.png
+  carrion_cache:
+    template: building
+    status: planned
+    params:
+      name: Carrion Cache
+      description: Resource depot. Scavenged refrigeration units repurposed as food storage,
+        wrapped in dark fabric and decorated with corvid feathers.
+      faction: The Murder (corvids)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Dark, utilitarian. Feather decorations and shiny trinkets on the exterior.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/carrion_cache.png
+  antenna_array:
+    template: building
+    status: planned
+    params:
+      name: Antenna Array
+      description: Tech building. Salvaged satellite dishes and radio towers bound together
+        with wire. Blinking lights and sparking connections. Crows perch on the dishes.
+      faction: The Murder (corvids)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Salvaged tech aesthetic. Wires everywhere. Sparking. Crows sitting on it.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/antenna_array.png
+  panopticon:
+    template: building
+    status: planned
+    params:
+      name: Panopticon
+      description: Research building. A tower covered in salvaged cameras and lenses,
+        all pointing outward. Glowing zodiac symbols carved into the base.
+      faction: The Murder (corvids)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Unique building (limit 1). Covered in lenses and cameras. Zodiac/astrology motifs.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/panopticon.png
+  nest_box:
+    template: building
+    status: planned
+    params:
+      name: Nest Box
+      description: Supply depot. Rows of modular nesting compartments stacked like an apartment
+        building. Feathers and twigs sticking out of every opening.
+      faction: The Murder (corvids)
+      width: 128
+      height: 128
+      footprint: 2x2
+      extra_notes: Modular bird housing. Feathers and stolen objects visible in each compartment.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/nest_box.png
+  thorn_hedge:
+    template: building
+    status: planned
+    params:
+      name: Thorn Hedge
+      description: Defensive wall. Dense thorny barrier woven from briar and dark branches.
+        Shiny objects and warning signs tangled in the thorns.
+      faction: The Murder (corvids)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Dark, tangled, foreboding. Cheap and fast to build. Burns easily.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/thorn_hedge.png
+  watchtower:
+    template: building
+    status: planned
+    params:
+      name: Watchtower
+      description: Defense tower. Tall wooden perch with a scope mounted at the top.
+        Dark timber construction with corvid banners. Long-range single-target attack.
+      faction: The Murder (corvids)
+      width: 128
+      height: 192
+      footprint: 1x1
+      extra_notes: Tall, narrow, dark wood. Scope/telescope at top. Corvid silhouette.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/watchtower.png
+  # --- The Clawed (Mice) ---
+  the_burrow:
+    template: building
+    status: planned
+    params:
+      name: The Burrow
+      description: Command center. A hole in the ground with a tiny mailbox, surrounded by
+        packed earth and reinforced with scrap wood. Warm light glows from inside.
+      faction: The Clawed (mice)
+      width: 256
+      height: 256
+      footprint: 3x3
+      extra_notes: Underground entrance. Tiny mailbox. Packed earth and junk-tech reinforcement. Cozy glow.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/the_burrow.png
+  nesting_box:
+    template: building
+    status: planned
+    params:
+      name: Nesting Box
+      description: Barracks. Repurposed birdhouse converted to mouse barracks. Multiple
+        tiny doors and windows. Ladders and ropes for entry.
+      faction: The Clawed (mice)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Repurposed birdhouse. Junk-tech modifications. Tiny scale, many openings.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/nesting_box.png
+  seed_vault:
+    template: building
+    status: planned
+    params:
+      name: Seed Vault
+      description: Resource depot. Underground food storage with a surface entrance marked
+        by acorn-shaped signage. Sacks and barrels of seeds visible.
+      faction: The Clawed (mice)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Packed earth construction. Acorn motifs. Visible food storage.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/seed_vault.png
+  junk_transmitter:
+    template: building
+    status: planned
+    params:
+      name: Junk Transmitter
+      description: Tech building. A pile of salvaged electronics held together with twine
+        and spit. Sparking wires and blinking lights. Somehow it works.
+      faction: The Clawed (mice)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Junk-tech aesthetic. Twine, salvaged parts, exposed wiring. Fragile-looking.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/junk_transmitter.png
+  gnaw_lab:
+    template: building
+    status: planned
+    params:
+      name: Gnaw Lab
+      description: Research building. Shaped like a giant acorn. Chew marks visible on every
+        surface. Blueprints and diagrams pinned to the walls.
+      faction: The Clawed (mice)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Acorn-shaped. Chew marks everywhere. Research papers pinned around.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/gnaw_lab.png
+  warren_expansion:
+    template: building
+    status: planned
+    params:
+      name: Warren Expansion
+      description: Supply depot. An underground chamber entrance with packed earth walls
+        and tiny support beams. Extends the burrow network.
+      faction: The Clawed (mice)
+      width: 128
+      height: 128
+      footprint: 2x2
+      extra_notes: Underground expansion. Packed earth, tiny timber supports.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/warren_expansion.png
+  mousehole:
+    template: building
+    status: planned
+    params:
+      name: Mousehole
+      description: Defensive gate. A tiny fortified entrance built into a wall.
+        Reinforced with scrap metal. Only small units can pass through.
+      faction: The Clawed (mice)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Tiny fortified entrance. Scrap metal reinforcement. Classic mousehole arch shape.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/mousehole.png
+  squeak_tower:
+    template: building
+    status: planned
+    params:
+      name: Squeak Tower
+      description: Defense tower. Emits high-frequency pulse. Built from scrap metal and
+        salvaged speakers. Vibrating visually when active.
+      faction: The Clawed (mice)
+      width: 128
+      height: 192
+      footprint: 1x1
+      extra_notes: Scrap metal construction. Speaker cones visible. Sound wave visual effect.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/squeak_tower.png
+  # --- Seekers of the Deep (Badgers) ---
+  the_sett:
+    template: building
+    status: planned
+    params:
+      name: The Sett
+      description: Command center. Underground entrance mound reinforced with old-world rebar
+        and heavy stone. Moss-covered with ancient carvings. Massive and imposing.
+      faction: Seekers of the Deep (badgers)
+      width: 256
+      height: 256
+      footprint: 3x3
+      extra_notes: Heavy stone fortification. Ancient and mossy. Rebar reinforcement. Badger claw marks.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/the_sett.png
+  war_hollow:
+    template: building
+    status: planned
+    params:
+      name: War Hollow
+      description: Barracks. Hollowed-out hillside with stone archway entrance.
+        Units emerge from the earth. Heavy timber and stone construction.
+      faction: Seekers of the Deep (badgers)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Hillside entrance. Heavy stone and timber. Ancient, solid construction.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/war_hollow.png
+  burrow_depot:
+    template: building
+    status: planned
+    params:
+      name: Burrow Depot
+      description: Resource depot. Underground food storage cavern with a stone entrance.
+        Visible root systems and packed earth. Cool underground preservation.
+      faction: Seekers of the Deep (badgers)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Heavy stone entrance to underground cavern. Ancient, mossy.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/burrow_depot.png
+  core_tap:
+    template: building
+    status: planned
+    params:
+      name: Core Tap
+      description: Tech building. A deep-bore drill into old-world server infrastructure.
+        Heavy industrial machinery with stone housing. Glowing from below.
+      faction: Seekers of the Deep (badgers)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Industrial drill with stone housing. Glowing core visible. Heavy construction.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/core_tap.png
+  claw_marks:
+    template: building
+    status: planned
+    params:
+      name: Claw Marks
+      description: Research building. A stone monolith with deep badger claw grooves carved
+        into its surface. Each completed research adds a visible mark.
+      faction: Seekers of the Deep (badgers)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Stone monolith with claw grooves. Ancient, rune-like. Mossy base.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/claw_marks.png
+  deep_warren:
+    template: building
+    status: planned
+    params:
+      name: Deep Warren
+      description: Supply depot. Expanded underground living quarters with heavy stone
+        entrance and reinforced timber framing. Ancient and solid.
+      faction: Seekers of the Deep (badgers)
+      width: 128
+      height: 128
+      footprint: 2x2
+      extra_notes: Heavy stone and timber. Underground expansion. Solid, permanent feel.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/deep_warren.png
+  bulwark_gate:
+    template: building
+    status: planned
+    params:
+      name: Bulwark Gate
+      description: Defensive gate. Reinforced earthen gateway with heavy stone walls.
+        Thick timber doors. Units garrison inside for protection.
+      faction: Seekers of the Deep (badgers)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Massive stone gateway. Heavy doors. Garrison slots visible. Imposing.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/bulwark_gate.png
+  slag_thrower:
+    template: building
+    status: planned
+    params:
+      name: Slag Thrower
+      description: Defense tower. Stone catapult that hurls molten slag. Heavy construction
+        with a glowing crucible. Leaves burning ground on impact.
+      faction: Seekers of the Deep (badgers)
+      width: 128
+      height: 192
+      footprint: 1x1
+      extra_notes: Stone catapult with glowing molten slag. Heavy, ancient construction.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/slag_thrower.png
+  # --- Croak (Axolotls) ---
+  the_grotto:
+    template: building
+    status: planned
+    params:
+      name: The Grotto
+      description: Command center. A mossy cave half-submerged in water. Bioluminescent fungi
+        and glowing coral line the entrance. Server hums inside, wrapped in waterproof tarps.
+      faction: Croak (axolotls)
+      width: 256
+      height: 256
+      footprint: 3x3
+      extra_notes: Bioluminescent aquatic aesthetic. Coral, shell, glowing fungus. Half-submerged.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/the_grotto.png
+  spawning_pools:
+    template: building
+    status: planned
+    params:
+      name: Spawning Pools
+      description: Barracks. Shallow pools of regenerative slime surrounded by coral formations.
+        Units emerge wet and ready. Bioluminescent glow from the water.
+      faction: Croak (axolotls)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Glowing pools with coral borders. Bioluminescent. Wet, organic aesthetic.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/spawning_pools.png
+  lily_market:
+    template: building
+    status: planned
+    params:
+      name: Lily Market
+      description: Resource depot. Food storage on floating lily pads connected by
+        bioluminescent bridges. Shell containers and coral shelving.
+      faction: Croak (axolotls)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Floating lily pad construction. Shell containers. Bioluminescent accents.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/lily_market.png
+  sunken_server:
+    template: building
+    status: planned
+    params:
+      name: Sunken Server
+      description: Tech building. A server rack submerged in cooling water, surrounded by
+        coral growth. Glowing data cables trail through the water. Water-cooled efficiency.
+      faction: Croak (axolotls)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Submerged tech. Coral growing on server hardware. Glowing cables in water.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/sunken_server.png
+  fossil_stones:
+    template: building
+    status: planned
+    params:
+      name: Fossil Stones
+      description: Research building. Ancient stones covered in pre-singularity fossils and
+        bioluminescent moss. Glowing runes carved by axolotl scholars.
+      faction: Croak (axolotls)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Ancient stone with fossils visible. Bioluminescent moss and runes. Scholarly feel.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/fossil_stones.png
+  reed_bed:
+    template: building
+    status: planned
+    params:
+      name: Reed Bed
+      description: Supply depot. Dense reeds growing from shallow water. Provides concealment
+        and increases supply cap. Bioluminescent fireflies hover above.
+      faction: Croak (axolotls)
+      width: 128
+      height: 128
+      footprint: 2x2
+      extra_notes: Dense aquatic reeds. Bioluminescent fireflies. Natural camouflage.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/reed_bed.png
+  tidal_gate:
+    template: building
+    status: planned
+    params:
+      name: Tidal Gate
+      description: Defensive gate. Shell and coral construction forming an archway.
+        When garrisoned, floods adjacent tiles. Bioluminescent water markings.
+      faction: Croak (axolotls)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Shell and coral arch. Water control mechanism visible. Bioluminescent markings.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/tidal_gate.png
+  spore_tower:
+    template: building
+    status: planned
+    params:
+      name: Spore Tower
+      description: Defense tower. Giant mushroom-like structure that launches toxic spore
+        clouds. Bioluminescent cap with pulsing glow. Organic, alien appearance.
+      faction: Croak (axolotls)
+      width: 128
+      height: 192
+      footprint: 1x1
+      extra_notes: Giant bioluminescent mushroom tower. Spore clouds visible. Alien organic aesthetic.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/spore_tower.png
+  # --- LLAMA (Raccoons) ---
+  the_dumpster:
+    template: building
+    status: planned
+    params:
+      name: The Dumpster
+      description: Command center. A repurposed industrial dumpster reinforced with stolen
+        road signs and scrap metal. The raccoons consider it a palace. Antenna made of bent forks.
+      faction: LLAMA (raccoons)
+      width: 256
+      height: 256
+      footprint: 3x3
+      extra_notes: Junkyard scraps, repurposed trash, rope and wire. Industrial dumpster turned palace.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/the_dumpster.png
+  scrap_heap:
+    template: building
+    status: planned
+    params:
+      name: Scrap Heap
+      description: Resource depot. A carefully organized pile of garbage that looks like chaos
+        to everyone else. Sorted bins and scrap metal shelving. Perfectly functional landfill.
+      faction: LLAMA (raccoons)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Organized chaos. Sorted garbage. Scrap metal shelving. Functional junkyard.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/scrap_heap.png
+  chop_shop:
+    template: building
+    status: planned
+    params:
+      name: Chop Shop
+      description: Barracks. A gutted minivan converted to a training facility. Scrap tokens
+        accelerate production. Tools and parts hanging from every surface.
+      faction: LLAMA (raccoons)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Gutted vehicle body. Tools everywhere. Scrap and rope construction. Jury-rigged.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/chop_shop.png
+  junk_server:
+    template: building
+    status: planned
+    params:
+      name: Junk Server
+      description: Tech building. Made of salvaged hard drives and Christmas lights. Somehow
+        runs. Overheats visually with steam/sparks but never mechanically.
+      faction: LLAMA (raccoons)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Christmas lights, salvaged hard drives, duct tape. Steam rising. Somehow works.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/junk_server.png
+  tinker_bench:
+    template: building
+    status: planned
+    params:
+      name: The Tinker Bench
+      description: Research building. A workbench covered in impossible contraptions, half-built
+        gadgets, and scattered blueprints. Tools hanging from a pegboard.
+      faction: LLAMA (raccoons)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Chaotic workbench. Impossible gadgets. Scattered blueprints and tools.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/tinker_bench.png
+  trash_pile:
+    template: building
+    status: planned
+    params:
+      name: Trash Pile
+      description: Supply depot. Literally just a bigger pile of garbage. The bigger the pile,
+        the more units feel at home. Surprisingly well-organized internally.
+      faction: LLAMA (raccoons)
+      width: 128
+      height: 128
+      footprint: 2x2
+      extra_notes: Big garbage pile. Somehow homey. Bits of recognizable trash items visible.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/trash_pile.png
+  dumpster_relay:
+    template: building
+    status: planned
+    params:
+      name: Dumpster Relay
+      description: Comms tower. A satellite dish made of bent forks atop a garbage pile.
+        Reduces communication leaks. Provides extra vision range.
+      faction: LLAMA (raccoons)
+      width: 192
+      height: 192
+      footprint: 2x2
+      extra_notes: Bent fork satellite dish. Garbage base. Wire and rope construction. Improvised.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/dumpster_relay.png
+  tetanus_tower:
+    template: building
+    status: planned
+    params:
+      name: Tetanus Tower
+      description: Defense tower. Shoots rusty nails from a scrap metal launcher. Corrodes
+        enemy armor. Built from an old mailbox and construction debris.
+      faction: LLAMA (raccoons)
+      width: 128
+      height: 192
+      footprint: 1x1
+      extra_notes: Rusty scrap metal construction. Nail launcher visible. Tetanus-inducing aesthetic.
+    output:
+      type: single
+      game_path: assets/sprites/buildings/tetanus_tower.png
 units:
   pawdler_idle:
     template: unit_static
