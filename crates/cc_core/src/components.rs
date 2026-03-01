@@ -355,6 +355,19 @@ pub struct AttackMoveTarget {
 }
 
 // ---------------------------------------------------------------------------
+// Builder components
+// ---------------------------------------------------------------------------
+
+/// A pending build order attached to a builder unit.
+/// The builder walks to the target position and spawns the building on arrival.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct BuildOrder {
+    pub building_kind: BuildingKind,
+    pub position: GridPos,
+}
+
+// ---------------------------------------------------------------------------
 // Economy / Building components
 // ---------------------------------------------------------------------------
 

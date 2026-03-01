@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 
-use crate::resources::{MapResource, PlayerResources};
+use crate::resources::PlayerResources;
 use cc_core::building_stats::building_stats;
 use cc_core::components::{
-    BuildOrder, Building, GridCell, Health, Owner, Position, Producer, ProductionQueue,
+    BuildOrder, Building, Dead, GridCell, Health, Owner, Position, Producer, ProductionQueue,
     UnderConstruction, Velocity,
 };
 use cc_core::coords::WorldPos;
@@ -12,21 +12,21 @@ use cc_core::coords::WorldPos;
 /// When the builder arrives (Chebyshev distance <= 1), spawns the building and
 /// removes the `BuildOrder`.
 ///
-/// Runs after `movement_system` so the builder has moved this tick before we check.
+/// Uses Position (world coords) converted to grid, since GridCell may not yet be
+/// synced after movement_system runs this tick.
 pub fn builder_system(
     mut commands: Commands,
-    builders: Query<(Entity, &GridCell, &BuildOrder, &Owner)>,
+    builders: Query<(Entity, &Position, &BuildOrder, &Owner), Without<Dead>>,
     mut player_resources: ResMut<PlayerResources>,
 ) {
-    for (entity, grid, build_order, owner) in builders.iter() {
-        let dx = (grid.pos.x - build_order.position.x).abs();
-        let dy = (grid.pos.y - build_order.position.y).abs();
-        // Adjacent = Chebyshev distance <= 1 (includes standing on the tile)
+    for (entity, pos, build_order, owner) in builders.iter() {
+        let builder_grid = pos.world.to_grid();
+        let dx = (builder_grid.x - build_order.position.x).abs();
+        let dy = (builder_grid.y - build_order.position.y).abs();
         if dx <= 1 && dy <= 1 {
             let bstats = building_stats(build_order.building_kind);
             let world = WorldPos::from_grid(build_order.position);
 
-            // Spawn the building
             let mut building = commands.spawn((
                 Position { world },
                 Velocity::zero(),
@@ -51,13 +51,11 @@ pub fn builder_system(
                     total_ticks: bstats.build_time,
                 });
             } else {
-                // Pre-built: add producer + queue immediately
                 if !bstats.can_produce.is_empty() {
                     building.insert((Producer, ProductionQueue::default()));
                 }
             }
 
-            // Grant supply_cap now that the building is actually placed
             if bstats.supply_provided > 0 {
                 if let Some(pres) = player_resources
                     .players
@@ -67,7 +65,6 @@ pub fn builder_system(
                 }
             }
 
-            // Remove BuildOrder from builder
             commands.entity(entity).remove::<BuildOrder>();
         }
     }

@@ -13,7 +13,8 @@ use cc_core::math::Fixed;
 use cc_sim::pathfinding;
 use cc_sim::resources::{CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock, SimRng, SpawnPositions};
 use cc_sim::systems::{
-    ability_system::ability_cooldown_system, aura_system::aura_system,
+    ability_effect_system::ability_effect_system, ability_system::ability_cooldown_system,
+    aura_system::aura_system, builder_system::builder_system,
     cleanup_system::cleanup_system, combat_system::combat_system,
     command_system::process_commands, grid_sync_system::grid_sync_system,
     movement_system::movement_system, production_system::production_system,
@@ -44,6 +45,7 @@ fn make_sim(map: GameMap) -> (World, Schedule) {
             tick_system,
             process_commands,
             ability_cooldown_system,
+            ability_effect_system,
             status_effect_system,
             aura_system,
             stat_modifier_system,
@@ -55,6 +57,7 @@ fn make_sim(map: GameMap) -> (World, Schedule) {
             tower_combat_system,
             projectile_system,
             movement_system,
+            builder_system,
             grid_sync_system,
             cleanup_system,
         )
@@ -1041,6 +1044,7 @@ fn make_full_sim(map: GameMap) -> (World, Schedule) {
             tick_system,
             process_commands,
             ability_cooldown_system,
+            ability_effect_system,
             status_effect_system,
             aura_system,
             stat_modifier_system,
@@ -1052,6 +1056,7 @@ fn make_full_sim(map: GameMap) -> (World, Schedule) {
             tower_combat_system,
             projectile_system,
             movement_system,
+            builder_system,
             grid_sync_system,
             cleanup_system,
         )
@@ -1178,16 +1183,17 @@ fn test_build_command_spawns_building() {
         position: build_pos,
     });
 
-    run_ticks(&mut world, &mut schedule, 1);
+    // Builder needs to walk from (10,10) to adjacent (12,10) — ~20 ticks
+    run_ticks(&mut world, &mut schedule, 20);
 
-    // Building should exist with UnderConstruction
+    // Building should exist with UnderConstruction after builder arrives
     let building_count = world
         .query_filtered::<(&Building, &UnderConstruction), ()>()
         .iter(&world)
         .filter(|(b, _)| b.kind == BuildingKind::LitterBox)
         .count();
 
-    assert_eq!(building_count, 1, "LitterBox should be under construction");
+    assert_eq!(building_count, 1, "LitterBox should be under construction after builder walks there");
 
     // Run until construction completes (75 ticks)
     run_ticks(&mut world, &mut schedule, 80);
@@ -1244,8 +1250,8 @@ fn test_build_and_train_loop() {
         position: GridPos::new(12, 10),
     });
 
-    // Wait for construction (150 ticks + buffer)
-    run_ticks(&mut world, &mut schedule, 155);
+    // Wait for builder walk (~20 ticks) + construction (150 ticks) + buffer
+    run_ticks(&mut world, &mut schedule, 180);
 
     // Find the CatTree entity (should now be a Producer)
     let cat_tree = world
@@ -1435,13 +1441,14 @@ fn test_supply_cap_from_buildings() {
         position: GridPos::new(12, 10),
     });
 
-    run_ticks(&mut world, &mut schedule, 1);
+    // Builder walks from (10,10) to adjacent (12,10) — ~20 ticks for arrival
+    run_ticks(&mut world, &mut schedule, 20);
 
     let new_cap = world.resource::<PlayerResources>().players[0].supply_cap;
     assert_eq!(
         new_cap,
         initial_cap + 10,
-        "LitterBox should add 10 supply cap immediately on placement"
+        "LitterBox should add 10 supply cap when builder arrives and places it"
     );
 }
 
@@ -2138,4 +2145,148 @@ fn test_tuning_constants_accessible() {
     assert!(tuning::CC_IMMUNITY_TICKS > 0, "CC_IMMUNITY_TICKS should be positive");
     assert!(tuning::ATTACK_REISSUE_INTERVAL > 0, "ATTACK_REISSUE_INTERVAL should be positive");
     assert!(tuning::BASE_THREAT_RADIUS > 0, "BASE_THREAT_RADIUS should be positive");
+}
+
+// ---------------------------------------------------------------------------
+// Builder walk-to-build-site tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_builder_walks_to_build_site() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let builder = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
+    world.resource_mut::<PlayerResources>().players[0].food = 300;
+
+    let build_pos = GridPos::new(10, 5);
+    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
+        builder: EntityId(builder.to_bits()),
+        building_kind: BuildingKind::CatTree,
+        position: build_pos,
+    });
+
+    // After 1 tick: builder should have BuildOrder, no building yet
+    run_ticks(&mut world, &mut schedule, 1);
+    assert!(
+        world.get::<BuildOrder>(builder).is_some(),
+        "Builder should have BuildOrder after build command"
+    );
+    let building_count = world
+        .query_filtered::<&Building, ()>()
+        .iter(&world)
+        .filter(|b| b.kind == BuildingKind::CatTree)
+        .count();
+    assert_eq!(building_count, 0, "Building should not exist yet while builder walks");
+
+    // Run enough ticks for builder to walk there (~60 ticks for 5 tiles at 0.12/tick)
+    run_ticks(&mut world, &mut schedule, 60);
+
+    // Building should now exist
+    let building_count = world
+        .query_filtered::<&Building, ()>()
+        .iter(&world)
+        .filter(|b| b.kind == BuildingKind::CatTree)
+        .count();
+    assert_eq!(building_count, 1, "CatTree should be placed after builder arrives");
+
+    // BuildOrder should be removed from builder
+    assert!(
+        world.get::<BuildOrder>(builder).is_none(),
+        "BuildOrder should be removed after building is placed"
+    );
+}
+
+#[test]
+fn test_dead_builder_cannot_place_building() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let builder = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
+    world.resource_mut::<PlayerResources>().players[0].food = 300;
+
+    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
+        builder: EntityId(builder.to_bits()),
+        building_kind: BuildingKind::CatTree,
+        position: GridPos::new(10, 5),
+    });
+
+    run_ticks(&mut world, &mut schedule, 1);
+
+    // Kill the builder mid-walk
+    world.entity_mut(builder).insert(Dead);
+    if let Some(mut health) = world.get_mut::<Health>(builder) {
+        health.current = Fixed::ZERO;
+    }
+
+    // Run enough ticks for the builder to have arrived if alive
+    run_ticks(&mut world, &mut schedule, 80);
+
+    // Building should NOT exist — dead builder can't place
+    let building_count = world
+        .query_filtered::<&Building, ()>()
+        .iter(&world)
+        .filter(|b| b.kind == BuildingKind::CatTree)
+        .count();
+    assert_eq!(building_count, 0, "Dead builder should not place building");
+}
+
+#[test]
+fn test_stop_cancels_build_order() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let builder = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
+    world.resource_mut::<PlayerResources>().players[0].food = 300;
+
+    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
+        builder: EntityId(builder.to_bits()),
+        building_kind: BuildingKind::CatTree,
+        position: GridPos::new(10, 5),
+    });
+
+    run_ticks(&mut world, &mut schedule, 1);
+    assert!(world.get::<BuildOrder>(builder).is_some());
+
+    // Issue Stop command
+    world.resource_mut::<CommandQueue>().push(GameCommand::Stop {
+        unit_ids: vec![EntityId(builder.to_bits())],
+    });
+
+    run_ticks(&mut world, &mut schedule, 1);
+    assert!(
+        world.get::<BuildOrder>(builder).is_none(),
+        "Stop should clear BuildOrder"
+    );
+
+    // Run more ticks — no building should appear
+    run_ticks(&mut world, &mut schedule, 80);
+    let building_count = world
+        .query_filtered::<&Building, ()>()
+        .iter(&world)
+        .filter(|b| b.kind == BuildingKind::CatTree)
+        .count();
+    assert_eq!(building_count, 0, "No building after stop cancels build order");
+}
+
+#[test]
+fn test_move_cancels_build_order() {
+    let (mut world, mut schedule) = make_full_sim(GameMap::new(32, 32));
+    let builder = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
+    world.resource_mut::<PlayerResources>().players[0].food = 300;
+
+    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
+        builder: EntityId(builder.to_bits()),
+        building_kind: BuildingKind::CatTree,
+        position: GridPos::new(10, 5),
+    });
+
+    run_ticks(&mut world, &mut schedule, 1);
+    assert!(world.get::<BuildOrder>(builder).is_some());
+
+    // Issue Move command to redirect builder
+    world.resource_mut::<CommandQueue>().push(GameCommand::Move {
+        unit_ids: vec![EntityId(builder.to_bits())],
+        target: GridPos::new(3, 3),
+    });
+
+    run_ticks(&mut world, &mut schedule, 1);
+    assert!(
+        world.get::<BuildOrder>(builder).is_none(),
+        "Move should clear BuildOrder"
+    );
 }

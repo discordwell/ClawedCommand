@@ -2,9 +2,9 @@
 
 ## From Unit Ability Design Review
 
-- [ ] Update ARCHITECTURE.md core systems list with: ability_system, aura_system, status_effect_system, stealth_system, tunnel_system
-- [ ] Add `GameCommand::ActivateAbility` variant to ARCHITECTURE.md command enum
-- [ ] Update PLAN.md Phase 2 with ability system sub-items or add Phase 2.5
+- [x] Update ARCHITECTURE.md core systems list with: ability_system, aura_system, status_effect_system, stealth_system, tunnel_system
+- [x] Add `GameCommand::ActivateAbility` variant to ARCHITECTURE.md command enum
+- [x] Update PLAN.md Phase 2 with ability system sub-items or add Phase 2.5
 - [ ] Add ~24 VFX asset entries to asset_catalog.yaml (aura rings, Shadow Network lines, Override beam, etc.)
 - [ ] Add `vfx` top-level category to asset_catalog.yaml
 - [ ] Add Chonk Loaf Mode sprite variant to asset catalog
@@ -32,10 +32,10 @@
 
 ## From Wet Test Analysis
 
-- [ ] Add staleness detection for stuck gatherers: workers with MoveTarget but no positional progress should have Gathering removed after N ticks (stale_ticks counter on Gathering component)
-- [ ] AI workers are all busy gathering during BuildUp, leaving no idle workers for building — consider allowing AI to pull a worker off gathering for construction
-- [ ] Consolidate scattered tuning constants (HARVEST_TICKS, CARRY_AMOUNT, ATTACK_MOVE_SIGHT_RANGE, etc.) into `cc_core::tuning` module when count grows further
-- [ ] ReturningToBase deposits resources when MoveTarget removed even if worker is not near a drop-off (pre-existing, proximity check needed)
+- [x] Add staleness detection for stuck gatherers: workers with MoveTarget but no positional progress should have Gathering removed after N ticks (stale_ticks counter on Gathering component)
+- [x] AI workers are all busy gathering during BuildUp, leaving no idle workers for building — consider allowing AI to pull a worker off gathering for construction
+- [x] Consolidate scattered tuning constants (HARVEST_TICKS, CARRY_AMOUNT, ATTACK_MOVE_SIGHT_RANGE, etc.) into `cc_core::tuning` module when count grows further
+- [x] ReturningToBase deposits resources when MoveTarget removed even if worker is not near a drop-off (pre-existing, proximity check needed)
 
 ## From Rendering Performance Review
 
@@ -47,6 +47,15 @@
 - [ ] Extract `run_behavior` helper in `cc_harness/src/server.rs` to de-duplicate ~18 behavior tools (~200 lines of boilerplate: lock sim, snapshot, create ScriptContext, take commands, inject, return result)
 - [ ] Extract `run_query` helper in `cc_harness/src/server.rs` to de-duplicate ~11 query tools (lock sim, snapshot, create ScriptContext, return JSON)
 
+
+## From Code Review (Agent Harness + Gameplay Fixes)
+
+- [ ] `ToolRegistry::build_default()` called on every `execute_tool()` invocation — should use `OnceLock` or pass registry as parameter
+- [ ] Hardcoded `ToolTier::Advanced` in `cc_client/src/ui/agent_chat.rs` — should read from `FactionToolStates` resource
+- [ ] `FactionId::from_u8(player_id).unwrap_or(CatGPT)` duplicated 19× in `cc_harness/src/server.rs` — extract to `FactionId::for_player(id)` method
+- [ ] Lua behavior binding registration boilerplate (~18 blocks) in `lua_runtime.rs` — consider a macro
+- [ ] `test_dream_siege_resets_on_target_change` is flaky — target acquisition can re-acquire a different target mid-test
+- [ ] Update training data scripts (`validate_data.py`, `generate_synthetic.py`, `evaluate.py`) to match current tool list after `execute_strategy` removal
 
 ## From Voice Pipeline Implementation
 

@@ -1,6 +1,7 @@
 pub mod ability_effect_system;
 pub mod ability_system;
 pub mod aura_system;
+pub mod builder_system;
 pub mod cleanup_system;
 pub mod combat_system;
 pub mod command_system;
@@ -60,6 +61,7 @@ impl Plugin for SimSystemsPlugin {
                     tower_combat_system::tower_combat_system,
                     projectile_system::projectile_system,
                     movement_system::movement_system,
+                    builder_system::builder_system,
                     grid_sync_system::grid_sync_system,
                     cleanup_system::cleanup_system,
                 )

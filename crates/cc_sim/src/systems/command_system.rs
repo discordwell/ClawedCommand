@@ -7,8 +7,8 @@ use cc_core::abilities::{ability_def, AbilityActivation, AbilityId};
 use cc_core::building_stats::building_stats;
 use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::{
-    AbilitySlots, AttackMoveTarget, AttackTarget, Aura, AuraType, Building, ChasingTarget,
-    Gathering, GatherState, Health, HoldPosition, MoveTarget, Owner, Path, Position, Producer,
+    AbilitySlots, AttackMoveTarget, AttackTarget, BuildOrder, Aura, AuraType, Building, ChasingTarget,
+    Gathering, GatherState, HoldPosition, MoveTarget, Owner, Path, Position, Producer,
     ProductionQueue, RallyPoint, ResearchQueue, Researcher, ResourceDeposit, Selected,
     StatModifiers, UnderConstruction, UnitKind, UpgradeType,
 };
@@ -58,6 +58,7 @@ pub fn process_commands(
                     commands.entity(entity).remove::<AttackMoveTarget>();
                     commands.entity(entity).remove::<HoldPosition>();
                     commands.entity(entity).remove::<Gathering>();
+                    commands.entity(entity).remove::<BuildOrder>();
 
                     // Determine faction from owner (default to CatGPT for unowned units)
                     let faction = owner
@@ -104,6 +105,7 @@ pub fn process_commands(
                     commands.entity(entity).remove::<AttackMoveTarget>();
                     commands.entity(entity).remove::<HoldPosition>();
                     commands.entity(entity).remove::<Gathering>();
+                    commands.entity(entity).remove::<BuildOrder>();
                     // Velocity will be zeroed by movement_system when no MoveTarget
                 }
             }
@@ -281,8 +283,7 @@ pub fn process_commands(
                 }
 
                 let builder_entity = Entity::from_bits(builder.0);
-                // Find builder's owner
-                if let Ok((_, _, owner, _, _)) = query.get(builder_entity) {
+                if let Ok((_, pos, owner, move_target, path)) = query.get_mut(builder_entity) {
                     let player_id = owner.map(|o| o.player_id).unwrap_or(0);
 
                     let bstats = building_stats(building_kind);
@@ -292,45 +293,56 @@ pub fn process_commands(
                         if pres.food < bstats.food_cost || pres.gpu_cores < bstats.gpu_cost {
                             continue; // Insufficient resources
                         }
-                        // Deduct resources
+                        // Deduct resources immediately (standard RTS convention)
                         pres.food -= bstats.food_cost;
                         pres.gpu_cores -= bstats.gpu_cost;
                     } else {
                         continue;
                     }
 
-                    let world = WorldPos::from_grid(position);
+                    // Clear existing orders on builder
+                    commands.entity(builder_entity).remove::<AttackTarget>();
+                    commands.entity(builder_entity).remove::<ChasingTarget>();
+                    commands.entity(builder_entity).remove::<AttackMoveTarget>();
+                    commands.entity(builder_entity).remove::<HoldPosition>();
+                    commands.entity(builder_entity).remove::<Gathering>();
 
-                    // Spawn building entity
-                    let mut building_entity = commands.spawn((
-                        Position { world },
-                        cc_core::components::Velocity::zero(),
-                        cc_core::components::GridCell { pos: position },
-                        Owner { player_id },
-                        Building { kind: building_kind },
-                        Health {
-                            current: bstats.health,
-                            max: bstats.health,
-                        },
-                    ));
+                    // Attach BuildOrder -- builder_system will spawn the building on arrival
+                    commands.entity(builder_entity).insert(BuildOrder { building_kind, position });
 
-                    if bstats.build_time > 0 {
-                        building_entity.insert(UnderConstruction {
-                            remaining_ticks: bstats.build_time,
-                            total_ticks: bstats.build_time,
-                        });
+                    // Pathfind to build site
+                    let faction = owner
+                        .and_then(|o| FactionId::from_u8(o.player_id))
+                        .unwrap_or(FactionId::CatGPT);
+                    let start = pos.world.to_grid();
+
+                    if let Some(waypoints) =
+                        pathfinding::find_path(&map_res.map, start, position, faction)
+                    {
+                        let first_waypoint = waypoints[0];
+                        let path_component = Path {
+                            waypoints: VecDeque::from(waypoints),
+                        };
+
+                        if let Some(mut existing_path) = path {
+                            *existing_path = path_component;
+                        } else {
+                            commands.entity(builder_entity).insert(path_component);
+                        }
+
+                        let first_wp = WorldPos::from_grid(first_waypoint);
+                        if let Some(mut mt) = move_target {
+                            mt.target = first_wp;
+                        } else {
+                            commands.entity(builder_entity).insert(MoveTarget { target: first_wp });
+                        }
                     } else {
-                        // Pre-built: add producer + queue immediately
-                        if !bstats.can_produce.is_empty() {
-                            building_entity.insert((Producer, ProductionQueue::default()));
-                        }
-                    }
-
-                    // Update supply cap
-                    if bstats.supply_provided > 0 {
+                        // Pathfinding failed -- refund resources and cancel build
                         if let Some(pres) = player_resources.players.get_mut(player_id as usize) {
-                            pres.supply_cap += bstats.supply_provided;
+                            pres.food += bstats.food_cost;
+                            pres.gpu_cores += bstats.gpu_cost;
                         }
+                        commands.entity(builder_entity).remove::<BuildOrder>();
                     }
                 }
             }
