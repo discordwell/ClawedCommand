@@ -59,7 +59,7 @@
 
 ## From Campaign System Code Review
 
-- [ ] Extract shared `spawn_base_unit` helper from 5 duplicated unit-spawning patterns (wave_spawner.rs, campaign_integration.rs, integration.rs, harness/mod.rs, headless.rs) — prevents drift when unit component bundles change
+- [x] Extract shared `spawn_base_unit` helper from 5 duplicated unit-spawning patterns (wave_spawner.rs, campaign_integration.rs, integration.rs, harness/mod.rs, headless.rs) — prevents drift when unit component bundles change
 - [ ] Add documentation comment in `cc_sim/src/campaign/mod.rs` about sim chain / campaign chain co-execution assumption (campaign system ordering constraints assume GameState::Playing is active simultaneously)
 
 ## From Phase 4B: Ability Implementation

@@ -6,7 +6,7 @@ use cc_core::components::*;
 use cc_core::coords::WorldPos;
 use cc_core::hero::{hero_base_kind, hero_modifiers};
 use cc_core::mission::{WaveAiBehavior, WaveTrigger};
-use cc_core::unit_stats::base_stats;
+use cc_core::unit_stats::{base_stats, unit_bundle};
 
 use crate::resources::SimClock;
 
@@ -232,30 +232,7 @@ fn spawn_unit(
     player_id: u8,
     wave_membership: Option<WaveMember>,
 ) -> Entity {
-    let stats = base_stats(kind);
-    let mut entity = commands.spawn((
-        Position {
-            world: WorldPos::from_grid(pos),
-        },
-        Velocity::zero(),
-        GridCell { pos },
-        MovementSpeed { speed: stats.speed },
-        Owner { player_id },
-        UnitType { kind },
-        Health {
-            current: stats.health,
-            max: stats.health,
-        },
-        AttackStats {
-            damage: stats.damage,
-            range: stats.range,
-            attack_speed: stats.attack_speed,
-            cooldown_remaining: 0,
-        },
-        AttackTypeMarker {
-            attack_type: stats.attack_type,
-        },
-    ));
+    let mut entity = commands.spawn(unit_bundle(kind, pos, player_id));
 
     if let Some(wm) = wave_membership {
         entity.insert(wm);

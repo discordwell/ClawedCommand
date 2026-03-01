@@ -8,7 +8,7 @@ use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::*;
 use cc_core::coords::{GridPos, WorldPos};
 use cc_core::map::GameMap;
-use cc_core::unit_stats::base_stats;
+use cc_core::unit_stats::{base_stats, spawn_base_unit};
 
 use cc_sim::resources::*;
 use cc_sim::systems::{
@@ -86,42 +86,17 @@ impl HeadlessSim {
 
     /// Spawn a unit at a grid position and return its entity bits as u64.
     pub fn spawn_unit(&mut self, kind: UnitKind, pos: GridPos, player_id: u8) -> u64 {
-        let stats = base_stats(kind);
-        let entity = self
-            .world
-            .spawn((
-                Position {
-                    world: WorldPos::from_grid(pos),
-                },
-                Velocity::zero(),
-                GridCell { pos },
-                Owner { player_id },
-                UnitType { kind },
-                Health {
-                    current: stats.health,
-                    max: stats.health,
-                },
-                MovementSpeed { speed: stats.speed },
-                AttackStats {
-                    damage: stats.damage,
-                    range: stats.range,
-                    attack_speed: stats.attack_speed,
-                    cooldown_remaining: 0,
-                },
-                AttackTypeMarker {
-                    attack_type: stats.attack_type,
-                },
-            ))
-            .id();
+        let entity = spawn_base_unit(&mut self.world, kind, pos, player_id);
 
         // Track supply
+        let supply_cost = base_stats(kind).supply_cost;
         if let Some(pres) = self
             .world
             .resource_mut::<PlayerResources>()
             .players
             .get_mut(player_id as usize)
         {
-            pres.supply += stats.supply_cost;
+            pres.supply += supply_cost;
         }
 
         entity.to_bits()

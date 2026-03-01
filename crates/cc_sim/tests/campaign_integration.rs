@@ -9,7 +9,7 @@ use cc_core::coords::{GridPos, WorldPos};
 use cc_core::hero::{hero_base_kind, hero_modifiers, HeroId};
 use cc_core::map::GameMap;
 use cc_core::mission::*;
-use cc_core::unit_stats::base_stats;
+use cc_core::unit_stats::{base_stats, spawn_base_unit};
 use cc_sim::campaign::state::{CampaignPhase, CampaignState, MissionFailedEvent, MissionVictoryEvent};
 use cc_sim::campaign::wave_spawner::{WaveTracker, MissionStarted, wave_spawner_system, wave_tracking_system};
 use cc_sim::campaign::triggers::{
@@ -97,29 +97,7 @@ fn spawn_hero(world: &mut World, hero_id: HeroId, pos: GridPos, player_id: u8, m
 
 /// Spawn a basic combat unit (for enemies).
 fn spawn_combat_unit(world: &mut World, kind: UnitKind, pos: GridPos, player_id: u8) -> Entity {
-    let stats = base_stats(kind);
-    world
-        .spawn((
-            Position {
-                world: WorldPos::from_grid(pos),
-            },
-            Velocity::zero(),
-            GridCell { pos },
-            MovementSpeed { speed: stats.speed },
-            Owner { player_id },
-            UnitType { kind },
-            Health {
-                current: stats.health,
-                max: stats.health,
-            },
-            AttackStats {
-                damage: stats.damage,
-                range: stats.range,
-                attack_speed: stats.attack_speed,
-                cooldown_remaining: 0,
-            },
-        ))
-        .id()
+    spawn_base_unit(world, kind, pos, player_id)
 }
 
 fn run_ticks(world: &mut World, schedule: &mut Schedule, n: usize) {

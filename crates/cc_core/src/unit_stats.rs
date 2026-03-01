@@ -1,4 +1,11 @@
 use crate::components::{AttackType, UnitKind};
+#[cfg(feature = "bevy")]
+use crate::components::{
+    AttackStats, AttackTypeMarker, GridCell, Health, MovementSpeed, Owner, Position, UnitType,
+    Velocity,
+};
+#[cfg(feature = "bevy")]
+use crate::coords::{GridPos, WorldPos};
 use crate::math::Fixed;
 
 /// Compile-time base stats for each unit type.
@@ -429,6 +436,97 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
     }
 }
 
+/// Spawn a combat unit with full base stats into a Bevy World.
+///
+/// This is the single source of truth for spawning units with the standard
+/// component bundle: Position, Velocity, GridCell, Owner, UnitType, Health,
+/// MovementSpeed, AttackStats, AttackTypeMarker. All values are derived from
+/// `base_stats(kind)`.
+///
+/// Returns the spawned `Entity`.
+#[cfg(feature = "bevy")]
+pub fn spawn_base_unit(
+    world: &mut bevy_ecs::world::World,
+    kind: UnitKind,
+    pos: GridPos,
+    player_id: u8,
+) -> bevy_ecs::entity::Entity {
+    let stats = base_stats(kind);
+    world
+        .spawn((
+            Position {
+                world: WorldPos::from_grid(pos),
+            },
+            Velocity::zero(),
+            GridCell { pos },
+            Owner { player_id },
+            UnitType { kind },
+            Health {
+                current: stats.health,
+                max: stats.health,
+            },
+            MovementSpeed { speed: stats.speed },
+            AttackStats {
+                damage: stats.damage,
+                range: stats.range,
+                attack_speed: stats.attack_speed,
+                cooldown_remaining: 0,
+            },
+            AttackTypeMarker {
+                attack_type: stats.attack_type,
+            },
+        ))
+        .id()
+}
+
+/// Returns the standard component bundle for a combat unit, for use with
+/// `Commands::spawn()` or `World::spawn()`.
+///
+/// This is the tuple form of `spawn_base_unit` for callers that need to use
+/// `Commands` rather than `&mut World`, or that need to add extra components
+/// after spawning.
+#[cfg(feature = "bevy")]
+pub fn unit_bundle(
+    kind: UnitKind,
+    pos: GridPos,
+    player_id: u8,
+) -> (
+    Position,
+    Velocity,
+    GridCell,
+    Owner,
+    UnitType,
+    Health,
+    MovementSpeed,
+    AttackStats,
+    AttackTypeMarker,
+) {
+    let stats = base_stats(kind);
+    (
+        Position {
+            world: WorldPos::from_grid(pos),
+        },
+        Velocity::zero(),
+        GridCell { pos },
+        Owner { player_id },
+        UnitType { kind },
+        Health {
+            current: stats.health,
+            max: stats.health,
+        },
+        MovementSpeed { speed: stats.speed },
+        AttackStats {
+            damage: stats.damage,
+            range: stats.range,
+            attack_speed: stats.attack_speed,
+            cooldown_remaining: 0,
+        },
+        AttackTypeMarker {
+            attack_type: stats.attack_type,
+        },
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -805,5 +903,119 @@ mod tests {
         let jk = base_stats(UnitKind::JunkyardKing);
         let ht = base_stats(UnitKind::HeapTitan);
         assert!(jk.health > ht.health);
+    }
+}
+
+#[cfg(all(test, feature = "bevy"))]
+mod bevy_tests {
+    use super::*;
+    use crate::coords::GridPos;
+
+    #[test]
+    fn spawn_base_unit_creates_entity_with_correct_components() {
+        let mut world = bevy_ecs::world::World::new();
+        let kind = UnitKind::Hisser;
+        let pos = GridPos::new(10, 15);
+        let player_id = 1;
+
+        let entity = spawn_base_unit(&mut world, kind, pos, player_id);
+        let stats = base_stats(kind);
+
+        // Verify all components exist and have correct values
+        let position = world.get::<Position>(entity).expect("Position missing");
+        assert_eq!(position.world.to_grid(), pos);
+
+        let grid_cell = world.get::<GridCell>(entity).expect("GridCell missing");
+        assert_eq!(grid_cell.pos, pos);
+
+        let owner = world.get::<Owner>(entity).expect("Owner missing");
+        assert_eq!(owner.player_id, player_id);
+
+        let unit_type = world.get::<UnitType>(entity).expect("UnitType missing");
+        assert_eq!(unit_type.kind, kind);
+
+        let health = world.get::<Health>(entity).expect("Health missing");
+        assert_eq!(health.current, stats.health);
+        assert_eq!(health.max, stats.health);
+
+        let speed = world.get::<MovementSpeed>(entity).expect("MovementSpeed missing");
+        assert_eq!(speed.speed, stats.speed);
+
+        let attack = world.get::<AttackStats>(entity).expect("AttackStats missing");
+        assert_eq!(attack.damage, stats.damage);
+        assert_eq!(attack.range, stats.range);
+        assert_eq!(attack.attack_speed, stats.attack_speed);
+        assert_eq!(attack.cooldown_remaining, 0);
+
+        let attack_type = world.get::<AttackTypeMarker>(entity).expect("AttackTypeMarker missing");
+        assert_eq!(attack_type.attack_type, stats.attack_type);
+
+        let velocity = world.get::<Velocity>(entity).expect("Velocity missing");
+        assert_eq!(velocity.dx, Fixed::ZERO);
+        assert_eq!(velocity.dy, Fixed::ZERO);
+    }
+
+    #[test]
+    fn unit_bundle_matches_spawn_base_unit() {
+        let mut world = bevy_ecs::world::World::new();
+        let kind = UnitKind::Chonk;
+        let pos = GridPos::new(3, 7);
+        let player_id = 0;
+
+        // Spawn via spawn_base_unit
+        let entity_a = spawn_base_unit(&mut world, kind, pos, player_id);
+
+        // Spawn via unit_bundle
+        let entity_b = world.spawn(unit_bundle(kind, pos, player_id)).id();
+
+        // Both entities should have identical component values
+        let health_a = world.get::<Health>(entity_a).unwrap();
+        let health_b = world.get::<Health>(entity_b).unwrap();
+        assert_eq!(health_a.current, health_b.current);
+        assert_eq!(health_a.max, health_b.max);
+
+        let speed_a = world.get::<MovementSpeed>(entity_a).unwrap();
+        let speed_b = world.get::<MovementSpeed>(entity_b).unwrap();
+        assert_eq!(speed_a.speed, speed_b.speed);
+
+        let attack_a = world.get::<AttackStats>(entity_a).unwrap();
+        let attack_b = world.get::<AttackStats>(entity_b).unwrap();
+        assert_eq!(attack_a.damage, attack_b.damage);
+        assert_eq!(attack_a.range, attack_b.range);
+
+        let owner_a = world.get::<Owner>(entity_a).unwrap();
+        let owner_b = world.get::<Owner>(entity_b).unwrap();
+        assert_eq!(owner_a.player_id, owner_b.player_id);
+    }
+
+    #[test]
+    fn spawn_base_unit_all_unit_kinds() {
+        let mut world = bevy_ecs::world::World::new();
+        let pos = GridPos::new(0, 0);
+
+        // Verify that spawn_base_unit works for a representative set of unit kinds
+        let kinds = [
+            UnitKind::Pawdler,
+            UnitKind::Nuisance,
+            UnitKind::Chonk,
+            UnitKind::Hisser,
+            UnitKind::MechCommander,
+            // Non-cat factions
+            UnitKind::Sentinel,
+            UnitKind::Nibblet,
+            UnitKind::Delver,
+            UnitKind::Ponderer,
+            UnitKind::Scrounger,
+        ];
+
+        for (i, kind) in kinds.iter().enumerate() {
+            let entity = spawn_base_unit(&mut world, *kind, pos, 0);
+            let stats = base_stats(*kind);
+            let health = world.get::<Health>(entity).expect("Health missing");
+            assert_eq!(
+                health.current, stats.health,
+                "Health mismatch for kind {i}: {kind:?}"
+            );
+        }
     }
 }
