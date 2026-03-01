@@ -4,6 +4,7 @@ mod renderer;
 mod setup;
 mod showcase;
 mod ui;
+mod voice_demo;
 
 use bevy::asset::AssetPlugin;
 use bevy::prelude::*;
@@ -23,6 +24,8 @@ enum DemoMode {
     Showcase,
     /// Cutscene dialogue demo (1, 2, or 3).
     Cutscene(u8),
+    /// Voice command demo.
+    Voice,
 }
 
 /// Parse `--demo <mode>` from CLI args.
@@ -45,6 +48,7 @@ fn parse_demo_mode() -> Option<DemoMode> {
                     let n = args.get(i + 2).and_then(|s| s.parse::<u8>().ok()).unwrap_or(1);
                     DemoMode::Cutscene(n.clamp(1, 3))
                 }
+                Some("voice") => DemoMode::Voice,
                 Some(n) if n.parse::<u8>().is_ok() => {
                     DemoMode::Canyon(n.parse::<u8>().unwrap().clamp(1, 3))
                 }
@@ -92,6 +96,9 @@ fn main() {
         Some(DemoMode::Cutscene(scenario)) => {
             setup_cutscene(&mut app, *scenario);
         }
+        Some(DemoMode::Voice) => {
+            setup_voice_demo(&mut app);
+        }
         None => {
             // No demo mode — normal game startup
         }
@@ -125,13 +132,7 @@ fn setup_canyon(app: &mut App, scenario: u8) {
         .unwrap_or_else(|e| panic!("Failed to read {}: {e}", ron_path.display()));
     let mission: cc_core::mission::MissionDefinition = ron::from_str(&ron_str)
         .unwrap_or_else(|e| panic!("Failed to parse demo_canyon.ron: {e}"));
-    if let Err(errors) = mission.validate() {
-        panic!("Demo mission validation failed: {errors:?}");
-    }
-    let mut campaign = CampaignState::default();
-    campaign.load_mission(mission);
-    campaign.phase = CampaignPhase::InMission;
-    app.insert_resource(campaign);
+    load_demo_mission(app, mission, "Canyon demo");
 
     eprintln!("Demo scenario {scenario}");
 
@@ -205,6 +206,17 @@ fn setup_canyon(app: &mut App, scenario: u8) {
     }
 }
 
+/// Validate a mission, load it into a new CampaignState, and insert it as a resource.
+fn load_demo_mission(app: &mut App, mission: cc_core::mission::MissionDefinition, label: &str) {
+    if let Err(errors) = mission.validate() {
+        panic!("{label} mission validation failed: {errors:?}");
+    }
+    let mut campaign = CampaignState::default();
+    campaign.load_mission(mission);
+    campaign.phase = CampaignPhase::InMission;
+    app.insert_resource(campaign);
+}
+
 /// Build a 6-player resource set with max resources (for showcase/cutscene demos).
 fn demo_player_resources() -> cc_sim::resources::PlayerResources {
     cc_sim::resources::PlayerResources {
@@ -223,13 +235,7 @@ fn demo_player_resources() -> cc_sim::resources::PlayerResources {
 /// Set up the building showcase demo.
 fn setup_showcase(app: &mut App) {
     let mission = showcase::build_showcase_mission();
-    if let Err(errors) = mission.validate() {
-        panic!("Showcase mission validation failed: {errors:?}");
-    }
-    let mut campaign = CampaignState::default();
-    campaign.load_mission(mission);
-    campaign.phase = CampaignPhase::InMission;
-    app.insert_resource(campaign);
+    load_demo_mission(app, mission, "Showcase");
 
     app.insert_resource(demo_player_resources());
 }
@@ -239,16 +245,34 @@ fn setup_cutscene(app: &mut App, scenario: u8) {
     eprintln!("Cutscene scenario {scenario}");
 
     let mission = cutscene::build_cutscene_mission(scenario);
-    if let Err(errors) = mission.validate() {
-        panic!("Cutscene mission validation failed: {errors:?}");
-    }
-    let mut campaign = CampaignState::default();
-    campaign.load_mission(mission);
-    campaign.phase = CampaignPhase::InMission;
-    app.insert_resource(campaign);
+    load_demo_mission(app, mission, "Cutscene");
 
     // Insert camera override for tight cutscene framing
     app.insert_resource(cutscene::cutscene_camera());
 
     app.insert_resource(demo_player_resources());
+}
+
+/// Set up the voice command demo.
+fn setup_voice_demo(app: &mut App) {
+    eprintln!("Voice command demo");
+
+    let mission = voice_demo::build_voice_demo_mission();
+    load_demo_mission(app, mission, "Voice demo");
+
+    // Camera override for the voice demo
+    app.insert_resource(voice_demo::voice_demo_camera());
+
+    app.insert_resource(demo_player_resources());
+    app.insert_resource(voice_demo::VoiceDemoState::default());
+
+    // Register demo systems
+    app.add_systems(
+        Update,
+        (
+            voice_demo::voice_demo_system,
+            voice_demo::voice_demo_buff_tint
+                .after(renderer::selection::render_selection_indicators),
+        ),
+    );
 }
