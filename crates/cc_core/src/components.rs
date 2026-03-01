@@ -174,6 +174,21 @@ pub enum BuildingKind {
     TetanusTower,    // Defense Tower (LLAMA) — shoots rusty nails, applies Corroded
 }
 
+impl BuildingKind {
+    /// Returns true if this building is a faction HQ (victory condition target).
+    pub fn is_hq(&self) -> bool {
+        matches!(
+            self,
+            BuildingKind::TheBox
+                | BuildingKind::TheParliament
+                | BuildingKind::TheBurrow
+                | BuildingKind::TheSett
+                | BuildingKind::TheGrotto
+                | BuildingKind::TheDumpster
+        )
+    }
+}
+
 impl std::fmt::Display for BuildingKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Debug::fmt(self, f)

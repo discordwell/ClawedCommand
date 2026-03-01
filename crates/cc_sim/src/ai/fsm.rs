@@ -466,7 +466,13 @@ pub fn multi_ai_decision_system(
     deposits: Query<(Entity, &Position, &ResourceDeposit)>,
     health_query: Query<&Health>,
 ) {
-    for ai_state in multi_ai.players.iter_mut() {
+    // Alternate which player's AI runs first each tick to avoid
+    // systematic last-mover advantage from shared command queue ordering.
+    let player_count = multi_ai.players.len();
+    let first = (clock.tick as usize) % player_count;
+    for i in 0..player_count {
+        let idx = (first + i) % player_count;
+        let ai_state = &mut multi_ai.players[idx];
         run_ai_fsm(
             clock.tick,
             ai_state,
@@ -856,11 +862,13 @@ fn food_reserve_for_buildings(phase: AiPhase, bc: &BuildingCensus, gpu_cores: u3
         }
         AiPhase::MidGame => {
             let mut reserve = 0u32;
-            if !bc.has_server_rack && gpu_cores >= 75 {
-                reserve += cc_core::building_stats::building_stats(fmap.tech).food_cost;
+            let tech_bstats = cc_core::building_stats::building_stats(fmap.tech);
+            if !bc.has_server_rack && gpu_cores >= tech_bstats.gpu_cost {
+                reserve += tech_bstats.food_cost;
             }
-            if !bc.has_scratching_post && gpu_cores >= 50 {
-                reserve += cc_core::building_stats::building_stats(fmap.research).food_cost;
+            let research_bstats = cc_core::building_stats::building_stats(fmap.research);
+            if !bc.has_scratching_post && gpu_cores >= research_bstats.gpu_cost {
+                reserve += research_bstats.food_cost;
             }
             reserve
         }
@@ -939,8 +947,9 @@ fn run_ai_fsm(
     let attack_threshold = ai_state.profile.attack_threshold;
     let target_workers = ai_state.profile.target_workers;
 
-    let fmap = &ai_state.fmap;
+    let fmap = ai_state.fmap.clone();
     let supply_kind = fmap.supply;
+    let barracks_kind = fmap.barracks;
 
     // FSM transitions
     let new_phase = match ai_state.phase {
@@ -967,10 +976,10 @@ fn run_ai_fsm(
         }
 
         AiPhase::BuildUp => {
-            let reserve = food_reserve_for_buildings(AiPhase::BuildUp, &bc, pres.gpu_cores, fmap);
+            let reserve = food_reserve_for_buildings(AiPhase::BuildUp, &bc, pres.gpu_cores, &fmap);
 
             let depot_cost = cc_core::building_stats::building_stats(fmap.resource_depot);
-            let barracks_cost = cc_core::building_stats::building_stats(fmap.barracks);
+            let barracks_cost = cc_core::building_stats::building_stats(barracks_kind);
 
             if builder_used.is_none() && !bc.has_fish_market && pres.food >= depot_cost.food_cost && bc.has_box {
                 if let Some(builder) = pick_builder(&uc.idle_workers, &uc.all_workers) {
@@ -1003,7 +1012,8 @@ fn run_ai_fsm(
             }
 
             if let Some(ct_e) = bc.cat_tree_entity {
-                let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick);
+                let barracks_producible = cc_core::building_stats::building_stats(barracks_kind).can_produce;
+                let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick, barracks_producible);
                 let unit_cost = cc_core::unit_stats::base_stats(kind).food_cost;
                 if pres.food >= unit_cost + reserve && pres.supply < pres.supply_cap
                     && bc.cat_tree_queue_len < AI_MAX_QUEUE_DEPTH
@@ -1043,7 +1053,7 @@ fn run_ai_fsm(
         }
 
         AiPhase::MidGame => {
-            let reserve = food_reserve_for_buildings(AiPhase::MidGame, &bc, pres.gpu_cores, fmap);
+            let reserve = food_reserve_for_buildings(AiPhase::MidGame, &bc, pres.gpu_cores, &fmap);
             let tech_stats = cc_core::building_stats::building_stats(fmap.tech);
             let research_stats = cc_core::building_stats::building_stats(fmap.research);
             let tower_stats = cc_core::building_stats::building_stats(fmap.defense_tower);
@@ -1101,7 +1111,8 @@ fn run_ai_fsm(
 
             if let Some(sr_e) = bc.server_rack_entity {
                 if pres.supply < pres.supply_cap && bc.server_rack_queue_len < AI_MAX_QUEUE_DEPTH {
-                    let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick);
+                    let tech_producible = cc_core::building_stats::building_stats(fmap.tech).can_produce;
+                    let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick, tech_producible);
                     let stats = cc_core::unit_stats::base_stats(kind);
                     if pres.food >= stats.food_cost + reserve && pres.gpu_cores >= stats.gpu_cost {
                         cmd_queue.push(GameCommand::TrainUnit {
@@ -1114,7 +1125,8 @@ fn run_ai_fsm(
 
             if let Some(ct_e) = bc.cat_tree_entity {
                 if pres.supply < pres.supply_cap && bc.cat_tree_queue_len < AI_MAX_QUEUE_DEPTH {
-                    let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick);
+                    let barracks_producible = cc_core::building_stats::building_stats(barracks_kind).can_produce;
+                    let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick, barracks_producible);
                     let stats = cc_core::unit_stats::base_stats(kind);
                     if pres.food >= stats.food_cost + reserve {
                         cmd_queue.push(GameCommand::TrainUnit {
@@ -1187,7 +1199,8 @@ fn run_ai_fsm(
 
             if let Some(ct_e) = bc.cat_tree_entity {
                 if pres.supply < pres.supply_cap && bc.cat_tree_queue_len < AI_MAX_QUEUE_DEPTH {
-                    let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick);
+                    let barracks_producible = cc_core::building_stats::building_stats(barracks_kind).can_produce;
+                    let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick, barracks_producible);
                     let stats = cc_core::unit_stats::base_stats(kind);
                     if pres.food >= stats.food_cost {
                         cmd_queue.push(GameCommand::TrainUnit {
@@ -1238,7 +1251,8 @@ fn run_ai_fsm(
 
             if let Some(ct_e) = bc.cat_tree_entity {
                 if pres.supply < pres.supply_cap && bc.cat_tree_queue_len < AI_MAX_QUEUE_DEPTH {
-                    let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick);
+                    let barracks_producible = cc_core::building_stats::building_stats(barracks_kind).can_produce;
+                    let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick, barracks_producible);
                     let stats = cc_core::unit_stats::base_stats(kind);
                     if pres.food >= stats.food_cost {
                         cmd_queue.push(GameCommand::TrainUnit {
@@ -1294,23 +1308,36 @@ fn run_ai_fsm(
     ai_state.phase = new_phase;
 }
 
-/// Pick a unit kind to train using the profile's weighted preferences.
-/// Fallback uses the first preference entry (faction-appropriate) instead of
-/// hardcoding a catGPT unit.
-fn pick_unit_kind(profile: &AiPersonalityProfile, army_count: u32, tick: u64) -> UnitKind {
-    let fallback = profile.unit_preferences.first().map_or(UnitKind::Nuisance, |&(k, _)| k);
-    if profile.unit_preferences.is_empty() {
-        return fallback;
+/// Pick a unit kind to train using the profile's weighted preferences,
+/// filtered to only units the target building can actually produce.
+/// If no preferred units match the building, falls back to the first producible unit.
+fn pick_unit_kind(profile: &AiPersonalityProfile, army_count: u32, tick: u64, can_produce: &[UnitKind]) -> UnitKind {
+    if can_produce.is_empty() {
+        return profile.unit_preferences.first().map_or(UnitKind::Nuisance, |&(k, _)| k);
     }
+    // Filter preferences to only units this building can produce
+    let filtered: Vec<(UnitKind, u32)> = profile.unit_preferences.iter()
+        .filter(|(k, _)| can_produce.contains(k))
+        .copied()
+        .collect();
+    let (prefs, fallback) = if filtered.is_empty() {
+        // No profile preferences match this building — use building's producible list equally weighted
+        let equal: Vec<(UnitKind, u32)> = can_produce.iter().map(|&k| (k, 1)).collect();
+        let fb = can_produce[0];
+        (equal, fb)
+    } else {
+        let fb = filtered[0].0;
+        (filtered, fb)
+    };
     // Deterministic weighted selection using tick + army_count as pseudo-random seed
-    let total_weight: u32 = profile.unit_preferences.iter().map(|(_, w)| w).sum();
+    let total_weight: u32 = prefs.iter().map(|(_, w)| *w).sum();
     if total_weight == 0 {
         return fallback;
     }
     let hash = tick.wrapping_mul(6364136223846793005).wrapping_add(army_count as u64);
     let pick = (hash >> 33) as u32 % total_weight;
     let mut cumulative = 0u32;
-    for &(kind, weight) in &profile.unit_preferences {
+    for &(kind, weight) in &prefs {
         cumulative += weight;
         if pick < cumulative {
             return kind;
@@ -1480,24 +1507,9 @@ fn is_base_threatened(
 // ---------------------------------------------------------------------------
 
 /// Returns true if the unit kind is ranged (fights from distance).
+/// Uses canonical attack_type from unit_stats — always correct for new units.
 fn is_ranged_unit(kind: UnitKind) -> bool {
-    matches!(kind,
-        // catGPT
-        UnitKind::Hisser | UnitKind::FlyingFox | UnitKind::Catnapper | UnitKind::Yowler
-        | UnitKind::MechCommander
-        // Clawed
-        | UnitKind::Shrieker | UnitKind::Sparks | UnitKind::Whiskerwitch
-        | UnitKind::Plaguetail | UnitKind::WarrenMarshal
-        // Seekers
-        | UnitKind::Cragback | UnitKind::Warden | UnitKind::Wardenmother | UnitKind::Embermaw
-        // Murder
-        | UnitKind::Sentinel | UnitKind::Magpike | UnitKind::Magpyre | UnitKind::Jaycaller
-        | UnitKind::Jayflicker | UnitKind::Hootseer | UnitKind::CorvusRex
-        // Croak
-        | UnitKind::Broodmother | UnitKind::Croaker | UnitKind::Bogwhisper | UnitKind::MurkCommander
-        // LLAMA
-        | UnitKind::PatchPossum | UnitKind::GreaseMonkey | UnitKind::DumpsterDiver | UnitKind::JunkyardKing
-    )
+    cc_core::unit_stats::base_stats(kind).attack_type == cc_core::components::AttackType::Ranged
 }
 
 /// Returns true if the unit kind is a worker (gathers resources, builds).
@@ -1770,10 +1782,9 @@ fn issue_defend_commands(
 
             // Melee units forward — push toward map center (toward the enemy)
             if !melee.is_empty() {
-                let cx = map.width as i32 / 2;
-                let cy = map.height as i32 / 2;
-                let dir_x = if rally_pos.x < cx { 2 } else { -2 };
-                let dir_y = if rally_pos.y < cy { 2 } else { -2 };
+                let center = map_center(map);
+                let dir_x = if rally_pos.x < center.x { 2 } else { -2 };
+                let dir_y = if rally_pos.y < center.y { 2 } else { -2 };
                 let forward_pos = GridPos::new(rally_pos.x + dir_x, rally_pos.y + dir_y);
                 let ids: Vec<EntityId> = melee.iter().map(|e| EntityId(e.to_bits())).collect();
                 cmd_queue.push(GameCommand::AttackMove {

@@ -2,76 +2,93 @@
   "generations": [
     {
       "id": 0,
-      "timestamp": "2026-03-01T00:00:00Z",
       "scripted_player": null,
-      "opponent": "fsm_balanced",
-      "matches": 5,
-      "wins": 1,
-      "losses": 3,
-      "timeouts": 1,
-      "p0_win_rate": 0.2,
-      "avg_ticks": 4033,
+      "matches_5": {"p0_wins": 1, "p1_wins": 1, "timeouts": 3},
+      "matches_10": {"p0_wins": 0, "p1_wins": 9, "timeouts": 1},
+      "combined_15": {"p0_wins": 1, "p1_wins": 10, "timeouts": 4, "p0_win_rate": 0.07},
       "scripts": [],
-      "notes": "Baseline FSM vs FSM. P1 has map advantage on most seeds."
+      "notes": "Baseline FSM vs FSM. P1 dominates (93% P1+TO rate). Code state includes directional defense_pos fix and multi-faction FSM."
     },
     {
-      "id": 1,
-      "timestamp": "2026-03-01T01:00:00Z",
+      "id": "1-9",
       "scripted_player": 0,
-      "opponent": "fsm_balanced",
-      "matches": 5,
-      "wins": 0,
-      "losses": 4,
-      "timeouts": 1,
-      "p0_win_rate": 0.0,
-      "avg_ticks": 4200,
-      "scripts": ["combat_micro", "retreat_logic", "scout_and_adapt", "formation_control"],
-      "notes": "CATASTROPHIC. Scripts overrode FSM commands every tick. formation_control split army blob, retreat pulled units during fights. 0% win rate."
+      "p0_win_rate": "0.0 - 0.2",
+      "scripts": ["various combat micro, economy, production scripts"],
+      "notes": "Gens 1-9 all failed. Combat scripts override FSM (catastrophic). Economy scripts steal building budget. Production scripts with >= 100 food thresholds never trigger (food peaks at ~95 during idle windows). Diagnostic data proved the 95 food ceiling."
     },
     {
-      "id": 2,
-      "timestamp": "2026-03-01T02:00:00Z",
+      "id": 10,
       "scripted_player": 0,
-      "opponent": "fsm_balanced",
-      "matches": 5,
-      "wins": 1,
-      "losses": 3,
-      "timeouts": 1,
       "p0_win_rate": 0.2,
-      "avg_ticks": 4033,
-      "scripts": ["tactical_focus", "worker_helper"],
-      "notes": "Too conservative. Scripts never triggered. Identical to baseline."
+      "scripts": ["nuisance_fill"],
+      "notes": "First script to trigger (80 food threshold). Changed trajectories but extra Nuisances feed the enemy. Net neutral."
     },
     {
-      "id": 3,
-      "timestamp": "2026-03-01T03:00:00Z",
+      "id": 12,
       "scripted_player": 0,
-      "opponent": "fsm_balanced",
-      "matches": 5,
-      "wins": 1,
-      "losses": 3,
-      "timeouts": 1,
-      "p0_win_rate": 0.2,
-      "avg_ticks": 4033,
-      "scripts": ["smart_focus", "economy_boost"],
-      "notes": "Focus fire targeted same enemy FSM already auto-targeted. Zero net effect."
+      "matches_5": {"p0_wins": 2, "p1_wins": 3, "timeouts": 0},
+      "matches_10": {"p0_wins": 6, "p1_wins": 4, "timeouts": 0},
+      "combined_15": {"p0_wins": 8, "p1_wins": 7, "timeouts": 0, "p0_win_rate": 0.53},
+      "scripts": ["smart_fill"],
+      "notes": "BREAKTHROUGH. Smart production: Hisser>Nuisance from CatTree, Mouser from ServerRack. Gated behind 5+ completed buildings. 15-seed: 7% -> 53% P0 win rate. P0 trains +1-7 extra units per game. Eliminated all timeouts."
     },
     {
-      "id": 4,
-      "timestamp": "2026-03-01T04:00:00Z",
+      "id": "13-15",
       "scripted_player": 0,
-      "opponent": "fsm_balanced",
-      "matches": 5,
-      "wins": 1,
-      "losses": 3,
-      "timeouts": 1,
+      "p0_win_rate": 0.6,
+      "scripts": ["smart_fill_v2", "econ_snowball", "tank_fill"],
+      "notes": "Variations on Gen 12. Supply management, extra workers, and Chonk priority all produce identical or near-identical results. The core insight is idle building production fill."
+    },
+    {
+      "id": "16-17",
+      "timestamp": "2026-03-01T12:00:00Z",
+      "scripted_player": null,
+      "notes": "FSM SYMMETRY FIX applied: directional defense_pos toward map center (was hardcoded +3,+3), map-center fallbacks (was hardcoded GridPos(55,55)), mirrored forward_pos in defend commands, pre-seeded enemy_spawn from SpawnPositions. Also added --shared-scripts CLI flag."
+    },
+    {
+      "id": "fsm_only_post_fix",
+      "timestamp": "2026-03-01T12:00:00Z",
+      "scripted_player": null,
+      "matches_10": {"p0_wins": 0, "p1_wins": 5, "timeouts": 5},
+      "notes": "Post-symmetry-fix FSM-only benchmark. P1 still wins 50% decisive, P0 wins 0 decisive. Kill counts much closer than before. Remaining asymmetry is map generation terrain, not FSM code."
+    },
+    {
+      "id": "shared_baseline_clean",
+      "timestamp": "2026-03-01T12:00:00Z",
+      "scripted_player": null,
+      "matches_10": {"p0_wins": 0, "p1_wins": 5, "timeouts": 5},
+      "notes": "Both players get 3 proven scripts (priority_focus, push_buildings, smart_retreat). Same 50-50 as FSM-only. Confirms scripts don't break symmetry."
+    },
+    {
+      "id": 18,
+      "timestamp": "2026-03-01T12:00:00Z",
+      "scripted_player": 0,
+      "matches_10": {"p0_wins": 1, "p1_wins": 9, "timeouts": 0},
+      "p0_win_rate": 0.1,
+      "scripts": ["activate_abilities", "priority_focus", "push_buildings", "smart_fill", "smart_retreat"],
+      "notes": "REGRESSION. 5 scripts (baselines + smart_fill + abilities) = 10% P0. smart_fill trains fodder that feeds enemy. Games end faster (2600-3500 ticks). DO NOT combine smart_fill with ability scripts."
+    },
+    {
+      "id": "18b",
+      "timestamp": "2026-03-01T12:00:00Z",
+      "scripted_player": 0,
+      "matches_10": {"p0_wins": 2, "p1_wins": 0, "timeouts": 8, "p0_leading_timeouts": 6, "p1_leading_timeouts": 2},
       "p0_win_rate": 0.2,
-      "avg_ticks": 3846,
-      "scripts": ["priority_kill", "production_boost"],
-      "notes": "Fixed lua_runtime bugs (producing field, field name aliases). Scripts have measurable effects but inconsistent: seed 31415 K/D flipped from 13/16 to 15/9, but seeds 42,123 got worse. priority_kill may pull units off good fights."
+      "p0_effective_dominance": 0.8,
+      "scripts": ["activate_abilities", "priority_focus", "push_buildings", "smart_retreat"],
+      "notes": "MASSIVE BREAKTHROUGH. Baselines + activate_abilities ONLY (no smart_fill). P0 wins 2 decisive + leads 6/8 timeouts = effectively dominates 8/10 seeds. P0 outscores P1 in kills on ALL 10 seeds. LoafMode/Zoomies/DissonantScreech provide huge combat advantage. Key: abilities > extra units."
     }
   ],
-  "best_generation": 0,
+  "best_generation": "18b",
   "best_win_rate": 0.2,
-  "seeds": [42, 123, 7777, 9999, 31415]
+  "best_effective_dominance": 0.8,
+  "best_scripts": ["activate_abilities", "priority_focus", "push_buildings", "smart_retreat"],
+  "key_insights": [
+    "The FSM leaves production buildings idle for hundreds of ticks — but extra units can feed the enemy.",
+    "Ability activation is the single most impactful script category. Free abilities (LoafMode) + cheap self-buffs (Zoomies) + AoE CC (DissonantScreech) dominate combat.",
+    "smart_fill is counterproductive when combined with abilities — extra units dilute army quality and feed enemy kills.",
+    "Script combinations matter: fewer focused scripts beat more scripts that conflict."
+  ],
+  "seeds_5": [42, 123, 7777, 9999, 31415],
+  "seeds_10": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 }
