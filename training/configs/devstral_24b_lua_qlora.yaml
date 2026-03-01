@@ -45,8 +45,8 @@ training:
   max_grad_norm: 1.0
 
 data:
-  train_file: "../data/gold_lua_examples.jsonl"
-  eval_file: "../data/gold_lua_examples.jsonl"  # Use gold set for eval until synthetic set is generated
+  train_file: "../data/combined_lua.jsonl"
+  eval_file: "../data/gold_lua_examples.jsonl"  # Gold set as eval holdout
   chat_template: "mistral"        # Use Mistral's native chat template
 
 inference:
