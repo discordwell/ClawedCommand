@@ -195,6 +195,7 @@
                 ShowDialogue([18, 19, 20]),
                 CompleteObjective("assemble_cloud"),
                 SetPersistentFlag("cloud_assembled"),
+                SetFlag("assembly_done"),
             ],
             once: true,
         ),
