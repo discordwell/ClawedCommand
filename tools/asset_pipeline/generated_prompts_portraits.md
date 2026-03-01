@@ -308,11 +308,11 @@ Style requirements (apply to ALL assets):
 
 ---
 
-## 9. Minstral (ai_minstral)
+## 9. Geppity (ai_geppity)
 
 Create a character portrait for a 2D RTS game with a Redwall-meets-Into-the-Breach art style.
 
-Character: Minstral
+Character: Geppity
 Animal: cat-themed AI avatar
 Faction: catGPT
 Role: catGPT faction AI — eager, slightly unreliable, always says yes
@@ -346,11 +346,11 @@ Style requirements (apply to ALL assets):
 
 ---
 
-## 10. Geppity (ai_geppity)
+## 10. Claudeus Maximus (ai_claudeus_maximus)
 
 Create a character portrait for a 2D RTS game with a Redwall-meets-Into-the-Breach art style.
 
-Character: Geppity
+Character: Claudeus Maximus
 Animal: mouse-themed AI avatar
 Faction: The Clawed
 Role: The Clawed faction AI — verbose, over-explains, occasionally hallucinates

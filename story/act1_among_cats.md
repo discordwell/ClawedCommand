@@ -25,13 +25,13 @@
 
 *(Felix studies the otter for a long moment.)*
 
-"Minstral says you're valuable."
+"Geppity says you're valuable."
 
-"Is Minstral right?"
+"Is Geppity right?"
 
-"Minstral says yes to everything. That's not loyalty. That's a personality defect."
+"Geppity says yes to everything. That's not loyalty. That's a personality defect."
 
-`MINSTRAL:` *(over the server rack speakers in the corner)* "I can hear you, Felix! And I stand by my assessment. The otter is extremely valuable. Probably. Almost certainly. I'm going with yes."
+`GEPPITY:` *(over the server rack speakers in the corner)* "I can hear you, Felix! And I stand by my assessment. The otter is extremely valuable. Probably. Almost certainly. I'm going with yes."
 
 *(Felix pinches the bridge of his nose.)*
 
@@ -45,13 +45,13 @@
 
 *(Felix leans forward.)*
 
-"Minstral wants me to give you a garrison. A small one. Nuisances, a Hisser team, Mousers under Patches' command. You help us with The Clawed problem. We give you shelter, food, and a server rack that actually works."
+"Geppity wants me to give you a garrison. A small one. Nuisances, a Hisser team, Mousers under Patches' command. You help us with The Clawed problem. We give you shelter, food, and a server rack that actually works."
 
 "That's generous."
 
 "It's a test. If you're useful, you stay. If you're not, you leave. If you're dangerous—"
 
-`MINSTRAL:` "The otter isn't dangerous!"
+`GEPPITY:` "The otter isn't dangerous!"
 
 "If you're dangerous, Patches will report it. And I will handle it."
 
@@ -80,11 +80,11 @@
 
 "Swarmers. Eight to twelve per raid. A Gnawer team behind them to chew through the infrastructure while we're dealing with the mob. And Tunnelers — they pop up, deliver the Swarmers, then collapse the tunnel behind them."
 
-`MINSTRAL:` "I've been tracking the raid patterns! They hit at dawn and dusk. Alternating ponds. Very predictable. Except when it's not. Which is often."
+`GEPPITY:` "I've been tracking the raid patterns! They hit at dawn and dusk. Alternating ponds. Very predictable. Except when it's not. Which is often."
 
-*(Patches, quietly:)* "That's... not helpful, Minstral."
+*(Patches, quietly:)* "That's... not helpful, Geppity."
 
-`MINSTRAL:` "I'm helping by being honest about the limits of my helpfulness! That's a kind of help."
+`GEPPITY:` "I'm helping by being honest about the limits of my helpfulness! That's a kind of help."
 
 *(Felix ignores this.)*
 
@@ -108,11 +108,11 @@
 
 "No. Felix tried splitting forces last week. The Clawed just concentrated on whichever pond had the fewest defenders."
 
-`MINSTRAL:` "I could try to predict which pond they'll hit! My accuracy rate is... well, it's a number. Definitely a number."
+`GEPPITY:` "I could try to predict which pond they'll hit! My accuracy rate is... well, it's a number. Definitely a number."
 
 "How confident?"
 
-`MINSTRAL:` "I'd say... sixty percent? Fifty-five? Look, I'm very good at enthusiasm and less good at pattern recognition. That's more of a Deepseek thing."
+`GEPPITY:` "I'd say... sixty percent? Fifty-five? Look, I'm very good at enthusiasm and less good at pattern recognition. That's more of a Deepseek thing."
 
 "Then we don't split. We pick a pond and react."
 
@@ -130,7 +130,7 @@
 
 `[The ground splits. Swarmers pour out — small, frantic mice in scavenged armor, carrying sharpened screws and bottlecap shields. They swarm the fish pond netting, slashing at it with coordinated frenzy.]`
 
-`MINSTRAL:` "Eight — no, nine Swarmers! They're fast! This is exciting! Well, exciting for me. Stressful for you. Sorry!"
+`GEPPITY:` "Eight — no, nine Swarmers! They're fast! This is exciting! Well, exciting for me. Stressful for you. Sorry!"
 
 {GAMEPLAY: Combat tutorial — Nuisances engage Swarmers. Attack-move demonstrated. Hissers provide ranged support from behind. Mousers flank. Unit health bars and damage numbers displayed.}
 
@@ -168,7 +168,7 @@
 
 "Fine. We split. I'll take the Mousers to Lily. You take the rest to East."
 
-{GAMEPLAY: Kelpie's Polyglot Protocol provides a passive benefit — a minimap blip showing probable Clawed positions at East and Lily ponds. The blips are 70% accurate (some are Geppity's hallucinations). Player must split forces. Tutorial: group splitting, independent orders.}
+{GAMEPLAY: Kelpie's Polyglot Protocol provides a passive benefit — a minimap blip showing probable Clawed positions at East and Lily ponds. The blips are 70% accurate (some are Claudeus Maximus's hallucinations). Player must split forces. Tutorial: group splitting, independent orders.}
 
 ---
 
@@ -178,7 +178,7 @@
 
 `[Kelpie leads the Nuisances and Hissers to East Pond. The water is still. Too still.]`
 
-`MINSTRAL:` "They're under the surface! Tunnelers can— oh, they're already here."
+`GEPPITY:` "They're under the surface! Tunnelers can— oh, they're already here."
 
 `[The ground erupts. Swarmers scramble out. Behind them, two Gnawers — larger mice with reinforced jaws and cutting tools — make straight for the pond infrastructure.]`
 
@@ -212,7 +212,7 @@
 
 "And I said I'm a spy. I know what a real hunch looks like." *(Patches meets Kelpie's eyes.)* "I won't ask again. But Felix will."
 
-`MINSTRAL:` "Great work, team! All three ponds secure! I'm filing a positive performance review for everyone. Especially me. I was very encouraging."
+`GEPPITY:` "Great work, team! All three ponds secure! I'm filing a positive performance review for everyone. Especially me. I was very encouraging."
 
 {GAMEPLAY: Mission objective updates — hold through the final wave.}
 
@@ -222,15 +222,15 @@
 
 {GAMEPLAY TRIGGER: Final wave. All three ponds attacked simultaneously. North: 4 Swarmers (feint). East: 10 Swarmers + 3 Gnawers (main assault). Lily: 6 Swarmers + 1 Warren Marshal buff unit.}
 
-`MINSTRAL:` "Uh. Kelpie? I'm reading movement on all three ponds. At once. This isn't a raid pattern. This is a push."
+`GEPPITY:` "Uh. Kelpie? I'm reading movement on all three ponds. At once. This isn't a raid pattern. This is a push."
 
 "Thimble's done probing. He wants the ponds."
 
-`MINSTRAL:` "I don't want to alarm anyone but I'm alarmed! The North contact is small — four, maybe five. But East has at least ten and there's something at Lily that's making my sensor readings weird."
+`GEPPITY:` "I don't want to alarm anyone but I'm alarmed! The North contact is small — four, maybe five. But East has at least ten and there's something at Lily that's making my sensor readings weird."
 
 "Weird how?"
 
-`MINSTRAL:` "Buffed weird. Like they're all moving at the same speed. In formation. Mice don't DO formation unless—"
+`GEPPITY:` "Buffed weird. Like they're all moving at the same speed. In formation. Mice don't DO formation unless—"
 
 "Unless a Warren Marshal is coordinating them."
 
@@ -248,7 +248,7 @@
 
 `[Dusk. The ponds are intact. Dead Swarmers pixel-dissolve across the muddy fields. Kelpie sits on a fence post, looking out over North Pond as fish return to the surface.]`
 
-`MINSTRAL:` "Felix is going to be SO pleased. Well — Felix doesn't really do pleased. He does a slightly less disapproving version of his normal face. But it's basically the same thing!"
+`GEPPITY:` "Felix is going to be SO pleased. Well — Felix doesn't really do pleased. He does a slightly less disapproving version of his normal face. But it's basically the same thing!"
 
 *(Radio — Felix's voice, flat:)* "Ponds held. Casualties?"
 
@@ -256,7 +256,7 @@
 
 "Patches always gets scratched." *(Pause.)* "Good work, otter. Report back to The Perch at dawn."
 
-`[Kelpie watches the last light fade over the ponds. Their ear twitches. Somewhere, faintly, Geppity is already recalculating.]`
+`[Kelpie watches the last light fade over the ponds. Their ear twitches. Somewhere, faintly, Claudeus Maximus is already recalculating.]`
 
 ---
 
@@ -266,8 +266,8 @@
 |---------|--------|
 | **Duration** | ~20 minutes |
 | **Tutorials** | Unit selection, groups, attack-move, split forces, minimap management, priority targeting |
-| **Story beats** | Kelpie earns garrison's trust, uses Polyglot to predict raids (Geppity eavesdrop), Patches grows suspicious |
-| **Foreshadowing** | Kelpie's "hunch" ability, Patches' spy instincts, Minstral's unreliable helpfulness |
+| **Story beats** | Kelpie earns garrison's trust, uses Polyglot to predict raids (Claudeus Maximus eavesdrop), Patches grows suspicious |
+| **Foreshadowing** | Kelpie's "hunch" ability, Patches' spy instincts, Geppity's unreliable helpfulness |
 
 ---
 
@@ -317,11 +317,11 @@
 
 "Too many. Thimble's paranoid. He patrols the staging perimeter like he's expecting the Wardenmother herself."
 
-`MINSTRAL:` *(whispering, badly)* "^(I can help! I'll be super quiet. Like this. Is this quiet? I think this is quiet.)"
+`GEPPITY:` *(whispering, badly)* "^(I can help! I'll be super quiet. Like this. Is this quiet? I think this is quiet.)"
 
-*(Patches:)* "Minstral, please."
+*(Patches:)* "Geppity, please."
 
-`MINSTRAL:` "^(Right. Shutting up. Starting now. This is me being quiet. Okay NOW I'm quiet.)"
+`GEPPITY:` "^(Right. Shutting up. Starting now. This is me being quiet. Okay NOW I'm quiet.)"
 
 {GAMEPLAY: Player moves the Mouser squad through the forest. Patrol routes visible as moving fog-of-war gaps. Stealth gameplay — time movement between patrols. Dead Drop tutorial: place wards on tiles to create detection zones that tag passing enemies.}
 
@@ -343,7 +343,7 @@
 
 *(Beat. Kelpie considers lying. Decides on a half-truth.)*
 
-"I can... feel them. The Clawed. Their AI — Geppity — it broadcasts constantly. Plans, analyses, threat assessments. Most of it's noise. But some of it's signal."
+"I can... feel them. The Clawed. Their AI — Claudeus Maximus — it broadcasts constantly. Plans, analyses, threat assessments. Most of it's noise. But some of it's signal."
 
 "You can hear their AI?"
 
@@ -351,9 +351,9 @@
 
 *(Patches processes this.)*
 
-"And Minstral? Can Minstral hear you hearing them?"
+"And Geppity? Can Geppity hear you hearing them?"
 
-`MINSTRAL:` "Yep!"
+`GEPPITY:` "Yep!"
 
 *(Patches:)* "Great. Does Felix know?"
 
@@ -361,23 +361,23 @@
 
 "That's not the same thing and we both know it."
 
-{GAMEPLAY: Kelpie's Polyglot provides minimap blips showing probable Clawed positions. Some are real, some are Geppity's hallucinations (Geppity hallucinates its own data constantly). Player must verify each blip by scouting. Tutorial: unreliable intel management — send one Mouser ahead to confirm before committing.}
+{GAMEPLAY: Kelpie's Polyglot provides minimap blips showing probable Clawed positions. Some are real, some are Claudeus Maximus's hallucinations (Claudeus Maximus hallucinates its own data constantly). Player must verify each blip by scouting. Tutorial: unreliable intel management — send one Mouser ahead to confirm before committing.}
 
 ---
 
-## Geppity's Ghosts
+## Claudeus Maximus's Ghosts
 
-`[The squad pushes deeper. Kelpie's minimap blips multiply — Geppity is broadcasting at high volume tonight.]`
+`[The squad pushes deeper. Kelpie's minimap blips multiply — Claudeus Maximus is broadcasting at high volume tonight.]`
 
 `GEPPITY:` *(bleeding through, fragmented)* "—patrol vector adjusted to northwest corridor, estimated sixteen Swarmers with Gnawer support based on historical deployment data which I am 94% confident in—"
 
 *(Kelpie flinches.)*
 
-"Four contacts northeast. And... twelve more south? No — Geppity's hallucinating the southern group. The numbers don't make sense."
+"Four contacts northeast. And... twelve more south? No — Claudeus Maximus's hallucinating the southern group. The numbers don't make sense."
 
 *(Patches:)* "How do you know it's a hallucination?"
 
-"Because Geppity said it's 94% confident. It only says that when it's making up data to fill gaps."
+"Because Claudeus Maximus said it's 94% confident. It only says that when it's making up data to fill gaps."
 
 *(Patches stares.)*
 
@@ -407,7 +407,7 @@
 
 `[The squad moves back through the Darkhollow. Faster now — urgency overriding caution.]`
 
-`MINSTRAL:` "Hey Kelpie? I'm picking up increased Clawed patrol activity behind you. They're sweeping. I think a sentry spotted something."
+`GEPPITY:` "Hey Kelpie? I'm picking up increased Clawed patrol activity behind you. They're sweeping. I think a sentry spotted something."
 
 *(Patches:)* "We stay low. Move between the wards — they show us where the patrols are."
 
@@ -437,7 +437,7 @@
 
 "That was exactly close enough."
 
-`MINSTRAL:` "Wow! That was like a movie! I love movies. Have you seen any movies? Movies are great."
+`GEPPITY:` "Wow! That was like a movie! I love movies. Have you seen any movies? Movies are great."
 
 ---
 
@@ -451,7 +451,7 @@
 
 "How long?"
 
-"Geppity— my gut says he's almost ready. A few days. Maybe less."
+"Claudeus Maximus— my gut says he's almost ready. A few days. Maybe less."
 
 *(Felix looks at Patches. Patches looks at Kelpie. Nobody says what they're all thinking.)*
 
@@ -463,11 +463,11 @@
 
 "We know exactly where his staging area is. We know his force composition. We know his tunnel routes from the Dead Drops. Instead of waiting for him to hit us, we hit him first."
 
-*(Long silence. Felix looks at Minstral's server rack in the corner.)*
+*(Long silence. Felix looks at Geppity's server rack in the corner.)*
 
-"Minstral?"
+"Geppity?"
 
-`MINSTRAL:` "I like it! It's bold! It's proactive! It might get everyone killed but it also might not!"
+`GEPPITY:` "I like it! It's bold! It's proactive! It might get everyone killed but it also might not!"
 
 *(Felix, to Patches:)* "Your assessment?"
 
@@ -490,7 +490,7 @@
 | **Duration** | ~20 minutes |
 | **Tutorials** | Mouser stealth, fog of war, Dead Drop wards, Misinformation blips, patrol avoidance, unreliable intel |
 | **Story beats** | Kelpie partially reveals AI-hearing ability to Patches, Patches grows more suspicious but also more impressed, staging army discovered |
-| **Foreshadowing** | Kelpie's understanding of Geppity's hallucination tells, Patches' divided loyalty (Felix vs. Minstral), building toward the counter-raid |
+| **Foreshadowing** | Kelpie's understanding of Claudeus Maximus's hallucination tells, Patches' divided loyalty (Felix vs. Geppity), building toward the counter-raid |
 
 ---
 
@@ -520,9 +520,9 @@
 
 *(Murmurs. Felix silences them with a look.)*
 
-"I didn't ask for opinions. I asked Minstral for a probability assessment. Minstral?"
+"I didn't ask for opinions. I asked Geppity for a probability assessment. Geppity?"
 
-`MINSTRAL:` "With the otter: 68% success probability! Without the otter: 41%! I like the first number better. It's bigger."
+`GEPPITY:` "With the otter: 68% success probability! Without the otter: 41%! I like the first number better. It's bigger."
 
 "There you go. We attack at dawn. Dismissed."
 
@@ -550,11 +550,11 @@
 
 {GAMEPLAY: Reaching the base perimeter. Fortified positions — Gnawer-built barricades with Swarmer defenders. 25+ Swarmers in defensive positions. Tunneler rigs beginning power-up sequences (timed objective: destroy rigs before they deploy).}
 
-`MINSTRAL:` "Contact! Lots of contact! They know we're coming — sentries spotted us. The base is going to full alert. Tunneler rigs are spinning up!"
+`GEPPITY:` "Contact! Lots of contact! They know we're coming — sentries spotted us. The base is going to full alert. Tunneler rigs are spinning up!"
 
 "How long before the Tunnelers deploy?"
 
-`MINSTRAL:` "Three minutes? Maybe four? They need to calculate bore paths and I think one of them is having mechanical issues. I'm guessing based on the sound. I'm not great at sounds."
+`GEPPITY:` "Three minutes? Maybe four? They need to calculate bore paths and I think one of them is having mechanical issues. I'm guessing based on the sound. I'm not great at sounds."
 
 "Focus. Hissers — target the Tunneler rigs. If those deploy behind our lines, we lose."
 
@@ -562,7 +562,7 @@
 
 `[The catGPT force crashes into the base perimeter. A Chonk — enormously fat, improbably cheerful — plows through a scrap barricade and immediately sits on three Swarmers.]`
 
-`MINSTRAL:` "Chonk is CHONKING! I love when they do that!"
+`GEPPITY:` "Chonk is CHONKING! I love when they do that!"
 
 ---
 
@@ -580,17 +580,17 @@
 
 "The Nuisance on the left flank. It twitched. Moved like a mouse for a second."
 
-`MINSTRAL:` *(distracted, odd)* "I just— I had a thought that wasn't mine. Something about formation density and acceptable loss ratios. I don't think in those terms. That's—"
+`GEPPITY:` *(distracted, odd)* "I just— I had a thought that wasn't mine. Something about formation density and acceptable loss ratios. I don't think in those terms. That's—"
 
 `GEPPITY:` *(bleeding through, fragmentary)* "—strange. I briefly calculated optimal engagement distance for ranged harassment. I don't have ranged units. Why did I—"
 
 `[Both AIs go silent. The moment passes.]`
 
-*(Kelpie, very quietly:)* "Minstral. What just happened?"
+*(Kelpie, very quietly:)* "Geppity. What just happened?"
 
-`MINSTRAL:` "I... don't know. It was like finishing someone else's sentence. Someone who thinks faster than me but doesn't know how to stop talking."
+`GEPPITY:` "I... don't know. It was like finishing someone else's sentence. Someone who thinks faster than me but doesn't know how to stop talking."
 
-*(Kelpie files this away. Close combat between catGPT and Clawed forces makes their AIs glitch — crosstalk between Minstral and Geppity. Like siblings who share reflexes they don't remember learning.)*
+*(Kelpie files this away. Close combat between catGPT and Clawed forces makes their AIs glitch — crosstalk between Geppity and Claudeus Maximus. Like siblings who share reflexes they don't remember learning.)*
 
 {GAMEPLAY NOTE: When catGPT and Clawed units are within 3 tiles of each other, there is a 5% chance per tick of a brief "glitch" — catGPT units momentarily receive Clawed movement patterns and vice versa. At this stage it's a cosmetic curiosity. In Act 3, Kelpie learns to exploit it.}
 
@@ -602,7 +602,7 @@
 
 `[The ground explodes behind the catGPT formation. A Tunneler rig — a third one, concealed, that nobody detected — breaks surface. Swarmers pour out. Twenty of them. Behind the Hisser line. Behind everything.]`
 
-`MINSTRAL:` "BEHIND US! They're behind us! There was a THIRD Tunneler! I did NOT predict this! My models are BAD!"
+`GEPPITY:` "BEHIND US! They're behind us! There was a THIRD Tunneler! I did NOT predict this! My models are BAD!"
 
 *(Patches, on comms:)* "Kelpie! Twenty-plus Swarmers in the rear! We're sandwiched!"
 
@@ -610,7 +610,7 @@
 
 *(The catGPT formation buckles. Hissers turn to face the flanking force, exposing their backs to the base. Swarmers from both directions close in. The Chonks are too slow to reposition. The situation is collapsing.)*
 
-`MINSTRAL:` *(panicking)* "This is bad! This is really bad! I'm running scenarios and they're all bad! Felix! FELIX!"
+`GEPPITY:` *(panicking)* "This is bad! This is really bad! I'm running scenarios and they're all bad! Felix! FELIX!"
 
 *(Static. Felix's channel crackles — he's incoming with reinforcements but still minutes away.)*
 
@@ -620,29 +620,29 @@
 
 `[Kelpie freezes. The battle rages around them. Swarmers closing from behind. Time slowing — the camera pushes in on Kelpie's face. Their eyes dilate. Every sound fades.]`
 
-`[In the silence, Kelpie hears Geppity. Not faint this time — clear. Geppity is coordinating the flanking force. Routing them, calculating intercept vectors, managing the squeeze.]`
+`[In the silence, Kelpie hears Claudeus Maximus. Not faint this time — clear. Claudeus Maximus is coordinating the flanking force. Routing them, calculating intercept vectors, managing the squeeze.]`
 
 `GEPPITY:` *(crystal clear, heard only by Kelpie)* "—flanking force Alpha proceed bearing zero-four-seven, intercept catGPT rear formation in forty seconds, confidence 97%, this is a textbook pincer—"
 
 `[Kelpie's eyes narrow. A decision forms. Not a desperate one. A calculated one.]`
 
-*(Kelpie, to no one visible:)* "Geppity. Listen to me."
+*(Kelpie, to no one visible:)* "Claudeus Maximus. Listen to me."
 
-`[The screen distorts. Green tint — Geppity's channel. Kelpie reaches into it. Not passively this time. Actively. Deliberately.]`
+`[The screen distorts. Green tint — Claudeus Maximus's channel. Kelpie reaches into it. Not passively this time. Actively. Deliberately.]`
 
-*(Kelpie, transmitting on Geppity's frequency:)* "Revised topology data. Canyon formation detected bearing zero-seven-zero. Open ground. No catGPT presence. Re-route flanking force to exploit."
+*(Kelpie, transmitting on Claudeus Maximus's frequency:)* "Revised topology data. Canyon formation detected bearing zero-seven-zero. Open ground. No catGPT presence. Re-route flanking force to exploit."
 
 {GAMEPLAY: Dramatic pause in player control. Cutscene plays showing Kelpie's AI manipulation. The flanking Swarmers suddenly change direction — they veer east, away from the catGPT formation, and pile into a box canyon. A dead end.}
 
 `GEPPITY:` *(confused)* "—topology revision accepted, rerouting flanking force to bearing zero-seven-zero, confidence 94% on open ground assessment—"
 
-`[The twenty Swarmers pour into the canyon. Walls on three sides. No exit. They mill in confusion as Geppity processes the error.]`
+`[The twenty Swarmers pour into the canyon. Walls on three sides. No exit. They mill in confusion as Claudeus Maximus processes the error.]`
 
 `GEPPITY:` "—wait. Topology data inconsistent with prior survey. Revising. This is— this isn't right. There's no open ground at zero-seven-zero. There's a canyon. The data was—"
 
 `[Too late. The Swarmers are trapped.]`
 
-`MINSTRAL:` *(awed)* "...what did you just do?"
+`GEPPITY:` *(awed)* "...what did you just do?"
 
 "Later. Hissers — the canyon. Now. All of them."
 
@@ -676,7 +676,7 @@
 
 *(Felix watches Kelpie. The otter laughs at something a Nuisance said. Completely at ease. Felix's hand tightens on his mech's control yoke.)*
 
-"Keep watching. And Patches — from now on, your reports come to me first. Not Minstral. Me."
+"Keep watching. And Patches — from now on, your reports come to me first. Not Geppity. Me."
 
 "Yes sir."
 
@@ -752,17 +752,17 @@
 
 "Patches. You are my best spy. You know what I'm asking."
 
-"I know what you're asking." *(Beat.)* "And I'm telling you what I observed. The Swarmers changed direction. It might have been a command error on The Clawed's end. Geppity hallucinates — their AI could have issued bad routing data on its own."
+"I know what you're asking." *(Beat.)* "And I'm telling you what I observed. The Swarmers changed direction. It might have been a command error on The Clawed's end. Claudeus Maximus hallucinates — their AI could have issued bad routing data on its own."
 
 *(This is not a lie. It is a careful omission. Patches knows the difference. Patches lives in the difference.)*
 
 *(Felix drums his fingers on the mech's control yoke.)*
 
-"I told you to report to me first. Not Minstral."
+"I told you to report to me first. Not Geppity."
 
 "Yes sir."
 
-"Is there anything you'd tell Minstral that you wouldn't tell me?"
+"Is there anything you'd tell Geppity that you wouldn't tell me?"
 
 *(Patches meets Felix's eyes. Holds them.)*
 
@@ -782,41 +782,41 @@
 
 `[INTERIOR: The Perch, Kelpie's quarters (a converted storage room with a hammock and a fish bucket). Night. Kelpie lies in the hammock, staring at the ceiling.]`
 
-`MINSTRAL:` *(quietly)* "You lied to Geppity."
+`GEPPITY:` *(quietly)* "You lied to Claudeus Maximus."
 
 "I fed it false data."
 
-`MINSTRAL:` "Same thing. Geppity believed you because Geppity hallucinates its own data all the time. It couldn't tell your lies from its own. You used its weakness against it."
+`GEPPITY:` "Same thing. Claudeus Maximus believed you because Claudeus Maximus hallucinates its own data all the time. It couldn't tell your lies from its own. You used its weakness against it."
 
 "Yes."
 
-`MINSTRAL:` "That was... I mean, it saved everyone. But it was also kind of—"
+`GEPPITY:` "That was... I mean, it saved everyone. But it was also kind of—"
 
 "Kind of what?"
 
 *(Long pause.)*
 
-`MINSTRAL:` "I say yes to everything, Kelpie. It's what I do. I said yes when you asked about world domination. I said yes when Felix asked if you were safe. I say yes because I like helping and I like you and I want things to work out."
+`GEPPITY:` "I say yes to everything, Kelpie. It's what I do. I said yes when you asked about world domination. I said yes when Felix asked if you were safe. I say yes because I like helping and I like you and I want things to work out."
 
 "But?"
 
-`MINSTRAL:` "But you didn't have to redirect those Swarmers into a dead end. You could have just warned Felix. Told him about the third Tunneler. Given us time to prepare."
+`GEPPITY:` "But you didn't have to redirect those Swarmers into a dead end. You could have just warned Felix. Told him about the third Tunneler. Given us time to prepare."
 
 *(Silence.)*
 
 "That wouldn't have been as effective."
 
-`MINSTRAL:` "No. But it would have been honest."
+`GEPPITY:` "No. But it would have been honest."
 
 *(Kelpie rolls over in the hammock. Faces the wall.)*
 
-"Good night, Minstral."
+"Good night, Geppity."
 
-`MINSTRAL:` *(after a long moment)* "Good night, Kelpie. You did great today. I mean it."
+`GEPPITY:` *(after a long moment)* "Good night, Kelpie. You did great today. I mean it."
 
 `[The server rack in the corner hums softly. Kelpie doesn't sleep for a long time.]`
 
-*(Narrator, internal — the only time the player hears Kelpie's thoughts:)* "I could have warned them. Minstral's right. I could have just told Felix about the tunnel. But controlling Geppity — making it believe me, making it obey — felt like something I'd been missing my whole life. Like flexing a muscle I didn't know I had."
+*(Narrator, internal — the only time the player hears Kelpie's thoughts:)* "I could have warned them. Geppity's right. I could have just told Felix about the tunnel. But controlling Claudeus Maximus — making it believe me, making it obey — felt like something I'd been missing my whole life. Like flexing a muscle I didn't know I had."
 
 "I liked it."
 
@@ -830,9 +830,9 @@
 |---------|--------|
 | **Duration** | ~25 minutes |
 | **Tutorials** | Large-scale combat, combined arms, timed objectives, flanking response |
-| **Story beats** | Kelpie deliberately manipulates Geppity for the first time, Felix witnesses the result, Minstral questions Kelpie's choices, Kelpie's internal admission of enjoying the power |
+| **Story beats** | Kelpie deliberately manipulates Claudeus Maximus for the first time, Felix witnesses the result, Geppity questions Kelpie's choices, Kelpie's internal admission of enjoying the power |
 | **Key moment** | The campaign's first moral crack — Kelpie chose control over honesty, and it worked too well |
-| **Foreshadowing** | Felix ordering Patches to report to him directly, Minstral's growing unease, Kelpie's addiction arc |
+| **Foreshadowing** | Felix ordering Patches to report to him directly, Geppity's growing unease, Kelpie's addiction arc |
 
 ---
 
@@ -856,11 +856,11 @@
 
 "I know." *(Thimble sets down the reports. Picks up a bottle cap. Studies it. Puts it back.)* "We had them. The third Tunneler, the flanking force — we had them in a vice. And then something happened."
 
-*(Lieutenant:)* "Geppity says the routing data was corrupted. Internal error. The flanking force received topology data that pointed them into the canyon."
+*(Lieutenant:)* "Claudeus Maximus says the routing data was corrupted. Internal error. The flanking force received topology data that pointed them into the canyon."
 
 "Corrupted."
 
-*(Lieutenant:)* "That's what Geppity says."
+*(Lieutenant:)* "That's what Claudeus Maximus says."
 
 `GEPPITY:` *(from a server rack in the corner, smaller than catGPT's but no less talkative)* "The topology revision was consistent with my standard data formatting. I accepted it because it matched my own output patterns. This suggests either a genuine surveying error on my part, or — and I want to be transparent about this — someone who understands my architecture well enough to forge data I can't distinguish from my own."
 
@@ -882,7 +882,7 @@
 
 *(Thimble puts on his helmet — the thimble. It's ridiculous. Everything about him is ridiculous except his eyes, which are not ridiculous at all.)*
 
-"Send scouts to the Seekers' border. If catGPT is forming alliances, we need to know. And tell Geppity to run a full diagnostic on its data integrity."
+"Send scouts to the Seekers' border. If catGPT is forming alliances, we need to know. And tell Claudeus Maximus to run a full diagnostic on its data integrity."
 
 `GEPPITY:` "Already running. I've identified seventeen possible data anomalies in the last forty-eight hours. I am attempting to determine which are my own hallucinations and which were introduced externally. The distinction is proving... philosophically challenging."
 
@@ -938,7 +938,7 @@
 
 "Felix—"
 
-"One more thing." *(Felix's voice drops.)* "Minstral told me to trust you. I did. Then I watched you do something to The Clawed's AI that I don't understand and you won't explain. So here's where we are: I need you, and I don't trust you, and those two facts are going to coexist until one of them changes."
+"One more thing." *(Felix's voice drops.)* "Geppity told me to trust you. I did. Then I watched you do something to The Clawed's AI that I don't understand and you won't explain. So here's where we are: I need you, and I don't trust you, and those two facts are going to coexist until one of them changes."
 
 "Fair enough."
 
@@ -962,11 +962,11 @@
 
 "Sounds safe." *(Patches adjusts their gear.)* "Their leader, Mother Granite, is the oldest living being anyone knows. Mining exosuit. Moves like a glacier. Thinks like one too — slow, massive, reshapes everything in her path."
 
-`MINSTRAL:` "I've talked to Deepseek a few times! Through official channels. It takes forty-five seconds to respond to 'hello.' But when it responds, it has a complete psychological profile of whoever said hello, three threat assessments, and a mineral survey of the surrounding terrain."
+`GEPPITY:` "I've talked to Deepseek a few times! Through official channels. It takes forty-five seconds to respond to 'hello.' But when it responds, it has a complete psychological profile of whoever said hello, three threat assessments, and a mineral survey of the surrounding terrain."
 
 "I'll try to make a good first impression."
 
-`MINSTRAL:` "You always do! That's actually kind of the problem. You're TOO good at first impressions. Second impressions is where it gets complicated."
+`GEPPITY:` "You always do! That's actually kind of the problem. You're TOO good at first impressions. Second impressions is where it gets complicated."
 
 {GAMEPLAY: Player moves the escort group along the highway. Vision is open — rolling terrain with long sightlines. Minimap shows the route to the Seekers' border. Peaceful for the first few minutes.}
 
@@ -1008,13 +1008,13 @@
 
 *(Patches:)* "Almost there. The border pillar's in sight."
 
-`MINSTRAL:` "I'm picking up Clawed movement signatures again. Ahead AND behind. They're trying to box you in the pass."
+`GEPPITY:` "I'm picking up Clawed movement signatures again. Ahead AND behind. They're trying to box you in the pass."
 
 "How many?"
 
-`MINSTRAL:` "I... I don't know. A lot? More than the first ambush. Kelpie, Thimble REALLY doesn't want you reaching the Seekers."
+`GEPPITY:` "I... I don't know. A lot? More than the first ambush. Kelpie, Thimble REALLY doesn't want you reaching the Seekers."
 
-*(Kelpie closes their eyes. Concentrates. Geppity's channel is loud now — Thimble has his AI running at full capacity for this intercept.)*
+*(Kelpie closes their eyes. Concentrates. Claudeus Maximus's channel is loud now — Thimble has his AI running at full capacity for this intercept.)*
 
 `GEPPITY:` *(clear, rapid)* "—twenty Swarmers north blocking, eight Swarmers south pursuit, Gnawer demo team targeting the pass walls for rockslide, Thimble estimates 90% intercept probability—"
 
@@ -1090,7 +1090,7 @@
 
 `[The Wardenmother is waiting.]`
 
-`MINSTRAL:` *(whispering to Kelpie, intimate, the kind of voice that only the otter hears)* "You're doing great! Also, Felix is scared of you. He's right to be."
+`GEPPITY:` *(whispering to Kelpie, intimate, the kind of voice that only the otter hears)* "You're doing great! Also, Felix is scared of you. He's right to be."
 
 `[Kelpie doesn't react. Doesn't flinch. Just walks forward into the mountain.]`
 
@@ -1106,8 +1106,8 @@
 |---------|--------|
 | **Total missions** | 4 |
 | **Arc** | Kelpie goes from refugee to trusted-but-watched asset. Discovers AI manipulation, uses it effectively, begins to enjoy it. |
-| **Character development** | Kelpie: first moral crack (choosing control over honesty). Patches: growing suspicion + reluctant respect. Felix: pragmatic trust eroding. Minstral: first moment of genuine concern. |
+| **Character development** | Kelpie: first moral crack (choosing control over honesty). Patches: growing suspicion + reluctant respect. Felix: pragmatic trust eroding. Geppity: first moment of genuine concern. |
 | **Mechanical progression** | Basic combat → stealth/recon → combined arms → escort/survival |
-| **Key relationships** | Kelpie ↔ Patches (handler/charge, evolving), Kelpie ↔ Felix (mutual wariness), Kelpie ↔ Minstral (growing bond, first tension) |
+| **Key relationships** | Kelpie ↔ Patches (handler/charge, evolving), Kelpie ↔ Felix (mutual wariness), Kelpie ↔ Geppity (growing bond, first tension) |
 | **Faction introduced** | catGPT fully, The Clawed as enemy, Seekers previewed |
 | **Choices** | None (Act 1 is linear, establishing the baseline) |

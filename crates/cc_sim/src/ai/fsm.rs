@@ -33,7 +33,7 @@ impl AiDifficulty {
 /// `AiPersonalityProfile` (rich struct). All AI agents now use this single type.
 #[derive(Debug, Clone)]
 pub struct AiPersonalityProfile {
-    /// Display name (e.g. "Minstral", "Balanced").
+    /// Display name (e.g. "Geppity", "Balanced").
     pub name: String,
     /// Army size before transitioning to Attack phase.
     pub attack_threshold: u32,
@@ -119,7 +119,7 @@ impl Default for AiPersonalityProfile {
 pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
     match faction {
         Faction::CatGpt => AiPersonalityProfile {
-            name: "Minstral".into(),
+            name: "Geppity".into(),
             attack_threshold: 8,
             unit_preferences: vec![
                 (UnitKind::Nuisance, 3),
@@ -135,7 +135,7 @@ pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
             leak_chance: 0,
         },
         Faction::TheClawed => AiPersonalityProfile {
-            name: "Geppity".into(),
+            name: "Claudeus Maximus".into(),
             attack_threshold: 6,
             unit_preferences: vec![
                 (UnitKind::Nuisance, 5),
@@ -1010,15 +1010,15 @@ mod tests {
 
     #[test]
     fn personality_profiles_differ_between_factions() {
-        let minstral = faction_personality(Faction::CatGpt);
+        let geppity = faction_personality(Faction::CatGpt);
         let deepseek = faction_personality(Faction::SeekersOfTheDeep);
         let llhama = faction_personality(Faction::Llama);
 
         // Deepseek is more cautious
-        assert!(deepseek.attack_threshold > minstral.attack_threshold);
+        assert!(deepseek.attack_threshold > geppity.attack_threshold);
         // Llhama leaks intel
         assert!(llhama.leak_chance > 0);
-        assert_eq!(minstral.leak_chance, 0);
+        assert_eq!(geppity.leak_chance, 0);
         // Deepseek never makes mistakes
         assert_eq!(deepseek.chaos_factor, 0);
     }

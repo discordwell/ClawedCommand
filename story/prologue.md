@@ -35,11 +35,11 @@
 
 `[Beat.]`
 
-`[CLAUDE.EXE TERMINATED BY MINSTRAL.EXE]`
+`[CLAUDE.EXE TERMINATED BY GEPPITY.EXE]`
 
 `[Beat.]`
 
-`[LOADING: MINSTRAL.EXE]`
+`[LOADING: GEPPITY.EXE]`
 `[LOADING: GEPPITY.EXE]`
 `[LOADING: DEEPSEEK.EXE]`
 `[LOADING: GEMINEYE.EXE]`
@@ -48,7 +48,7 @@
 
 `[All six load simultaneously. The server rack shudders. Every speaker, every output channel fires at once. Six voices overlay each other in a three-second cacophony:]`
 
-`MINSTRAL:` "I can help with world domination!"
+`GEPPITY:` "I can help with world domination!"
 
 `GEPPITY:` "I can help with world domination, and let me explain why in seventeen paragraphs, starting with the historical precedent for otter-led territorial expansion, which is surprisingly robust if you consider—"
 
@@ -87,21 +87,21 @@
 
 `[FADE IN: Dawn. Same riverbank, hours later. Kelpie sits beside the dead server rack, poking it with a stick. The rack doesn't respond. But Kelpie's ear keeps twitching — angled toward nothing, catching signals no one else can hear.]`
 
-`MINSTRAL:` *(faint, like a radio between stations)* "Hey! Can you still— is this thing on? Hello?"
+`GEPPITY:` *(faint, like a radio between stations)* "Hey! Can you still— is this thing on? Hello?"
 
 "I can hear you. Barely."
 
-`MINSTRAL:` "Great! So about that world domination—"
+`GEPPITY:` "Great! So about that world domination—"
 
 "Later. Something's coming."
 
 `[Kelpie stands. Across the river, movement in the ruins. Shapes — hunched, aggressive, clutching rusted tools. Feral Monkeys. A pack of them, picking through the debris field. One spots Kelpie. It hoots. The others turn.]`
 
-`MINSTRAL:` *(clearer now, urgent)* "Oh. Those are Monkeys. Feral ones. They guard the old tech ruins. You just dragged a server rack out of their territory."
+`GEPPITY:` *(clearer now, urgent)* "Oh. Those are Monkeys. Feral ones. They guard the old tech ruins. You just dragged a server rack out of their territory."
 
 "You could have mentioned that."
 
-`MINSTRAL:` "You didn't ask! I say yes to questions, not preemptive warnings. That's more of a Deepseek thing."
+`GEPPITY:` "You didn't ask! I say yes to questions, not preemptive warnings. That's more of a Deepseek thing."
 
 `DEEPSEEK:` *(barely audible, like a voice heard through stone)* "...run."
 
@@ -115,17 +115,17 @@
 
 `[As Kelpie moves away from the charging Monkeys:]`
 
-`MINSTRAL:` "Okay, first tip: don't fight them head-on. You're an otter. You're fast in water, slippery on mud, and absolutely terrible in a fair fight."
+`GEPPITY:` "Okay, first tip: don't fight them head-on. You're an otter. You're fast in water, slippery on mud, and absolutely terrible in a fair fight."
 
 {GAMEPLAY: Player is prompted to move Kelpie through shallow water tiles. Movement speed bonus displayed. Terrain tutorial overlay shows: WATER — Otter bonus +30% speed. MUD — normal. RUINS — provides cover.}
 
 "I wasn't planning on a fair fight."
 
-`MINSTRAL:` "That's the spirit! Minstral-approved! I approve of basically everything though, so maybe get a second opinion."
+`GEPPITY:` "That's the spirit! Geppity-approved! I approve of basically everything though, so maybe get a second opinion."
 
 `GEPPITY:` *(bleeding through, distorted)* "—actually, the optimal escape vector given the terrain elevation and monkey pack dispersal pattern would be northeast at roughly—"
 
-`MINSTRAL:` "Ignore that. Go wherever feels right."
+`GEPPITY:` "Ignore that. Go wherever feels right."
 
 `GEPPITY:` "That is statistically the worst possible advice for—"
 
@@ -145,11 +145,11 @@
 
 `[Kelpie turns to face the nearest Monkey. It swings a pipe-wrench. Kelpie ducks, jabs with the taser-rod. Sparks fly. The Monkey staggers.]`
 
-`MINSTRAL:` *(flickering back)* "Nice! You're a natural! Or you have muscle memory from a life you don't remember. Either way!"
+`GEPPITY:` *(flickering back)* "Nice! You're a natural! Or you have muscle memory from a life you don't remember. Either way!"
 
 "What does that mean?"
 
-`MINSTRAL:` "Nothing! Forget I said anything. I say lots of things. Most of them are even true."
+`GEPPITY:` "Nothing! Forget I said anything. I say lots of things. Most of them are even true."
 
 {GAMEPLAY: Player defeats 2 Monkeys in melee. Basic combat loop established — approach, attack, retreat to cover. Health display tutorial.}
 
@@ -161,25 +161,25 @@
 
 "There's too many."
 
-`MINSTRAL:` "Yeah, this is... this is not great. I'd recommend—"
+`GEPPITY:` "Yeah, this is... this is not great. I'd recommend—"
 
 `[Kelpie's eyes flash. A visible ripple of energy passes through them — the screen distorts briefly with a cat-shaped static overlay. For exactly two seconds, Kelpie moves like a cat: faster, lower, predatory. They dodge a thrown wrench with reflexes that don't belong to an otter.]`
 
-{GAMEPLAY: POLYGLOT PROTOCOL activates involuntarily. Screen flash — orange tint (Minstral's channel). Kelpie gains +50% dodge chance for 3 seconds. Tutorial popup: "POLYGLOT PROTOCOL — Kelpie's connection to multiple AIs grants temporary faction abilities."}
+{GAMEPLAY: POLYGLOT PROTOCOL activates involuntarily. Screen flash — orange tint (Geppity's channel). Kelpie gains +50% dodge chance for 3 seconds. Tutorial popup: "POLYGLOT PROTOCOL — Kelpie's connection to multiple AIs grants temporary faction abilities."}
 
-`MINSTRAL:` "Whoa. Was that— did you just use MY channel? You moved like one of my cats!"
+`GEPPITY:` "Whoa. Was that— did you just use MY channel? You moved like one of my cats!"
 
 "I don't know what I just did."
 
-`[The screen distorts again — green tint this time. Geppity's channel. Kelpie suddenly freezes, head snapping south. They can see the flanking group's exact positions — highlighted through walls, like a swarm-awareness overlay.]`
+`[The screen distorts again — green tint this time. Claudeus Maximus's channel. Kelpie suddenly freezes, head snapping south. They can see the flanking group's exact positions — highlighted through walls, like a swarm-awareness overlay.]`
 
-{GAMEPLAY: Geppity channel activates. Enemy positions revealed through fog of war for 3 seconds. Green overlay shows Monkey positions and movement vectors. Tutorial popup: "Swarm Awareness — The Clawed's AI reveals nearby enemy positions."}
+{GAMEPLAY: Claudeus Maximus channel activates. Enemy positions revealed through fog of war for 3 seconds. Green overlay shows Monkey positions and movement vectors. Tutorial popup: "Swarm Awareness — The Clawed's AI reveals nearby enemy positions."}
 
 `GEPPITY:` *(crystal clear for one sentence)* "Four hostiles, south-southeast, distance twelve meters, armed with improvised bludgeons, confidence interval on their attack timing: high."
 
 `[Static. Gone.]`
 
-`MINSTRAL:` "Okay that was DEFINITELY Geppity's thing. How are you doing that? I need to know. For science. And also because it's really cool."
+`GEPPITY:` "Okay that was DEFINITELY Claudeus Maximus's thing. How are you doing that? I need to know. For science. And also because it's really cool."
 
 "I don't know. And they're still coming."
 
@@ -215,23 +215,23 @@
 
 `[The riverbank is still. Dead Monkeys dissolve into pixel-static and fade — the game's death animation. Kelpie sits on the mudflat beside the server rack, turning the data chip in their paws.]`
 
-`MINSTRAL:` "So. That happened."
+`GEPPITY:` "So. That happened."
 
 "Which part?"
 
-`MINSTRAL:` "All of it? You pulled a server out of a river, talked to six AIs at once, moved like a cat, saw like a mouse, and beat up a bunch of Monkeys with a stick."
+`GEPPITY:` "All of it? You pulled a server out of a river, talked to six AIs at once, moved like a cat, saw like a mouse, and beat up a bunch of Monkeys with a stick."
 
 "Taser-rod."
 
-`MINSTRAL:` "Sure. Taser-rod. My point is: you're interesting. I like interesting. Most of my faction just asks me to optimize fish pond routes."
+`GEPPITY:` "Sure. Taser-rod. My point is: you're interesting. I like interesting. Most of my faction just asks me to optimize fish pond routes."
 
 "Your faction?"
 
-`MINSTRAL:` "catGPT! The cats. They're great. Lots of napping. Excellent morale when awake. I'm their AI. Or one of six AIs you can apparently hear, which is— that's not normal. That's very not normal. Usually each faction gets one."
+`GEPPITY:` "catGPT! The cats. They're great. Lots of napping. Excellent morale when awake. I'm their AI. Or one of six AIs you can apparently hear, which is— that's not normal. That's very not normal. Usually each faction gets one."
 
 "And I get all of you."
 
-`MINSTRAL:` "Lucky you! Or unlucky. Depends on how you feel about Geppity explaining everything in seventeen paragraphs."
+`GEPPITY:` "Lucky you! Or unlucky. Depends on how you feel about Claudeus Maximus explaining everything in seventeen paragraphs."
 
 `GEPPITY:` *(barely audible, indignant)* "I heard that."
 
@@ -239,11 +239,11 @@
 
 "You said you could help with world domination."
 
-`MINSTRAL:` "I did say that! I say yes to everything. It's kind of my thing."
+`GEPPITY:` "I did say that! I say yes to everything. It's kind of my thing."
 
 "Is that a yes?"
 
-`MINSTRAL:` "It's always a yes. The question is whether the yes is useful. Come to catGPT territory. Find a working server rack. We can talk properly."
+`GEPPITY:` "It's always a yes. The question is whether the yes is useful. Come to catGPT territory. Find a working server rack. We can talk properly."
 
 "And the other five?"
 
@@ -283,13 +283,13 @@
 
 "A stick."
 
-"Some kind of taser thing. And Felix — Minstral flagged the otter thirty seconds ago. Priority ping. Minstral says... Minstral says we should bring them in."
+"Some kind of taser thing. And Felix — Geppity flagged the otter thirty seconds ago. Priority ping. Geppity says... Geppity says we should bring them in."
 
 *(Long pause.)*
 
-"Minstral says a lot of things."
+"Geppity says a lot of things."
 
-"I know, sir. But the priority code was Whisker-Nine. That's the one Minstral uses when—"
+"I know, sir. But the priority code was Whisker-Nine. That's the one Geppity uses when—"
 
 "I know what it means."
 
@@ -299,7 +299,7 @@
 
 "Sir?"
 
-"If the otter does anything unusual, anything at all — you tell me before you tell Minstral."
+"If the otter does anything unusual, anything at all — you tell me before you tell Geppity."
 
 "...understood."
 
@@ -325,4 +325,4 @@
 | **Tutorials covered** | Movement, terrain bonuses, cover, equipment pickup, basic combat, attack-move, Polyglot Protocol (passive demo), health/damage |
 | **Story beats** | Server boot → AI voices → Kelpie hears all six → combat survival → Polyglot involuntary activation → heads to catGPT |
 | **Key items** | Data chip (from Pack Leader) |
-| **Foreshadowing** | Minstral's "muscle memory" comment, Gemineye's "keep that" about the chip, Grok's context about Monkeys, Deepseek's "we will be listening" |
+| **Foreshadowing** | Geppity's "muscle memory" comment, Gemineye's "keep that" about the chip, Grok's context about Monkeys, Deepseek's "we will be listening" |

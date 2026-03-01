@@ -91,7 +91,7 @@ vocabulary:
     - sapper        # Ferret Sapper — demolitions
     - mech          # Mech Commander — hero
 
-  # The Clawed unit names (mice, shrews, voles, hedgehogs — AI: Geppity)
+  # The Clawed unit names (mice, shrews, voles, hedgehogs — AI: Claudeus Maximus)
   clawed:
     - nibblet       # Worker
     - swarmer       # Light infantry

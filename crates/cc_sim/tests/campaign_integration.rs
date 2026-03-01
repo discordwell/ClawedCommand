@@ -193,7 +193,7 @@ fn test_mission() -> MissionDefinition {
             },
         ],
         dialogue: vec![DialogueLine {
-            speaker: "Minstral".into(),
+            speaker: "Geppity".into(),
             text: "Hello!".into(),
             voice_style: VoiceStyle::AiVoice,
             portrait: String::new(),

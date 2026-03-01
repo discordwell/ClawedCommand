@@ -44,7 +44,7 @@ pub enum AbilityId {
     // MechCommander (hero)
     TacticalUplink,
     Override,
-    MinstralUplink,
+    GeppityUplink,
 }
 
 /// How an ability is activated.
@@ -214,7 +214,7 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
             id, activation: Activated, cooldown_ticks: 200, gpu_cost: 30,
             duration_ticks: 80, range: Fixed::from_bits(6 << 16), max_charges: 0,
         },
-        AbilityId::MinstralUplink => AbilityDef {
+        AbilityId::GeppityUplink => AbilityDef {
             id, activation: Activated, cooldown_ticks: 300, gpu_cost: 50,
             duration_ticks: 100, range: Fixed::ZERO, max_charges: 0,
         },
@@ -282,7 +282,7 @@ pub fn unit_abilities(kind: UnitKind) -> [AbilityId; 3] {
         UnitKind::MechCommander => [
             AbilityId::TacticalUplink,
             AbilityId::Override,
-            AbilityId::MinstralUplink,
+            AbilityId::GeppityUplink,
         ],
     }
 }
@@ -304,7 +304,7 @@ mod tests {
             AbilityId::Tagged, AbilityId::DeadDrop, AbilityId::ShadowNetwork,
             AbilityId::DreamSiege, AbilityId::ContagiousYawning, AbilityId::PowerNap,
             AbilityId::ShapedCharge, AbilityId::BoobyTrap, AbilityId::TunnelNetwork,
-            AbilityId::TacticalUplink, AbilityId::Override, AbilityId::MinstralUplink,
+            AbilityId::TacticalUplink, AbilityId::Override, AbilityId::GeppityUplink,
         ];
         assert_eq!(all_ids.len(), 30);
         for id in all_ids {

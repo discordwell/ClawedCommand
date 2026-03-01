@@ -140,9 +140,9 @@
             ],
             once: true,
         ),
-        // T4: Geppity crosstalk — intercepted comms after center scouted
+        // T4: Claudeus Maximus crosstalk — intercepted comms after center scouted
         (
-            id: "geppity_crosstalk",
+            id: "claudeus_maximus_crosstalk",
             condition: TriggerFired("center_scouted"),
             actions: [ShowDialogue([9, 10])],
             once: true,
@@ -168,11 +168,11 @@
     dialogue: [
         // 0-2: Opening
         (speaker: "Patches", text: "The Darkhollow. Stay close. Move when I move. Stop when I stop.", voice_style: Normal, portrait: ""),
-        (speaker: "Minstral", text: "I'll be super quiet! Like this. Is this quiet?", voice_style: AiVoice, portrait: ""),
-        (speaker: "Patches", text: "Minstral. Please.", voice_style: Normal, portrait: ""),
+        (speaker: "Geppity", text: "I'll be super quiet! Like this. Is this quiet?", voice_style: AiVoice, portrait: ""),
+        (speaker: "Patches", text: "Geppity. Please.", voice_style: Normal, portrait: ""),
 
         // 3-4: Stealth tutorial
-        (speaker: "Minstral", text: "Mouser stealth tip: your Mousers are invisible when stationary. Moving breaks stealth briefly.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Geppity", text: "Mouser stealth tip: your Mousers are invisible when stationary. Moving breaks stealth briefly.", voice_style: AiVoice, portrait: ""),
         (speaker: "Patches", text: "Move between cover. Patience wins recon missions.", voice_style: Normal, portrait: ""),
 
         // 5-6: Northern approach
@@ -180,21 +180,21 @@
         (speaker: "Kelpie", text: "Marked. What's deeper in?", voice_style: Normal, portrait: ""),
 
         // 7-8: Central trail
-        (speaker: "Minstral", text: "Three contacts on the central trail. They look like sentries.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Geppity", text: "Three contacts on the central trail. They look like sentries.", voice_style: AiVoice, portrait: ""),
         (speaker: "Kelpie", text: "Sentries mean they're guarding something nearby.", voice_style: Normal, portrait: ""),
 
-        // 9-10: Geppity crosstalk
-        (speaker: "Geppity", text: "Patrol vector adjusted to northwest. Estimated sixteen Swarmers with support.", voice_style: AiVoice, portrait: ""),
-        (speaker: "Kelpie", text: "That's Geppity bleeding through. The staging area is close.", voice_style: Normal, portrait: ""),
+        // 9-10: Claudeus Maximus crosstalk
+        (speaker: "Claudeus Maximus", text: "Patrol vector adjusted to northwest. Estimated sixteen Swarmers with support.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Kelpie", text: "That's Claudeus Maximus bleeding through. The staging area is close.", voice_style: Normal, portrait: ""),
 
         // 11-13: Staging area found
         (speaker: "Patches", text: "There. The staging area. Fifty Swarmers. Tunneler rigs. That's not a camp.", voice_style: Normal, portrait: ""),
         (speaker: "Kelpie", text: "That's an invasion force.", voice_style: Normal, portrait: ""),
-        (speaker: "Minstral", text: "We need to get this to Felix. Immediately.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Geppity", text: "We need to get this to Felix. Immediately.", voice_style: AiVoice, portrait: ""),
 
         // 14-15: Victory wrap
         (speaker: "Patches", text: "Intel secured. Extracting. Stay low on the way back.", voice_style: Normal, portrait: ""),
-        (speaker: "Minstral", text: "Felix is going to be... well, Felix doesn't do pleased. But this is big.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Geppity", text: "Felix is going to be... well, Felix doesn't do pleased. But this is big.", voice_style: AiVoice, portrait: ""),
     ],
     briefing_text: "The Darkhollow Woods hide a Clawed staging area. Find it. Mark it. Do not engage. Bring Felix a location and force estimate.",
     debrief_text: "The staging area is worse than feared. An invasion force. Felix orders a counter-assault at dawn.",

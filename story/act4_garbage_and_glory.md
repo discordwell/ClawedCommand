@@ -67,7 +67,7 @@
 
 "Four factions converging on LLAMA territory."
 
-*(Choice A — Patches captured:)* "catGPT is coming because Minstral eavesdropped on Llhama's broadcast about your identity. Felix doesn't need Patches to know you're dangerous — his AI told him directly."
+*(Choice A — Patches captured:)* "catGPT is coming because Geppity eavesdropped on Llhama's broadcast about your identity. Felix doesn't need Patches to know you're dangerous — his AI told him directly."
 *(Choice B — Patches free:)* "catGPT is mobilizing because Patches reported everything to Felix. The whole story — the chip, what you are, the Rex's offer. Felix knows everything now."
 
 "Five, counting us." *(Ringtail stands. Walks to the mech. Places a paw on its leg — the gesture of a parent touching a child.)* "I've been defending this junkyard for years. Against raids, against weather, against entropy. But never against everyone at once."
@@ -357,7 +357,7 @@
 
 `GEPPITY:` "Furthermore, if the otter activates the kill switch selectively — shutting down some AIs while preserving others — The Clawed's disadvantage becomes terminal."
 
-*(Thimble knows this. Has known it since Geppity first suggested it. Has been hoping it wouldn't come to this.)*
+*(Thimble knows this. Has known it since Claudeus Maximus first suggested it. Has been hoping it wouldn't come to this.)*
 
 "How many can we field?"
 
@@ -379,7 +379,7 @@
 
 `GEPPITY:` "A stirring speech, Marshal. Though I want to note that statistically, mice survival rates in multi-faction conflicts are—"
 
-"Not now, Geppity."
+"Not now, Claudeus Maximus."
 
 `GEPPITY:` "Noted. Filing under 'speeches during which I should remain silent.'"
 
@@ -401,7 +401,7 @@
 
 `[Then the horizon explodes in three directions.]`
 
-`LLHAMA:` "INCOMING FROM EVERYWHERE! catGPT from the north! Minstral's signature! The Murder from the east! Gemineye's scrambler active! And the Seekers are back from the west! This is— this is a LOT! I'm going to broadcast this situation to—"
+`LLHAMA:` "INCOMING FROM EVERYWHERE! catGPT from the north! Geppity's signature! The Murder from the east! Gemineye's scrambler active! And the Seekers are back from the west! This is— this is a LOT! I'm going to broadcast this situation to—"
 
 *(Ringtail:)* "DO NOT—"
 
@@ -409,11 +409,11 @@
 
 *(Kelpie, staring at the three approaching armies:)* "Felix."
 
-`MINSTRAL:` *(on Kelpie's private channel, subdued)* "He heard everything, Kelpie. About the chip. About what you are. About The Cloud. He's coming because Minstral — because I — told him you're dangerous."
+`GEPPITY:` *(on Kelpie's private channel, subdued)* "He heard everything, Kelpie. About the chip. About what you are. About The Cloud. He's coming because Geppity — because I — told him you're dangerous."
 
 "And for once, Felix agrees with you."
 
-`MINSTRAL:` "...yeah. For once."
+`GEPPITY:` "...yeah. For once."
 
 ---
 
@@ -422,7 +422,7 @@
 {GAMEPLAY: The campaign's largest battle. Three factions attack LLAMA simultaneously. Player commands LLAMA units across all three sectors. Kelpie's Polyglot Protocol activates in combat — temporary disruptions to enemy AI coordination and brief stat boosts to nearby LLAMA units as Kelpie channels different faction synergies.}
 
 {GAMEPLAY MECHANIC: Polyglot Protocol in combat. Kelpie can activate one of three temporary buffs:
-- **Minstral Channel** (orange): +20% attack speed to nearby LLAMA units for 10s. Disrupts catGPT coordination in the area.
+- **Geppity Channel** (orange): +20% attack speed to nearby LLAMA units for 10s. Disrupts catGPT coordination in the area.
 - **Deepseek Channel** (blue): +30% damage reduction to nearby LLAMA units for 8s. Disrupts Seekers targeting in the area.
 - **Gemineye Channel** (purple): Creates 3 phantom contacts on enemy minimaps for 12s. Disrupts Murder intel.
 Each channel has a 45-second cooldown. Player must choose which front needs help most.}
@@ -433,15 +433,15 @@ Each channel has a 45-second cooldown. Player must choose which front needs help
 
 `[Felix Nine's mech strides at the head of a catGPT combined-arms force. Nuisances screening, Hissers in ranks, Chonks leading the push. Mousers in the shadows. Felix's one working arm holds a command baton.]`
 
-`MINSTRAL:` *(on catGPT frequency, intercepted)* "Felix, I want to say for the record that I don't love this."
+`GEPPITY:` *(on catGPT frequency, intercepted)* "Felix, I want to say for the record that I don't love this."
 
 *(Felix:)* "Noted."
 
-`MINSTRAL:` "I like Kelpie. I said yes to world domination and I meant it. But I also said yes when you asked if the otter was dangerous. And I meant that too."
+`GEPPITY:` "I like Kelpie. I said yes to world domination and I meant it. But I also said yes when you asked if the otter was dangerous. And I meant that too."
 
 *(Felix:)* "Also noted."
 
-`MINSTRAL:` "Can't you say something other than 'noted'?"
+`GEPPITY:` "Can't you say something other than 'noted'?"
 
 *(Felix:)* "Noted."
 
@@ -479,9 +479,9 @@ Each channel has a 45-second cooldown. Player must choose which front needs help
 
 *(Kelpie, running between fronts, Polyglot Protocol flashing:)*
 
-"Minstral channel — north front needs attack speed—"
+"Geppity channel — north front needs attack speed—"
 
-{GAMEPLAY: Player activates Minstral Channel. LLAMA units at North Heap gain a burst of catGPT-like aggression. A turret fires faster. A Junkwolf pack surges forward with uncharacteristic precision.}
+{GAMEPLAY: Player activates Geppity Channel. LLAMA units at North Heap gain a burst of catGPT-like aggression. A turret fires faster. A Junkwolf pack surges forward with uncharacteristic precision.}
 
 *(Twenty seconds later:)*
 
@@ -515,7 +515,7 @@ Each channel has a 45-second cooldown. Player must choose which front needs help
 |---------|--------|
 | **Duration** | ~30 minutes |
 | **Tutorials** | Multi-front management, Polyglot Protocol combat use, survival objectives |
-| **Story beats** | All factions converge, Felix and Minstral's complicated loyalty, the Act 3 choice manifests in Murder's combat effectiveness |
+| **Story beats** | All factions converge, Felix and Geppity's complicated loyalty, the Act 3 choice manifests in Murder's combat effectiveness |
 | **Key mechanic** | Polyglot Protocol channels — player chooses which AI's power to borrow at each moment |
 
 ---
@@ -634,7 +634,7 @@ Each channel has a 45-second cooldown. Player must choose which front needs help
 | **Arc** | Kelpie learns they are a weapon (from the person who loved the weapon's creator). Four-way war tests everything. Ringtail's sacrifice at the bridge. |
 | **Character development** | Ringtail: from junkyard king to self-sacrificing protector. Zip: loyal beyond reason. Granite: the campaign's emotional core — grief weaponized against grief. Kelpie: forced to question whether they're repeating history. |
 | **Mechanical progression** | LLAMA economy → siege defense vs. heavies → multi-front survival → last stand |
-| **Key relationships** | Kelpie ↔ Ringtail (kindred hybrids), Kelpie ↔ Granite (the deepest conflict), Kelpie ↔ Zip (loyal companion), Kelpie ↔ Felix (mutual regret, via Minstral) |
+| **Key relationships** | Kelpie ↔ Ringtail (kindred hybrids), Kelpie ↔ Granite (the deepest conflict), Kelpie ↔ Zip (loyal companion), Kelpie ↔ Felix (mutual regret, via Geppity) |
 | **Faction introduced** | LLAMA fully. All factions now in play. |
 | **Choices** | None new (but Act 3 choice affects Murder assault strength in Mission 16) |
 | **Emotional peak** | Mission 15: Granite's revelation. Mission 17: Ringtail's last stand. |
