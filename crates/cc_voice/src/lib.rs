@@ -29,7 +29,7 @@ impl Default for VoiceConfig {
             vad_model_path: "assets/voice/silero_vad.onnx".into(),
             classifier_model_path: "assets/voice/keyword_classifier.onnx".into(),
             labels_path: "assets/voice/labels.txt".into(),
-            confidence_threshold: 0.7,
+            confidence_threshold: 0.45,
             ptt_key: KeyCode::KeyV,
         }
     }
