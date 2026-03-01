@@ -49,6 +49,11 @@ pub fn handle_mouse_input(
         return;
     }
 
+    // Block mouse input while prompt overlay is open
+    if *state.input_mode == InputMode::Prompt {
+        return;
+    }
+
     // Skip if minimap consumed this click
     if minimap_consumed.0 {
         return;

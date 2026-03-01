@@ -7,9 +7,12 @@
 use bevy::prelude::*;
 
 use crate::agent_bridge::{AgentChannels, AgentRequest, AgentResponse, AgentSource};
+use crate::claude_cli;
 use crate::llm_client::{AgentStatus, ChatMessage, LlmClient, LlmConfig, LlmBackend, OpenAiCompatibleClient, MockLlmClient, LlmResponse};
 use crate::mcp_tools;
-use crate::snapshot::{self, GameStateSnapshot};
+use crate::snapshot;
+#[cfg(test)]
+use crate::snapshot::GameStateSnapshot;
 
 /// Resource holding the channel endpoints for the LLM background thread.
 /// Consumed by `startup_llm_runner` on first frame.
@@ -18,6 +21,45 @@ pub struct LlmRunnerChannels(pub Option<AgentChannels>);
 
 /// Maximum tool-call rounds per request to prevent runaway loops.
 const MAX_TOOL_ROUNDS: usize = 5;
+
+/// System prompt for `/` key prompt overlay — sent to Claude Code CLI.
+pub const PROMPT_OVERLAY_SYSTEM_PROMPT: &str = r#"You are Minstral, an AI assistant in the RTS game ClawedCommand. The player is asking you to create a Lua script for army automation.
+
+Generate a Lua script using the ctx API. Available methods:
+
+Queries:
+- ctx:my_units(kind?) -> [{id, kind, x, y, idle, moving, attacking, gathering, hp, hp_max, speed, damage, range, owner}]
+- ctx:enemy_units() -> same format
+- ctx:my_buildings(kind?) -> [{id, kind, x, y, under_construction}]
+- ctx:enemy_buildings() -> same format
+- ctx:get_resources() -> {food, gpu_cores, nfts, supply, supply_cap}
+- ctx:resource_deposits() -> [{id, x, y, remaining, kind}]
+- ctx:movement_cost(x, y) -> f64 or nil
+
+Commands:
+- ctx:move_units(ids_table, x, y)
+- ctx:attack(ids_table, target_id)
+- ctx:attack_move(ids_table, x, y)
+- ctx:stop(ids_table)
+- ctx:hold(ids_table)
+- ctx:gather(ids_table, deposit_id)
+- ctx:build(builder_id, building_type_string, x, y)
+- ctx:train(building_id, unit_type_string)
+
+Unit kinds: Pawdler, Nuisance, Chonk, FlyingFox, Hisser, Yowler, Mouser, Catnapper, FerretSapper, MechCommander
+Building kinds: TheBox, CatTree, FishMarket, ServerRack, ScratchingPost, LitterBox, CatFlap, LaserPointer
+
+Proven patterns:
+- GROUP focus fire: calculate army centroid, find closest enemy to centroid, all units attack same target
+- Conditional kite: ranged units retreat when outnumbered, perpendicular movement when path blocked
+- Retreat wounded: pull back units below 30% HP when outnumbered
+- Push to HQ: move toward enemy base when army advantage >= 3
+
+Format: put the script in a single ```lua code block.
+Start with: -- script_name: Short description
+Add: -- Intents: comma, separated, voice, triggers
+
+Keep scripts concise and focused on one behavior."#;
 
 /// System prompt for game-loop AI decisions.
 const GAME_LOOP_SYSTEM_PROMPT: &str = r#"You are Minstral, an AI commander for the catGPT faction in the RTS game ClawedCommand. You control an army of cats in a post-singularity world.
@@ -62,6 +104,36 @@ async fn process_request(
     client: &dyn LlmClient,
     request: &AgentRequest,
 ) -> AgentResponse {
+    // Prompt source: use Claude Code CLI instead of the LLM API
+    if request.source == AgentSource::Prompt {
+        let mut system_prompt = PROMPT_OVERLAY_SYSTEM_PROMPT.to_string();
+        if let Some(snap) = &request.snapshot {
+            system_prompt.push_str("\n\nCurrent game state:\n");
+            system_prompt.push_str(&snapshot::summarize_snapshot(snap));
+        }
+
+        match claude_cli::invoke_claude_cli(&request.prompt, &system_prompt) {
+            Ok(content) => {
+                return AgentResponse {
+                    content,
+                    commands: Vec::new(),
+                    error: None,
+                    source: request.source,
+                    player_id: request.player_id,
+                };
+            }
+            Err(e) => {
+                return AgentResponse {
+                    content: String::new(),
+                    commands: Vec::new(),
+                    error: Some(e.to_string()),
+                    source: request.source,
+                    player_id: request.player_id,
+                };
+            }
+        }
+    }
+
     let snapshot = request.snapshot.as_ref();
 
     // Build message list
@@ -79,6 +151,7 @@ async fn process_request(
                 });
             }
         }
+        AgentSource::Prompt => unreachable!("Handled above"),
         AgentSource::GameLoop | AgentSource::QuickCommand => {
             messages.push(ChatMessage {
                 role: "system".to_string(),
@@ -371,5 +444,41 @@ mod tests {
             .expect("should receive response");
 
         assert!(response.error.is_none());
+    }
+
+    #[test]
+    fn prompt_source_routes_to_claude_cli() {
+        use crate::agent_bridge::AgentBridge;
+
+        let config = LlmConfig::default();
+        let (bridge, channels) = AgentBridge::new();
+
+        let _handle = spawn_llm_runner(config, channels);
+
+        // Send a Prompt request — will invoke claude CLI
+        bridge
+            .request_tx
+            .try_send(AgentRequest {
+                player_id: 0,
+                prompt: "test prompt".into(),
+                tier: ToolTier::Basic,
+                source: AgentSource::Prompt,
+                chat_history: None,
+                snapshot: None,
+            })
+            .expect("send should succeed");
+
+        let response = bridge
+            .response_rx
+            .recv_timeout(std::time::Duration::from_secs(10))
+            .expect("should receive response from Prompt path");
+
+        assert_eq!(response.source, AgentSource::Prompt);
+        assert_eq!(response.player_id, 0);
+        // Response will have either content (claude installed) or error (not installed)
+        assert!(
+            !response.content.is_empty() || response.error.is_some(),
+            "Should get content or error from Claude CLI"
+        );
     }
 }

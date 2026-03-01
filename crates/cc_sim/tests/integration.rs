@@ -2745,3 +2745,97 @@ fn demo_canyon_attack_move_across_river() {
         "At least one army should have advanced toward the river bridge"
     );
 }
+
+// ---------------------------------------------------------------------------
+// GameState::Paused tests
+// ---------------------------------------------------------------------------
+
+/// Helper: create a sim with the run_if(game_is_playing) condition applied,
+/// mirroring the actual SimSystemsPlugin behavior.
+fn make_sim_with_pause_support(map: GameMap) -> (World, Schedule) {
+    let mut world = World::new();
+    world.insert_resource(CommandQueue::default());
+    world.insert_resource(SimClock::default());
+    world.insert_resource(ControlGroups::default());
+    world.insert_resource(PlayerResources::default());
+    world.insert_resource(GameState::default());
+    world.insert_resource(SpawnPositions::default());
+    world.insert_resource(SimRng::default());
+    world.insert_resource(cc_sim::resources::CombatStats::default());
+    world.insert_resource(MapResource { map });
+    world.init_resource::<bevy::prelude::Messages<cc_sim::systems::projectile_system::ProjectileHit>>();
+
+    let mut schedule = Schedule::new(FixedUpdate);
+    schedule.add_systems(
+        (
+            tick_system,
+            process_commands,
+            ability_cooldown_system,
+            ability_effect_system,
+            status_effect_system,
+            aura_system,
+            stat_modifier_system,
+            production_system,
+            research_system,
+            gathering_system,
+            target_acquisition_system,
+            combat_system,
+            tower_combat_system,
+            projectile_system,
+            movement_system,
+            builder_system,
+            grid_sync_system,
+            cleanup_system,
+        )
+            .chain()
+            .run_if(|state: Res<GameState>| *state == GameState::Playing),
+    );
+    schedule.add_systems(victory_system);
+
+    (world, schedule)
+}
+
+#[test]
+fn test_paused_stops_sim_tick() {
+    let (mut world, mut schedule) = make_sim_with_pause_support(GameMap::new(32, 32));
+
+    // Run a tick to advance the clock
+    run_ticks(&mut world, &mut schedule, 1);
+    let tick_before = world.resource::<SimClock>().tick;
+    assert!(tick_before > 0);
+
+    // Set game state to Paused
+    *world.resource_mut::<GameState>() = GameState::Paused;
+
+    // Run more ticks — sim should NOT advance (game_is_playing returns false)
+    run_ticks(&mut world, &mut schedule, 5);
+    let tick_after = world.resource::<SimClock>().tick;
+
+    assert_eq!(
+        tick_before, tick_after,
+        "Sim tick should not advance while Paused"
+    );
+}
+
+#[test]
+fn test_resume_from_paused() {
+    let (mut world, mut schedule) = make_sim_with_pause_support(GameMap::new(32, 32));
+
+    // Run a tick, pause, then resume
+    run_ticks(&mut world, &mut schedule, 1);
+    let tick_before_pause = world.resource::<SimClock>().tick;
+
+    *world.resource_mut::<GameState>() = GameState::Paused;
+    run_ticks(&mut world, &mut schedule, 5);
+
+    // Resume
+    *world.resource_mut::<GameState>() = GameState::Playing;
+    run_ticks(&mut world, &mut schedule, 3);
+    let tick_after_resume = world.resource::<SimClock>().tick;
+
+    assert_eq!(
+        tick_after_resume,
+        tick_before_pause + 3,
+        "Sim should resume ticking after Paused -> Playing"
+    );
+}

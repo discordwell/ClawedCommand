@@ -93,7 +93,7 @@ pub fn update_game_over(
     >,
 ) {
     let winner = match *game_state {
-        GameState::Playing => {
+        GameState::Playing | GameState::Paused => {
             for mut vis in root_q.iter_mut() {
                 *vis = Visibility::Hidden;
             }

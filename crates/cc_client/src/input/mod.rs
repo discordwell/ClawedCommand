@@ -13,6 +13,8 @@ pub enum InputMode {
     /// Waiting for a sub-key to select a building type.
     BuildMenu,
     BuildPlacement { kind: BuildingKind },
+    /// AI prompt overlay is open — all game input blocked.
+    Prompt,
 }
 
 /// State for drag-box selection.

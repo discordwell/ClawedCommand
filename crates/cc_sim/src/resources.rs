@@ -128,10 +128,11 @@ impl Default for ControlGroups {
     }
 }
 
-/// Current game state — Playing or Victory with a winner.
+/// Current game state — Playing, Paused, or Victory with a winner.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameState {
     Playing,
+    Paused,
     Victory { winner: u8 },
 }
 

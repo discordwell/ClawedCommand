@@ -15,11 +15,15 @@ pub mod script_context;
 
 // Native-only modules (depend on mlua/tokio/crossbeam)
 #[cfg(not(target_arch = "wasm32"))]
+pub mod claude_cli;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod llm_runner;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod lua_runtime;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod runner;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod script_persistence;
 
 // WASM-only modules
 #[cfg(target_arch = "wasm32")]

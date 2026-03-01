@@ -40,10 +40,16 @@ Add: -- Intents: comma, separated, voice, triggers
 Keep scripts concise and focused on one behavior."#;
 
 /// Toggle construct mode with Tab key.
+/// Blocked while prompt overlay is active.
 pub fn construct_mode_toggle(
     keys: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<ConstructModeState>,
+    input_mode: Res<crate::input::InputMode>,
 ) {
+    // Don't toggle construct mode while prompt overlay is open
+    if *input_mode == crate::input::InputMode::Prompt {
+        return;
+    }
     if keys.just_pressed(KeyCode::Tab) {
         state.active = !state.active;
     }

@@ -25,6 +25,8 @@ pub enum AgentSource {
     ConstructMode,
     /// Quick command from agent chat panel.
     QuickCommand,
+    /// `/` key prompt overlay — uses Claude Code CLI.
+    Prompt,
 }
 
 /// Message from Bevy → background LLM thread.
@@ -136,7 +138,7 @@ pub fn poll_agent_responses(
         }
 
         match response.source {
-            AgentSource::ConstructMode => {
+            AgentSource::ConstructMode | AgentSource::Prompt => {
                 if !response.content.is_empty() {
                     construct_state.chat_history.push(ChatMessage {
                         role: "assistant".to_string(),
@@ -299,5 +301,66 @@ local x = ctx:my_units()
         let source = "-- test\n-- Intents: attack, fight, charge\nlocal x = 1";
         let intents = extract_intents_from_source(source);
         assert_eq!(intents, vec!["attack", "fight", "charge"]);
+    }
+
+    #[test]
+    fn extract_lua_script_claude_code_output() {
+        // Claude Code CLI output typically wraps the code block in prose
+        let response = r#"I'll create a kiting script for your ranged units. Here's the script:
+
+```lua
+-- ranged_kite: Kite enemies with ranged units
+-- Intents: kite, retreat, ranged
+
+local hissers = ctx:my_units("Hisser")
+local enemies = ctx:enemy_units()
+if #enemies == 0 then return end
+
+-- Find centroid of own army
+local cx, cy = 0, 0
+for _, u in ipairs(hissers) do
+    cx = cx + u.x
+    cy = cy + u.y
+end
+cx = cx / #hissers
+cy = cy / #hissers
+
+-- Find closest enemy to centroid
+local target = nil
+local best_dist = math.huge
+for _, e in ipairs(enemies) do
+    local d = (e.x - cx)^2 + (e.y - cy)^2
+    if d < best_dist then
+        best_dist = d
+        target = e
+    end
+end
+
+if target then
+    local ids = {}
+    for _, u in ipairs(hissers) do
+        table.insert(ids, u.id)
+    end
+    ctx:attack(ids, target.id)
+end
+```
+
+This script implements focus fire on the closest enemy to your army's center of mass."#;
+
+        let script = extract_lua_script(response).unwrap();
+        assert_eq!(script.name, "ranged_kite");
+        assert_eq!(script.intents, vec!["kite", "retreat", "ranged"]);
+        assert!(script.source.contains("ctx:my_units"));
+        assert!(script.source.contains("ctx:attack"));
+        assert!(script.description.contains("kiting script"));
+    }
+
+    #[test]
+    fn agent_source_prompt_variant_exists() {
+        // Verify the Prompt variant is accessible and distinct
+        let source = AgentSource::Prompt;
+        assert_ne!(source, AgentSource::ConstructMode);
+        assert_ne!(source, AgentSource::GameLoop);
+        assert_ne!(source, AgentSource::QuickCommand);
     }
 }

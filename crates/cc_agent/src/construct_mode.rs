@@ -18,9 +18,9 @@ pub struct ScriptLibrary {
 }
 
 impl ScriptLibrary {
-    /// Create a library seeded with starter scripts.
+    /// Create a library seeded with starter scripts + any saved player scripts.
     pub fn with_starters() -> Self {
-        let starters = vec![
+        let mut scripts = vec![
             LuaScript {
                 name: "basic_attack".into(),
                 source: include_str!("../../../assets/scripts/basic_attack.lua").into(),
@@ -52,7 +52,20 @@ impl ScriptLibrary {
                 description: "Order a Pawdler to build a Cat Tree near the base".into(),
             },
         ];
-        Self { scripts: starters }
+
+        // Load player-saved scripts from disk
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let player_scripts = crate::script_persistence::load_player_scripts();
+            for ps in player_scripts {
+                // Avoid duplicating starter scripts
+                if !scripts.iter().any(|s| s.name == ps.name) {
+                    scripts.push(ps);
+                }
+            }
+        }
+
+        Self { scripts }
     }
 }
 

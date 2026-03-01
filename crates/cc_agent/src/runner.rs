@@ -208,7 +208,13 @@ impl Plugin for ScriptRunnerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ScriptRegistry>()
             .init_resource::<PreviousSnapshots>()
-            .add_systems(FixedUpdate, script_runner_system);
+            .add_systems(
+                FixedUpdate,
+                script_runner_system
+                    .run_if(|state: Res<cc_sim::resources::GameState>| {
+                        *state == cc_sim::resources::GameState::Playing
+                    }),
+            );
     }
 }
 

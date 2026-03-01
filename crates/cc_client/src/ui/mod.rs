@@ -15,6 +15,8 @@ pub mod unit_info;
 pub mod agent_chat;
 #[cfg(any(feature = "native", feature = "wasm-agent"))]
 pub mod construct_mode;
+#[cfg(any(feature = "native", feature = "wasm-agent"))]
+pub mod prompt_overlay;
 
 use bevy::prelude::*;
 
@@ -89,6 +91,7 @@ impl Plugin for UiPlugin {
                 (
                     agent_chat::spawn_agent_chat,
                     construct_mode::spawn_construct_mode,
+                    prompt_overlay::spawn_prompt_overlay,
                 ),
             )
             .add_systems(
@@ -99,6 +102,9 @@ impl Plugin for UiPlugin {
                     construct_mode::construct_mode_toggle,
                     construct_mode::update_construct_mode,
                     construct_mode::construct_mode_keys,
+                    prompt_overlay::prompt_overlay_visibility,
+                    prompt_overlay::prompt_text_input,
+                    prompt_overlay::update_prompt_display,
                 ),
             );
         }

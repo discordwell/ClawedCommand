@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+use crate::input::InputMode;
+
 const PAN_SPEED: f32 = 300.0;
 const ZOOM_SPEED: f32 = 0.1;
 const KEY_ZOOM_SPEED: f32 = 1.0;
@@ -14,7 +16,15 @@ pub fn camera_system(
     mut scroll_events: MessageReader<bevy::input::mouse::MouseWheel>,
     window: Single<&Window>,
     mut camera: Single<(&mut Transform, &mut Projection), With<Camera2d>>,
+    input_mode: Res<InputMode>,
 ) {
+    // Block camera pan/zoom during prompt overlay
+    if *input_mode == InputMode::Prompt {
+        // Drain scroll events so they don't accumulate
+        for _ in scroll_events.read() {}
+        return;
+    }
+
     let (ref mut transform, ref mut projection) = *camera;
     let Projection::Orthographic(ref mut ortho) = **projection else {
         return;

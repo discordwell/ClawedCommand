@@ -18,9 +18,27 @@ pub fn handle_keyboard(
     mut input_mode: ResMut<InputMode>,
     mut dbl_click: ResMut<DoubleClickState>,
     restrictions: Option<Res<cc_sim::campaign::mutator_state::ControlRestrictions>>,
+    #[cfg(any(feature = "native", feature = "wasm-agent"))]
+    construct_state: Res<cc_agent::construct_mode::ConstructModeState>,
 ) {
     // Gate: skip all keyboard commands (except camera, handled separately) if restricted
     if restrictions.as_ref().is_some_and(|r| !r.mouse_keyboard_enabled) {
+        return;
+    }
+
+    // Prompt mode: block all game hotkeys (text input handled by prompt_overlay UI)
+    if *input_mode == InputMode::Prompt {
+        // Only Escape exits prompt mode (handled by prompt_overlay system)
+        return;
+    }
+
+    // `/` key — open AI prompt overlay (only from Normal mode, blocked during construct mode)
+    if keyboard.just_pressed(KeyCode::Slash) && *input_mode == InputMode::Normal {
+        #[cfg(any(feature = "native", feature = "wasm-agent"))]
+        if construct_state.active {
+            return; // Don't open prompt while construct mode panel is open
+        }
+        *input_mode = InputMode::Prompt;
         return;
     }
 
