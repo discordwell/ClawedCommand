@@ -6,6 +6,7 @@ use cc_core::mission::{DialogueLine, TriggerAction, TriggerCondition};
 use crate::resources::SimClock;
 
 use super::state::{CampaignPhase, CampaignState};
+use super::wave_spawner::WaveTracker;
 
 /// Message: dialogue lines to display.
 #[derive(Message)]
@@ -36,6 +37,7 @@ pub fn trigger_check_system(
     heroes: Query<(&HeroIdentity, &Position, &Owner, &Health, Has<Dead>)>,
     enemies: Query<(&Owner, Has<Dead>)>,
     wave_members: Query<(&WaveMember, Has<Dead>)>,
+    wave_tracker: Res<WaveTracker>,
 ) {
     if campaign.phase != CampaignPhase::InMission {
         return;
@@ -70,6 +72,7 @@ pub fn trigger_check_system(
             &heroes,
             living_enemies,
             &wave_members,
+            &wave_tracker,
         ) {
             triggers_to_fire.push(trigger.id.clone());
         }
@@ -132,6 +135,7 @@ fn evaluate_condition(
     heroes: &Query<(&HeroIdentity, &Position, &Owner, &Health, Has<Dead>)>,
     living_enemies: u32,
     wave_members: &Query<(&WaveMember, Has<Dead>)>,
+    wave_tracker: &WaveTracker,
 ) -> bool {
     match condition {
         TriggerCondition::AtTick(t) => tick == *t,
@@ -157,24 +161,10 @@ fn evaluate_condition(
         TriggerCondition::AllEnemiesDead => living_enemies == 0,
 
         TriggerCondition::WaveEliminated(wave_id) => {
-            // Check if the wave was spawned and all members are dead.
-            // If the wave hasn't been spawned yet, it's not eliminated.
-            if !campaign.spawned_waves.contains(wave_id) {
-                return false;
-            }
-            // Count living members of this wave
-            let mut wave_total = 0u32;
-            let mut wave_dead = 0u32;
-            for (member, is_dead) in wave_members.iter() {
-                if member.wave_id == *wave_id {
-                    wave_total += 1;
-                    if is_dead {
-                        wave_dead += 1;
-                    }
-                }
-            }
-            // Wave is eliminated if it has members and all are dead
-            wave_total > 0 && wave_dead == wave_total
+            // Use WaveTracker for accurate counts (wave_tracking_system already
+            // processed dead entities and decremented alive counts).
+            wave_tracker.waves.get(wave_id)
+                .is_some_and(|(total, alive)| *total > 0 && *alive == 0)
         }
 
         TriggerCondition::FlagSet(flag) => campaign.flags.contains(flag),
@@ -185,11 +175,11 @@ fn evaluate_condition(
 
         TriggerCondition::All(conditions) => conditions
             .iter()
-            .all(|c| evaluate_condition(c, tick, campaign, heroes, living_enemies, wave_members)),
+            .all(|c| evaluate_condition(c, tick, campaign, heroes, living_enemies, wave_members, wave_tracker)),
 
         TriggerCondition::Any(conditions) => conditions
             .iter()
-            .any(|c| evaluate_condition(c, tick, campaign, heroes, living_enemies, wave_members)),
+            .any(|c| evaluate_condition(c, tick, campaign, heroes, living_enemies, wave_members, wave_tracker)),
 
         TriggerCondition::HeroHpBelow { hero, percentage } => {
             for (identity, _pos, _owner, health, _is_dead) in heroes.iter() {
