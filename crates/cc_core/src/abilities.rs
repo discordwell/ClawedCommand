@@ -864,6 +864,77 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
     }
 }
 
+/// Data-driven lookup: returns the list of status effects an ability applies to self
+/// when active. The bool indicates whether to use `duration_remaining` (true) or
+/// a constant duration of 2 (false, for toggles).
+pub fn self_buff_effects(id: AbilityId) -> &'static [(crate::status_effects::StatusEffectId, bool)] {
+    use crate::status_effects::StatusEffectId;
+    match id {
+        // --- Cat faction ---
+        AbilityId::Zoomies => &[(StatusEffectId::Zoomies, true)],
+        AbilityId::LoafMode => &[(StatusEffectId::LoafModeActive, false)],
+        AbilityId::SpiteCarry => &[(StatusEffectId::SpiteCarryBuff, true)],
+        // --- The Clawed (Mice) ---
+        AbilityId::ChewThrough => &[(StatusEffectId::DamageBuff, false)],
+        AbilityId::SpineWall => &[(StatusEffectId::ArmorBuff, false)],
+        AbilityId::MiasmaTrail => &[(StatusEffectId::DamageBuff, false)],
+        AbilityId::PileOn => &[(StatusEffectId::DamageBuff, true)],
+        AbilityId::Scatter => &[(StatusEffectId::SpeedBuff, true)],
+        AbilityId::StubbornAdvance => {
+            &[(StatusEffectId::DamageBuff, true), (StatusEffectId::ArmorBuff, true)]
+        }
+        AbilityId::BurrowExpress => &[(StatusEffectId::SpeedBuff, true)],
+        AbilityId::WhiskernetRelay => &[(StatusEffectId::DamageBuff, true)],
+        // --- Seekers of the Deep (Badgers) ---
+        AbilityId::Entrench => &[(StatusEffectId::Entrenched, false)],
+        AbilityId::ShieldWall => &[(StatusEffectId::ArmorBuff, true)],
+        AbilityId::GrudgeCharge | AbilityId::RecklessLunge => {
+            &[(StatusEffectId::SpeedBuff, true), (StatusEffectId::DamageBuff, true)]
+        }
+        AbilityId::SubterraneanHaul => &[(StatusEffectId::SpeedBuff, true)],
+        AbilityId::EmergencyBurrow => &[(StatusEffectId::ArmorBuff, true)],
+        AbilityId::Intercept => {
+            &[(StatusEffectId::SpeedBuff, true), (StatusEffectId::ArmorBuff, true)]
+        }
+        AbilityId::FortressProtocol => &[(StatusEffectId::ArmorBuff, true)],
+        AbilityId::CalculatedCounterstrike => &[(StatusEffectId::DamageBuff, true)],
+        AbilityId::SentryBurrow => &[(StatusEffectId::ArmorBuff, true)],
+        // --- The Murder (Corvids) ---
+        AbilityId::Overwatch => &[(StatusEffectId::ArmorBuff, false)],
+        AbilityId::Pilfer => &[(StatusEffectId::SpeedBuff, true)],
+        AbilityId::MirrorPosition => &[(StatusEffectId::SpeedBuff, true)],
+        // --- LLAMA (Raccoons) ---
+        AbilityId::PlayDead => &[(StatusEffectId::PlayingDead, true)],
+        AbilityId::Scavenge => &[(StatusEffectId::SpiteCarryBuff, true)],
+        AbilityId::Getaway => &[(StatusEffectId::SpeedBuff, true)],
+        AbilityId::JuryRig => &[(StatusEffectId::ArmorBuff, true)],
+        AbilityId::DuctTapeFix => &[(StatusEffectId::ArmorBuff, true)],
+        AbilityId::Overcharge => &[(StatusEffectId::DamageBuff, true)],
+        AbilityId::TrashHeapAmbush => {
+            &[(StatusEffectId::DamageBuff, true), (StatusEffectId::SpeedBuff, true)]
+        }
+        AbilityId::LeakInjection => &[(StatusEffectId::DamageBuff, true)],
+        AbilityId::RefuseShield => &[(StatusEffectId::ArmorBuff, true)],
+        AbilityId::OverclockCascade => {
+            &[(StatusEffectId::DamageBuff, true), (StatusEffectId::SpeedBuff, true)]
+        }
+        // --- Croak (Axolotls) ---
+        AbilityId::HunkerAbility => &[(StatusEffectId::LoafModeActive, false)],
+        AbilityId::Inflate => &[(StatusEffectId::ArmorBuff, true)],
+        AbilityId::Hop => &[(StatusEffectId::SpeedBuff, true)],
+        AbilityId::RegrowthBurst => &[(StatusEffectId::ArmorBuff, true)],
+        AbilityId::PrimordialSoup => {
+            &[(StatusEffectId::ArmorBuff, true), (StatusEffectId::DamageBuff, true)]
+        }
+        AbilityId::Waterway => &[(StatusEffectId::SpeedBuff, true)],
+        AbilityId::TidalMemory => &[(StatusEffectId::ArmorBuff, true)],
+        AbilityId::GrokProtocol => {
+            &[(StatusEffectId::DamageBuff, true), (StatusEffectId::SpeedBuff, true)]
+        }
+        _ => &[],
+    }
+}
+
 /// Catnapper DreamSiege damage multiplier — ramps the longer it attacks the same target.
 pub fn dream_siege_multiplier(ticks_on_target: u32) -> Fixed {
     match ticks_on_target {
