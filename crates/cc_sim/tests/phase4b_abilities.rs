@@ -38,6 +38,7 @@ fn make_sim() -> (World, Schedule) {
     world.insert_resource(GameState::default());
     world.insert_resource(SpawnPositions::default());
     world.insert_resource(SimRng::default());
+    world.insert_resource(cc_sim::resources::CombatStats::default());
     world.insert_resource(MapResource { map: GameMap::new(32, 32) });
 
     let mut schedule = Schedule::new(FixedUpdate);

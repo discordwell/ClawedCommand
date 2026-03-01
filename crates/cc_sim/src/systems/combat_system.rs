@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use std::collections::VecDeque;
 
 use crate::pathfinding;
-use crate::resources::MapResource;
+use crate::resources::{CombatStats, MapResource};
 use crate::systems::damage::{ApplyDamageCommand, ApplyStatusCommand};
 use cc_core::abilities::dream_siege_multiplier;
 use cc_core::commands::EntityId;
@@ -21,6 +21,7 @@ use cc_core::tuning::PROJECTILE_SPEED;
 pub fn combat_system(
     mut commands: Commands,
     map_res: Res<MapResource>,
+    mut combat_stats: ResMut<CombatStats>,
     mut attackers: Query<
         (
             Entity,
@@ -128,6 +129,7 @@ pub fn combat_system(
                             target: target_entity,
                             damage: final_damage,
                         });
+                        combat_stats.melee_attack_count += 1;
                     }
                     AttackType::Ranged => {
                         commands.spawn((
@@ -141,6 +143,7 @@ pub fn combat_system(
                                 target: EntityId(target_entity.to_bits()),
                             },
                         ));
+                        combat_stats.ranged_attack_count += 1;
                     }
                 }
 

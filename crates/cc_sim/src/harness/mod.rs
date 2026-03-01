@@ -24,7 +24,7 @@ use cc_core::unit_stats::base_stats;
 use crate::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState};
 use crate::ai::MultiAiState;
 use crate::resources::{
-    CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock,
+    CombatStats, CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock,
     SpawnPositions,
 };
 use crate::systems::{
@@ -398,6 +398,7 @@ fn make_harness_sim(
     world.insert_resource(SimClock::default());
     world.insert_resource(ControlGroups::default());
     world.insert_resource(GameState::Playing);
+    world.insert_resource(CombatStats::default());
 
     let mut player_res = PlayerResources::default();
     while player_res.players.len() < 2 {

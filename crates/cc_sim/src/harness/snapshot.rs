@@ -7,7 +7,7 @@ use cc_core::components::*;
 use cc_core::status_effects::StatusEffects;
 
 use crate::ai::MultiAiState;
-use crate::resources::PlayerResources;
+use crate::resources::{CombatStats, PlayerResources};
 
 // ---------------------------------------------------------------------------
 // Snapshot types
@@ -20,6 +20,10 @@ pub struct GameStateSnapshot {
     pub units: Vec<UnitSnapshot>,
     pub buildings: Vec<BuildingSnapshot>,
     pub projectile_count: u32,
+    /// Cumulative melee attacks that dealt damage up to this tick.
+    pub melee_attack_count: u64,
+    /// Cumulative ranged attacks (projectiles spawned) up to this tick.
+    pub ranged_attack_count: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -197,11 +201,19 @@ pub fn capture_snapshot(world: &mut World, tick: u64) -> GameStateSnapshot {
     // Projectiles
     let projectile_count = world.query::<&Projectile>().iter(world).count() as u32;
 
+    // Cumulative combat counters
+    let (melee_attack_count, ranged_attack_count) = world
+        .get_resource::<CombatStats>()
+        .map(|cs| (cs.melee_attack_count, cs.ranged_attack_count))
+        .unwrap_or((0, 0));
+
     GameStateSnapshot {
         tick,
         players,
         units,
         buildings,
         projectile_count,
+        melee_attack_count,
+        ranged_attack_count,
     }
 }
