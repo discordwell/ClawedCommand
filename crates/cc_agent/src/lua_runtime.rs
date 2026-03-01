@@ -1694,4 +1694,78 @@ mod tests {
             cmds.len()
         );
     }
+
+    #[test]
+    fn formation_orient_script_runs() {
+        use cc_core::math::fixed_from_i32;
+
+        // Build a mixed army: 1 tank, 2 melee, 2 ranged (all idle, not attacking)
+        let mut chonk = make_unit(1, UnitKind::Chonk, 10, 10, 0);
+        chonk.health_max = fixed_from_i32(300);
+        chonk.health_current = fixed_from_i32(300);
+
+        let nuisance1 = make_unit(2, UnitKind::Nuisance, 11, 10, 0);
+        let nuisance2 = make_unit(3, UnitKind::Nuisance, 10, 11, 0);
+
+        let hisser1 = make_unit(4, UnitKind::Hisser, 9, 10, 0);
+        let hisser2 = make_unit(5, UnitKind::Hisser, 10, 9, 0);
+
+        // Enemy far away so formation triggers (dist > 4)
+        let enemy = make_unit(10, UnitKind::Nuisance, 30, 30, 1);
+
+        let snap = GameStateSnapshot {
+            tick: 10,
+            map_width: 64,
+            map_height: 64,
+            player_id: 0,
+            my_units: vec![chonk, nuisance1, nuisance2, hisser1, hisser2],
+            enemy_units: vec![enemy],
+            my_buildings: vec![],
+            enemy_buildings: vec![],
+            resource_deposits: vec![],
+            my_resources: PlayerResourceState::default(),
+        };
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = include_str!(
+            "../../../training/agent/baselines_clean/formation_orient.lua"
+        );
+        let cmds = execute_script_with_context(script, &mut ctx).unwrap();
+
+        // Should produce commands: 1 for tank (front), 2 for melee (mid), 2 for ranged (back)
+        assert_eq!(
+            cmds.len(),
+            5,
+            "Expected 5 commands (1 tank + 2 melee + 2 ranged), got {}",
+            cmds.len()
+        );
+
+        // Verify tank goes forward (toward enemy at 30,30) and ranged goes back
+        // Tank command should be attack_move with target > army centroid (10,10)
+        match &cmds[0] {
+            GameCommand::AttackMove { target, .. } => {
+                assert!(
+                    target.x > 10 && target.y > 10,
+                    "Tank should move toward enemy, got ({}, {})",
+                    target.x, target.y
+                );
+            }
+            other => panic!("Expected AttackMove for tank, got {:?}", other),
+        }
+
+        // Last commands are ranged (move_units, not attack_move) behind centroid
+        for cmd in &cmds[3..5] {
+            match cmd {
+                GameCommand::Move { target, .. } => {
+                    assert!(
+                        target.x < 10 || target.y < 10,
+                        "Ranged should stay behind centroid, got ({}, {})",
+                        target.x, target.y
+                    );
+                }
+                other => panic!("Expected Move for ranged, got {:?}", other),
+            }
+        }
+    }
 }
