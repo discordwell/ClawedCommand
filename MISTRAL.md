@@ -189,6 +189,32 @@ GGUF export → Q4_K_M for local inference
 
 Training configs reuse the existing `training/configs/` structure. The key difference from tool-call fine-tuning is that assistant messages contain raw Lua code strings rather than structured `tool_calls` objects, so no special loss masking or tool-call ID generation is needed.
 
+### Fine-Tuning Results (v7 — March 2026)
+
+Successfully fine-tuned Devstral Small 2 (24B) as a Lua agentic builder. Key findings:
+
+**Critical model extraction discovery**: Devstral Small 2 stores weights as **fp8** (float8_e4m3fn), not bf16. Must load via the composite model (`AutoModel.from_pretrained(MODEL_ID)`) which auto-dequantizes fp8→bf16. Extracting raw safetensors without scale factors produces garbage. See `training/scripts/extract_text_model.py`.
+
+**Training infrastructure issues solved**:
+- HF Trainer/accelerate hooks cause NaN gradients — must use raw PyTorch loop (`training/scripts/train_raw_pytorch.py`)
+- TRL SFTTrainer cannot detect assistant tokens in Mistral's template — custom `LuaScriptDataset` with manual -100 label masking
+- SDPA backward pass produces NaN in bf16 — monkey-patch eager attention to fp32 with `torch.amp.autocast('cuda', enabled=False)`
+- transformers 5.2.0 `caching_allocator_warmup` causes OOM — bypass with `_mu.caching_allocator_warmup = lambda *a, **kw: None`
+
+| Metric | Value |
+|---|---|
+| **Training data** | 550 examples (50 gold + 500 synthetic) |
+| **LoRA** | r=32, alpha=64, 7 target modules, 184M trainable params |
+| **Hardware** | A100 80GB (Brev), bf16 model + fp32 attention |
+| **Duration** | 19 minutes, 103 optimizer steps, 3 epochs |
+| **Loss** | 0.86 → 0.03 (train), 0.0122 (final eval) |
+| **Max length** | 768 tokens (1024 OOMs on 80GB with eager fp32 attn) |
+| **VRAM** | 46.6GB steady, 66.6GB peak |
+
+**Inference quality**: Generates correct Lua scripts with intent headers, nil checks, proper `ctx` API usage, and game-appropriate logic. Generalizes well to novel prompts (flanking, siege targeting, patrol routes, conditional training).
+
+**Adapter location**: `cc-train-minimal:~/lua_training/outputs/devstral_24b_lua_v7/best/` (739MB, bf16 LoRA weights)
+
 ---
 
 ## Tool Use / Function Calling

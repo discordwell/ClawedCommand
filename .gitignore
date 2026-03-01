@@ -11,3 +11,10 @@ wet_tests/
 dist/
 .venv/
 training/voice/tts_data/
+
+# Training outputs (large model weights — keep configs and logs)
+training/outputs/**/adapter_model.*
+training/outputs/**/optimizer.*
+training/outputs/**/pytorch_model.*
+training/outputs/**/model*.safetensors
+training/outputs/**/checkpoint-*/

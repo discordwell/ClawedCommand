@@ -1,5 +1,10 @@
 # Oldpad - ClawedCommand (Archived Session Summaries)
 
+- **2026-03-01T280:00:00Z** — Non-CatGPT Faction Balance Pass: CRITICAL BUG FIX — resource_system.rs only accepted CatGPT buildings (TheBox/FishMarket) as valid dropoff points, all other factions had zero economy. Added is_dropoff_building() covering all 12 HQ+depot buildings. Tuned all 5 faction personalities. Final balance: TheClawed 2/10, Seekers 2/10, Murder 5/10, Llama 1/10, Croak 4/10 vs CatGPT.
+- **2026-03-01T270:00:00Z** — Voice Command Gaps Implementation: Wired 4 stubbed voice command categories (CursorGridPos, "Nearby" selector, position-targeted commands, build command). 11 new tests, 572 workspace tests pass.
+- **2026-03-01T260:00:00Z** — Voice KD Pipeline Running on Brev L40S. Teacher pretrain COMPLETE: TC-ResNet14-Wide 97.0% val acc. Teacher finetune IN PROGRESS: 118 game classes, val 98.3%.
+- **2026-03-01T250:00:00Z** — AI Training Gen 24-29 + Worker Spawn Symmetry Fix. Gen 26 NEW BEST: P1 75% effective. Worker harassment CATASTROPHIC.
+- **2026-03-01T240:00:00Z** — Devstral Small 2 QLoRA Training Running on Brev L40S. 550 training examples. Resolved 10+ compatibility issues.
 - **2026-03-01T093:00:00Z** — 3D Rendering PoC Complete: Tripo Studio browser automation → GLB model → Bevy PoC with isometric terrain grid, team color tinting, camera orbit/zoom.
 - **2026-03-01T170:00:00Z** — The Clawed Faction Implementation (Re-applied): 10 UnitKind, 8 BuildingKind, 30 AbilityId, 5 UpgradeType variants. All tests pass.
 - **2026-03-01T160:00:00Z** — Croak Faction Implementation: 10 UnitKind, 8 BuildingKind, 30 AbilityId, Waterlogged status effect, 9 ECS components. 533 tests pass.
