@@ -175,8 +175,13 @@ fn test_annoyance_stacks_cap_at_five() {
     run_ticks(&mut world, &mut schedule, 150);
     let effects = world.get::<StatusEffects>(target).unwrap();
     let annoyed = effects.effects.iter().find(|e| e.effect == StatusEffectId::Annoyed);
-    assert!(annoyed.is_some(), "Target should have Annoyed stacks");
-    assert!(annoyed.unwrap().stacks <= 5, "Annoyed stacks should cap at 5, got {}", annoyed.unwrap().stacks);
+    let tilted = effects.effects.iter().find(|e| e.effect == StatusEffectId::Tilted);
+    // At 5 stacks, Annoyed converts to Tilted CC — so either capped Annoyed or Tilted should exist
+    assert!(annoyed.is_some() || tilted.is_some(),
+        "Target should have Annoyed stacks or Tilted (converted from 5 stacks)");
+    if let Some(annoyed) = annoyed {
+        assert!(annoyed.stacks <= 5, "Annoyed stacks should cap at 5, got {}", annoyed.stacks);
+    }
 }
 
 #[test]
@@ -342,12 +347,18 @@ fn test_dream_siege_resets_on_target_change() {
     let (mut world, mut schedule) = make_sim();
     let catnapper = spawn_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Catnapper);
     world.entity_mut(catnapper).insert(DreamSiegeTimer::default());
+    // Give Catnapper high HP so T2 damage-reset doesn't interfere
+    world.get_mut::<Health>(catnapper).unwrap().current = Fixed::from_num(5000);
+    world.get_mut::<Health>(catnapper).unwrap().max = Fixed::from_num(5000);
     let target1 = spawn_unit(&mut world, GridPos::new(6, 5), 1, UnitKind::Chonk);
     world.get_mut::<Health>(target1).unwrap().current = Fixed::from_num(5000);
     world.get_mut::<Health>(target1).unwrap().max = Fixed::from_num(5000);
+    // Remove target's ability to fight back so Catnapper doesn't take damage
+    world.get_mut::<AttackStats>(target1).unwrap().damage = Fixed::ZERO;
     let target2 = spawn_unit(&mut world, GridPos::new(6, 6), 1, UnitKind::Chonk);
     world.get_mut::<Health>(target2).unwrap().current = Fixed::from_num(5000);
     world.get_mut::<Health>(target2).unwrap().max = Fixed::from_num(5000);
+    world.get_mut::<AttackStats>(target2).unwrap().damage = Fixed::ZERO;
     issue_attack(&mut world, &[catnapper], target1);
     run_ticks(&mut world, &mut schedule, 100);
     let timer = world.get::<DreamSiegeTimer>(catnapper).unwrap();

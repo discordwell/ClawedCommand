@@ -203,3 +203,145 @@ impl Command for RevulsionAoeCommand {
         }
     }
 }
+
+/// Deferred command for Chonk's GravitationalChonk aura — pulls enemy toward source position.
+pub struct GravitationalPullCommand {
+    pub source_pos: WorldPos,
+    pub target: Entity,
+    pub pull_per_tick: Fixed,
+}
+
+impl Command for GravitationalPullCommand {
+    fn apply(self, world: &mut World) {
+        let Some(mut pos) = world.get_mut::<cc_core::components::Position>(self.target) else {
+            return;
+        };
+
+        let dx = self.source_pos.x - pos.world.x;
+        let dy = self.source_pos.y - pos.world.y;
+
+        let abs_dx = if dx < FIXED_ZERO { -dx } else { dx };
+        let abs_dy = if dy < FIXED_ZERO { -dy } else { dy };
+        let max_component = if abs_dx > abs_dy { abs_dx } else { abs_dy };
+
+        if max_component <= FIXED_ZERO {
+            return;
+        }
+
+        let norm_dx = dx / max_component;
+        let norm_dy = dy / max_component;
+
+        pos.world.x += norm_dx * self.pull_per_tick;
+        pos.world.y += norm_dy * self.pull_per_tick;
+    }
+}
+
+/// Deferred command for AoE damage (e.g., FerretSapper's DemoCharge).
+pub struct AoeDamageCommand {
+    pub source_entity: Entity,
+    pub source_pos: WorldPos,
+    pub radius: Fixed,
+    pub damage: Fixed,
+    pub building_multiplier: Fixed,
+    pub source_owner: u8,
+}
+
+impl Command for AoeDamageCommand {
+    fn apply(self, world: &mut World) {
+        let radius_sq = self.radius * self.radius;
+
+        let source_pos = world
+            .get::<cc_core::components::Position>(self.source_entity)
+            .map(|p| p.world)
+            .unwrap_or(self.source_pos);
+
+        let targets: Vec<(Entity, bool)> = world
+            .query::<(Entity, &cc_core::components::Position, &cc_core::components::Owner, Option<&cc_core::components::Building>)>()
+            .iter(world)
+            .filter(|(e, pos, owner, _)| {
+                *e != self.source_entity
+                    && owner.player_id != self.source_owner
+                    && pos.world.distance_squared(source_pos) <= radius_sq
+            })
+            .map(|(e, _, _, bld)| (e, bld.is_some()))
+            .collect();
+
+        for (target, is_building) in targets {
+            if let Some(mut health) =
+                world.get_mut::<cc_core::components::Health>(target)
+            {
+                let dmg = if is_building {
+                    self.damage * self.building_multiplier
+                } else {
+                    self.damage
+                };
+                health.current -= dmg;
+                if health.current < FIXED_ZERO {
+                    health.current = FIXED_ZERO;
+                }
+            }
+        }
+    }
+}
+
+/// Deferred command to spawn a HairballObstacle entity at a position.
+pub struct SpawnHairballCommand {
+    pub position: WorldPos,
+    pub owner_player_id: u8,
+    pub duration_ticks: u32,
+}
+
+impl Command for SpawnHairballCommand {
+    fn apply(self, world: &mut World) {
+        use cc_core::components::{GridCell, HairballObstacle, Position};
+
+        let grid = self.position.to_grid();
+
+        world.spawn((
+            Position {
+                world: self.position,
+            },
+            GridCell { pos: grid },
+            HairballObstacle {
+                remaining_ticks: self.duration_ticks,
+                owner_player_id: self.owner_player_id,
+            },
+        ));
+    }
+}
+
+/// Deferred command to reveal enemies in a radius (Echolocation Pulse).
+pub struct EcholocationRevealCommand {
+    pub source_pos: WorldPos,
+    pub radius: Fixed,
+    pub reveal_ticks: u32,
+    pub source_owner: u8,
+}
+
+impl Command for EcholocationRevealCommand {
+    fn apply(self, world: &mut World) {
+        use cc_core::components::{Owner, VisibleThroughFog};
+
+        let radius_sq = self.radius * self.radius;
+
+        let targets: Vec<Entity> = world
+            .query::<(Entity, &cc_core::components::Position, &Owner)>()
+            .iter(world)
+            .filter(|(_, pos, owner)| {
+                owner.player_id != self.source_owner
+                    && pos.world.distance_squared(self.source_pos) <= radius_sq
+            })
+            .map(|(e, _, _)| e)
+            .collect();
+
+        for target in targets {
+            if let Some(mut vtf) = world.get_mut::<VisibleThroughFog>(target) {
+                vtf.remaining_ticks = vtf.remaining_ticks.max(self.reveal_ticks);
+            } else {
+                world.entity_mut(target).insert(VisibleThroughFog {
+                    remaining_ticks: self.reveal_ticks,
+                });
+            }
+        }
+    }
+}

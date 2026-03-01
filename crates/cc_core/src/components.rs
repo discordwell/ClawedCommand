@@ -555,6 +555,7 @@ pub struct VisibleThroughFog {
 pub struct DreamSiegeTimer {
     pub ticks_on_target: u32,
     pub current_target: Option<EntityId>,
+    pub last_hp: Fixed,
 }
 
 impl Default for DreamSiegeTimer {
@@ -562,8 +563,33 @@ impl Default for DreamSiegeTimer {
         Self {
             ticks_on_target: 0,
             current_target: None,
+            last_hp: Fixed::ZERO,
         }
     }
+}
+
+/// Tracks Chonk's NineLives passive — revives once on lethal damage.
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+#[derive(Debug, Clone, Copy)]
+pub struct NineLivesTracker {
+    /// Tick when last triggered (0 = never triggered).
+    pub last_triggered_tick: u64,
+}
+
+impl Default for NineLivesTracker {
+    fn default() -> Self {
+        Self {
+            last_triggered_tick: 0,
+        }
+    }
+}
+
+/// A hairball obstacle spawned by Nuisance — blocks terrain for a limited time.
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+#[derive(Debug, Clone, Copy)]
+pub struct HairballObstacle {
+    pub remaining_ticks: u32,
+    pub owner_player_id: u8,
 }
 
 // ---------------------------------------------------------------------------
@@ -740,6 +766,12 @@ mod tests {
     #[test]
     fn faction_from_unknown_returns_none() {
         assert!(Faction::from_faction_str("bogus").is_none());
+    }
+
+    #[test]
+    fn nine_lives_tracker_default() {
+        let tracker = NineLivesTracker::default();
+        assert_eq!(tracker.last_triggered_tick, 0);
     }
 
     #[test]

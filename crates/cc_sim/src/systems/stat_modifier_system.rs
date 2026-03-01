@@ -105,6 +105,12 @@ pub fn stat_modifier_system(
                     modifiers.gather_speed_multiplier = modifiers.gather_speed_multiplier
                         * Fixed::from_bits((1 << 16) + (1 << 16) * 50 / 100); // 1.5
                 }
+                StatusEffectId::PowerNapping => {
+                    // Self-immobilize + can't attack
+                    modifiers.immobilized = true;
+                    modifiers.cannot_attack = true;
+                }
+
                 StatusEffectId::Tagged | StatusEffectId::CcImmune => {
                     // These don't affect stats
                 }

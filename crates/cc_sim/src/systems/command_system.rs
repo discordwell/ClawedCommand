@@ -19,7 +19,15 @@ use cc_core::terrain::FactionId;
 use cc_core::unit_stats::base_stats;
 use cc_core::upgrade_stats::upgrade_stats;
 
-use crate::systems::damage::{AoeCcCommand, RevulsionAoeCommand};
+use cc_core::tuning::{
+    DISGUST_MORTAR_DAMAGE, DISGUST_MORTAR_RADIUS, ECHOLOCATION_REVEAL_TICKS,
+    HAIRBALL_DURATION_TICKS, SHAPED_CHARGE_BUILDING_MULT, SHAPED_CHARGE_DAMAGE,
+    SHAPED_CHARGE_RADIUS,
+};
+use crate::systems::damage::{
+    AoeCcCommand, AoeDamageCommand, EcholocationRevealCommand, RevulsionAoeCommand,
+    SpawnHairballCommand,
+};
 
 /// Process all queued commands for this tick.
 pub fn process_commands(
@@ -571,6 +579,13 @@ pub fn process_commands(
                                         active: is_now_active,
                                     });
                                 }
+                                AbilityId::TacticalUplink => {
+                                    commands.entity(entity).insert(Aura {
+                                        aura_type: AuraType::TacticalUplink,
+                                        radius: def.range,
+                                        active: is_now_active,
+                                    });
+                                }
                                 _ => {}
                             }
                         }
@@ -604,6 +619,70 @@ pub fn process_commands(
                                         push_distance: Fixed::from_num(2),
                                         source_owner: owner_player_id,
                                     });
+                                }
+                                AbilityId::ContagiousYawning => {
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Drowsed,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::Disoriented => {
+                                    // FlyingFox AoE CC
+                                    commands.queue(AoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: WorldPos::zero(),
+                                        radius: def.range,
+                                        effect: StatusEffectId::Disoriented,
+                                        duration: def.duration_ticks,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::Hairball => {
+                                    if let Ok((_, unit_pos, _, _, _)) = query.get(entity) {
+                                        commands.queue(SpawnHairballCommand {
+                                            position: unit_pos.world,
+                                            owner_player_id,
+                                            duration_ticks: HAIRBALL_DURATION_TICKS,
+                                        });
+                                    }
+                                }
+                                AbilityId::DisgustMortar => {
+                                    if let Ok((_, unit_pos, _, _, _)) = query.get(entity) {
+                                        commands.queue(AoeDamageCommand {
+                                            source_entity: entity,
+                                            source_pos: unit_pos.world,
+                                            radius: DISGUST_MORTAR_RADIUS,
+                                            damage: DISGUST_MORTAR_DAMAGE,
+                                            building_multiplier: FIXED_ONE,
+                                            source_owner: owner_player_id,
+                                        });
+                                    }
+                                }
+                                AbilityId::ShapedCharge => {
+                                    if let Ok((_, unit_pos, _, _, _)) = query.get(entity) {
+                                        commands.queue(AoeDamageCommand {
+                                            source_entity: entity,
+                                            source_pos: unit_pos.world,
+                                            radius: SHAPED_CHARGE_RADIUS,
+                                            damage: SHAPED_CHARGE_DAMAGE,
+                                            building_multiplier: SHAPED_CHARGE_BUILDING_MULT,
+                                            source_owner: owner_player_id,
+                                        });
+                                    }
+                                }
+                                AbilityId::EcholocationPulse => {
+                                    if let Ok((_, unit_pos, _, _, _)) = query.get(entity) {
+                                        commands.queue(EcholocationRevealCommand {
+                                            source_pos: unit_pos.world,
+                                            radius: def.range,
+                                            reveal_ticks: ECHOLOCATION_REVEAL_TICKS,
+                                            source_owner: owner_player_id,
+                                        });
+                                    }
                                 }
                                 _ => {}
                             }

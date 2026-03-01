@@ -33,6 +33,8 @@ pub enum StatusEffectId {
     NineLivesReviving,
     /// Pawdler SpiteCarry — gather speed boost.
     SpiteCarryBuff,
+    /// Catnapper PowerNap — self-immobilize + GPU generation.
+    PowerNapping,
     /// Post-CC immunity window.
     CcImmune,
 }
@@ -116,6 +118,7 @@ mod tests {
         assert!(!is_cc(StatusEffectId::Zoomies));
         assert!(!is_cc(StatusEffectId::Tagged));
         assert!(!is_cc(StatusEffectId::SpiteCarryBuff));
+        assert!(!is_cc(StatusEffectId::PowerNapping));
     }
 
     #[test]

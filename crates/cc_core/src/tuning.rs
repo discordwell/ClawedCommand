@@ -51,6 +51,49 @@ pub const ATTACK_MOVE_SIGHT_RANGE: i32 = 8;
 pub const CC_IMMUNITY_TICKS: u32 = 10;
 
 // ---------------------------------------------------------------------------
+// Abilities (Phase 4C)
+// ---------------------------------------------------------------------------
+
+/// GravitationalChonk: pull speed toward Chonk per tick (~0.03 tiles/tick).
+pub const GRAV_PULL_PER_TICK: Fixed = Fixed::from_bits(1966);
+
+/// NineLives: revive HP fraction (30% of max).
+pub const NINE_LIVES_HP_FRACTION: Fixed = Fixed::from_bits(19661);
+
+/// NineLives: GPU cost to trigger.
+pub const NINE_LIVES_GPU_COST: u32 = 25;
+
+/// NineLives: invulnerability duration after revive (ticks).
+pub const NINE_LIVES_REVIVE_TICKS: u32 = 30;
+
+/// NineLives: minimum ticks between triggers.
+pub const NINE_LIVES_COOLDOWN_TICKS: u64 = 600;
+
+/// Hairball obstacle lifetime (ticks).
+pub const HAIRBALL_DURATION_TICKS: u32 = 100;
+
+/// PowerNap: generate 1 GPU every N ticks (0.5 GPU/tick average).
+pub const POWER_NAP_GPU_INTERVAL: u32 = 2;
+
+/// DisgustMortar: AoE damage.
+pub const DISGUST_MORTAR_DAMAGE: Fixed = Fixed::from_bits(15 << 16);
+
+/// DisgustMortar: AoE radius (tiles).
+pub const DISGUST_MORTAR_RADIUS: Fixed = Fixed::from_bits(2 << 16);
+
+/// ShapedCharge: base damage.
+pub const SHAPED_CHARGE_DAMAGE: Fixed = Fixed::from_bits(40 << 16);
+
+/// ShapedCharge: AoE radius (tiles).
+pub const SHAPED_CHARGE_RADIUS: Fixed = Fixed::from_bits(2 << 16);
+
+/// ShapedCharge: damage multiplier vs buildings.
+pub const SHAPED_CHARGE_BUILDING_MULT: Fixed = Fixed::from_bits(3 << 16);
+
+/// EcholocationPulse: reveal duration (ticks).
+pub const ECHOLOCATION_REVEAL_TICKS: u32 = 20;
+
+// ---------------------------------------------------------------------------
 // AI
 // ---------------------------------------------------------------------------
 

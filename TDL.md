@@ -54,7 +54,7 @@
 - [ ] Hardcoded `ToolTier::Advanced` in `cc_client/src/ui/agent_chat.rs` — should read from `FactionToolStates` resource
 - [ ] `FactionId::from_u8(player_id).unwrap_or(CatGPT)` duplicated 19× in `cc_harness/src/server.rs` — extract to `FactionId::for_player(id)` method
 - [ ] Lua behavior binding registration boilerplate (~18 blocks) in `lua_runtime.rs` — consider a macro
-- [ ] `test_dream_siege_resets_on_target_change` is flaky — target acquisition can re-acquire a different target mid-test
+- [x] `test_dream_siege_resets_on_target_change` was flaky — fixed by zeroing target damage in test (T2 damage-reset was interfering)
 - [ ] Update training data scripts (`validate_data.py`, `generate_synthetic.py`, `evaluate.py`) to match current tool list after `execute_strategy` removal
 
 ## From Campaign System Code Review
@@ -65,11 +65,19 @@
 ## From Phase 4B: Ability Implementation
 
 - [ ] LoafMode should block pathing (grid occupancy system needed — currently only applies stat effects)
-- [ ] Yowler network stacking: multiple Yowlers amplify each other's auras (Phase 4C)
-- [ ] Tilted CC trigger at 5 Annoyed stacks (currently stacks but no CC conversion)
-- [ ] Zoomies Chaos Trail: enemy slow zone left behind while Zoomies is active
-- [ ] DreamSiege timer reset on Catnapper taking damage (currently only resets on target change)
+- [ ] Yowler network stacking: multiple Yowlers amplify each other's auras (Phase 4D)
+- [x] Tilted CC trigger at 5 Annoyed stacks — implemented in status_effect_system (Phase 4C)
+- [ ] Zoomies Chaos Trail: enemy slow zone left behind while Zoomies is active (needs trail entity spawning + slow zone system)
+- [x] DreamSiege timer reset on Catnapper taking damage — implemented in ability_effect_system (Phase 4C)
 - [x] `wave_eliminated_fires_when_all_dead` campaign test — fixed by using WaveTracker resource for condition evaluation
+
+## From Phase 4C: Ability Implementation
+
+- [ ] Hairball should block pathing (needs grid occupancy system — currently only spawns obstacle entity)
+- [ ] DisgustMortar position targeting in client input UI (currently uses unit position as center)
+- [ ] EcholocationPulse client-side fog reveal rendering
+- [ ] ShapedCharge explosion VFX
+- [ ] GravitationalChonk: don't pull through buildings (needs pathfinding query for line-of-sight)
 
 ## Campaign Missions (Remaining RON Files)
 
