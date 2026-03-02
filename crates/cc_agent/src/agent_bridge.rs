@@ -16,6 +16,14 @@ use crate::llm_client::ChatMessage;
 use crate::snapshot::GameStateSnapshot;
 use crate::tool_tier::ToolTier;
 
+/// A chunk of streamed LLM output — fed token-by-token into the UI.
+#[derive(Debug, Clone)]
+pub struct TokenChunk {
+    pub source: AgentSource,
+    pub content: String,
+    pub done: bool,
+}
+
 /// Where an agent request originated — determines response routing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AgentSource {
@@ -79,6 +87,7 @@ impl AgentChatLog {
 pub struct AgentChannels {
     pub request_rx: Receiver<AgentRequest>,
     pub response_tx: Sender<AgentResponse>,
+    pub token_tx: Sender<TokenChunk>,
 }
 
 /// Bridge between Bevy (sync) and the background LLM runtime (async).
@@ -86,6 +95,7 @@ pub struct AgentChannels {
 pub struct AgentBridge {
     pub request_tx: Sender<AgentRequest>,
     pub response_rx: Receiver<AgentResponse>,
+    pub token_rx: Receiver<TokenChunk>,
 }
 
 impl AgentBridge {
@@ -93,13 +103,16 @@ impl AgentBridge {
     pub fn new() -> (Self, AgentChannels) {
         let (request_tx, request_rx) = unbounded();
         let (response_tx, response_rx) = unbounded();
+        let (token_tx, token_rx) = unbounded();
         let bridge = Self {
             request_tx,
             response_rx,
+            token_rx,
         };
         let channels = AgentChannels {
             request_rx,
             response_tx,
+            token_tx,
         };
         (bridge, channels)
     }
@@ -109,9 +122,29 @@ impl Default for AgentBridge {
     fn default() -> Self {
         let (request_tx, _request_rx) = unbounded();
         let (_response_tx, response_rx) = unbounded();
+        let (_token_tx, token_rx) = unbounded();
         Self {
             request_tx,
             response_rx,
+            token_rx,
+        }
+    }
+}
+
+/// Bevy system: drain streaming token chunks and append to `editable_source`.
+/// Runs every frame so the UI shows tokens as they arrive.
+pub fn poll_streaming_tokens(
+    bridge: Res<AgentBridge>,
+    mut construct_state: ResMut<ConstructModeState>,
+) {
+    while let Ok(chunk) = bridge.token_rx.try_recv() {
+        match chunk.source {
+            AgentSource::Prompt | AgentSource::ConstructMode => {
+                construct_state.editable_source.push_str(&chunk.content);
+            }
+            _ => {
+                // GameLoop/QuickCommand tokens — currently unused, silently drain
+            }
         }
     }
 }
@@ -527,5 +560,101 @@ That should work."#;
         assert_ne!(source, AgentSource::ConstructMode);
         assert_ne!(source, AgentSource::GameLoop);
         assert_ne!(source, AgentSource::QuickCommand);
+    }
+
+    #[test]
+    fn token_chunk_channel_roundtrip() {
+        let (bridge, channels) = AgentBridge::new();
+
+        // Send token chunks through the channel
+        channels
+            .token_tx
+            .try_send(TokenChunk {
+                source: AgentSource::Prompt,
+                content: "-- Intent".to_string(),
+                done: false,
+            })
+            .expect("send should succeed");
+        channels
+            .token_tx
+            .try_send(TokenChunk {
+                source: AgentSource::Prompt,
+                content: ": gather\n".to_string(),
+                done: false,
+            })
+            .expect("send should succeed");
+        channels
+            .token_tx
+            .try_send(TokenChunk {
+                source: AgentSource::Prompt,
+                content: String::new(),
+                done: true,
+            })
+            .expect("send should succeed");
+
+        // Drain from bridge side
+        let mut assembled = String::new();
+        let mut got_done = false;
+        while let Ok(chunk) = bridge.token_rx.try_recv() {
+            assembled.push_str(&chunk.content);
+            if chunk.done {
+                got_done = true;
+            }
+        }
+
+        assert_eq!(assembled, "-- Intent: gather\n");
+        assert!(got_done);
+    }
+
+    #[test]
+    fn poll_streaming_tokens_appends_to_editable_source() {
+        use bevy::app::App;
+
+        let mut app = App::new();
+        let (bridge, channels) = AgentBridge::new();
+        app.insert_resource(bridge);
+        app.init_resource::<ConstructModeState>();
+        app.add_systems(Update, poll_streaming_tokens);
+
+        // Send a token chunk
+        channels
+            .token_tx
+            .try_send(TokenChunk {
+                source: AgentSource::Prompt,
+                content: "local x = 1".to_string(),
+                done: false,
+            })
+            .expect("send should succeed");
+
+        app.update();
+
+        let state = app.world().resource::<ConstructModeState>();
+        assert_eq!(state.editable_source, "local x = 1");
+    }
+
+    #[test]
+    fn poll_streaming_tokens_ignores_gameloop_source() {
+        use bevy::app::App;
+
+        let mut app = App::new();
+        let (bridge, channels) = AgentBridge::new();
+        app.insert_resource(bridge);
+        app.init_resource::<ConstructModeState>();
+        app.add_systems(Update, poll_streaming_tokens);
+
+        // Send a GameLoop token — should be silently drained
+        channels
+            .token_tx
+            .try_send(TokenChunk {
+                source: AgentSource::GameLoop,
+                content: "ignored content".to_string(),
+                done: false,
+            })
+            .expect("send should succeed");
+
+        app.update();
+
+        let state = app.world().resource::<ConstructModeState>();
+        assert!(state.editable_source.is_empty());
     }
 }

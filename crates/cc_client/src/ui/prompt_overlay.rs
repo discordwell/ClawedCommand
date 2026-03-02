@@ -185,6 +185,11 @@ pub fn prompt_text_input(
                     continue;
                 }
 
+                // Clear previous script so streaming tokens fill a fresh buffer
+                construct_state.editable_source.clear();
+                construct_state.current_script = None;
+                construct_state.test_result = None;
+
                 // Add user message to chat history
                 construct_state.chat_history.push(cc_agent::llm_client::ChatMessage {
                     role: "user".to_string(),
@@ -341,8 +346,11 @@ pub fn update_prompt_display(
 
     // Update response area
     if let Ok(mut text) = response_q.single_mut() {
-        if construct_state.waiting_for_response {
+        if construct_state.waiting_for_response && construct_state.editable_source.is_empty() {
             text.0 = "Minstral is thinking...".to_string();
+        } else if construct_state.waiting_for_response && !construct_state.editable_source.is_empty() {
+            // Streaming in progress — show tokens as they arrive
+            text.0 = format!("{}|", construct_state.editable_source);
         } else if !construct_state.editable_source.is_empty() {
             let mut display = construct_state.editable_source.clone();
             if let Some(result) = &construct_state.test_result {

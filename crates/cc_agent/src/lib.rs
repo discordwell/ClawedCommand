@@ -71,7 +71,9 @@ impl Plugin for AgentPlugin {
         app.add_systems(
             Update,
             (
-                agent_bridge::poll_agent_responses,
+                agent_bridge::poll_streaming_tokens,
+                agent_bridge::poll_agent_responses
+                    .after(agent_bridge::poll_streaming_tokens),
                 decision::agent_decision_system,
             ),
         )

@@ -6,12 +6,18 @@
 
 use bevy::prelude::*;
 
-use crate::agent_bridge::{AgentChannels, AgentRequest, AgentResponse, AgentSource};
+use crate::agent_bridge::{AgentChannels, AgentRequest, AgentResponse, AgentSource, TokenChunk};
 use crate::llm_client::{AgentStatus, ChatMessage, LlmClient, LlmConfig, LlmBackend, OpenAiCompatibleClient, MockLlmClient, LlmResponse};
 use crate::mcp_tools;
 use crate::snapshot;
 #[cfg(test)]
 use crate::snapshot::GameStateSnapshot;
+
+#[cfg(not(target_arch = "wasm32"))]
+use crossbeam_channel::Sender;
+
+#[cfg(target_arch = "wasm32")]
+use async_channel::Sender;
 
 /// Resource holding the channel endpoints for the LLM background thread.
 /// Consumed by `startup_llm_runner` on first frame.
@@ -66,10 +72,14 @@ fn build_client(config: &LlmConfig) -> Box<dyn LlmClient> {
 }
 
 /// Process a single request: call LLM, execute tool calls, return response.
+/// When `streaming_client` is Some and the request is Prompt/ConstructMode (no tools),
+/// uses SSE streaming to send tokens progressively to the UI via `token_tx`.
 async fn process_request(
     client: &dyn LlmClient,
     request: &AgentRequest,
     config: &LlmConfig,
+    streaming_client: Option<&OpenAiCompatibleClient>,
+    token_tx: &Sender<TokenChunk>,
 ) -> AgentResponse {
     let snapshot = request.snapshot.as_ref();
 
@@ -151,7 +161,36 @@ async fn process_request(
     let mut all_commands = Vec::new();
     let mut final_content = String::new();
 
-    // Multi-turn tool calling loop
+    // Use streaming for Prompt/ConstructMode when no tool calls and we have a streaming client
+    let use_streaming = !use_tools
+        && streaming_client.is_some()
+        && matches!(request.source, AgentSource::Prompt | AgentSource::ConstructMode);
+
+    if use_streaming {
+        let sc = streaming_client.unwrap();
+        match sc.stream_complete(&messages, token_tx, request.source).await {
+            Ok(response) => {
+                return AgentResponse {
+                    content: response.content,
+                    commands: vec![],
+                    error: None,
+                    source: request.source,
+                    player_id: request.player_id,
+                };
+            }
+            Err(e) => {
+                return AgentResponse {
+                    content: String::new(),
+                    commands: vec![],
+                    error: Some(e.to_string()),
+                    source: request.source,
+                    player_id: request.player_id,
+                };
+            }
+        }
+    }
+
+    // Multi-turn tool calling loop (non-streaming path)
     for _round in 0..MAX_TOOL_ROUNDS {
         let result = client.complete(&messages, tools).await;
 
@@ -229,26 +268,60 @@ pub fn spawn_llm_runner(
             .expect("Failed to create tokio runtime for LLM runner");
 
         rt.block_on(async move {
-            let client = build_client(&config);
             let AgentChannels {
                 request_rx,
                 response_tx,
+                token_tx,
             } = channels;
 
-            loop {
-                let request = match request_rx.recv() {
-                    Ok(req) => req,
-                    Err(_) => break, // Channel closed
-                };
-
-                let response = process_request(client.as_ref(), &request, &config).await;
-
-                if response_tx.send(response).is_err() {
-                    break; // Response channel closed
+            // Build a single concrete client and derive both the trait object and
+            // the streaming reference from it, avoiding duplicate reqwest::Client instances.
+            match config.backend {
+                LlmBackend::OpenAiCompatible | LlmBackend::Anthropic | LlmBackend::Fallback => {
+                    let client = OpenAiCompatibleClient::new(
+                        config.base_url.clone(),
+                        config.api_key.clone(),
+                        config.model.clone(),
+                        config.temperature,
+                    );
+                    run_loop(&client, Some(&client), &config, request_rx, response_tx, token_tx).await;
+                }
+                _ => {
+                    let client = build_client(&config);
+                    run_loop(client.as_ref(), None, &config, request_rx, response_tx, token_tx).await;
                 }
             }
         });
     })
+}
+
+/// Inner loop: receive requests, process, send responses.
+async fn run_loop(
+    client: &dyn LlmClient,
+    streaming_client: Option<&OpenAiCompatibleClient>,
+    config: &LlmConfig,
+    request_rx: crossbeam_channel::Receiver<AgentRequest>,
+    response_tx: crossbeam_channel::Sender<AgentResponse>,
+    token_tx: Sender<TokenChunk>,
+) {
+    loop {
+        let request = match request_rx.recv() {
+            Ok(req) => req,
+            Err(_) => break,
+        };
+
+        let response = process_request(
+            client,
+            &request,
+            config,
+            streaming_client,
+            &token_tx,
+        ).await;
+
+        if response_tx.send(response).is_err() {
+            break;
+        }
+    }
 }
 
 /// Bevy Startup system: takes the channels from `LlmRunnerChannels`,
@@ -329,7 +402,8 @@ mod tests {
             snapshot: None,
         };
 
-        let response = process_request(&client, &request, &config).await;
+        let (_tx, _rx) = crossbeam_channel::unbounded();
+        let response = process_request(&client, &request, &config, None, &_tx).await;
         assert_eq!(response.content, "Standing by.");
         assert!(response.error.is_none());
         assert!(response.commands.is_empty());
@@ -383,7 +457,8 @@ mod tests {
             snapshot: None,
         };
 
-        let response = process_request(&client, &request, &config).await;
+        let (_tx, _rx) = crossbeam_channel::unbounded();
+        let response = process_request(&client, &request, &config, None, &_tx).await;
         assert!(response.error.is_none());
 
         let captured = client.captured.lock().unwrap();
@@ -440,7 +515,8 @@ mod tests {
             snapshot: None,
         };
 
-        let response = process_request(&client, &request, &config).await;
+        let (_tx, _rx) = crossbeam_channel::unbounded();
+        let response = process_request(&client, &request, &config, None, &_tx).await;
         assert!(response.error.is_none());
         assert_eq!(response.source, AgentSource::Prompt);
 
@@ -564,5 +640,65 @@ mod tests {
         assert!(response.error.is_none());
         // Mock returns "No action needed at this time." — verifies it went through LLM not CLI
         assert!(!response.content.is_empty());
+    }
+
+    #[tokio::test]
+    async fn process_request_no_streaming_fallback_for_mock() {
+        // When streaming_client is None (mock), Prompt requests fall through to
+        // non-streaming complete() — no tokens sent, full response returned.
+        let client = MockLlmClient::new(vec![LlmResponse {
+            content: "-- Intent: gather\nlocal w = ctx:idle_units()\n".to_string(),
+            tool_calls: vec![],
+        }]);
+
+        let mut config = LlmConfig::default();
+        config.finetuned_lua = true;
+
+        let request = AgentRequest {
+            player_id: 0,
+            prompt: "gather resources".into(),
+            tier: ToolTier::Basic,
+            source: AgentSource::Prompt,
+            chat_history: Some(vec![ChatMessage {
+                role: "user".to_string(),
+                content: "gather resources".to_string(),
+            }]),
+            snapshot: None,
+        };
+
+        let (tx, rx) = crossbeam_channel::unbounded();
+        // streaming_client = None → falls through to non-streaming path
+        let response = process_request(&client, &request, &config, None, &tx).await;
+        assert!(response.error.is_none());
+        assert!(response.content.contains("ctx:idle_units"));
+
+        // No streaming tokens should have been sent
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[tokio::test]
+    async fn process_request_gameloop_never_streams() {
+        // Even with a streaming client available, GameLoop uses non-streaming path
+        let client = MockLlmClient::new(vec![LlmResponse {
+            content: "Standing by.".to_string(),
+            tool_calls: vec![],
+        }]);
+
+        let config = LlmConfig::default();
+        let request = AgentRequest {
+            player_id: 0,
+            prompt: "What should I do?".into(),
+            tier: ToolTier::Basic,
+            source: AgentSource::GameLoop,
+            chat_history: None,
+            snapshot: None,
+        };
+
+        let (tx, rx) = crossbeam_channel::unbounded();
+        // Even if we provided a streaming client, GameLoop wouldn't use it
+        // (streaming_client=None here, but the condition also checks source)
+        let response = process_request(&client, &request, &config, None, &tx).await;
+        assert_eq!(response.content, "Standing by.");
+        assert!(rx.try_recv().is_err());
     }
 }

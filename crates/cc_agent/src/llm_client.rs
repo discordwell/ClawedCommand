@@ -1,6 +1,15 @@
 use async_trait::async_trait;
 use bevy::prelude::*;
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
+
+#[cfg(not(target_arch = "wasm32"))]
+use crossbeam_channel::Sender;
+
+#[cfg(target_arch = "wasm32")]
+use async_channel::Sender;
+
+use crate::agent_bridge::{AgentSource, TokenChunk};
 
 /// A single chat message.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -168,6 +177,92 @@ impl OpenAiCompatibleClient {
             .map_err(|e| LlmError::Parse(e.to_string()))?;
 
         parse_openai_response(&json)
+    }
+
+    /// Streaming completion — sends tokens via `token_tx` as they arrive from SSE.
+    /// Returns the full assembled `LlmResponse` when done.
+    pub async fn stream_complete(
+        &self,
+        messages: &[ChatMessage],
+        token_tx: &Sender<TokenChunk>,
+        source: AgentSource,
+    ) -> Result<LlmResponse, LlmError> {
+        let body = serde_json::json!({
+            "model": self.model,
+            "messages": messages,
+            "temperature": self.temperature,
+            "stream": true,
+        });
+
+        let resp = self
+            .client
+            .post(format!("{}/v1/chat/completions", self.base_url))
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| LlmError::Http(e.to_string()))?;
+
+        let mut stream = resp.bytes_stream();
+        let mut full_content = String::new();
+        let mut buffer = String::new();
+
+        while let Some(chunk_result) = stream.next().await {
+            let bytes = chunk_result.map_err(|e| LlmError::Http(e.to_string()))?;
+            buffer.push_str(&String::from_utf8_lossy(&bytes));
+
+            // Process complete SSE lines from the buffer
+            while let Some(line_end) = buffer.find('\n') {
+                let line = buffer[..line_end].trim_end_matches('\r').to_string();
+                buffer = buffer[line_end + 1..].to_string();
+
+                if line.is_empty() || line.starts_with(':') {
+                    continue;
+                }
+
+                if let Some(data) = line.strip_prefix("data: ").or_else(|| line.strip_prefix("data:")) {
+                    if data.trim() == "[DONE]" {
+                        // Send final done chunk
+                        let _ = token_tx.try_send(TokenChunk {
+                            source,
+                            content: String::new(),
+                            done: true,
+                        });
+                        return Ok(LlmResponse {
+                            content: full_content,
+                            tool_calls: vec![],
+                        });
+                    }
+
+                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(data) {
+                        if let Some(delta_content) = json["choices"]
+                            .get(0)
+                            .and_then(|c| c["delta"]["content"].as_str())
+                        {
+                            if !delta_content.is_empty() {
+                                full_content.push_str(delta_content);
+                                let _ = token_tx.try_send(TokenChunk {
+                                    source,
+                                    content: delta_content.to_string(),
+                                    done: false,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Stream ended without [DONE] — return what we have
+        let _ = token_tx.try_send(TokenChunk {
+            source,
+            content: String::new(),
+            done: true,
+        });
+        Ok(LlmResponse {
+            content: full_content,
+            tool_calls: vec![],
+        })
     }
 }
 
@@ -419,5 +514,44 @@ mod tests {
         unsafe {
             std::env::remove_var("CLAWED_LLM_FINETUNED");
         }
+    }
+
+    #[test]
+    fn token_chunk_struct_construction() {
+        use crate::agent_bridge::{AgentSource, TokenChunk};
+
+        let chunk = TokenChunk {
+            source: AgentSource::Prompt,
+            content: "local x".to_string(),
+            done: false,
+        };
+        assert_eq!(chunk.content, "local x");
+        assert!(!chunk.done);
+
+        let done_chunk = TokenChunk {
+            source: AgentSource::ConstructMode,
+            content: String::new(),
+            done: true,
+        };
+        assert!(done_chunk.done);
+        assert!(done_chunk.content.is_empty());
+    }
+
+    #[test]
+    fn parse_sse_delta_content() {
+        // Simulate parsing a single SSE chunk's JSON (the same logic stream_complete uses)
+        let sse_json = r#"{"choices":[{"delta":{"content":"local"},"index":0}]}"#;
+        let json: serde_json::Value = serde_json::from_str(sse_json).unwrap();
+        let delta = json["choices"][0]["delta"]["content"].as_str().unwrap();
+        assert_eq!(delta, "local");
+    }
+
+    #[test]
+    fn parse_sse_delta_empty_content() {
+        // First SSE chunk often has role but no content
+        let sse_json = r#"{"choices":[{"delta":{"role":"assistant"},"index":0}]}"#;
+        let json: serde_json::Value = serde_json::from_str(sse_json).unwrap();
+        let delta = json["choices"][0]["delta"]["content"].as_str();
+        assert!(delta.is_none());
     }
 }
