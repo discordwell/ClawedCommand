@@ -19,7 +19,7 @@ use cc_sim::campaign::mutator_systems;
 use cc_sim::campaign::state::{CampaignPhase, CampaignState, MissionFailedEvent, MissionVictoryEvent, TimeLimitWarningEvent};
 use cc_sim::campaign::triggers::{DialogueEvent, ObjectiveCompleteEvent, TriggerFiredEvent};
 use cc_sim::campaign::wave_spawner::{MissionStarted, WaveTracker};
-use cc_sim::resources::{CommandQueue, ControlGroups, MapResource, PlayerResources, SimClock, SimRng};
+use cc_sim::resources::{CommandQueue, ControlGroups, MapResource, PlayerResources, SimClock, SimRng, VoiceOverride};
 use cc_sim::systems::tick_system::tick_system;
 
 // ---------------------------------------------------------------------------
@@ -34,6 +34,7 @@ fn make_mutator_sim(map: GameMap) -> (World, Schedule) {
     world.insert_resource(ControlGroups::default());
     world.insert_resource(PlayerResources::default());
     world.insert_resource(SimRng::default());
+    world.insert_resource(VoiceOverride::default());
     world.insert_resource(MapResource { map });
     world.init_resource::<CampaignState>();
     world.init_resource::<WaveTracker>();

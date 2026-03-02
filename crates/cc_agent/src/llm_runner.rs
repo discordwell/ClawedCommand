@@ -7,7 +7,6 @@
 use bevy::prelude::*;
 
 use crate::agent_bridge::{AgentChannels, AgentRequest, AgentResponse, AgentSource};
-use crate::claude_cli;
 use crate::llm_client::{AgentStatus, ChatMessage, LlmClient, LlmConfig, LlmBackend, OpenAiCompatibleClient, MockLlmClient, LlmResponse};
 use crate::mcp_tools;
 use crate::snapshot;
@@ -27,45 +26,6 @@ const MAX_TOOL_ROUNDS: usize = 5;
 /// Lua directly (no tool calls, no fenced blocks).
 const FINETUNE_CONSTRUCT_SYSTEM_PROMPT: &str =
     include_str!("../../../training/data/system_prompt.txt");
-
-/// System prompt for `/` key prompt overlay — sent to Claude Code CLI.
-pub const PROMPT_OVERLAY_SYSTEM_PROMPT: &str = r#"You are Minstral, an AI assistant in the RTS game ClawedCommand. The player is asking you to create a Lua script for army automation.
-
-Generate a Lua script using the ctx API. Available methods:
-
-Queries:
-- ctx:my_units(kind?) -> [{id, kind, x, y, idle, moving, attacking, gathering, hp, hp_max, speed, damage, range, owner}]
-- ctx:enemy_units() -> same format
-- ctx:my_buildings(kind?) -> [{id, kind, x, y, under_construction}]
-- ctx:enemy_buildings() -> same format
-- ctx:get_resources() -> {food, gpu_cores, nfts, supply, supply_cap}
-- ctx:resource_deposits() -> [{id, x, y, remaining, kind}]
-- ctx:movement_cost(x, y) -> f64 or nil
-
-Commands:
-- ctx:move_units(ids_table, x, y)
-- ctx:attack(ids_table, target_id)
-- ctx:attack_move(ids_table, x, y)
-- ctx:stop(ids_table)
-- ctx:hold(ids_table)
-- ctx:gather(ids_table, deposit_id)
-- ctx:build(builder_id, building_type_string, x, y)
-- ctx:train(building_id, unit_type_string)
-
-Unit kinds: Pawdler, Nuisance, Chonk, FlyingFox, Hisser, Yowler, Mouser, Catnapper, FerretSapper, MechCommander
-Building kinds: TheBox, CatTree, FishMarket, ServerRack, ScratchingPost, LitterBox, CatFlap, LaserPointer
-
-Proven patterns:
-- GROUP focus fire: calculate army centroid, find closest enemy to centroid, all units attack same target
-- Conditional kite: ranged units retreat when outnumbered, perpendicular movement when path blocked
-- Retreat wounded: pull back units below 30% HP when outnumbered
-- Push to HQ: move toward enemy base when army advantage >= 3
-
-Format: put the script in a single ```lua code block.
-Start with: -- script_name: Short description
-Add: -- Intents: comma, separated, voice, triggers
-
-Keep scripts concise and focused on one behavior."#;
 
 /// System prompt for game-loop AI decisions.
 const GAME_LOOP_SYSTEM_PROMPT: &str = r#"You are Minstral, an AI commander for the catGPT faction in the RTS game ClawedCommand. You control an army of cats in a post-singularity world.
@@ -111,44 +71,14 @@ async fn process_request(
     request: &AgentRequest,
     config: &LlmConfig,
 ) -> AgentResponse {
-    // Prompt source: use Claude Code CLI instead of the LLM API
-    if request.source == AgentSource::Prompt {
-        let mut system_prompt = PROMPT_OVERLAY_SYSTEM_PROMPT.to_string();
-        if let Some(snap) = &request.snapshot {
-            system_prompt.push_str("\n\nCurrent game state:\n");
-            system_prompt.push_str(&snapshot::summarize_snapshot(snap));
-        }
-
-        match claude_cli::invoke_claude_cli(&request.prompt, &system_prompt) {
-            Ok(content) => {
-                return AgentResponse {
-                    content,
-                    commands: Vec::new(),
-                    error: None,
-                    source: request.source,
-                    player_id: request.player_id,
-                };
-            }
-            Err(e) => {
-                return AgentResponse {
-                    content: String::new(),
-                    commands: Vec::new(),
-                    error: Some(e.to_string()),
-                    source: request.source,
-                    player_id: request.player_id,
-                };
-            }
-        }
-    }
-
     let snapshot = request.snapshot.as_ref();
 
     // Build message list
     let mut messages = Vec::new();
 
     match request.source {
-        AgentSource::ConstructMode => {
-            // For fine-tuned models, prepend the training system prompt
+        AgentSource::ConstructMode | AgentSource::Prompt => {
+            // Both ConstructMode and Prompt use the fine-tuned Devstral path
             if config.finetuned_lua {
                 let has_finetune_prompt = request
                     .chat_history
@@ -165,6 +95,13 @@ async fn process_request(
                         content: FINETUNE_CONSTRUCT_SYSTEM_PROMPT.to_string(),
                     });
                 }
+            } else if request.source == AgentSource::Prompt {
+                // Fallback: base model needs a system prompt for Prompt source
+                log::warn!("finetuned_lua not enabled — Prompt using base model system prompt");
+                messages.push(ChatMessage {
+                    role: "system".to_string(),
+                    content: FINETUNE_CONSTRUCT_SYSTEM_PROMPT.to_string(),
+                });
             }
             // Use the full chat history from the request
             if let Some(history) = &request.chat_history {
@@ -176,7 +113,6 @@ async fn process_request(
                 });
             }
         }
-        AgentSource::Prompt => unreachable!("Handled above"),
         AgentSource::GameLoop | AgentSource::QuickCommand => {
             messages.push(ChatMessage {
                 role: "system".to_string(),
@@ -197,7 +133,8 @@ async fn process_request(
     }
 
     // Fine-tuned models generate Lua directly — no tool calls needed
-    let use_tools = !(config.finetuned_lua && request.source == AgentSource::ConstructMode);
+    let use_tools = !(config.finetuned_lua
+        && matches!(request.source, AgentSource::ConstructMode | AgentSource::Prompt));
 
     // Get tool definitions for this tier
     let tool_defs = if use_tools {
@@ -457,6 +394,64 @@ mod tests {
         assert!(messages[0].content.contains("ctx API"));
     }
 
+    #[tokio::test]
+    async fn process_request_prompt_uses_finetuned_path() {
+        use std::sync::Mutex;
+
+        struct CaptureMockClient {
+            captured: Mutex<Vec<Vec<ChatMessage>>>,
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        #[async_trait::async_trait]
+        impl LlmClient for CaptureMockClient {
+            async fn complete(
+                &self,
+                messages: &[ChatMessage],
+                _tools: Option<&[crate::llm_client::ToolDef]>,
+            ) -> Result<LlmResponse, crate::llm_client::LlmError> {
+                self.captured.lock().unwrap().push(messages.to_vec());
+                Ok(LlmResponse {
+                    content: "-- Intent: kite\nlocal h = ctx:my_units('Hisser')\n".to_string(),
+                    tool_calls: vec![],
+                })
+            }
+            fn model_name(&self) -> &str {
+                "capture-mock"
+            }
+        }
+
+        let client = CaptureMockClient {
+            captured: Mutex::new(vec![]),
+        };
+
+        let mut config = LlmConfig::default();
+        config.finetuned_lua = true;
+
+        let request = AgentRequest {
+            player_id: 0,
+            prompt: "kite with hissers".into(),
+            tier: ToolTier::Basic,
+            source: AgentSource::Prompt,
+            chat_history: Some(vec![ChatMessage {
+                role: "user".to_string(),
+                content: "kite with hissers".to_string(),
+            }]),
+            snapshot: None,
+        };
+
+        let response = process_request(&client, &request, &config).await;
+        assert!(response.error.is_none());
+        assert_eq!(response.source, AgentSource::Prompt);
+
+        let captured = client.captured.lock().unwrap();
+        assert!(!captured.is_empty());
+        let messages = &captured[0];
+        // First message should be the fine-tuned system prompt (same as ConstructMode)
+        assert_eq!(messages[0].role, "system");
+        assert!(messages[0].content.contains("ctx API"));
+    }
+
     #[test]
     fn spawn_llm_runner_processes_request_and_responds() {
         use crate::agent_bridge::AgentBridge;
@@ -538,20 +533,20 @@ mod tests {
     }
 
     #[test]
-    fn prompt_source_routes_to_claude_cli() {
+    fn prompt_source_routes_to_devstral() {
         use crate::agent_bridge::AgentBridge;
 
-        let config = LlmConfig::default();
+        let config = LlmConfig::default(); // Mock backend
         let (bridge, channels) = AgentBridge::new();
 
         let _handle = spawn_llm_runner(config, channels);
 
-        // Send a Prompt request — will invoke claude CLI
+        // Send a Prompt request — routes through same LLM path as ConstructMode
         bridge
             .request_tx
             .try_send(AgentRequest {
                 player_id: 0,
-                prompt: "test prompt".into(),
+                prompt: "make my hissers kite".into(),
                 tier: ToolTier::Basic,
                 source: AgentSource::Prompt,
                 chat_history: None,
@@ -561,15 +556,13 @@ mod tests {
 
         let response = bridge
             .response_rx
-            .recv_timeout(std::time::Duration::from_secs(10))
-            .expect("should receive response from Prompt path");
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .expect("should receive response from Prompt/Devstral path");
 
         assert_eq!(response.source, AgentSource::Prompt);
         assert_eq!(response.player_id, 0);
-        // Response will have either content (claude installed) or error (not installed)
-        assert!(
-            !response.content.is_empty() || response.error.is_some(),
-            "Should get content or error from Claude CLI"
-        );
+        assert!(response.error.is_none());
+        // Mock returns "No action needed at this time." — verifies it went through LLM not CLI
+        assert!(!response.content.is_empty());
     }
 }

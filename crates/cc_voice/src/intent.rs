@@ -507,6 +507,7 @@ pub fn voice_intent_system(
     map_res: Res<MapResource>,
     cursor_grid: Res<CursorGridPos>,
     mut cmd_queue: ResMut<cc_sim::resources::CommandQueue>,
+    mut voice_override: ResMut<cc_sim::resources::VoiceOverride>,
     status_query: Query<Option<&StatusEffects>, Without<Dead>>,
     mut pending_filter: Local<Option<UnitKind>>,
     mut pending_selector: Local<Option<SelectorKind>>,
@@ -731,6 +732,10 @@ pub fn voice_intent_system(
 
                 if let Some(c) = cmd {
                     cmd_queue.push_sourced(Some(0), cc_core::commands::CommandSource::VoiceCommand, c);
+
+                    // Suppress script/AI commands for these units while
+                    // the voice command is active.
+                    voice_override.set(&unit_ids);
 
                     // Apply golden speed buff for combat commands
                     if matches!(action, AgentAction::Attack | AgentAction::Charge | AgentAction::Siege) {

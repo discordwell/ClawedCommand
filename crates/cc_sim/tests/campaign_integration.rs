@@ -16,7 +16,7 @@ use cc_sim::campaign::wave_spawner::{WaveTracker, MissionStarted, wave_spawner_s
 use cc_sim::campaign::triggers::{
     trigger_check_system, DialogueEvent, ObjectiveCompleteEvent, TriggerFiredEvent,
 };
-use cc_sim::resources::{CommandQueue, ControlGroups, MapResource, PlayerResources, SimClock, SimRng};
+use cc_sim::resources::{CommandQueue, ControlGroups, MapResource, PlayerResources, SimClock, SimRng, VoiceOverride};
 use cc_sim::systems::tick_system::tick_system;
 
 // ---------------------------------------------------------------------------
@@ -31,6 +31,7 @@ fn make_campaign_sim(map: GameMap) -> (World, Schedule) {
     world.insert_resource(ControlGroups::default());
     world.insert_resource(PlayerResources::default());
     world.insert_resource(SimRng::default());
+    world.insert_resource(VoiceOverride::default());
     world.insert_resource(MapResource { map });
     world.init_resource::<CampaignState>();
     world.init_resource::<WaveTracker>();
@@ -1081,6 +1082,7 @@ fn make_wave_sim(map: GameMap) -> (World, Schedule) {
     world.insert_resource(ControlGroups::default());
     world.insert_resource(PlayerResources::default());
     world.insert_resource(SimRng::default());
+    world.insert_resource(VoiceOverride::default());
     world.insert_resource(MapResource { map });
     world.init_resource::<CampaignState>();
     world.init_resource::<WaveTracker>();

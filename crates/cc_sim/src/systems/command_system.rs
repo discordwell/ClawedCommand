@@ -2,10 +2,10 @@ use bevy::prelude::*;
 use std::collections::VecDeque;
 
 use crate::pathfinding;
-use crate::resources::{CommandQueue, ControlGroups, MapResource, PlayerResources};
+use crate::resources::{CommandQueue, ControlGroups, MapResource, PlayerResources, VoiceOverride};
 use cc_core::abilities::{ability_def, AbilityActivation, AbilityId};
 use cc_core::building_stats::building_stats;
-use cc_core::commands::{EntityId, GameCommand};
+use cc_core::commands::{CommandSource, EntityId, GameCommand};
 use cc_core::components::{
     AbilitySlots, AttackMoveTarget, AttackTarget, BuildOrder, Aura, AuraType, Building, ChasingTarget,
     Gathering, GatherState, HoldPosition, MoveTarget, Owner, Path, Position, Producer,
@@ -63,13 +63,13 @@ pub fn process_commands(
     build_orders: Query<(&BuildOrder, &Owner)>,
     restrictions: Option<Res<crate::campaign::mutator_state::ControlRestrictions>>,
     unit_owners: Query<&Owner, Without<Building>>,
+    mut voice_override: ResMut<VoiceOverride>,
 ) {
     let pending = cmd_queue.drain_interleaved(sim_clock.tick);
 
     for (source, cmd) in pending {
         // Filter commands based on active control restrictions
         if let Some(ref r) = restrictions {
-            use cc_core::commands::CommandSource;
             match source {
                 CommandSource::PlayerInput if !r.mouse_keyboard_enabled => continue,
                 CommandSource::VoiceCommand if !r.voice_enabled => continue,
@@ -80,6 +80,27 @@ pub fn process_commands(
                 continue;
             }
         }
+
+        // Voice override: strip overridden entity IDs from Script/AiAgent
+        // movement commands.  If all IDs are stripped the command is skipped.
+        // VoiceCommand source is allowed through (resets the timer in intent.rs).
+        let cmd = if matches!(source, CommandSource::Script | CommandSource::AiAgent) {
+            match voice_override.filter_command(cmd) {
+                Some(c) => c,
+                None => continue,
+            }
+        } else {
+            // Player input clears voice override for affected units so manual
+            // commands take immediate effect.
+            if source == CommandSource::PlayerInput {
+                if let Some(ids) = cmd.unit_ids() {
+                    for id in ids {
+                        voice_override.overrides.remove(id);
+                    }
+                }
+            }
+            cmd
+        };
         match cmd {
             GameCommand::Move { unit_ids, target } => {
                 for (entity, pos, owner, move_target, path) in query.iter_mut() {

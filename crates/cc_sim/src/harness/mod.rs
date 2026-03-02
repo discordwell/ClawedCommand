@@ -26,7 +26,7 @@ pub use crate::ai::fsm::BotConfig;
 use crate::ai::MultiAiState;
 use crate::resources::{
     CombatStats, CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock,
-    SpawnPositions,
+    SpawnPositions, VoiceOverride,
 };
 use crate::systems::{
     ability_effect_system::ability_effect_system,
@@ -399,6 +399,7 @@ fn make_harness_sim(
     world.insert_resource(ControlGroups::default());
     world.insert_resource(GameState::Playing);
     world.insert_resource(CombatStats::default());
+    world.insert_resource(VoiceOverride::default());
     world.init_resource::<Messages<ProjectileHit>>();
 
     let mut player_res = PlayerResources::default();

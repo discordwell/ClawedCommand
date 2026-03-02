@@ -21,7 +21,7 @@ pub mod victory_system;
 
 use bevy::prelude::*;
 
-use crate::resources::{CombatStats, CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock, SimRng, SpawnPositions};
+use crate::resources::{CombatStats, CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock, SimRng, SpawnPositions, VoiceOverride};
 use cc_core::map::GameMap;
 
 pub struct SimSystemsPlugin;
@@ -42,6 +42,7 @@ impl Plugin for SimSystemsPlugin {
             .init_resource::<SpawnPositions>()
             .init_resource::<SimRng>()
             .init_resource::<CombatStats>()
+            .init_resource::<VoiceOverride>()
             .insert_resource(MapResource {
                 map: GameMap::new(64, 64),
             })

@@ -11,7 +11,7 @@ use cc_core::coords::{GridPos, WorldPos};
 use cc_core::map::GameMap;
 use cc_core::math::Fixed;
 use cc_sim::pathfinding;
-use cc_sim::resources::{CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock, SimRng, SpawnPositions};
+use cc_sim::resources::{CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock, SimRng, SpawnPositions, VoiceOverride};
 use cc_sim::systems::{
     ability_effect_system::ability_effect_system, ability_system::ability_cooldown_system,
     aura_system::aura_system, builder_system::builder_system,
@@ -39,6 +39,7 @@ fn make_sim(map: GameMap) -> (World, Schedule) {
     world.insert_resource(SpawnPositions::default());
     world.insert_resource(SimRng::default());
     world.insert_resource(cc_sim::resources::CombatStats::default());
+    world.insert_resource(VoiceOverride::default());
     world.insert_resource(MapResource { map });
     world.init_resource::<bevy::prelude::Messages<cc_sim::systems::projectile_system::ProjectileHit>>();
 
@@ -2382,6 +2383,7 @@ fn test_ai_builds_on_valid_terrain() {
     world.insert_resource(SpawnPositions::default());
     world.insert_resource(SimRng::default());
     world.insert_resource(cc_sim::resources::CombatStats::default());
+    world.insert_resource(VoiceOverride::default());
 
     // Set up player resources: player 0 (human), player 1 (AI)
     let mut player_res = PlayerResources::default();
@@ -2762,6 +2764,7 @@ fn make_sim_with_pause_support(map: GameMap) -> (World, Schedule) {
     world.insert_resource(SpawnPositions::default());
     world.insert_resource(SimRng::default());
     world.insert_resource(cc_sim::resources::CombatStats::default());
+    world.insert_resource(VoiceOverride::default());
     world.insert_resource(MapResource { map });
     world.init_resource::<bevy::prelude::Messages<cc_sim::systems::projectile_system::ProjectileHit>>();
 

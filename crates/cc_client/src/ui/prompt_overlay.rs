@@ -9,7 +9,6 @@ use bevy::input::ButtonState;
 
 use cc_agent::agent_bridge::{AgentBridge, AgentRequest, AgentSource};
 use cc_agent::construct_mode::{ConstructModeState, ScriptLibrary, ScriptTestResult};
-use cc_agent::events::ScriptRegistration;
 use cc_agent::runner::ScriptRegistry;
 use cc_agent::tool_tier::ToolTier;
 use cc_sim::resources::GameState;
@@ -198,7 +197,7 @@ pub fn prompt_text_input(
                     player_id: local_player.0,
                     prompt,
                     tier: ToolTier::Basic,
-                    source: AgentSource::ConstructMode,
+                    source: AgentSource::Prompt,
                     chat_history: Some(construct_state.chat_history.clone()),
                     snapshot: None, // Snapshot will be built by the runner if needed
                 };
@@ -245,7 +244,9 @@ pub fn prompt_text_input(
                 }
             }
 
-            // S — save script (only when not typing and a script exists)
+            // S — save script to disk & library (only when not typing and a script exists)
+            // Note: Prompt scripts are auto-registered on arrival by poll_agent_responses,
+            // so S only persists to disk and adds to library for cross-session persistence.
             Key::Character(c) if c.as_str() == "s" && construct_state.chat_input.is_empty() => {
                 if let Some(script) = &construct_state.current_script {
                     // Save to disk
@@ -259,18 +260,12 @@ pub fn prompt_text_input(
                         }
                     }
 
-                    // Register in ScriptRegistry for live execution
-                    let mut reg = ScriptRegistration::new(
-                        script.name.clone(),
-                        script.source.clone(),
-                        vec!["on_tick".to_string()],
+                    // Ensure registered (idempotent — may already be auto-registered)
+                    registry.register_lua_script(
+                        &script.name,
+                        &script.source,
                         local_player.0,
                     );
-                    reg.tick_interval = 3;
-
-                    // Remove old version if exists
-                    registry.unregister(&script.name);
-                    registry.register(reg);
 
                     // Add to library if not already there
                     if !library.scripts.iter().any(|s| s.name == script.name) {

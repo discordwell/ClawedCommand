@@ -12,7 +12,7 @@ use cc_core::status_effects::{StatusEffectId, StatusEffects};
 use cc_core::unit_stats::base_stats;
 use cc_sim::resources::{
     CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock, SimRng,
-    SpawnPositions,
+    SpawnPositions, VoiceOverride,
 };
 use cc_sim::systems::{
     ability_effect_system::ability_effect_system, ability_system::ability_cooldown_system,
@@ -40,6 +40,7 @@ fn make_sim() -> (World, Schedule) {
     world.insert_resource(SpawnPositions::default());
     world.insert_resource(SimRng::default());
     world.insert_resource(cc_sim::resources::CombatStats::default());
+    world.insert_resource(VoiceOverride::default());
     world.insert_resource(MapResource {
         map: GameMap::new(32, 32),
     });

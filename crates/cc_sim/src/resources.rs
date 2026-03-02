@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use cc_core::commands::{CommandSource, EntityId, GameCommand};
 use cc_core::components::UpgradeType;
@@ -220,6 +220,77 @@ impl Default for PlayerResources {
     }
 }
 
+/// Tracks units whose commands were issued by voice and should not be
+/// overridden by Script or AiAgent sources until the override expires.
+///
+/// When a voice command targets a set of units, their entity IDs are stored
+/// here with a remaining-tick counter.  The command system skips movement-
+/// related Script/AiAgent commands for these units until the counter reaches 0.
+#[derive(Resource, Default, Debug, Clone)]
+pub struct VoiceOverride {
+    /// Map from entity id → remaining ticks of override.
+    pub overrides: HashMap<EntityId, u32>,
+}
+
+impl VoiceOverride {
+    /// Duration (in sim ticks) that a voice command suppresses script commands.
+    /// At 10 Hz sim rate this is ~10 seconds — long enough that the player's
+    /// intent sticks until combat resolves or they issue a new command.
+    pub const DURATION_TICKS: u32 = 100;
+
+    /// Register a set of entities as voice-overridden.
+    pub fn set(&mut self, entities: &[EntityId]) {
+        for &eid in entities {
+            self.overrides.insert(eid, Self::DURATION_TICKS);
+        }
+    }
+
+    /// Tick down all overrides; remove any that have expired.
+    pub fn tick(&mut self) {
+        self.overrides.retain(|_, remaining| {
+            *remaining = remaining.saturating_sub(1);
+            *remaining > 0
+        });
+    }
+
+    /// Returns true if this entity is currently voice-overridden.
+    pub fn is_overridden(&self, eid: &EntityId) -> bool {
+        self.overrides.contains_key(eid)
+    }
+
+    /// Filter overridden entity IDs out of a movement command.
+    /// Returns `None` if all IDs were stripped (command should be skipped).
+    /// Non-movement commands pass through unchanged.
+    pub fn filter_command(&self, cmd: GameCommand) -> Option<GameCommand> {
+        if self.overrides.is_empty() {
+            return Some(cmd);
+        }
+        match cmd {
+            GameCommand::Move { unit_ids, target } => {
+                let filtered: Vec<EntityId> = unit_ids.into_iter().filter(|id| !self.is_overridden(id)).collect();
+                if filtered.is_empty() { None } else { Some(GameCommand::Move { unit_ids: filtered, target }) }
+            }
+            GameCommand::AttackMove { unit_ids, target } => {
+                let filtered: Vec<EntityId> = unit_ids.into_iter().filter(|id| !self.is_overridden(id)).collect();
+                if filtered.is_empty() { None } else { Some(GameCommand::AttackMove { unit_ids: filtered, target }) }
+            }
+            GameCommand::Attack { unit_ids, target } => {
+                let filtered: Vec<EntityId> = unit_ids.into_iter().filter(|id| !self.is_overridden(id)).collect();
+                if filtered.is_empty() { None } else { Some(GameCommand::Attack { unit_ids: filtered, target }) }
+            }
+            GameCommand::Stop { unit_ids } => {
+                let filtered: Vec<EntityId> = unit_ids.into_iter().filter(|id| !self.is_overridden(id)).collect();
+                if filtered.is_empty() { None } else { Some(GameCommand::Stop { unit_ids: filtered }) }
+            }
+            GameCommand::HoldPosition { unit_ids } => {
+                let filtered: Vec<EntityId> = unit_ids.into_iter().filter(|id| !self.is_overridden(id)).collect();
+                if filtered.is_empty() { None } else { Some(GameCommand::HoldPosition { unit_ids: filtered }) }
+            }
+            other => Some(other),
+        }
+    }
+}
+
 /// Cumulative combat event counters for observability.
 #[derive(Resource, Default, Debug, Clone)]
 pub struct CombatStats {
@@ -227,4 +298,82 @@ pub struct CombatStats {
     pub melee_attack_count: u64,
     /// Total ranged attacks (projectiles spawned).
     pub ranged_attack_count: u64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cc_core::coords::GridPos;
+
+    #[test]
+    fn voice_override_filters_script_commands() {
+        let mut vo = VoiceOverride::default();
+        let e1 = EntityId(100);
+        let e2 = EntityId(200);
+        vo.set(&[e1, e2]);
+
+        // All overridden → command fully suppressed (None)
+        let cmd = GameCommand::AttackMove {
+            unit_ids: vec![e1, e2],
+            target: GridPos::new(10, 10),
+        };
+        assert!(vo.filter_command(cmd).is_none());
+
+        // Mixed: overridden e1 stripped, non-overridden 999 remains
+        let cmd_mixed = GameCommand::Move {
+            unit_ids: vec![e1, EntityId(999)],
+            target: GridPos::new(5, 5),
+        };
+        let filtered = vo.filter_command(cmd_mixed).unwrap();
+        match filtered {
+            GameCommand::Move { unit_ids, .. } => {
+                assert_eq!(unit_ids, vec![EntityId(999)]);
+            }
+            _ => panic!("Expected Move command"),
+        }
+
+        // Non-movement command → passes through unchanged
+        let cmd_train = GameCommand::TrainUnit {
+            building: EntityId(50),
+            unit_kind: cc_core::components::UnitKind::Chonk,
+        };
+        assert!(vo.filter_command(cmd_train).is_some());
+    }
+
+    #[test]
+    fn voice_override_expires_after_ticks() {
+        let mut vo = VoiceOverride::default();
+        let e1 = EntityId(100);
+        vo.set(&[e1]);
+
+        assert!(vo.is_overridden(&e1));
+
+        // Tick down to 1 remaining
+        for _ in 0..VoiceOverride::DURATION_TICKS - 1 {
+            vo.tick();
+        }
+        assert!(vo.is_overridden(&e1));
+
+        // One more tick → expired
+        vo.tick();
+        assert!(!vo.is_overridden(&e1));
+    }
+
+    #[test]
+    fn voice_override_reset_extends_duration() {
+        let mut vo = VoiceOverride::default();
+        let e1 = EntityId(100);
+        vo.set(&[e1]);
+
+        // Tick halfway
+        for _ in 0..50 {
+            vo.tick();
+        }
+        assert!(vo.is_overridden(&e1));
+        assert_eq!(vo.overrides[&e1], VoiceOverride::DURATION_TICKS - 50);
+
+        // Re-set resets the timer
+        vo.set(&[e1]);
+        assert_eq!(vo.overrides[&e1], VoiceOverride::DURATION_TICKS);
+    }
 }

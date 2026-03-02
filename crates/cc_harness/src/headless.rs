@@ -45,6 +45,7 @@ impl HeadlessSim {
         world.insert_resource(ControlGroups::default());
         world.insert_resource(GameState::Playing);
         world.insert_resource(CombatStats::default());
+        world.insert_resource(VoiceOverride::default());
         world.insert_resource(SimRng::default());
         world.insert_resource(SpawnPositions::default());
 

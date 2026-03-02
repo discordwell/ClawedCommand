@@ -115,6 +115,21 @@ impl GameCommand {
     pub fn is_build(&self) -> bool {
         matches!(self, GameCommand::Build { .. })
     }
+
+    /// Return the unit_ids this command targets (if any).
+    pub fn unit_ids(&self) -> Option<&Vec<EntityId>> {
+        match self {
+            GameCommand::Move { unit_ids, .. }
+            | GameCommand::Stop { unit_ids }
+            | GameCommand::Select { unit_ids }
+            | GameCommand::Attack { unit_ids, .. }
+            | GameCommand::AttackMove { unit_ids, .. }
+            | GameCommand::HoldPosition { unit_ids }
+            | GameCommand::GatherResource { unit_ids, .. }
+            | GameCommand::SetControlGroup { unit_ids, .. } => Some(unit_ids),
+            _ => None,
+        }
+    }
 }
 
 /// Target for an ability activation.

@@ -25,7 +25,7 @@ pub enum AgentSource {
     ConstructMode,
     /// Quick command from agent chat panel.
     QuickCommand,
-    /// `/` key prompt overlay — uses Claude Code CLI.
+    /// `/` key prompt overlay — uses fine-tuned Devstral, auto-registers scripts.
     Prompt,
 }
 
@@ -124,6 +124,7 @@ pub fn poll_agent_responses(
     mut construct_state: ResMut<ConstructModeState>,
     mut chat_log: ResMut<AgentChatLog>,
     mut decision_state: ResMut<crate::decision::AgentDecisionState>,
+    mut registry: ResMut<crate::runner::ScriptRegistry>,
 ) {
     while let Ok(response) = bridge.response_rx.try_recv() {
         // Clear in-flight flag for this player so the decision system
@@ -153,6 +154,21 @@ pub fn poll_agent_responses(
                 }
                 if let Some(script) = extract_lua_script(&response.content) {
                     construct_state.editable_source = script.source.clone();
+
+                    // Prompt source: auto-register script in the Lua layer
+                    if response.source == AgentSource::Prompt {
+                        registry.register_lua_script(
+                            &script.name,
+                            &script.source,
+                            response.player_id,
+                        );
+                        log::info!(
+                            "Auto-registered prompt script '{}' for player {}",
+                            script.name,
+                            response.player_id
+                        );
+                    }
+
                     construct_state.current_script = Some(script);
                 }
                 construct_state.waiting_for_response = false;

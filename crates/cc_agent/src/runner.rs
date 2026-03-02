@@ -29,6 +29,20 @@ impl ScriptRegistry {
     pub fn unregister(&mut self, name: &str) {
         self.scripts.retain(|s| s.name != name);
     }
+
+    /// Register a Lua script for on_tick execution (tick_interval=3).
+    /// Replaces any existing script with the same name.
+    pub fn register_lua_script(&mut self, name: &str, source: &str, player_id: u8) {
+        let mut reg = crate::events::ScriptRegistration::new(
+            name.to_string(),
+            source.to_string(),
+            vec!["on_tick".to_string()],
+            player_id,
+        );
+        reg.tick_interval = 3;
+        self.unregister(name);
+        self.register(reg);
+    }
 }
 
 /// Resource: previous tick's snapshot for event diffing, keyed by player_id.
@@ -262,5 +276,20 @@ mod tests {
         registry.unregister("b");
         assert_eq!(registry.scripts.len(), 2);
         assert!(registry.scripts.iter().all(|s| s.name != "b"));
+    }
+
+    #[test]
+    fn register_lua_script_replaces_existing() {
+        let mut registry = ScriptRegistry::default();
+
+        registry.register_lua_script("kite", "local x = ctx:my_units()", 0);
+        assert_eq!(registry.scripts.len(), 1);
+        assert_eq!(registry.scripts[0].tick_interval, 3);
+        assert_eq!(registry.scripts[0].events, vec!["on_tick"]);
+
+        // Re-register with different source — should replace
+        registry.register_lua_script("kite", "local y = ctx:enemy_units()", 0);
+        assert_eq!(registry.scripts.len(), 1);
+        assert!(registry.scripts[0].source.contains("enemy_units"));
     }
 }

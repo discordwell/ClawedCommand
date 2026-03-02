@@ -27,7 +27,7 @@ use cc_sim::harness::{
 };
 use cc_sim::resources::{
     CombatStats, CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock,
-    SpawnPositions,
+    SpawnPositions, VoiceOverride,
 };
 use cc_sim::systems::{
     ability_effect_system::ability_effect_system,
@@ -318,6 +318,7 @@ fn make_arena_sim(
     world.insert_resource(ControlGroups::default());
     world.insert_resource(GameState::Playing);
     world.insert_resource(CombatStats::default());
+    world.insert_resource(VoiceOverride::default());
 
     let mut player_res = PlayerResources::default();
     while player_res.players.len() < 2 {
