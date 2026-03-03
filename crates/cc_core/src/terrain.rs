@@ -192,6 +192,18 @@ pub enum FactionId {
 }
 
 impl FactionId {
+    /// Returns the canonical string name for this faction, matching `Faction::as_str()`.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::CatGPT => "catGPT",
+            Self::TheClawed => "The Clawed",
+            Self::SeekersOfTheDeep => "Seekers of the Deep",
+            Self::TheMurder => "The Murder",
+            Self::LLAMA => "LLAMA",
+            Self::Croak => "Croak",
+        }
+    }
+
     /// Whether this faction can traverse water tiles.
     pub fn can_traverse_water(self) -> bool {
         matches!(self, Self::Croak)

@@ -597,6 +597,18 @@ pub fn execute_script_with_context_tiered(
             ctx_table.set("tick", f)?;
         }
 
+        // ctx:my_faction()
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, _self: LuaValue| {
+                    let ctx = cell.borrow();
+                    Ok(ctx.my_faction().as_str().to_string())
+                })
+                ?;
+            ctx_table.set("my_faction", f)?;
+        }
+
         // ctx:map_size()
         {
             let cell = &ctx_cell;
@@ -1638,6 +1650,28 @@ mod tests {
             if w ~= 64 or h ~= 64 then error("Wrong map size") end
         "#;
         execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn ctx_my_faction() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+
+        // Test catGPT
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+        let script = r#"
+            local f = ctx:my_faction()
+            if f ~= "catGPT" then error("Wrong faction: " .. f) end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+
+        // Test Croak
+        let mut ctx2 = ScriptContext::new(&snap, &map, 0, FactionId::Croak);
+        let script2 = r#"
+            local f = ctx:my_faction()
+            if f ~= "Croak" then error("Wrong faction: " .. f) end
+        "#;
+        execute_script_with_context(script2, &mut ctx2).unwrap();
     }
 
     #[test]
