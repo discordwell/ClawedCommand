@@ -2,8 +2,14 @@
 //!
 //! Replaces the native tokio-based llm_runner for WASM targets.
 //! Uses wasm_bindgen_futures::spawn_local for async execution.
+//! Supports deferred initialization: the agent loop waits for a config
+//! sent via `cc_connect_ai()` before building the LLM client.
+
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::{Mutex, OnceLock};
 
 use bevy::prelude::*;
+use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
 use crate::agent_bridge::{AgentBridge, AgentChannels, AgentRequest, AgentResponse, AgentSource};
@@ -29,16 +35,112 @@ Analyze the game state and issue tool calls to manage your army effectively. Pri
 
 Be efficient — issue only necessary commands. You have limited GPU budget per decision cycle."#;
 
+// --- Status tracking via atomics (accessible from JS) ---
+
+/// Agent status: 0=unconfigured, 1=initializing, 2=ready, 3=error
+static AGENT_STATUS: AtomicU8 = AtomicU8::new(0);
+/// Error message string (only meaningful when status == 3)
+static AGENT_ERROR: Mutex<String> = Mutex::new(String::new());
+/// Config channel: JS sends LlmConfig via cc_connect_ai, the agent loop receives it.
+static CONFIG_TX: OnceLock<async_channel::Sender<LlmConfig>> = OnceLock::new();
+
+fn set_status(code: u8, error_msg: &str) {
+    AGENT_STATUS.store(code, Ordering::Relaxed);
+    if code == 3 {
+        if let Ok(mut e) = AGENT_ERROR.lock() {
+            *e = error_msg.to_string();
+        }
+    }
+}
+
+/// JS-callable: connect the AI agent with the given backend configuration.
+/// Call this from play.html after WASM init to start the agent loop.
+#[wasm_bindgen]
+pub fn cc_connect_ai(backend: &str, model: &str, base_url: &str, api_key: &str) {
+    let config = LlmConfig {
+        backend: match backend {
+            "webllm" => LlmBackend::WebLlm,
+            "ollama" | "remote" => LlmBackend::OpenAiCompatible,
+            "claude-code" => LlmBackend::Anthropic,
+            "fallback" => LlmBackend::Fallback,
+            _ => LlmBackend::Mock,
+        },
+        base_url: if base_url.is_empty() {
+            "http://localhost:11434".into()
+        } else {
+            base_url.into()
+        },
+        api_key: api_key.into(),
+        model: if model.is_empty() {
+            "devstral-small-2-2512".into()
+        } else {
+            model.into()
+        },
+        temperature: 0.2,
+        finetuned_lua: false,
+    };
+
+    match CONFIG_TX.get() {
+        Some(tx) => {
+            if tx.try_send(config).is_err() {
+                log::warn!("cc_connect_ai: config channel full or closed — already connected?");
+                set_status(3, "Already connected or connecting. Refresh to reconnect.");
+            }
+        }
+        None => {
+            log::warn!("cc_connect_ai: WASM agent not initialized yet");
+            set_status(3, "Engine not ready — try again after loading completes.");
+        }
+    }
+}
+
+/// JS-callable: get the current AI agent status as a JSON string.
+/// Returns: `{"status":"unconfigured"|"initializing"|"ready"|"error","error":"..."}`
+#[wasm_bindgen]
+pub fn cc_get_ai_status() -> String {
+    let code = AGENT_STATUS.load(Ordering::Relaxed);
+    let (status_str, error_str) = match code {
+        0 => ("unconfigured", String::new()),
+        1 => ("initializing", String::new()),
+        2 => ("ready", String::new()),
+        3 => {
+            let err = AGENT_ERROR.lock().map(|e| e.clone()).unwrap_or_default();
+            ("error", err)
+        }
+        _ => ("unconfigured", String::new()),
+    };
+
+    serde_json::json!({
+        "status": status_str,
+        "error": error_str,
+    })
+    .to_string()
+}
+
 /// Bevy startup system: creates the AgentBridge with proper channels
 /// and spawns the async agent loop on the browser event loop.
-pub fn init_wasm_agent(mut commands: Commands, config: Option<Res<LlmConfig>>) {
-    let config = config.map(|c| c.clone()).unwrap_or_default();
-
+/// The loop waits for config from `cc_connect_ai` before initializing.
+pub fn init_wasm_agent(mut commands: Commands) {
     let (bridge, channels) = AgentBridge::new();
     commands.insert_resource(bridge);
-    commands.insert_resource(AgentStatus::Initializing(0.0));
+    commands.insert_resource(AgentStatus::Unconfigured);
+
+    // Create the config channel
+    let (tx, rx) = async_channel::bounded::<LlmConfig>(1);
+    if CONFIG_TX.set(tx).is_err() {
+        log::warn!("init_wasm_agent called twice — config channel already set");
+    }
+
+    set_status(0, "");
 
     spawn_local(async move {
+        // Wait for config from JS before starting the agent loop
+        let config = match rx.recv().await {
+            Ok(c) => c,
+            Err(_) => return, // Channel closed — game shutting down
+        };
+
+        set_status(1, "");
         run_agent_loop(config, channels).await;
     });
 }
@@ -106,6 +208,12 @@ async fn run_agent_loop(config: LlmConfig, channels: AgentChannels) {
         if crate::webllm_client::webgpu_available() {
             if let Err(e) = crate::webllm_client::init(&config.model).await {
                 log::warn!("WebLLM init failed: {e}");
+                if config.backend == LlmBackend::WebLlm {
+                    // Hard fail — WebLLM was the only backend
+                    set_status(3, &format!("WebLLM init failed: {e}"));
+                    return;
+                }
+                // For Fallback, continue — other providers will be tried
             }
         }
     }
@@ -115,6 +223,7 @@ async fn run_agent_loop(config: LlmConfig, channels: AgentChannels) {
         "WASM agent loop started with provider: {}",
         client.model_name()
     );
+    set_status(2, "");
 
     let AgentChannels {
         request_rx,

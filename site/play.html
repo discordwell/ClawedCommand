@@ -192,9 +192,9 @@ html, body {
 #ai-panel {
   background: var(--surface);
   border: 1px solid var(--accent-dim);
-  width: 420px;
+  width: 460px;
   max-width: 90vw;
-  max-height: 80vh;
+  max-height: 85vh;
   overflow-y: auto;
   position: relative;
 }
@@ -224,12 +224,39 @@ html, body {
 }
 .ai-panel-close:hover { color: var(--text); }
 
+/* Panel tabs */
+.ai-panel-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--accent-dim);
+}
+.ai-panel-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  padding: 10px 16px;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+}
+.ai-panel-tab:hover { color: var(--text); }
+.ai-panel-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
 .ai-panel-body {
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
+
+.tab-content { display: none; }
+.tab-content.active { display: flex; flex-direction: column; gap: 20px; }
 
 .ai-field {
   display: flex;
@@ -318,6 +345,111 @@ html, body {
   background: rgba(66, 165, 245, 0.2);
 }
 
+/* === SCRIPTS PANEL === */
+.scripts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.scripts-empty {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  opacity: 0.7;
+  text-align: center;
+  padding: 20px 0;
+}
+.script-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: rgba(13, 17, 23, 0.6);
+  border: 1px solid rgba(66, 165, 245, 0.08);
+  gap: 10px;
+}
+.script-info {
+  flex: 1;
+  min-width: 0;
+}
+.script-name {
+  font-size: 0.8rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.script-desc {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+.script-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.script-btn {
+  background: none;
+  border: 1px solid rgba(66, 165, 245, 0.2);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  padding: 3px 8px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: all 0.2s;
+}
+.script-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.script-btn.delete:hover {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+/* Script source viewer */
+.script-viewer {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+.script-viewer.active { display: flex; }
+.script-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.script-viewer-title {
+  font-size: 0.8rem;
+  color: var(--accent);
+}
+.script-viewer-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 2px 8px;
+}
+.script-viewer-close:hover { color: var(--text); }
+.script-source {
+  background: var(--bg);
+  border: 1px solid rgba(66, 165, 245, 0.1);
+  padding: 12px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text);
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
 /* === SCANLINES (subtle) === */
 body::after {
   content: '';
@@ -371,87 +503,115 @@ body::after {
       <h3>AI CONFIGURATION</h3>
       <button class="ai-panel-close" id="ai-panel-close">&times;</button>
     </div>
+
+    <!-- Tabs -->
+    <div class="ai-panel-tabs">
+      <button class="ai-panel-tab active" data-tab="connect">CONNECT</button>
+      <button class="ai-panel-tab" data-tab="scripts">SCRIPTS</button>
+    </div>
+
     <div class="ai-panel-body">
-      <div class="ai-field">
-        <label>Backend</label>
-        <select id="ai-backend">
-          <option value="none">No AI (Manual Control)</option>
-          <option value="webllm">WebLLM (In-Browser)</option>
-          <option value="ollama">Ollama (Local)</option>
-          <option value="remote">Remote API</option>
-          <option value="claude-code">Claude Code</option>
-        </select>
-        <span class="field-hint">Choose how the AI agent connects to an LLM</span>
-      </div>
-
-      <!-- WebLLM fields -->
-      <div class="conditional-fields" data-backend="webllm">
+      <!-- Connect tab -->
+      <div class="tab-content active" id="tab-connect">
         <div class="ai-field">
-          <label>Model</label>
-          <select id="ai-webllm-model">
-            <option value="devstral-small-2-q4">Devstral Small 2 (Q4, 15GB)</option>
-            <option value="llama-3.1-8b-q4">Llama 3.1 8B (Q4, 5GB)</option>
-            <option value="phi-3-mini-q4">Phi-3 Mini (Q4, 2GB)</option>
+          <label>Backend</label>
+          <select id="ai-backend">
+            <option value="none">No AI (Manual Control)</option>
+            <option value="webllm">WebLLM (In-Browser)</option>
+            <option value="ollama">Ollama (Local)</option>
+            <option value="remote">Remote API</option>
+            <option value="claude-code">Claude Code</option>
           </select>
-          <span class="field-hint">Model runs entirely in your browser via WebGPU</span>
+          <span class="field-hint">Choose how the AI agent connects to an LLM</span>
+        </div>
+
+        <!-- WebLLM fields -->
+        <div class="conditional-fields" data-backend="webllm">
+          <div class="ai-field">
+            <label>Model</label>
+            <select id="ai-webllm-model">
+              <option value="devstral-small-2-q4">Devstral Small 2 (Q4, 15GB)</option>
+              <option value="llama-3.1-8b-q4">Llama 3.1 8B (Q4, 5GB)</option>
+              <option value="phi-3-mini-q4">Phi-3 Mini (Q4, 2GB)</option>
+            </select>
+            <span class="field-hint">Model runs entirely in your browser via WebGPU</span>
+          </div>
+        </div>
+
+        <!-- Ollama fields -->
+        <div class="conditional-fields" data-backend="ollama">
+          <div class="ai-field">
+            <label>Endpoint</label>
+            <input type="text" id="ai-ollama-endpoint" value="http://localhost:11434" placeholder="http://localhost:11434">
+          </div>
+          <div class="ai-field">
+            <label>Model</label>
+            <select id="ai-ollama-model">
+              <option value="devstral-small-2">devstral-small-2</option>
+              <option value="llama3.1:8b">llama3.1:8b</option>
+              <option value="codestral:latest">codestral:latest</option>
+            </select>
+            <span class="field-hint">Requires Ollama running locally with CORS enabled</span>
+          </div>
+        </div>
+
+        <!-- Remote API fields -->
+        <div class="conditional-fields" data-backend="remote">
+          <div class="ai-field">
+            <label>API Endpoint</label>
+            <input type="text" id="ai-remote-endpoint" placeholder="https://api.mistral.ai/v1">
+          </div>
+          <div class="ai-field">
+            <label>API Key</label>
+            <input type="password" id="ai-remote-key" placeholder="sk-...">
+          </div>
+          <div class="ai-field">
+            <label>Model</label>
+            <input type="text" id="ai-remote-model" value="devstral-2-2512" placeholder="devstral-2-2512">
+          </div>
+        </div>
+
+        <!-- Claude Code fields -->
+        <div class="conditional-fields" data-backend="claude-code">
+          <div class="ai-field">
+            <label>MCP Endpoint</label>
+            <input type="text" id="ai-claude-endpoint" placeholder="ws://localhost:3000">
+            <span class="field-hint">Connect to a local Claude Code session running the MCP server</span>
+          </div>
+        </div>
+
+        <!-- Connection status -->
+        <div class="ai-status">
+          <span class="ai-status-dot disconnected" id="ai-status-dot"></span>
+          <span id="ai-status-text">Not connected</span>
         </div>
       </div>
 
-      <!-- Ollama fields -->
-      <div class="conditional-fields" data-backend="ollama">
-        <div class="ai-field">
-          <label>Endpoint</label>
-          <input type="text" id="ai-ollama-endpoint" value="http://localhost:11434" placeholder="http://localhost:11434">
+      <!-- Scripts tab -->
+      <div class="tab-content" id="tab-scripts">
+        <div class="scripts-list" id="scripts-list">
+          <div class="scripts-empty">No saved scripts yet. Use the in-game prompt (/ key) to generate scripts, then press S to save.</div>
         </div>
-        <div class="ai-field">
-          <label>Model</label>
-          <select id="ai-ollama-model">
-            <option value="devstral-small-2">devstral-small-2</option>
-            <option value="llama3.1:8b">llama3.1:8b</option>
-            <option value="codestral:latest">codestral:latest</option>
-          </select>
-          <span class="field-hint">Requires Ollama running locally with CORS enabled</span>
+        <div class="script-viewer" id="script-viewer">
+          <div class="script-viewer-header">
+            <span class="script-viewer-title" id="script-viewer-title"></span>
+            <button class="script-viewer-close" id="script-viewer-close">[CLOSE]</button>
+          </div>
+          <pre class="script-source" id="script-source"></pre>
         </div>
-      </div>
-
-      <!-- Remote API fields -->
-      <div class="conditional-fields" data-backend="remote">
-        <div class="ai-field">
-          <label>API Endpoint</label>
-          <input type="text" id="ai-remote-endpoint" placeholder="https://api.mistral.ai/v1">
-        </div>
-        <div class="ai-field">
-          <label>API Key</label>
-          <input type="password" id="ai-remote-key" placeholder="sk-...">
-        </div>
-        <div class="ai-field">
-          <label>Model</label>
-          <input type="text" id="ai-remote-model" value="devstral-2-2512" placeholder="devstral-2-2512">
-        </div>
-      </div>
-
-      <!-- Claude Code fields -->
-      <div class="conditional-fields" data-backend="claude-code">
-        <div class="ai-field">
-          <label>MCP Endpoint</label>
-          <input type="text" id="ai-claude-endpoint" placeholder="ws://localhost:3000">
-          <span class="field-hint">Connect to a local Claude Code session running the MCP server</span>
-        </div>
-      </div>
-
-      <!-- Connection status -->
-      <div class="ai-status">
-        <span class="ai-status-dot disconnected" id="ai-status-dot"></span>
-        <span id="ai-status-text">Not connected</span>
       </div>
     </div>
-    <div class="ai-panel-footer">
+
+    <div class="ai-panel-footer" id="ai-panel-footer">
       <button class="btn-connect" id="ai-connect-btn">CONNECT</button>
     </div>
   </div>
 </div>
 
 <script type="module">
+// --- WASM module reference (set after init) ---
+let wasmExports = null;
+
 // --- Loading progress ---
 const bar = document.getElementById('loading-bar');
 const status = document.getElementById('loading-status');
@@ -470,26 +630,101 @@ function showError(msg) {
   status.textContent = 'FAILED';
 }
 
-// --- WASM init ---
-setProgress(5, 'DOWNLOADING WASM MODULE...');
+// --- Phase 1: Download WASM with real progress (0-50%) ---
+setProgress(2, 'DOWNLOADING WASM MODULE...');
 
 try {
-  const { default: init } = await import('./wasm/cc_client.js');
+  // Fetch the WASM binary with streaming progress
+  const wasmUrl = './wasm/cc_client_bg.wasm';
+  const wasmResponse = await fetch(wasmUrl);
 
-  setProgress(40, 'INITIALIZING ENGINE...');
-  await init();
+  const contentLength = wasmResponse.headers.get('content-length');
+  const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
 
-  setProgress(90, 'LOADING ASSETS...');
+  let loadedBytes = 0;
+  const chunks = [];
 
-  // Give Bevy a moment to start its asset loading
+  if (totalBytes > 0 && wasmResponse.body) {
+    // Stream the download for real progress tracking
+    const reader = wasmResponse.body.getReader();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      chunks.push(value);
+      loadedBytes += value.length;
+
+      const pct = Math.round((loadedBytes / totalBytes) * 48) + 2; // 2-50%
+      const mb = (loadedBytes / (1024 * 1024)).toFixed(1);
+      const totalMb = (totalBytes / (1024 * 1024)).toFixed(1);
+      setProgress(pct, `DOWNLOADING... ${mb}MB / ${totalMb}MB`);
+    }
+  } else {
+    // Fallback: no content-length (e.g., compressed), just await the whole blob
+    const blob = await wasmResponse.blob();
+    const arrayBuf = await blob.arrayBuffer();
+    chunks.push(new Uint8Array(arrayBuf));
+    loadedBytes = arrayBuf.byteLength;
+    setProgress(48, 'DOWNLOAD COMPLETE');
+  }
+
+  // Reassemble chunks into a single buffer
+  const wasmBytes = new Uint8Array(loadedBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    wasmBytes.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  setProgress(50, 'COMPILING WASM...');
+  const wasmModule = await WebAssembly.compile(wasmBytes);
+
+  setProgress(55, 'INITIALIZING ENGINE...');
+  const wasm = await import('./wasm/cc_client.js');
+  await wasm.default(wasmModule);
+  wasmExports = wasm;
+
+  // --- Phase 2: Track Bevy asset loading (55-100%) ---
+  setProgress(60, 'LOADING ASSETS...');
+
+  const assetPollInterval = setInterval(() => {
+    let progress = 0;
+    try {
+      if (wasmExports && wasmExports.cc_get_loading_progress) {
+        progress = wasmExports.cc_get_loading_progress();
+      }
+    } catch (e) {
+      // WASM function not yet available — keep polling
+    }
+
+    // Map 0.0-1.0 asset progress to 60-100% bar
+    const pct = 60 + Math.round(progress * 40);
+    const label = progress >= 1.0 ? 'READY' : `LOADING ASSETS... ${Math.round(progress * 100)}%`;
+    setProgress(pct, label);
+
+    if (progress >= 1.0) {
+      clearInterval(assetPollInterval);
+      setTimeout(() => {
+        screen.classList.add('fade-out');
+        topBar.classList.add('visible');
+        setTimeout(() => { screen.style.display = 'none'; }, 600);
+      }, 300);
+    }
+  }, 200);
+
+  // Timeout: if assets haven't loaded in 30s, show the game anyway
   setTimeout(() => {
-    setProgress(100, 'READY');
-    setTimeout(() => {
-      screen.classList.add('fade-out');
-      topBar.classList.add('visible');
-      setTimeout(() => { screen.style.display = 'none'; }, 600);
-    }, 300);
-  }, 500);
+    clearInterval(assetPollInterval);
+    if (!screen.classList.contains('fade-out')) {
+      setProgress(100, 'READY');
+      setTimeout(() => {
+        screen.classList.add('fade-out');
+        topBar.classList.add('visible');
+        setTimeout(() => { screen.style.display = 'none'; }, 600);
+      }, 300);
+    }
+  }, 30000);
 
 } catch (e) {
   console.error('WASM init failed:', e);
@@ -510,6 +745,23 @@ overlay.addEventListener('click', (e) => {
   if (e.target === overlay) overlay.classList.remove('open');
 });
 
+// Tab switching
+document.querySelectorAll('.ai-panel-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.ai-panel-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+
+    // Show/hide footer connect button based on tab
+    const footer = document.getElementById('ai-panel-footer');
+    footer.style.display = tab.dataset.tab === 'connect' ? 'flex' : 'none';
+
+    // Refresh scripts list when switching to scripts tab
+    if (tab.dataset.tab === 'scripts') refreshScripts();
+  });
+});
+
 // Show/hide conditional fields based on backend selection
 backendSelect.addEventListener('change', () => {
   const val = backendSelect.value;
@@ -518,7 +770,9 @@ backendSelect.addEventListener('change', () => {
   });
 });
 
-// Connect button (stub — wired up when WASM agent is ready)
+// --- AI Connect button (real WASM bridge) ---
+let aiStatusPoll = null;
+
 document.getElementById('ai-connect-btn').addEventListener('click', () => {
   const dot = document.getElementById('ai-status-dot');
   const text = document.getElementById('ai-status-text');
@@ -527,17 +781,184 @@ document.getElementById('ai-connect-btn').addEventListener('click', () => {
   if (backend === 'none') {
     dot.className = 'ai-status-dot disconnected';
     text.textContent = 'Manual control — no AI backend';
+    if (aiStatusPoll) clearInterval(aiStatusPoll);
+    return;
+  }
+
+  // Gather config from the appropriate fields
+  let model = '';
+  let baseUrl = '';
+  let apiKey = '';
+
+  switch (backend) {
+    case 'webllm':
+      model = document.getElementById('ai-webllm-model').value;
+      break;
+    case 'ollama':
+      baseUrl = document.getElementById('ai-ollama-endpoint').value;
+      model = document.getElementById('ai-ollama-model').value;
+      break;
+    case 'remote':
+      baseUrl = document.getElementById('ai-remote-endpoint').value;
+      apiKey = document.getElementById('ai-remote-key').value;
+      model = document.getElementById('ai-remote-model').value;
+      break;
+    case 'claude-code':
+      baseUrl = document.getElementById('ai-claude-endpoint').value;
+      break;
+  }
+
+  // Call the real WASM export
+  try {
+    if (wasmExports && wasmExports.cc_connect_ai) {
+      wasmExports.cc_connect_ai(backend, model, baseUrl, apiKey);
+    } else {
+      text.textContent = 'WASM not loaded yet — try again';
+      return;
+    }
+  } catch (e) {
+    dot.className = 'ai-status-dot error';
+    text.textContent = 'Connect call failed: ' + e.message;
     return;
   }
 
   dot.className = 'ai-status-dot connecting';
   text.textContent = 'Connecting to ' + backend + '...';
 
-  // Simulate connection attempt (replace with real WASM bridge)
-  setTimeout(() => {
-    dot.className = 'ai-status-dot connected';
-    text.textContent = 'Connected to ' + backend;
-  }, 1500);
+  // Poll status until ready or error
+  if (aiStatusPoll) clearInterval(aiStatusPoll);
+  aiStatusPoll = setInterval(() => {
+    try {
+      if (!wasmExports || !wasmExports.cc_get_ai_status) return;
+      const statusJson = wasmExports.cc_get_ai_status();
+      const st = JSON.parse(statusJson);
+
+      switch (st.status) {
+        case 'unconfigured':
+          dot.className = 'ai-status-dot disconnected';
+          text.textContent = 'Not connected';
+          break;
+        case 'initializing':
+          dot.className = 'ai-status-dot connecting';
+          text.textContent = 'Initializing ' + backend + '...';
+          break;
+        case 'ready':
+          dot.className = 'ai-status-dot connected';
+          text.textContent = 'Connected to ' + backend;
+          clearInterval(aiStatusPoll);
+          aiStatusPoll = null;
+          break;
+        case 'error':
+          dot.className = 'ai-status-dot error';
+          text.textContent = st.error || 'Connection failed';
+          clearInterval(aiStatusPoll);
+          aiStatusPoll = null;
+          break;
+      }
+    } catch (e) {
+      // Ignore parse errors
+    }
+  }, 500);
+});
+
+// --- Scripts panel ---
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+function escapeAttr(str) {
+  return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function refreshScripts() {
+  const list = document.getElementById('scripts-list');
+  const viewer = document.getElementById('script-viewer');
+  viewer.classList.remove('active');
+
+  let scripts = [];
+  try {
+    if (wasmExports && wasmExports.cc_list_scripts) {
+      scripts = JSON.parse(wasmExports.cc_list_scripts());
+    }
+  } catch (e) {
+    // WASM not loaded or no scripts
+  }
+
+  if (scripts.length === 0) {
+    list.innerHTML = '<div class="scripts-empty">No saved scripts yet. Use the in-game prompt (/ key) to generate scripts, then press S to save.</div>';
+    return;
+  }
+
+  list.innerHTML = scripts.map(s => `
+    <div class="script-item" data-name="${escapeAttr(s.name)}">
+      <div class="script-info">
+        <div class="script-name">${escapeHtml(s.name)}</div>
+        <div class="script-desc">${escapeHtml(s.description || 'No description')}</div>
+      </div>
+      <div class="script-actions">
+        <button class="script-btn view-btn" data-name="${escapeAttr(s.name)}">VIEW</button>
+        <button class="script-btn download-btn" data-name="${escapeAttr(s.name)}">DL</button>
+        <button class="script-btn delete script-delete-btn" data-name="${escapeAttr(s.name)}">DEL</button>
+      </div>
+    </div>
+  `).join('');
+
+  // View buttons
+  list.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.name;
+      let source = '';
+      try {
+        if (wasmExports && wasmExports.cc_get_script_source) {
+          source = wasmExports.cc_get_script_source(name);
+        }
+      } catch (e) { source = '-- Error loading source'; }
+
+      document.getElementById('script-viewer-title').textContent = name;
+      document.getElementById('script-source').textContent = source;
+      viewer.classList.add('active');
+    });
+  });
+
+  // Download buttons
+  list.querySelectorAll('.download-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.name;
+      let source = '';
+      try {
+        if (wasmExports && wasmExports.cc_get_script_source) {
+          source = wasmExports.cc_get_script_source(name);
+        }
+      } catch (e) { return; }
+
+      const blob = new Blob([source], { type: 'text/x-lua' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name + '.lua';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+  });
+
+  // Delete buttons
+  list.querySelectorAll('.script-delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.name;
+      try {
+        if (wasmExports && wasmExports.cc_delete_script) {
+          wasmExports.cc_delete_script(name);
+        }
+      } catch (e) { /* ignore */ }
+      refreshScripts();
+    });
+  });
+}
+
+// Close script viewer
+document.getElementById('script-viewer-close').addEventListener('click', () => {
+  document.getElementById('script-viewer').classList.remove('active');
 });
 
 // Escape key closes panel

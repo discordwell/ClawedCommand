@@ -1,5 +1,6 @@
 mod cutscene;
 mod input;
+mod loading;
 mod renderer;
 mod setup;
 mod showcase;
@@ -124,6 +125,7 @@ fn main() {
         .add_plugins(renderer::RenderPlugin)
         .add_plugins(input::InputPlugin)
         .add_plugins(ui::UiPlugin)
+        .add_plugins(loading::LoadingPlugin)
         .add_systems(
             PreStartup,
             setup::setup_game

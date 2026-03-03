@@ -30,6 +30,8 @@ pub mod script_persistence;
 #[cfg(target_arch = "wasm32")]
 pub mod fallback_client;
 #[cfg(target_arch = "wasm32")]
+pub mod wasm_persistence;
+#[cfg(target_arch = "wasm32")]
 pub mod wasm_runner;
 #[cfg(target_arch = "wasm32")]
 pub mod webllm_client;

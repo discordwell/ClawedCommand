@@ -232,12 +232,15 @@ pub const ALL_KINDS: [UnitKind; 60] = [
 pub fn generate_unit_sprites(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    mut tracker: ResMut<crate::loading::LoadingTracker>,
 ) {
     let mut handles: Vec<Handle<Image>> = Vec::with_capacity(60);
 
     for kind in ALL_KINDS {
         let asset_path = sprite_file_path(kind);
-        handles.push(asset_server.load(asset_path));
+        let handle = asset_server.load(asset_path);
+        tracker.track(&handle);
+        handles.push(handle);
     }
 
     commands.insert_resource(UnitSprites {

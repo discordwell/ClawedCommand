@@ -254,7 +254,7 @@ pub fn prompt_text_input(
             // so S only persists to disk and adds to library for cross-session persistence.
             Key::Character(c) if c.as_str() == "s" && construct_state.chat_input.is_empty() => {
                 if let Some(script) = &construct_state.current_script {
-                    // Save to disk
+                    // Save to disk (native) or localStorage (WASM)
                     #[cfg(not(target_arch = "wasm32"))]
                     match cc_agent::script_persistence::save_script(script) {
                         Ok(path) => {
@@ -263,6 +263,11 @@ pub fn prompt_text_input(
                         Err(e) => {
                             bevy::log::warn!("Failed to save script: {e}");
                         }
+                    }
+
+                    #[cfg(target_arch = "wasm32")]
+                    if let Err(e) = cc_agent::wasm_persistence::save_script(script) {
+                        bevy::log::warn!("Failed to save script to localStorage: {e}");
                     }
 
                     // Ensure registered (idempotent — may already be auto-registered)

@@ -1,5 +1,12 @@
 # Oldpad - ClawedCommand (Archived Session Summaries)
 
+- **2026-03-02T04:00:00Z** — Whisper Voice Pipeline Replacement: Replaced TC-ResNet8 with whisper-rs (Whisper tiny.en). All 31 cc_voice tests pass.
+- **2026-03-01T21:30:00Z** — Local Inference Pipeline Complete: Ollama + devstral-small-2 scores 59/60 on Lua test suite. LoRA adapter incompatible with Ollama/MLX. Base model approach is production-ready.
+- **2026-03-01T22:00:00Z** — Voice Pipeline Activation: Downloaded Silero VAD v5 ONNX (2.3MB) and trained TC-ResNet8 keyword classifier (119 classes, 262K params, 99.8% val accuracy on TTS data, 1059KB ONNX). All 62 cc_voice tests pass.
+- **2026-03-01T18:00:00Z** — Cutscene Dialogue Demo System: Created cutscene.rs with 3 cutscene mission builders. Upgraded dialogue.rs with portrait rendering. 92 cc_client tests pass.
+- **2026-03-01T13:30:00Z** — Demo Mode: Canyon Battle Map (Stages 0-3). 80x48 canyon battle, --demo CLI flag, expanded 10→20 unit sprites, wave_spawner pathfinding fix. 376 tests pass.
+- **2026-03-01T12:30:00Z** — Campaign Mission Mutator System (Phases A-C+E): 17 MissionMutator variants, ControlRestrictions, environmental hazards, 20 integration tests. 658 tests pass.
+- **2026-03-01T11:30:00Z** — 2D Animation + Projectile Visuals + VFX System: AnimState framework, ProjectileKind enum, particle VFX. 620+ tests pass.
 - **2026-03-01T280:00:00Z** — Non-CatGPT Faction Balance Pass: CRITICAL BUG FIX — resource_system.rs only accepted CatGPT buildings (TheBox/FishMarket) as valid dropoff points, all other factions had zero economy. Added is_dropoff_building() covering all 12 HQ+depot buildings. Tuned all 5 faction personalities. Final balance: TheClawed 2/10, Seekers 2/10, Murder 5/10, Llama 1/10, Croak 4/10 vs CatGPT.
 - **2026-03-01T270:00:00Z** — Voice Command Gaps Implementation: Wired 4 stubbed voice command categories (CursorGridPos, "Nearby" selector, position-targeted commands, build command). 11 new tests, 572 workspace tests pass.
 - **2026-03-01T260:00:00Z** — Voice KD Pipeline Running on Brev L40S. Teacher pretrain COMPLETE: TC-ResNet14-Wide 97.0% val acc. Teacher finetune IN PROGRESS: 118 game classes, val 98.3%.

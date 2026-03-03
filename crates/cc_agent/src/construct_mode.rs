@@ -53,12 +53,22 @@ impl ScriptLibrary {
             },
         ];
 
-        // Load player-saved scripts from disk
+        // Load player-saved scripts from disk (native) or localStorage (WASM)
         #[cfg(not(target_arch = "wasm32"))]
         {
             let player_scripts = crate::script_persistence::load_player_scripts();
             for ps in player_scripts {
                 // Avoid duplicating starter scripts
+                if !scripts.iter().any(|s| s.name == ps.name) {
+                    scripts.push(ps);
+                }
+            }
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            let player_scripts = crate::wasm_persistence::load_player_scripts();
+            for ps in player_scripts {
                 if !scripts.iter().any(|s| s.name == ps.name) {
                     scripts.push(ps);
                 }

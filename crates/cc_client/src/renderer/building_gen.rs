@@ -277,6 +277,7 @@ pub fn generate_building_sprites(
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
     asset_server: Res<AssetServer>,
+    mut tracker: ResMut<crate::loading::LoadingTracker>,
 ) {
     let mut handles: Vec<Handle<Image>> = Vec::with_capacity(48);
     let mut per_art: Vec<bool> = Vec::with_capacity(48);
@@ -287,7 +288,9 @@ pub fn generate_building_sprites(
         let use_disk = super::asset_exists_on_disk(&asset_path);
 
         if use_disk {
-            handles.push(asset_server.load(asset_path));
+            let handle = asset_server.load(asset_path);
+            tracker.track(&handle);
+            handles.push(handle);
             per_art.push(true);
         } else {
             let img = generate_building_image(kind);

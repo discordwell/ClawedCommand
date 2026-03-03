@@ -57,7 +57,7 @@ fn track_loading_system(
         .filter(|id| {
             matches!(
                 asset_server.get_load_state(**id),
-                Some(bevy::asset::LoadState::Loaded)
+                Some(bevy::asset::LoadState::Loaded | bevy::asset::LoadState::Failed(_))
             )
         })
         .count();
