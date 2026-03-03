@@ -336,8 +336,7 @@ pub fn setup_game(
             let screen = world_to_screen(world);
             let elevation_offset = map_res.map.elevation_at(grid) as f32 * ELEVATION_PIXEL_OFFSET;
             let stats = base_stats(kind);
-            let art_loaded = unit_sprites.as_ref().map_or(false, |s| s.art_loaded);
-            let scale = unit_scale(kind, art_loaded);
+            let scale = unit_scale(kind);
             let tint = team_color(sp.player);
 
             if let Some(ref sprites) = unit_sprites {
@@ -489,147 +488,77 @@ mod tests {
     }
 }
 
-/// Scale factor per unit kind.
-/// When `art_loaded` is true, uses smaller scales for 128px art sprites.
-/// When false, uses original procedural scales (2× sprite resolution).
-pub fn unit_scale(kind: UnitKind, art_loaded: bool) -> f32 {
-    if art_loaded {
-        match kind {
+/// Scale factor per unit kind (for 128px art sprites).
+/// Sprite images are 128px; tiles are 64px wide.
+/// scale = (fraction_of_tile × 64) / 128 = fraction / 2.
+/// Target range: 1/3 tile (workers) → full tile (heroes).
+pub fn unit_scale(kind: UnitKind) -> f32 {
+    match kind {
             // Cat units
-            UnitKind::Pawdler => 0.19,
-            UnitKind::Nuisance => 0.20,
-            UnitKind::Mouser => 0.19,
-            UnitKind::FerretSapper => 0.22,
-            UnitKind::Hisser => 0.23,
-            UnitKind::FlyingFox => 0.22,
-            UnitKind::Yowler => 0.25,
-            UnitKind::Catnapper => 0.28,
-            UnitKind::Chonk => 0.30,
-            UnitKind::MechCommander => 0.38,
-            // Clawed (mice) units
-            UnitKind::Nibblet => 0.17,
-            UnitKind::Swarmer => 0.16,
-            UnitKind::Gnawer => 0.18,
-            UnitKind::Shrieker => 0.18,
-            UnitKind::Tunneler => 0.19,
-            UnitKind::Sparks => 0.18,
-            UnitKind::Quillback => 0.26,
-            UnitKind::Whiskerwitch => 0.22,
-            UnitKind::Plaguetail => 0.22,
-            UnitKind::WarrenMarshal => 0.34,
+            UnitKind::Pawdler => 0.167,         // worker — 1/3 tile
+            UnitKind::Nuisance => 0.19,          // harasser — 3/8 tile
+            UnitKind::Mouser => 0.19,            // stealth — 3/8 tile
+            UnitKind::FerretSapper => 0.25,      // demo — 1/2 tile
+            UnitKind::Hisser => 0.25,            // ranged — 1/2 tile
+            UnitKind::FlyingFox => 0.25,         // air — 1/2 tile
+            UnitKind::Yowler => 0.31,            // support — 5/8 tile
+            UnitKind::Catnapper => 0.375,        // siege — 3/4 tile
+            UnitKind::Chonk => 0.375,            // tank — 3/4 tile
+            UnitKind::MechCommander => 0.50,     // hero — full tile
+            // Clawed (mice) — small faction, slightly smaller overall
+            UnitKind::Nibblet => 0.167,          // worker
+            UnitKind::Swarmer => 0.167,          // swarm — tiny
+            UnitKind::Gnawer => 0.19,            // light melee
+            UnitKind::Shrieker => 0.25,          // ranged
+            UnitKind::Tunneler => 0.25,          // medium
+            UnitKind::Sparks => 0.25,            // medium
+            UnitKind::Quillback => 0.31,         // heavy
+            UnitKind::Whiskerwitch => 0.31,      // support
+            UnitKind::Plaguetail => 0.31,        // specialist
+            UnitKind::WarrenMarshal => 0.50,     // hero
             // Murder (corvids) — aerial, fragile
-            UnitKind::MurderScrounger => 0.17,
-            UnitKind::Sentinel => 0.18,
-            UnitKind::Rookclaw => 0.19,
-            UnitKind::Magpike => 0.18,
-            UnitKind::Magpyre => 0.18,
-            UnitKind::Jaycaller => 0.20,
-            UnitKind::Jayflicker => 0.20,
-            UnitKind::Dusktalon => 0.22,
-            UnitKind::Hootseer => 0.25,
-            UnitKind::CorvusRex => 0.36,
-            // Seekers (badgers) — heavy, slow
-            UnitKind::Delver => 0.19,
-            UnitKind::Ironhide => 0.24,
-            UnitKind::Cragback => 0.28,
-            UnitKind::Warden => 0.22,
-            UnitKind::Sapjaw => 0.22,
-            UnitKind::Wardenmother => 0.30,
-            UnitKind::SeekerTunneler => 0.20,
-            UnitKind::Embermaw => 0.24,
-            UnitKind::Dustclaw => 0.20,
-            UnitKind::Gutripper => 0.28,
+            UnitKind::MurderScrounger => 0.167,  // worker
+            UnitKind::Sentinel => 0.19,          // scout
+            UnitKind::Rookclaw => 0.25,          // melee
+            UnitKind::Magpike => 0.25,           // ranged
+            UnitKind::Magpyre => 0.25,           // caster
+            UnitKind::Jaycaller => 0.25,         // medium
+            UnitKind::Jayflicker => 0.25,        // medium
+            UnitKind::Dusktalon => 0.31,         // heavy
+            UnitKind::Hootseer => 0.375,         // support — large owl
+            UnitKind::CorvusRex => 0.50,         // hero
+            // Seekers (badgers) — heavy faction, generally larger
+            UnitKind::Delver => 0.19,            // worker — badgers are bigger
+            UnitKind::Ironhide => 0.31,          // heavy
+            UnitKind::Cragback => 0.375,         // tank
+            UnitKind::Warden => 0.25,            // medium
+            UnitKind::Sapjaw => 0.25,            // medium
+            UnitKind::Wardenmother => 0.375,     // heavy support
+            UnitKind::SeekerTunneler => 0.25,    // medium
+            UnitKind::Embermaw => 0.31,          // heavy ranged
+            UnitKind::Dustclaw => 0.25,          // medium
+            UnitKind::Gutripper => 0.50,         // hero
             // Croak (axolotls) — medium, regenerating
-            UnitKind::Ponderer => 0.18,
-            UnitKind::Regeneron => 0.19,
-            UnitKind::Broodmother => 0.24,
-            UnitKind::Gulper => 0.26,
-            UnitKind::Eftsaber => 0.19,
-            UnitKind::Croaker => 0.22,
-            UnitKind::Leapfrog => 0.21,
-            UnitKind::Shellwarden => 0.26,
-            UnitKind::Bogwhisper => 0.22,
-            UnitKind::MurkCommander => 0.34,
+            UnitKind::Ponderer => 0.167,         // worker
+            UnitKind::Regeneron => 0.19,         // light
+            UnitKind::Broodmother => 0.31,       // large support
+            UnitKind::Gulper => 0.31,            // heavy
+            UnitKind::Eftsaber => 0.25,          // medium melee
+            UnitKind::Croaker => 0.25,           // medium ranged
+            UnitKind::Leapfrog => 0.25,          // medium
+            UnitKind::Shellwarden => 0.31,       // heavy defense
+            UnitKind::Bogwhisper => 0.31,        // support
+            UnitKind::MurkCommander => 0.50,     // hero
             // LLAMA (raccoons) — medium, scrappy
-            UnitKind::Scrounger => 0.17,
-            UnitKind::Bandit => 0.18,
-            UnitKind::HeapTitan => 0.28,
-            UnitKind::GlitchRat => 0.18,
-            UnitKind::PatchPossum => 0.20,
-            UnitKind::GreaseMonkey => 0.22,
-            UnitKind::DeadDropUnit => 0.19,
-            UnitKind::Wrecker => 0.25,
-            UnitKind::DumpsterDiver => 0.22,
-            UnitKind::JunkyardKing => 0.36,
-        }
-    } else {
-        match kind {
-            // Cat units
-            UnitKind::Pawdler => 0.35,
-            UnitKind::Nuisance => 0.5,
-            UnitKind::Mouser => 0.45,
-            UnitKind::FerretSapper => 0.45,
-            UnitKind::Hisser => 0.5,
-            UnitKind::FlyingFox => 0.4,
-            UnitKind::Yowler => 0.55,
-            UnitKind::Catnapper => 0.65,
-            UnitKind::Chonk => 0.7,
-            UnitKind::MechCommander => 0.8,
-            // Clawed (mice) units
-            UnitKind::Nibblet => 0.30,
-            UnitKind::Swarmer => 0.40,
-            UnitKind::Gnawer => 0.40,
-            UnitKind::Shrieker => 0.45,
-            UnitKind::Tunneler => 0.40,
-            UnitKind::Sparks => 0.40,
-            UnitKind::Quillback => 0.60,
-            UnitKind::Whiskerwitch => 0.50,
-            UnitKind::Plaguetail => 0.50,
-            UnitKind::WarrenMarshal => 0.70,
-            // Murder (corvids) — aerial, fragile
-            UnitKind::MurderScrounger => 0.35,
-            UnitKind::Sentinel => 0.40,
-            UnitKind::Rookclaw => 0.42,
-            UnitKind::Magpike => 0.40,
-            UnitKind::Magpyre => 0.40,
-            UnitKind::Jaycaller => 0.45,
-            UnitKind::Jayflicker => 0.45,
-            UnitKind::Dusktalon => 0.48,
-            UnitKind::Hootseer => 0.55,
-            UnitKind::CorvusRex => 0.75,
-            // Seekers (badgers) — heavy, slow
-            UnitKind::Delver => 0.38,
-            UnitKind::Ironhide => 0.55,
-            UnitKind::Cragback => 0.60,
-            UnitKind::Warden => 0.50,
-            UnitKind::Sapjaw => 0.50,
-            UnitKind::Wardenmother => 0.65,
-            UnitKind::SeekerTunneler => 0.42,
-            UnitKind::Embermaw => 0.50,
-            UnitKind::Dustclaw => 0.42,
-            UnitKind::Gutripper => 0.60,
-            // Croak (axolotls) — medium, regenerating
-            UnitKind::Ponderer => 0.38,
-            UnitKind::Regeneron => 0.40,
-            UnitKind::Broodmother => 0.52,
-            UnitKind::Gulper => 0.55,
-            UnitKind::Eftsaber => 0.42,
-            UnitKind::Croaker => 0.48,
-            UnitKind::Leapfrog => 0.45,
-            UnitKind::Shellwarden => 0.55,
-            UnitKind::Bogwhisper => 0.48,
-            UnitKind::MurkCommander => 0.72,
-            // LLAMA (raccoons) — medium, scrappy
-            UnitKind::Scrounger => 0.35,
-            UnitKind::Bandit => 0.40,
-            UnitKind::HeapTitan => 0.60,
-            UnitKind::GlitchRat => 0.40,
-            UnitKind::PatchPossum => 0.42,
-            UnitKind::GreaseMonkey => 0.48,
-            UnitKind::DeadDropUnit => 0.42,
-            UnitKind::Wrecker => 0.55,
-            UnitKind::DumpsterDiver => 0.48,
-            UnitKind::JunkyardKing => 0.75,
-        }
+            UnitKind::Scrounger => 0.167,        // worker
+            UnitKind::Bandit => 0.19,            // light
+            UnitKind::HeapTitan => 0.375,        // tank
+            UnitKind::GlitchRat => 0.19,         // light scout
+            UnitKind::PatchPossum => 0.25,       // medium
+            UnitKind::GreaseMonkey => 0.25,      // medium
+            UnitKind::DeadDropUnit => 0.25,      // medium
+            UnitKind::Wrecker => 0.31,           // heavy
+            UnitKind::DumpsterDiver => 0.31,     // specialist
+            UnitKind::JunkyardKing => 0.50,      // hero
     }
 }
