@@ -11,13 +11,13 @@ use cc_core::unit_stats::base_stats;
 use cc_sim::campaign::state::CampaignState;
 use cc_sim::resources::{MapResource, PlayerResources, SpawnPositions};
 
+use crate::cutscene::CutsceneCamera;
 use crate::renderer::animation::{AnimIndices, AnimState, AnimTimer, PrevAnimState};
 use crate::renderer::building_gen::{BuildingSprites, building_kind_index, building_scale};
-use crate::renderer::tweens::TweenState;
 use crate::renderer::buildings::SpriteBuilding;
 use crate::renderer::resource_nodes::ResourceNodeSprites;
+use crate::renderer::tweens::TweenState;
 use crate::renderer::unit_gen::{UnitSprites, kind_index};
-use crate::cutscene::CutsceneCamera;
 use crate::renderer::zoom_lod::{self, ZoomTier};
 
 /// Marker to distinguish unit entities from tile entities in queries.
@@ -46,13 +46,13 @@ pub struct TeamMaterials {
 /// (Bevy's Sprite.color is multiplicative — strong tints crush dark pixels).
 pub fn team_color(player_id: u8) -> Color {
     match player_id {
-        0 => Color::srgb(0.7, 0.8, 1.0),  // catGPT — soft blue
-        1 => Color::srgb(1.0, 0.7, 0.7),  // Murder — soft red
-        2 => Color::srgb(1.0, 0.88, 0.6), // Clawed — warm amber
+        0 => Color::srgb(0.7, 0.8, 1.0),   // catGPT — soft blue
+        1 => Color::srgb(1.0, 0.7, 0.7),   // Murder — soft red
+        2 => Color::srgb(1.0, 0.88, 0.6),  // Clawed — warm amber
         3 => Color::srgb(0.65, 0.95, 0.7), // Seekers — forest green
         4 => Color::srgb(0.6, 0.95, 0.95), // Croak — teal
-        5 => Color::srgb(1.0, 0.78, 0.5), // LLAMA — orange
-        _ => Color::srgb(1.0, 0.7, 0.7),  // default — soft red
+        5 => Color::srgb(1.0, 0.78, 0.5),  // LLAMA — orange
+        _ => Color::srgb(1.0, 0.7, 0.7),   // default — soft red
     }
 }
 
@@ -124,7 +124,12 @@ pub fn setup_game(
     let map_def = if let Some(ref mission) = campaign.current_mission {
         // Build map from mission definition
         match &mission.map {
-            MissionMap::Inline { width, height, tiles, elevation } => {
+            MissionMap::Inline {
+                width,
+                height,
+                tiles,
+                elevation,
+            } => {
                 let map = game_map_from_inline(*width, *height, tiles, elevation);
                 map_res.map = map;
                 None // No MapDefinition — skip resource deposits
@@ -202,232 +207,303 @@ pub fn setup_game(
     // --- Spawn resource deposits (skip in mission mode — no economy) ---
     // --- Record spawn positions and spawn base + units (skip in mission mode — wave_spawner handles it) ---
     if let Some(ref map_def) = map_def {
-
-    for resource in &map_def.resources {
-        let grid = GridPos::new(resource.pos.0, resource.pos.1);
-        let world = WorldPos::from_grid(grid);
-        let screen = world_to_screen(world);
-        let elevation_offset = map_res.map.elevation_at(grid) as f32 * ELEVATION_PIXEL_OFFSET;
-
-        let (resource_type, remaining) = match resource.kind {
-            ResourceKind::FishPond => (ResourceType::Food, 1500),
-            ResourceKind::BerryBush => (ResourceType::Food, 800),
-            ResourceKind::GpuDeposit => (ResourceType::GpuCores, 1000),
-            ResourceKind::MonkeyMine => (ResourceType::Nft, 500),
-        };
-
-        if let Some(ref res_sprites) = resource_sprites {
-            commands.spawn((
-                Position { world },
-                Velocity::zero(),
-                GridCell { pos: grid },
-                ResourceDeposit { resource_type, remaining },
-                Sprite {
-                    image: res_sprites.get(resource.kind),
-                    ..default()
-                },
-                Transform::from_xyz(screen.x, -screen.y + elevation_offset, depth_z(world) - 0.1),
-            ));
-        } else {
-            // Fallback: colored rectangle
-            let color = match resource.kind {
-                ResourceKind::FishPond => Color::srgb(0.2, 0.6, 0.9),
-                ResourceKind::BerryBush => Color::srgb(0.8, 0.3, 0.5),
-                ResourceKind::GpuDeposit => Color::srgb(0.3, 0.9, 0.3),
-                ResourceKind::MonkeyMine => Color::srgb(0.9, 0.7, 0.1),
-            };
-            let deposit_mesh = meshes.add(Rectangle::new(20.0, 20.0));
-            let deposit_mat = materials.add(ColorMaterial::from_color(color));
-            commands.spawn((
-                Position { world },
-                Velocity::zero(),
-                GridCell { pos: grid },
-                ResourceDeposit { resource_type, remaining },
-                Mesh2d(deposit_mesh),
-                MeshMaterial2d(deposit_mat),
-                Transform::from_xyz(screen.x, -screen.y + elevation_offset, depth_z(world) - 0.1),
-            ));
-        }
-    }
-
-    // --- Record spawn positions and spawn base + units per player ---
-    let mut total_spawned_per_player = [0u32; 2];
-
-    for sp in &map_def.spawn_points {
-        let base_pos = GridPos::new(sp.pos.0, sp.pos.1);
-
-        // Record spawn position for AI
-        spawn_positions.positions.push((sp.player, base_pos));
-
-        // --- Spawn TheBox (HQ) at spawn point center ---
-        let box_world = WorldPos::from_grid(base_pos);
-        let box_screen = world_to_screen(box_world);
-        let box_elev = map_res.map.elevation_at(base_pos) as f32 * ELEVATION_PIXEL_OFFSET;
-        let bstats = building_stats(BuildingKind::TheBox);
-
-        if let Some(ref bsprites) = building_sprites {
-            let idx = building_kind_index(BuildingKind::TheBox);
-            let image = bsprites.sprites[idx].clone();
-            let has_art = bsprites.has_art.get(idx).copied().unwrap_or(false);
-            let scale = building_scale(BuildingKind::TheBox, has_art);
-            let tint = team_color(sp.player);
-            commands.spawn((
-                Position { world: box_world },
-                Velocity::zero(),
-                GridCell { pos: base_pos },
-                Owner { player_id: sp.player },
-                Building { kind: BuildingKind::TheBox },
-                Health { current: bstats.health, max: bstats.health },
-                Producer,
-                ProductionQueue::default(),
-                BuildingMesh,
-                SpriteBuilding,
-                Sprite {
-                    image,
-                    color: tint,
-                    ..default()
-                },
-                Transform::from_xyz(box_screen.x, -box_screen.y + box_elev, depth_z(box_world) - 0.05)
-                    .with_scale(Vec3::splat(scale)),
-            ));
-        } else {
-            let box_mesh = meshes.add(Rectangle::new(
-                crate::renderer::BUILDING_SPRITE_SIZE,
-                crate::renderer::BUILDING_SPRITE_SIZE,
-            ));
-            let box_mat = materials.add(ColorMaterial::from_color(building_color(sp.player)));
-            commands.spawn((
-                Position { world: box_world },
-                Velocity::zero(),
-                GridCell { pos: base_pos },
-                Owner { player_id: sp.player },
-                Building { kind: BuildingKind::TheBox },
-                Health { current: bstats.health, max: bstats.health },
-                Producer,
-                ProductionQueue::default(),
-                BuildingMesh,
-                Mesh2d(box_mesh),
-                MeshMaterial2d(box_mat),
-                Transform::from_xyz(box_screen.x, -box_screen.y + box_elev, depth_z(box_world) - 0.05),
-            ));
-        }
-
-        // Update supply cap for TheBox
-        if let Some(pres) = player_resources.players.get_mut(sp.player as usize) {
-            pres.supply_cap += bstats.supply_provided;
-        }
-
-        // --- Spawn starter units: 4 Pawdlers + 2 Nuisance ---
-        let unit_configs: [(i32, i32, UnitKind); 6] = [
-            (1, 0, UnitKind::Pawdler),
-            (0, 1, UnitKind::Pawdler),
-            (-1, 0, UnitKind::Pawdler),
-            (0, -1, UnitKind::Pawdler),
-            (1, 1, UnitKind::Nuisance),
-            (-1, 1, UnitKind::Nuisance),
-        ];
-
-        for &(dx, dy, kind) in &unit_configs {
-            let grid = GridPos::new(base_pos.x + dx, base_pos.y + dy);
-            if !map_res.map.is_passable(grid) {
-                continue;
-            }
-
+        for resource in &map_def.resources {
+            let grid = GridPos::new(resource.pos.0, resource.pos.1);
             let world = WorldPos::from_grid(grid);
             let screen = world_to_screen(world);
             let elevation_offset = map_res.map.elevation_at(grid) as f32 * ELEVATION_PIXEL_OFFSET;
-            let stats = base_stats(kind);
-            let scale = unit_scale(kind);
-            let tint = team_color(sp.player);
 
-            if let Some(ref sprites) = unit_sprites {
-                // Sprite-based unit
-                let image = sprites.sprites[kind_index(kind)].clone();
-                let unit_entity = commands.spawn((
+            let (resource_type, remaining) = match resource.kind {
+                ResourceKind::FishPond => (ResourceType::Food, 1500),
+                ResourceKind::BerryBush => (ResourceType::Food, 800),
+                ResourceKind::GpuDeposit => (ResourceType::GpuCores, 1000),
+                ResourceKind::MonkeyMine => (ResourceType::Nft, 500),
+            };
+
+            if let Some(ref res_sprites) = resource_sprites {
+                commands.spawn((
                     Position { world },
                     Velocity::zero(),
                     GridCell { pos: grid },
-                    Owner { player_id: sp.player },
-                    UnitType { kind },
-                    Health { current: stats.health, max: stats.health },
-                    MovementSpeed { speed: stats.speed },
-                    AttackStats {
-                        damage: stats.damage,
-                        range: stats.range,
-                        attack_speed: stats.attack_speed,
-                        cooldown_remaining: 0,
+                    ResourceDeposit {
+                        resource_type,
+                        remaining,
                     },
-                    AttackTypeMarker { attack_type: stats.attack_type },
-                    UnitMesh,
+                    Sprite {
+                        image: res_sprites.get(resource.kind),
+                        ..default()
+                    },
+                    Transform::from_xyz(
+                        screen.x,
+                        -screen.y + elevation_offset,
+                        depth_z(world) - 0.1,
+                    ),
+                ));
+            } else {
+                // Fallback: colored rectangle
+                let color = match resource.kind {
+                    ResourceKind::FishPond => Color::srgb(0.2, 0.6, 0.9),
+                    ResourceKind::BerryBush => Color::srgb(0.8, 0.3, 0.5),
+                    ResourceKind::GpuDeposit => Color::srgb(0.3, 0.9, 0.3),
+                    ResourceKind::MonkeyMine => Color::srgb(0.9, 0.7, 0.1),
+                };
+                let deposit_mesh = meshes.add(Rectangle::new(20.0, 20.0));
+                let deposit_mat = materials.add(ColorMaterial::from_color(color));
+                commands.spawn((
+                    Position { world },
+                    Velocity::zero(),
+                    GridCell { pos: grid },
+                    ResourceDeposit {
+                        resource_type,
+                        remaining,
+                    },
+                    Mesh2d(deposit_mesh),
+                    MeshMaterial2d(deposit_mat),
+                    Transform::from_xyz(
+                        screen.x,
+                        -screen.y + elevation_offset,
+                        depth_z(world) - 0.1,
+                    ),
+                ));
+            }
+        }
+
+        // --- Record spawn positions and spawn base + units per player ---
+        let mut total_spawned_per_player = [0u32; 2];
+
+        for sp in &map_def.spawn_points {
+            let base_pos = GridPos::new(sp.pos.0, sp.pos.1);
+
+            // Record spawn position for AI
+            spawn_positions.positions.push((sp.player, base_pos));
+
+            // --- Spawn TheBox (HQ) at spawn point center ---
+            let box_world = WorldPos::from_grid(base_pos);
+            let box_screen = world_to_screen(box_world);
+            let box_elev = map_res.map.elevation_at(base_pos) as f32 * ELEVATION_PIXEL_OFFSET;
+            let bstats = building_stats(BuildingKind::TheBox);
+
+            if let Some(ref bsprites) = building_sprites {
+                let idx = building_kind_index(BuildingKind::TheBox);
+                let image = bsprites.sprites[idx].clone();
+                let has_art = bsprites.has_art.get(idx).copied().unwrap_or(false);
+                let scale = building_scale(BuildingKind::TheBox, has_art);
+                let tint = team_color(sp.player);
+                commands.spawn((
+                    Position { world: box_world },
+                    Velocity::zero(),
+                    GridCell { pos: base_pos },
+                    Owner {
+                        player_id: sp.player,
+                    },
+                    Building {
+                        kind: BuildingKind::TheBox,
+                    },
+                    Health {
+                        current: bstats.health,
+                        max: bstats.health,
+                    },
+                    Producer,
+                    ProductionQueue::default(),
+                    BuildingMesh,
+                    SpriteBuilding,
                     Sprite {
                         image,
                         color: tint,
                         ..default()
                     },
-                    Transform::from_xyz(screen.x, -screen.y + elevation_offset, depth_z(world))
-                        .with_scale(Vec3::splat(scale)),
-                )).id();
-                commands.entity(unit_entity).insert((
-                    AnimState::default(),
-                    PrevAnimState::default(),
-                    AnimIndices::default(),
-                    AnimTimer::default(),
-                    TweenState::new(kind),
+                    Transform::from_xyz(
+                        box_screen.x,
+                        -box_screen.y + box_elev,
+                        depth_z(box_world) - 0.05,
+                    )
+                    .with_scale(Vec3::splat(scale)),
                 ));
-
-                zoom_lod::spawn_strategic_icon(
-                    &mut commands, &mut meshes, &mut materials,
-                    unit_entity, scale, tint, &tier,
-                );
             } else {
-                // Fallback: colored circle mesh
-                let body_mesh = meshes.add(Circle::new(12.0));
-                let body_mat = if sp.player == 0 {
-                    team_materials.player.clone()
-                } else {
-                    team_materials.enemy.clone()
-                };
-                let unit_entity = commands.spawn((
-                    Position { world },
+                let box_mesh = meshes.add(Rectangle::new(
+                    crate::renderer::BUILDING_SPRITE_SIZE,
+                    crate::renderer::BUILDING_SPRITE_SIZE,
+                ));
+                let box_mat = materials.add(ColorMaterial::from_color(building_color(sp.player)));
+                commands.spawn((
+                    Position { world: box_world },
                     Velocity::zero(),
-                    GridCell { pos: grid },
-                    Owner { player_id: sp.player },
-                    UnitType { kind },
-                    Health { current: stats.health, max: stats.health },
-                    MovementSpeed { speed: stats.speed },
-                    AttackStats {
-                        damage: stats.damage,
-                        range: stats.range,
-                        attack_speed: stats.attack_speed,
-                        cooldown_remaining: 0,
+                    GridCell { pos: base_pos },
+                    Owner {
+                        player_id: sp.player,
                     },
-                    AttackTypeMarker { attack_type: stats.attack_type },
-                    UnitMesh,
-                    Mesh2d(body_mesh),
-                    MeshMaterial2d(body_mat),
-                    Transform::from_xyz(screen.x, -screen.y + elevation_offset, depth_z(world))
-                        .with_scale(Vec3::splat(scale)),
-                )).id();
-
-                zoom_lod::spawn_strategic_icon(
-                    &mut commands, &mut meshes, &mut materials,
-                    unit_entity, scale, tint, &tier,
-                );
+                    Building {
+                        kind: BuildingKind::TheBox,
+                    },
+                    Health {
+                        current: bstats.health,
+                        max: bstats.health,
+                    },
+                    Producer,
+                    ProductionQueue::default(),
+                    BuildingMesh,
+                    Mesh2d(box_mesh),
+                    MeshMaterial2d(box_mat),
+                    Transform::from_xyz(
+                        box_screen.x,
+                        -box_screen.y + box_elev,
+                        depth_z(box_world) - 0.05,
+                    ),
+                ));
             }
 
-            if (sp.player as usize) < total_spawned_per_player.len() {
-                total_spawned_per_player[sp.player as usize] += 1;
+            // Update supply cap for TheBox
+            if let Some(pres) = player_resources.players.get_mut(sp.player as usize) {
+                pres.supply_cap += bstats.supply_provided;
+            }
+
+            // --- Spawn starter units: 4 Pawdlers + 2 Nuisance ---
+            let unit_configs: [(i32, i32, UnitKind); 6] = [
+                (1, 0, UnitKind::Pawdler),
+                (0, 1, UnitKind::Pawdler),
+                (-1, 0, UnitKind::Pawdler),
+                (0, -1, UnitKind::Pawdler),
+                (1, 1, UnitKind::Nuisance),
+                (-1, 1, UnitKind::Nuisance),
+            ];
+
+            for &(dx, dy, kind) in &unit_configs {
+                let grid = GridPos::new(base_pos.x + dx, base_pos.y + dy);
+                if !map_res.map.is_passable(grid) {
+                    continue;
+                }
+
+                let world = WorldPos::from_grid(grid);
+                let screen = world_to_screen(world);
+                let elevation_offset =
+                    map_res.map.elevation_at(grid) as f32 * ELEVATION_PIXEL_OFFSET;
+                let stats = base_stats(kind);
+                let scale = unit_scale(kind);
+                let tint = team_color(sp.player);
+
+                if let Some(ref sprites) = unit_sprites {
+                    // Sprite-based unit
+                    let image = sprites.sprites[kind_index(kind)].clone();
+                    let unit_entity = commands
+                        .spawn((
+                            Position { world },
+                            Velocity::zero(),
+                            GridCell { pos: grid },
+                            Owner {
+                                player_id: sp.player,
+                            },
+                            UnitType { kind },
+                            Health {
+                                current: stats.health,
+                                max: stats.health,
+                            },
+                            MovementSpeed { speed: stats.speed },
+                            AttackStats {
+                                damage: stats.damage,
+                                range: stats.range,
+                                attack_speed: stats.attack_speed,
+                                cooldown_remaining: 0,
+                            },
+                            AttackTypeMarker {
+                                attack_type: stats.attack_type,
+                            },
+                            UnitMesh,
+                            Sprite {
+                                image,
+                                color: tint,
+                                ..default()
+                            },
+                            Transform::from_xyz(
+                                screen.x,
+                                -screen.y + elevation_offset,
+                                depth_z(world),
+                            )
+                            .with_scale(Vec3::splat(scale)),
+                        ))
+                        .id();
+                    commands.entity(unit_entity).insert((
+                        AnimState::default(),
+                        PrevAnimState::default(),
+                        AnimIndices::default(),
+                        AnimTimer::default(),
+                        TweenState::new(kind),
+                    ));
+
+                    zoom_lod::spawn_strategic_icon(
+                        &mut commands,
+                        &mut meshes,
+                        &mut materials,
+                        unit_entity,
+                        scale,
+                        tint,
+                        &tier,
+                    );
+                } else {
+                    // Fallback: colored circle mesh
+                    let body_mesh = meshes.add(Circle::new(12.0));
+                    let body_mat = if sp.player == 0 {
+                        team_materials.player.clone()
+                    } else {
+                        team_materials.enemy.clone()
+                    };
+                    let unit_entity = commands
+                        .spawn((
+                            Position { world },
+                            Velocity::zero(),
+                            GridCell { pos: grid },
+                            Owner {
+                                player_id: sp.player,
+                            },
+                            UnitType { kind },
+                            Health {
+                                current: stats.health,
+                                max: stats.health,
+                            },
+                            MovementSpeed { speed: stats.speed },
+                            AttackStats {
+                                damage: stats.damage,
+                                range: stats.range,
+                                attack_speed: stats.attack_speed,
+                                cooldown_remaining: 0,
+                            },
+                            AttackTypeMarker {
+                                attack_type: stats.attack_type,
+                            },
+                            UnitMesh,
+                            Mesh2d(body_mesh),
+                            MeshMaterial2d(body_mat),
+                            Transform::from_xyz(
+                                screen.x,
+                                -screen.y + elevation_offset,
+                                depth_z(world),
+                            )
+                            .with_scale(Vec3::splat(scale)),
+                        ))
+                        .id();
+
+                    zoom_lod::spawn_strategic_icon(
+                        &mut commands,
+                        &mut meshes,
+                        &mut materials,
+                        unit_entity,
+                        scale,
+                        tint,
+                        &tier,
+                    );
+                }
+
+                if (sp.player as usize) < total_spawned_per_player.len() {
+                    total_spawned_per_player[sp.player as usize] += 1;
+                }
             }
         }
-    }
 
-    // Set initial supply count to match spawned units
-    for (i, &count) in total_spawned_per_player.iter().enumerate() {
-        if i < player_resources.players.len() {
-            player_resources.players[i].supply = count;
+        // Set initial supply count to match spawned units
+        for (i, &count) in total_spawned_per_player.iter().enumerate() {
+            if i < player_resources.players.len() {
+                player_resources.players[i].supply = count;
+            }
         }
-    }
-
     } // end if let Some(map_def) — skipped in mission mode
 
     commands.insert_resource(team_materials);
@@ -441,8 +517,12 @@ mod tests {
     #[test]
     fn game_map_from_inline_basic() {
         let tiles = vec![
-            TerrainType::Grass, TerrainType::Rock, TerrainType::Water,
-            TerrainType::Road, TerrainType::Forest, TerrainType::Shallows,
+            TerrainType::Grass,
+            TerrainType::Rock,
+            TerrainType::Water,
+            TerrainType::Road,
+            TerrainType::Forest,
+            TerrainType::Shallows,
         ];
         let elevation = vec![0, 2, 0, 1, 1, 0];
         let map = game_map_from_inline(3, 2, &tiles, &elevation);
@@ -460,17 +540,23 @@ mod tests {
         assert_eq!(map.terrain_at(GridPos::new(0, 1)), Some(TerrainType::Road));
         assert_eq!(map.elevation_at(GridPos::new(0, 1)), 1);
         // Passability
-        assert!(map.is_passable(GridPos::new(0, 0)));  // Grass
+        assert!(map.is_passable(GridPos::new(0, 0))); // Grass
         assert!(!map.is_passable(GridPos::new(1, 0))); // Rock
         assert!(!map.is_passable(GridPos::new(2, 0))); // Water (base)
-        assert!(map.is_passable(GridPos::new(0, 1)));  // Road
+        assert!(map.is_passable(GridPos::new(0, 1))); // Road
     }
 
     #[test]
     fn game_map_from_inline_demo_canyon() {
         let ron_str = include_str!("../../../assets/campaign/demo_canyon.ron");
         let mission: cc_core::mission::MissionDefinition = ron::from_str(ron_str).unwrap();
-        let cc_core::mission::MissionMap::Inline { width, height, tiles, elevation } = &mission.map else {
+        let cc_core::mission::MissionMap::Inline {
+            width,
+            height,
+            tiles,
+            elevation,
+        } = &mission.map
+        else {
             panic!("Expected Inline");
         };
         let map = game_map_from_inline(*width, *height, tiles, elevation);
@@ -486,7 +572,10 @@ mod tests {
         assert_eq!(map.terrain_at(GridPos::new(40, 0)), Some(TerrainType::Rock));
         assert_eq!(map.elevation_at(GridPos::new(40, 0)), 2);
         // River center is water
-        assert_eq!(map.terrain_at(GridPos::new(30, 23)), Some(TerrainType::Water));
+        assert_eq!(
+            map.terrain_at(GridPos::new(30, 23)),
+            Some(TerrainType::Water)
+        );
     }
 }
 
@@ -496,71 +585,71 @@ mod tests {
 /// Target range: 1/3 tile (workers) → full tile (heroes).
 pub fn unit_scale(kind: UnitKind) -> f32 {
     match kind {
-            // Cat units
-            UnitKind::Pawdler => 0.167,         // worker — 1/3 tile
-            UnitKind::Nuisance => 0.19,          // harasser — 3/8 tile
-            UnitKind::Mouser => 0.19,            // stealth — 3/8 tile
-            UnitKind::FerretSapper => 0.25,      // demo — 1/2 tile
-            UnitKind::Hisser => 0.25,            // ranged — 1/2 tile
-            UnitKind::FlyingFox => 0.25,         // air — 1/2 tile
-            UnitKind::Yowler => 0.31,            // support — 5/8 tile
-            UnitKind::Catnapper => 0.375,        // siege — 3/4 tile
-            UnitKind::Chonk => 0.375,            // tank — 3/4 tile
-            UnitKind::MechCommander => 0.50,     // hero — full tile
-            // Clawed (mice) — small faction, slightly smaller overall
-            UnitKind::Nibblet => 0.167,          // worker
-            UnitKind::Swarmer => 0.167,          // swarm — tiny
-            UnitKind::Gnawer => 0.19,            // light melee
-            UnitKind::Shrieker => 0.25,          // ranged
-            UnitKind::Tunneler => 0.25,          // medium
-            UnitKind::Sparks => 0.25,            // medium
-            UnitKind::Quillback => 0.31,         // heavy
-            UnitKind::Whiskerwitch => 0.31,      // support
-            UnitKind::Plaguetail => 0.31,        // specialist
-            UnitKind::WarrenMarshal => 0.50,     // hero
-            // Murder (corvids) — aerial, fragile
-            UnitKind::MurderScrounger => 0.167,  // worker
-            UnitKind::Sentinel => 0.19,          // scout
-            UnitKind::Rookclaw => 0.25,          // melee
-            UnitKind::Magpike => 0.25,           // ranged
-            UnitKind::Magpyre => 0.25,           // caster
-            UnitKind::Jaycaller => 0.25,         // medium
-            UnitKind::Jayflicker => 0.25,        // medium
-            UnitKind::Dusktalon => 0.31,         // heavy
-            UnitKind::Hootseer => 0.375,         // support — large owl
-            UnitKind::CorvusRex => 0.50,         // hero
-            // Seekers (badgers) — heavy faction, generally larger
-            UnitKind::Delver => 0.19,            // worker — badgers are bigger
-            UnitKind::Ironhide => 0.31,          // heavy
-            UnitKind::Cragback => 0.375,         // tank
-            UnitKind::Warden => 0.25,            // medium
-            UnitKind::Sapjaw => 0.25,            // medium
-            UnitKind::Wardenmother => 0.375,     // heavy support
-            UnitKind::SeekerTunneler => 0.25,    // medium
-            UnitKind::Embermaw => 0.31,          // heavy ranged
-            UnitKind::Dustclaw => 0.25,          // medium
-            UnitKind::Gutripper => 0.50,         // hero
-            // Croak (axolotls) — medium, regenerating
-            UnitKind::Ponderer => 0.167,         // worker
-            UnitKind::Regeneron => 0.19,         // light
-            UnitKind::Broodmother => 0.31,       // large support
-            UnitKind::Gulper => 0.31,            // heavy
-            UnitKind::Eftsaber => 0.25,          // medium melee
-            UnitKind::Croaker => 0.25,           // medium ranged
-            UnitKind::Leapfrog => 0.25,          // medium
-            UnitKind::Shellwarden => 0.31,       // heavy defense
-            UnitKind::Bogwhisper => 0.31,        // support
-            UnitKind::MurkCommander => 0.50,     // hero
-            // LLAMA (raccoons) — medium, scrappy
-            UnitKind::Scrounger => 0.167,        // worker
-            UnitKind::Bandit => 0.19,            // light
-            UnitKind::HeapTitan => 0.375,        // tank
-            UnitKind::GlitchRat => 0.19,         // light scout
-            UnitKind::PatchPossum => 0.25,       // medium
-            UnitKind::GreaseMonkey => 0.25,      // medium
-            UnitKind::DeadDropUnit => 0.25,      // medium
-            UnitKind::Wrecker => 0.31,           // heavy
-            UnitKind::DumpsterDiver => 0.31,     // specialist
-            UnitKind::JunkyardKing => 0.50,      // hero
+        // Cat units
+        UnitKind::Pawdler => 0.167,      // worker — 1/3 tile
+        UnitKind::Nuisance => 0.19,      // harasser — 3/8 tile
+        UnitKind::Mouser => 0.19,        // stealth — 3/8 tile
+        UnitKind::FerretSapper => 0.25,  // demo — 1/2 tile
+        UnitKind::Hisser => 0.25,        // ranged — 1/2 tile
+        UnitKind::FlyingFox => 0.25,     // air — 1/2 tile
+        UnitKind::Yowler => 0.31,        // support — 5/8 tile
+        UnitKind::Catnapper => 0.375,    // siege — 3/4 tile
+        UnitKind::Chonk => 0.375,        // tank — 3/4 tile
+        UnitKind::MechCommander => 0.50, // hero — full tile
+        // Clawed (mice) — small faction, slightly smaller overall
+        UnitKind::Nibblet => 0.167,      // worker
+        UnitKind::Swarmer => 0.167,      // swarm — tiny
+        UnitKind::Gnawer => 0.19,        // light melee
+        UnitKind::Shrieker => 0.25,      // ranged
+        UnitKind::Tunneler => 0.25,      // medium
+        UnitKind::Sparks => 0.25,        // medium
+        UnitKind::Quillback => 0.31,     // heavy
+        UnitKind::Whiskerwitch => 0.31,  // support
+        UnitKind::Plaguetail => 0.31,    // specialist
+        UnitKind::WarrenMarshal => 0.50, // hero
+        // Murder (corvids) — aerial, fragile
+        UnitKind::MurderScrounger => 0.167, // worker
+        UnitKind::Sentinel => 0.19,         // scout
+        UnitKind::Rookclaw => 0.25,         // melee
+        UnitKind::Magpike => 0.25,          // ranged
+        UnitKind::Magpyre => 0.25,          // caster
+        UnitKind::Jaycaller => 0.25,        // medium
+        UnitKind::Jayflicker => 0.25,       // medium
+        UnitKind::Dusktalon => 0.31,        // heavy
+        UnitKind::Hootseer => 0.375,        // support — large owl
+        UnitKind::CorvusRex => 0.50,        // hero
+        // Seekers (badgers) — heavy faction, generally larger
+        UnitKind::Delver => 0.19,         // worker — badgers are bigger
+        UnitKind::Ironhide => 0.31,       // heavy
+        UnitKind::Cragback => 0.375,      // tank
+        UnitKind::Warden => 0.25,         // medium
+        UnitKind::Sapjaw => 0.25,         // medium
+        UnitKind::Wardenmother => 0.375,  // heavy support
+        UnitKind::SeekerTunneler => 0.25, // medium
+        UnitKind::Embermaw => 0.31,       // heavy ranged
+        UnitKind::Dustclaw => 0.25,       // medium
+        UnitKind::Gutripper => 0.50,      // hero
+        // Croak (axolotls) — medium, regenerating
+        UnitKind::Ponderer => 0.167,     // worker
+        UnitKind::Regeneron => 0.19,     // light
+        UnitKind::Broodmother => 0.31,   // large support
+        UnitKind::Gulper => 0.31,        // heavy
+        UnitKind::Eftsaber => 0.25,      // medium melee
+        UnitKind::Croaker => 0.25,       // medium ranged
+        UnitKind::Leapfrog => 0.25,      // medium
+        UnitKind::Shellwarden => 0.31,   // heavy defense
+        UnitKind::Bogwhisper => 0.31,    // support
+        UnitKind::MurkCommander => 0.50, // hero
+        // LLAMA (raccoons) — medium, scrappy
+        UnitKind::Scrounger => 0.167,    // worker
+        UnitKind::Bandit => 0.19,        // light
+        UnitKind::HeapTitan => 0.375,    // tank
+        UnitKind::GlitchRat => 0.19,     // light scout
+        UnitKind::PatchPossum => 0.25,   // medium
+        UnitKind::GreaseMonkey => 0.25,  // medium
+        UnitKind::DeadDropUnit => 0.25,  // medium
+        UnitKind::Wrecker => 0.31,       // heavy
+        UnitKind::DumpsterDiver => 0.31, // specialist
+        UnitKind::JunkyardKing => 0.50,  // hero
     }
 }

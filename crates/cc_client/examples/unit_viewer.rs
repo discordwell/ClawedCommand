@@ -13,9 +13,7 @@ use bevy::prelude::*;
 
 use cc_client::loading::LoadingTracker;
 use cc_client::renderer::anim_assets::load_anim_assets;
-use cc_client::renderer::animation::{
-    self, AnimIndices, AnimState, AnimTimer, PrevAnimState,
-};
+use cc_client::renderer::animation::{self, AnimIndices, AnimState, AnimTimer, PrevAnimState};
 use cc_client::renderer::tweens::{self, TweenState};
 use cc_client::renderer::unit_gen::{self, ALL_KINDS, UnitSprites, kind_index, unit_slug};
 use cc_client::setup::{UnitMesh, team_color, unit_scale};
@@ -32,12 +30,12 @@ const SIDEBAR_WIDTH: f32 = 200.0;
 
 /// Faction info: (name, player_id, label color).
 const FACTIONS: [(&str, u8, Color); 6] = [
-    ("catGPT",              0, Color::srgb(0.55, 0.7, 1.0)),
-    ("The Clawed",          2, Color::srgb(1.0, 0.82, 0.45)),
-    ("The Murder",          1, Color::srgb(1.0, 0.55, 0.55)),
+    ("catGPT", 0, Color::srgb(0.55, 0.7, 1.0)),
+    ("The Clawed", 2, Color::srgb(1.0, 0.82, 0.45)),
+    ("The Murder", 1, Color::srgb(1.0, 0.55, 0.55)),
     ("Seekers of the Deep", 3, Color::srgb(0.5, 0.9, 0.6)),
-    ("Croak",               4, Color::srgb(0.45, 0.9, 0.9)),
-    ("LLAMA",               5, Color::srgb(1.0, 0.7, 0.35)),
+    ("Croak", 4, Color::srgb(0.45, 0.9, 0.9)),
+    ("LLAMA", 5, Color::srgb(1.0, 0.7, 0.35)),
 ];
 
 // ---------------------------------------------------------------------------
@@ -183,7 +181,10 @@ fn setup_viewer(mut commands: Commands, unit_sprites: Res<UnitSprites>) {
         ViewerUnit,
         UnitMesh,
         UnitType { kind },
-        Velocity { dx: FIXED_ZERO, dy: FIXED_ZERO },
+        Velocity {
+            dx: FIXED_ZERO,
+            dy: FIXED_ZERO,
+        },
         Health {
             current: fixed_from_f32(100.0),
             max: fixed_from_f32(100.0),
@@ -405,7 +406,11 @@ fn handle_input(
         navigated = true;
     }
     if keys.just_pressed(KeyCode::ArrowLeft) {
-        state.current_index = if state.current_index == 0 { 59 } else { state.current_index - 1 };
+        state.current_index = if state.current_index == 0 {
+            59
+        } else {
+            state.current_index - 1
+        };
         state.phase = AnimPhase::Idle;
         state.phase_timer.reset();
         navigated = true;
@@ -515,7 +520,10 @@ fn swap_unit(
         mut tween,
         _velocity,
         _attack_stats,
-    )) = query.single_mut() else { return };
+    )) = query.single_mut()
+    else {
+        return;
+    };
 
     let kind = ALL_KINDS[current_index];
     let faction_idx = current_index / 10;
@@ -547,7 +555,9 @@ fn drive_anim_phase(
     state: Res<ViewerState>,
     mut query: Query<(&mut Velocity, &mut AttackStats), With<ViewerUnit>>,
 ) {
-    let Ok((mut velocity, mut attack_stats)) = query.single_mut() else { return };
+    let Ok((mut velocity, mut attack_stats)) = query.single_mut() else {
+        return;
+    };
 
     match state.phase {
         AnimPhase::Idle => {
@@ -572,10 +582,10 @@ fn drive_anim_phase(
 // Bug fix: reset viewer transform before tweens apply additive offsets
 // ---------------------------------------------------------------------------
 
-fn reset_viewer_transform(
-    mut query: Query<&mut Transform, With<ViewerUnit>>,
-) {
-    let Ok(mut transform) = query.single_mut() else { return };
+fn reset_viewer_transform(mut query: Query<&mut Transform, With<ViewerUnit>>) {
+    let Ok(mut transform) = query.single_mut() else {
+        return;
+    };
     transform.translation = Vec3::new(0.0, 0.0, 10.0);
     transform.rotation = Quat::IDENTITY;
 }
@@ -674,10 +684,7 @@ fn main() {
         .init_resource::<LoadingTracker>()
         .add_systems(
             PreStartup,
-            (
-                unit_gen::generate_unit_sprites,
-                load_anim_assets,
-            ),
+            (unit_gen::generate_unit_sprites, load_anim_assets),
         )
         .add_systems(Startup, setup_viewer)
         .add_systems(

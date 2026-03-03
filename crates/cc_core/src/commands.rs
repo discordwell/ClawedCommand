@@ -76,17 +76,11 @@ pub enum GameCommand {
         unit_kind: UnitKind,
     },
     /// Set rally point for a production building.
-    SetRallyPoint {
-        building: EntityId,
-        target: GridPos,
-    },
+    SetRallyPoint { building: EntityId, target: GridPos },
     /// Cancel the front item in a building's production queue.
     CancelQueue { building: EntityId },
     /// Assign selected units to a control group (0-9).
-    SetControlGroup {
-        group: u8,
-        unit_ids: Vec<EntityId>,
-    },
+    SetControlGroup { group: u8, unit_ids: Vec<EntityId> },
     /// Recall (select) units in a control group.
     RecallControlGroup { group: u8 },
     /// Activate a unit's ability by slot index.

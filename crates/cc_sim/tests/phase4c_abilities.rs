@@ -129,10 +129,12 @@ fn run_ticks(world: &mut World, schedule: &mut Schedule, n: usize) {
 
 fn issue_attack(world: &mut World, attackers: &[Entity], target: Entity) {
     let ids = attackers.iter().map(|e| EntityId(e.to_bits())).collect();
-    world.resource_mut::<CommandQueue>().push(GameCommand::Attack {
-        unit_ids: ids,
-        target: EntityId(target.to_bits()),
-    });
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::Attack {
+            unit_ids: ids,
+            target: EntityId(target.to_bits()),
+        });
 }
 
 fn issue_ability(world: &mut World, unit: Entity, slot: u8) {
@@ -145,12 +147,7 @@ fn issue_ability(world: &mut World, unit: Entity, slot: u8) {
         });
 }
 
-fn spawn_building(
-    world: &mut World,
-    grid: GridPos,
-    player_id: u8,
-    kind: BuildingKind,
-) -> Entity {
+fn spawn_building(world: &mut World, grid: GridPos, player_id: u8, kind: BuildingKind) -> Entity {
     let bstats = cc_core::building_stats::building_stats(kind);
     world
         .spawn((
@@ -195,12 +192,14 @@ fn test_tilted_cc_triggers_at_five_annoyed_stacks() {
     // Directly inject 5 Annoyed stacks
     {
         let mut effects = world.get_mut::<StatusEffects>(target).unwrap();
-        effects.effects.push(cc_core::status_effects::StatusInstance {
-            effect: StatusEffectId::Annoyed,
-            remaining_ticks: 100,
-            stacks: 5,
-            source: EntityId(0),
-        });
+        effects
+            .effects
+            .push(cc_core::status_effects::StatusInstance {
+                effect: StatusEffectId::Annoyed,
+                remaining_ticks: 100,
+                stacks: 5,
+                source: EntityId(0),
+            });
     }
 
     // Run a tick to let status_effect_system convert Annoyed → Tilted
@@ -216,7 +215,10 @@ fn test_tilted_cc_triggers_at_five_annoyed_stacks() {
         .iter()
         .any(|e| e.effect == StatusEffectId::Annoyed);
     assert!(has_tilted, "Should have Tilted CC after 5 Annoyed stacks");
-    assert!(!has_annoyed, "Annoyed stacks should be removed after Tilted conversion");
+    assert!(
+        !has_annoyed,
+        "Annoyed stacks should be removed after Tilted conversion"
+    );
 }
 
 /// T2: DreamSiege timer resets when Catnapper takes damage
@@ -245,7 +247,10 @@ fn test_dream_siege_resets_on_catnapper_taking_damage() {
     run_ticks(&mut world, &mut schedule, 1);
 
     let timer = world.get::<DreamSiegeTimer>(catnapper).unwrap();
-    assert_eq!(timer.ticks_on_target, 0, "DreamSiege timer should reset on damage");
+    assert_eq!(
+        timer.ticks_on_target, 0,
+        "DreamSiege timer should reset on damage"
+    );
     // current_target is preserved — only ticks reset on damage.
     // Target changes are handled by combat_system when attacking a different entity.
 }
@@ -370,7 +375,10 @@ fn test_nine_lives_cooldown_prevents_double_trigger() {
 
     // Should be dead — cooldown hasn't expired
     let is_dead = world.get::<Dead>(chonk).is_some();
-    assert!(is_dead, "Chonk should die on second lethal within NineLives cooldown");
+    assert!(
+        is_dead,
+        "Chonk should die on second lethal within NineLives cooldown"
+    );
 }
 
 /// ContagiousYawning: AoE CC applies Drowsed to enemies in range
@@ -390,7 +398,10 @@ fn test_contagious_yawning_aoe_cc() {
         .effects
         .iter()
         .any(|e| e.effect == StatusEffectId::Drowsed);
-    assert!(has_drowsed, "Enemy should have Drowsed after ContagiousYawning");
+    assert!(
+        has_drowsed,
+        "Enemy should have Drowsed after ContagiousYawning"
+    );
 }
 
 /// ContagiousYawning: CC immune enemies unaffected
@@ -477,7 +488,10 @@ fn test_tactical_uplink_buffs_allies() {
         .effects
         .iter()
         .any(|e| e.effect == StatusEffectId::TacticalLink);
-    assert!(has_link, "Ally should have TacticalLink from TacticalUplink aura");
+    assert!(
+        has_link,
+        "Ally should have TacticalLink from TacticalUplink aura"
+    );
 
     let modifiers = world.get::<StatModifiers>(ally).unwrap();
     assert!(
@@ -514,19 +528,13 @@ fn test_hairball_spawns_obstacle() {
     give_gpu(&mut world, 0, 50);
 
     // Count HairballObstacle entities before
-    let count_before = world
-        .query::<&HairballObstacle>()
-        .iter(&world)
-        .count();
+    let count_before = world.query::<&HairballObstacle>().iter(&world).count();
 
     // Activate Hairball (slot 1 for Nuisance)
     issue_ability(&mut world, nuisance, 1);
     run_ticks(&mut world, &mut schedule, 3);
 
-    let count_after = world
-        .query::<&HairballObstacle>()
-        .iter(&world)
-        .count();
+    let count_after = world.query::<&HairballObstacle>().iter(&world).count();
 
     assert!(
         count_after > count_before,
@@ -545,19 +553,13 @@ fn test_hairball_despawns_after_duration() {
     run_ticks(&mut world, &mut schedule, 3);
 
     // Verify hairball exists
-    let count_mid = world
-        .query::<&HairballObstacle>()
-        .iter(&world)
-        .count();
+    let count_mid = world.query::<&HairballObstacle>().iter(&world).count();
     assert!(count_mid > 0, "Hairball should exist after spawning");
 
     // Run past duration (100 ticks)
     run_ticks(&mut world, &mut schedule, 110);
 
-    let count_after = world
-        .query::<&HairballObstacle>()
-        .iter(&world)
-        .count();
+    let count_after = world.query::<&HairballObstacle>().iter(&world).count();
     assert_eq!(count_after, 0, "Hairball should despawn after 100 ticks");
 }
 
@@ -578,7 +580,10 @@ fn test_disoriented_flyingfox_aoe_cc() {
         .effects
         .iter()
         .any(|e| e.effect == StatusEffectId::Disoriented);
-    assert!(has_disoriented, "Enemy should have Disoriented after FlyingFox ability");
+    assert!(
+        has_disoriented,
+        "Enemy should have Disoriented after FlyingFox ability"
+    );
 }
 
 /// DisgustMortar: AoE damage hits enemies near source
@@ -682,7 +687,10 @@ fn test_echolocation_reveals_enemies() {
     run_ticks(&mut world, &mut schedule, 3);
 
     let vtf = world.get::<VisibleThroughFog>(enemy);
-    assert!(vtf.is_some(), "Enemy should have VisibleThroughFog after EcholocationPulse");
+    assert!(
+        vtf.is_some(),
+        "Enemy should have VisibleThroughFog after EcholocationPulse"
+    );
     assert!(
         vtf.unwrap().remaining_ticks > 0,
         "VTF should have remaining ticks"

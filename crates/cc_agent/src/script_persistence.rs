@@ -23,7 +23,13 @@ fn scripts_dir() -> PathBuf {
 /// Sanitize a script name for use as a filename.
 fn sanitize_name(name: &str) -> String {
     name.chars()
-        .map(|c| if c.is_alphanumeric() || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
@@ -41,10 +47,12 @@ pub fn save_script(script: &LuaScript) -> Result<PathBuf, std::io::Error> {
     let mut content = script.source.clone();
     let has_name = content.lines().any(|l| {
         let t = l.trim();
-        t.starts_with("-- ") && !t.starts_with("-- Intents:")
+        t.starts_with("-- ")
+            && !t.starts_with("-- Intents:")
             && t.len() > 3
             && t[3..].split_whitespace().next().map_or(false, |w| {
-                w.chars().all(|c| c.is_alphanumeric() || c == '_' || c == ':')
+                w.chars()
+                    .all(|c| c.is_alphanumeric() || c == '_' || c == ':')
             })
     });
     if !has_name {
@@ -95,8 +103,8 @@ pub fn load_player_scripts() -> Vec<LuaScript> {
         match fs::read_to_string(&path) {
             Ok(source) => {
                 let intents = crate::agent_bridge::extract_intents_from_source(&source);
-                let name = crate::agent_bridge::extract_name_from_source(&source)
-                    .unwrap_or_else(|| {
+                let name =
+                    crate::agent_bridge::extract_name_from_source(&source).unwrap_or_else(|| {
                         path.file_stem()
                             .unwrap_or_default()
                             .to_string_lossy()
@@ -108,7 +116,10 @@ pub fn load_player_scripts() -> Vec<LuaScript> {
                     .lines()
                     .next()
                     .and_then(|line| line.strip_prefix("-- "))
-                    .and_then(|rest| rest.split_once(':').map(|(_, desc)| desc.trim().to_string()))
+                    .and_then(|rest| {
+                        rest.split_once(':')
+                            .map(|(_, desc)| desc.trim().to_string())
+                    })
                     .unwrap_or_default();
 
                 scripts.push(LuaScript {
@@ -124,7 +135,11 @@ pub fn load_player_scripts() -> Vec<LuaScript> {
         }
     }
 
-    log::info!("Loaded {} player scripts from {}", scripts.len(), dir.display());
+    log::info!(
+        "Loaded {} player scripts from {}",
+        scripts.len(),
+        dir.display()
+    );
     scripts
 }
 

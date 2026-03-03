@@ -97,4 +97,3 @@ pub fn aura_system(
         }
     }
 }
-

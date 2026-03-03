@@ -139,7 +139,10 @@ impl MapDefinition {
 
         for (i, &(terrain_u8, elevation)) in self.tiles.iter().enumerate() {
             if TerrainType::from_u8(terrain_u8).is_none() {
-                return Err(format!("Invalid terrain type {} at tile index {}", terrain_u8, i));
+                return Err(format!(
+                    "Invalid terrain type {} at tile index {}",
+                    terrain_u8, i
+                ));
             }
             if elevation > 2 {
                 return Err(format!("Elevation {} > 2 at tile index {}", elevation, i));

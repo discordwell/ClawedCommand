@@ -102,7 +102,9 @@ impl Default for StatusEffects {
 impl StatusEffects {
     /// Check if entity has a specific status effect active.
     pub fn has(&self, id: StatusEffectId) -> bool {
-        self.effects.iter().any(|e| e.effect == id && e.remaining_ticks > 0)
+        self.effects
+            .iter()
+            .any(|e| e.effect == id && e.remaining_ticks > 0)
     }
 
     /// Get stack count for a specific status effect.

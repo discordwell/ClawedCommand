@@ -76,8 +76,7 @@ impl Plugin for AgentPlugin {
             Update,
             (
                 agent_bridge::poll_streaming_tokens,
-                agent_bridge::poll_agent_responses
-                    .after(agent_bridge::poll_streaming_tokens),
+                agent_bridge::poll_agent_responses.after(agent_bridge::poll_streaming_tokens),
                 decision::agent_decision_system,
             ),
         )

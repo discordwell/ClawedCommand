@@ -60,7 +60,10 @@ mod tests {
         ];
         for upgrade in upgrades {
             let stats = upgrade_stats(upgrade);
-            assert!(stats.research_time > 0, "{upgrade:?} should have research time");
+            assert!(
+                stats.research_time > 0,
+                "{upgrade:?} should have research time"
+            );
             assert!(stats.food_cost > 0, "{upgrade:?} should have food cost");
         }
     }

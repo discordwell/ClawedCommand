@@ -36,12 +36,7 @@ pub struct ScriptRegistration {
 }
 
 impl ScriptRegistration {
-    pub fn new(
-        name: String,
-        source: String,
-        events: Vec<String>,
-        player_id: u8,
-    ) -> Self {
+    pub fn new(name: String, source: String, events: Vec<String>, player_id: u8) -> Self {
         Self {
             name,
             source,
@@ -74,11 +69,7 @@ pub fn detect_events(
     };
 
     // Enemy spotted: enemy in current but not in previous
-    let prev_enemy_ids: HashSet<EntityId> = prev
-        .enemy_units
-        .iter()
-        .map(|u| u.id)
-        .collect();
+    let prev_enemy_ids: HashSet<EntityId> = prev.enemy_units.iter().map(|u| u.id).collect();
 
     for enemy in &current.enemy_units {
         if !enemy.is_dead && !prev_enemy_ids.contains(&enemy.id) {
@@ -156,8 +147,8 @@ pub fn event_name(event: &ScriptEvent) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_fixtures::{make_snapshot as empty_snapshot, make_unit_owned as make_unit};
     use cc_core::math::fixed_from_i32;
-    use crate::test_fixtures::{make_unit_owned as make_unit, make_snapshot as empty_snapshot};
 
     #[test]
     fn tick_event_always_fires() {

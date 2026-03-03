@@ -109,34 +109,10 @@ impl TransitionMask {
 
         // Diagonal corners
         // NE corner: inner if both N and E transition; outer if only diagonal
-        self.add_corner(
-            &mut pieces,
-            BIT_NE,
-            BIT_N,
-            BIT_E,
-            DiagonalDir::NorthEast,
-        );
-        self.add_corner(
-            &mut pieces,
-            BIT_SE,
-            BIT_S,
-            BIT_E,
-            DiagonalDir::SouthEast,
-        );
-        self.add_corner(
-            &mut pieces,
-            BIT_SW,
-            BIT_S,
-            BIT_W,
-            DiagonalDir::SouthWest,
-        );
-        self.add_corner(
-            &mut pieces,
-            BIT_NW,
-            BIT_N,
-            BIT_W,
-            DiagonalDir::NorthWest,
-        );
+        self.add_corner(&mut pieces, BIT_NE, BIT_N, BIT_E, DiagonalDir::NorthEast);
+        self.add_corner(&mut pieces, BIT_SE, BIT_S, BIT_E, DiagonalDir::SouthEast);
+        self.add_corner(&mut pieces, BIT_SW, BIT_S, BIT_W, DiagonalDir::SouthWest);
+        self.add_corner(&mut pieces, BIT_NW, BIT_N, BIT_W, DiagonalDir::NorthWest);
 
         pieces
     }
@@ -270,7 +246,11 @@ mod tests {
             OverlayPiece::OuterCorner(DiagonalDir::NorthWest),
         ];
         let indices: HashSet<usize> = all_pieces.iter().map(|p| p.atlas_index()).collect();
-        assert_eq!(indices.len(), 12, "All 12 overlay pieces should have unique indices");
+        assert_eq!(
+            indices.len(),
+            12,
+            "All 12 overlay pieces should have unique indices"
+        );
     }
 
     #[test]
@@ -289,6 +269,9 @@ mod tests {
         let mut map = GameMap::new(10, 10); // All grass
         map.get_mut(GridPos::new(5, 5)).unwrap().terrain = TerrainType::Forest;
         let mask = TransitionMask::compute(&map, 5, 5);
-        assert!(!mask.is_empty(), "Forest should see transitions to surrounding grass");
+        assert!(
+            !mask.is_empty(),
+            "Forest should see transitions to surrounding grass"
+        );
     }
 }

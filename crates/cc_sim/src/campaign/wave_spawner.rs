@@ -89,7 +89,9 @@ pub fn wave_spawner_system(
                 MovementSpeed {
                     speed: boosted_speed,
                 },
-                Owner { player_id: hero_spawn.player_id },
+                Owner {
+                    player_id: hero_spawn.player_id,
+                },
                 UnitType { kind },
                 Health {
                     current: boosted_hp,
@@ -124,10 +126,17 @@ pub fn wave_spawner_system(
                     world: WorldPos::from_grid(bspawn.position),
                 },
                 Velocity::zero(),
-                GridCell { pos: bspawn.position },
-                Owner { player_id: bspawn.player_id },
+                GridCell {
+                    pos: bspawn.position,
+                },
+                Owner {
+                    player_id: bspawn.player_id,
+                },
                 Building { kind: bspawn.kind },
-                Health { current: bstats.health, max: bstats.health },
+                Health {
+                    current: bstats.health,
+                    max: bstats.health,
+                },
                 Producer,
                 ProductionQueue::default(),
             ));
@@ -174,8 +183,7 @@ pub fn wave_spawner_system(
     let spawned_waves = campaign.spawned_waves.clone();
     for wave in &mission.enemy_waves {
         if let WaveTrigger::OnTrigger(trigger_id) = &wave.trigger {
-            if spawned_waves.contains(trigger_id)
-                && !wave_tracker.processed.contains(&wave.wave_id)
+            if spawned_waves.contains(trigger_id) && !wave_tracker.processed.contains(&wave.wave_id)
             {
                 spawn_wave_entities(
                     &mut commands,
@@ -234,13 +242,12 @@ fn spawn_wave_entities(
         // Apply AI behavior
         match ai_behavior {
             WaveAiBehavior::AttackMove(target) => {
-                commands.entity(entity_id).insert(AttackMoveTarget {
-                    target: *target,
-                });
+                commands
+                    .entity(entity_id)
+                    .insert(AttackMoveTarget { target: *target });
 
                 // Pathfind toward the attack-move destination
-                let faction = FactionId::from_u8(unit_spawn.player_id)
-                    .unwrap_or(FactionId::CatGPT);
+                let faction = FactionId::from_u8(unit_spawn.player_id).unwrap_or(FactionId::CatGPT);
                 let start = unit_spawn.position;
                 if let Some(waypoints) = pathfinding::find_path(map, start, *target, faction) {
                     let first_waypoint = waypoints[0];

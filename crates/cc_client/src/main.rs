@@ -1,16 +1,8 @@
-mod cutscene;
-mod input;
-mod loading;
-mod renderer;
-mod setup;
-mod showcase;
-mod ui;
-mod voice_demo;
-
 use bevy::asset::AssetPlugin;
 use bevy::prelude::*;
 #[cfg(any(feature = "native", feature = "wasm-agent"))]
 use cc_agent::AgentPlugin;
+use cc_client::{cutscene, input, loading, renderer, setup, showcase, ui, voice_demo};
 use cc_sim::SimPlugin;
 use cc_sim::campaign::state::{CampaignPhase, CampaignState};
 #[cfg(feature = "native")]
@@ -45,12 +37,18 @@ fn parse_demo_mode() -> Option<DemoMode> {
             let next = args.get(i + 1).map(|s| s.as_str());
             return Some(match next {
                 Some("canyon") => {
-                    let n = args.get(i + 2).and_then(|s| s.parse::<u8>().ok()).unwrap_or(1);
+                    let n = args
+                        .get(i + 2)
+                        .and_then(|s| s.parse::<u8>().ok())
+                        .unwrap_or(1);
                     DemoMode::Canyon(n.clamp(1, 3))
                 }
                 Some("showcase") => DemoMode::Showcase,
                 Some("cutscene") => {
-                    let n = args.get(i + 2).and_then(|s| s.parse::<u8>().ok()).unwrap_or(1);
+                    let n = args
+                        .get(i + 2)
+                        .and_then(|s| s.parse::<u8>().ok())
+                        .unwrap_or(1);
                     DemoMode::Cutscene(n.clamp(1, 3))
                 }
                 Some("voice") => DemoMode::Voice,
@@ -154,14 +152,14 @@ fn setup_canyon(app: &mut App, scenario: u8) {
         .join("../../assets/campaign/demo_canyon.ron");
     let ron_str = std::fs::read_to_string(&ron_path)
         .unwrap_or_else(|e| panic!("Failed to read {}: {e}", ron_path.display()));
-    let mut mission: cc_core::mission::MissionDefinition = ron::from_str(&ron_str)
-        .unwrap_or_else(|e| panic!("Failed to parse demo_canyon.ron: {e}"));
+    let mut mission: cc_core::mission::MissionDefinition =
+        ron::from_str(&ron_str).unwrap_or_else(|e| panic!("Failed to parse demo_canyon.ron: {e}"));
 
     // Scenario 3: inject hero units for both players
     if scenario == 3 {
+        use cc_core::coords::GridPos;
         use cc_core::hero::HeroId;
         use cc_core::mission::HeroSpawn;
-        use cc_core::coords::GridPos;
 
         // The Eternal (Croak hero) — near P0's base
         mission.player_setup.heroes.push(HeroSpawn {
@@ -186,8 +184,7 @@ fn setup_canyon(app: &mut App, scenario: u8) {
     use cc_agent::events::ScriptRegistration;
     use cc_agent::runner::ScriptRegistry;
 
-    let scripts_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../assets/scripts");
+    let scripts_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/scripts");
     let mut registry = ScriptRegistry::default();
 
     // P0 always gets cat_formation
@@ -240,14 +237,11 @@ fn setup_canyon(app: &mut App, scenario: u8) {
     // Scenario 3: give P1 extra GPU for abilities
     if scenario == 3 {
         let player_res = cc_sim::resources::PlayerResources {
-            players: vec![
-                cc_sim::resources::PlayerResourceState::default(),
-                {
-                    let mut p = cc_sim::resources::PlayerResourceState::default();
-                    p.gpu_cores = 200;
-                    p
-                },
-            ],
+            players: vec![cc_sim::resources::PlayerResourceState::default(), {
+                let mut p = cc_sim::resources::PlayerResourceState::default();
+                p.gpu_cores = 200;
+                p
+            }],
         };
         app.insert_resource(player_res);
     }
@@ -331,8 +325,8 @@ fn setup_match(app: &mut App) {
         .join("../../assets/campaign/demo_match.ron");
     let ron_str = std::fs::read_to_string(&ron_path)
         .unwrap_or_else(|e| panic!("Failed to read {}: {e}", ron_path.display()));
-    let mission: cc_core::mission::MissionDefinition = ron::from_str(&ron_str)
-        .unwrap_or_else(|e| panic!("Failed to parse demo_match.ron: {e}"));
+    let mission: cc_core::mission::MissionDefinition =
+        ron::from_str(&ron_str).unwrap_or_else(|e| panic!("Failed to parse demo_match.ron: {e}"));
 
     load_demo_mission(app, mission, "AI Mirror Match");
 

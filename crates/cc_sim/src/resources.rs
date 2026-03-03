@@ -70,11 +70,7 @@ impl CommandQueue {
 
         let mut result = Vec::with_capacity(p0.len() + p1.len() + other.len());
 
-        let (first, second) = if tick % 2 == 0 {
-            (p0, p1)
-        } else {
-            (p1, p0)
-        };
+        let (first, second) = if tick % 2 == 0 { (p0, p1) } else { (p1, p0) };
 
         // Interleave: one from first, one from second, repeat
         let mut i = 0;
@@ -215,7 +211,10 @@ pub struct PlayerResources {
 impl Default for PlayerResources {
     fn default() -> Self {
         Self {
-            players: vec![PlayerResourceState::default(), PlayerResourceState::default()],
+            players: vec![
+                PlayerResourceState::default(),
+                PlayerResourceState::default(),
+            ],
         }
     }
 }
@@ -267,24 +266,68 @@ impl VoiceOverride {
         }
         match cmd {
             GameCommand::Move { unit_ids, target } => {
-                let filtered: Vec<EntityId> = unit_ids.into_iter().filter(|id| !self.is_overridden(id)).collect();
-                if filtered.is_empty() { None } else { Some(GameCommand::Move { unit_ids: filtered, target }) }
+                let filtered: Vec<EntityId> = unit_ids
+                    .into_iter()
+                    .filter(|id| !self.is_overridden(id))
+                    .collect();
+                if filtered.is_empty() {
+                    None
+                } else {
+                    Some(GameCommand::Move {
+                        unit_ids: filtered,
+                        target,
+                    })
+                }
             }
             GameCommand::AttackMove { unit_ids, target } => {
-                let filtered: Vec<EntityId> = unit_ids.into_iter().filter(|id| !self.is_overridden(id)).collect();
-                if filtered.is_empty() { None } else { Some(GameCommand::AttackMove { unit_ids: filtered, target }) }
+                let filtered: Vec<EntityId> = unit_ids
+                    .into_iter()
+                    .filter(|id| !self.is_overridden(id))
+                    .collect();
+                if filtered.is_empty() {
+                    None
+                } else {
+                    Some(GameCommand::AttackMove {
+                        unit_ids: filtered,
+                        target,
+                    })
+                }
             }
             GameCommand::Attack { unit_ids, target } => {
-                let filtered: Vec<EntityId> = unit_ids.into_iter().filter(|id| !self.is_overridden(id)).collect();
-                if filtered.is_empty() { None } else { Some(GameCommand::Attack { unit_ids: filtered, target }) }
+                let filtered: Vec<EntityId> = unit_ids
+                    .into_iter()
+                    .filter(|id| !self.is_overridden(id))
+                    .collect();
+                if filtered.is_empty() {
+                    None
+                } else {
+                    Some(GameCommand::Attack {
+                        unit_ids: filtered,
+                        target,
+                    })
+                }
             }
             GameCommand::Stop { unit_ids } => {
-                let filtered: Vec<EntityId> = unit_ids.into_iter().filter(|id| !self.is_overridden(id)).collect();
-                if filtered.is_empty() { None } else { Some(GameCommand::Stop { unit_ids: filtered }) }
+                let filtered: Vec<EntityId> = unit_ids
+                    .into_iter()
+                    .filter(|id| !self.is_overridden(id))
+                    .collect();
+                if filtered.is_empty() {
+                    None
+                } else {
+                    Some(GameCommand::Stop { unit_ids: filtered })
+                }
             }
             GameCommand::HoldPosition { unit_ids } => {
-                let filtered: Vec<EntityId> = unit_ids.into_iter().filter(|id| !self.is_overridden(id)).collect();
-                if filtered.is_empty() { None } else { Some(GameCommand::HoldPosition { unit_ids: filtered }) }
+                let filtered: Vec<EntityId> = unit_ids
+                    .into_iter()
+                    .filter(|id| !self.is_overridden(id))
+                    .collect();
+                if filtered.is_empty() {
+                    None
+                } else {
+                    Some(GameCommand::HoldPosition { unit_ids: filtered })
+                }
             }
             other => Some(other),
         }

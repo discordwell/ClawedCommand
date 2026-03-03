@@ -12,15 +12,15 @@ use cc_core::unit_stats::base_stats;
 
 use cc_sim::resources::*;
 use cc_sim::systems::{
-    ability_system, aura_system, cleanup_system, combat_system, command_system,
-    grid_sync_system, movement_system, production_system, projectile_system,
-    research_system, resource_system, stat_modifier_system, status_effect_system,
-    target_acquisition_system, tick_system, tower_combat_system, victory_system,
+    ability_system, aura_system, cleanup_system, combat_system, command_system, grid_sync_system,
+    movement_system, production_system, projectile_system, research_system, resource_system,
+    stat_modifier_system, status_effect_system, target_acquisition_system, tick_system,
+    tower_combat_system, victory_system,
 };
 
+use cc_agent::lua_runtime;
 use cc_agent::script_context::ScriptContext;
 use cc_agent::snapshot::GameStateSnapshot;
-use cc_agent::lua_runtime;
 
 /// Headless simulation — no rendering, no AI decision system.
 /// Script control replaces bot AI.
@@ -164,12 +164,7 @@ impl HeadlessSim {
     }
 
     /// Spawn a resource deposit at a grid position and return its entity bits as u64.
-    pub fn spawn_deposit(
-        &mut self,
-        resource_type: ResourceType,
-        pos: GridPos,
-        amount: u32,
-    ) -> u64 {
+    pub fn spawn_deposit(&mut self, resource_type: ResourceType, pos: GridPos, amount: u32) -> u64 {
         let entity = self
             .world
             .spawn((
@@ -200,13 +195,12 @@ impl HeadlessSim {
 
     /// Build a game state snapshot for a given player.
     pub fn snapshot(&mut self, player_id: u8) -> GameStateSnapshot {
-        use cc_core::math::Fixed;
-        use cc_core::abilities::unit_abilities;
-        use cc_core::status_effects::StatusEffects;
         use cc_agent::snapshot::{
-            UnitSnapshot, BuildingSnapshot, ResourceSnapshot,
-            StatusEffectSnapshot, AbilitySnapshot,
+            AbilitySnapshot, BuildingSnapshot, ResourceSnapshot, StatusEffectSnapshot, UnitSnapshot,
         };
+        use cc_core::abilities::unit_abilities;
+        use cc_core::math::Fixed;
+        use cc_core::status_effects::StatusEffects;
 
         // Clone resources upfront to release borrows before queries
         let (width, height) = {
@@ -221,22 +215,41 @@ impl HeadlessSim {
         let mut enemy_units = Vec::new();
         {
             let mut query = self.world.query::<(
-                Entity, &Position, &Owner, &UnitType, &Health, &MovementSpeed,
-                Option<&AttackStats>, Option<&AttackTypeMarker>,
-                Option<&MoveTarget>, Option<&AttackTarget>, Option<&Path>,
+                Entity,
+                &Position,
+                &Owner,
+                &UnitType,
+                &Health,
+                &MovementSpeed,
+                Option<&AttackStats>,
+                Option<&AttackTypeMarker>,
+                Option<&MoveTarget>,
+                Option<&AttackTarget>,
+                Option<&Path>,
                 Option<&Gathering>,
                 (
                     Option<&ChasingTarget>,
-                    Option<&AttackMoveTarget>, Option<&Dead>,
-                    Option<&StatusEffects>, Option<&AbilitySlots>,
+                    Option<&AttackMoveTarget>,
+                    Option<&Dead>,
+                    Option<&StatusEffects>,
+                    Option<&AbilitySlots>,
                 ),
             )>();
-            for (entity, pos, owner, unit_type, health, speed,
-                 attack_stats, attack_type_marker,
-                 move_target, attack_target, path,
-                 gathering,
-                 (chasing, attack_move, dead, status_effects, ability_slots))
-                in query.iter(&self.world)
+            for (
+                entity,
+                pos,
+                owner,
+                unit_type,
+                health,
+                speed,
+                attack_stats,
+                attack_type_marker,
+                move_target,
+                attack_target,
+                path,
+                gathering,
+                (chasing, attack_move, dead, status_effects, ability_slots),
+            ) in query.iter(&self.world)
             {
                 let is_moving = move_target.is_some() || path.is_some() || chasing.is_some();
                 let is_attacking = attack_target.is_some() || attack_move.is_some();
@@ -267,25 +280,29 @@ impl HeadlessSim {
 
                 let ability_snaps: Vec<AbilitySnapshot> = ability_slots
                     .map(|slots| {
-                        slots.slots.iter().enumerate().map(|(i, state)| {
-                            AbilitySnapshot {
+                        slots
+                            .slots
+                            .iter()
+                            .enumerate()
+                            .map(|(i, state)| AbilitySnapshot {
                                 slot: i as u8,
                                 id: format!("{:?}", state.id),
                                 cooldown_remaining: state.cooldown_remaining,
                                 ready: state.cooldown_remaining == 0,
-                            }
-                        }).collect()
+                            })
+                            .collect()
                     })
                     .unwrap_or_else(|| {
                         let ids = unit_abilities(unit_type.kind);
-                        ids.iter().enumerate().map(|(i, id)| {
-                            AbilitySnapshot {
+                        ids.iter()
+                            .enumerate()
+                            .map(|(i, id)| AbilitySnapshot {
                                 slot: i as u8,
                                 id: format!("{:?}", id),
                                 cooldown_remaining: 0,
                                 ready: true,
-                            }
-                        }).collect()
+                            })
+                            .collect()
                     });
 
                 let snap = UnitSnapshot {
@@ -324,12 +341,25 @@ impl HeadlessSim {
         let mut enemy_buildings = Vec::new();
         {
             let mut query = self.world.query::<(
-                Entity, &Position, &Owner, &Building, &Health,
-                Option<&UnderConstruction>, Option<&ProductionQueue>,
+                Entity,
+                &Position,
+                &Owner,
+                &Building,
+                &Health,
+                Option<&UnderConstruction>,
+                Option<&ProductionQueue>,
                 Option<&ResearchQueue>,
             )>();
-            for (entity, pos, owner, building, health, under_construction, production_queue, research_queue)
-                in query.iter(&self.world)
+            for (
+                entity,
+                pos,
+                owner,
+                building,
+                health,
+                under_construction,
+                production_queue,
+                research_queue,
+            ) in query.iter(&self.world)
             {
                 let (is_constructing, progress) = under_construction
                     .map(|uc| (true, uc.progress_f32()))
@@ -340,7 +370,12 @@ impl HeadlessSim {
                     .unwrap_or_default();
 
                 let rq: Vec<String> = research_queue
-                    .map(|rq| rq.queue.iter().map(|(upgrade, _)| format!("{}", upgrade)).collect())
+                    .map(|rq| {
+                        rq.queue
+                            .iter()
+                            .map(|(upgrade, _)| format!("{}", upgrade))
+                            .collect()
+                    })
                     .unwrap_or_default();
 
                 let snap = BuildingSnapshot {
@@ -367,7 +402,8 @@ impl HeadlessSim {
         // Query deposits
         let resource_deposits: Vec<ResourceSnapshot> = {
             let mut query = self.world.query::<(Entity, &Position, &ResourceDeposit)>();
-            query.iter(&self.world)
+            query
+                .iter(&self.world)
                 .map(|(entity, pos, deposit)| ResourceSnapshot {
                     id: EntityId::from_entity(entity),
                     resource_type: deposit.resource_type,
@@ -411,11 +447,11 @@ impl HeadlessSim {
             &snap,
             map,
             player_id,
-            cc_core::terrain::FactionId::from_u8(player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            cc_core::terrain::FactionId::from_u8(player_id)
+                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
         );
 
-        lua_runtime::execute_script_with_context(lua_source, &mut ctx)
-            .map_err(|e| e.to_string())
+        lua_runtime::execute_script_with_context(lua_source, &mut ctx).map_err(|e| e.to_string())
     }
 
     /// Get the current simulation tick.
@@ -574,7 +610,8 @@ mod tests {
     #[test]
     fn cancel_research_produces_correct_command() {
         let mut sim = HeadlessSim::new(32, 32);
-        let building_bits = sim.spawn_building(BuildingKind::ScratchingPost, GridPos::new(10, 10), 0);
+        let building_bits =
+            sim.spawn_building(BuildingKind::ScratchingPost, GridPos::new(10, 10), 0);
 
         sim.inject_command(GameCommand::CancelResearch {
             building: EntityId(building_bits),
@@ -619,7 +656,9 @@ mod tests {
         let snap = sim.snapshot(0);
         let map = sim.map();
         let mut ctx = ScriptContext::new(
-            &snap, map, 0,
+            &snap,
+            map,
+            0,
             cc_core::terrain::FactionId::from_u8(0).unwrap_or(cc_core::terrain::FactionId::CatGPT),
         );
         let deposits = ctx.resource_deposits();
@@ -643,7 +682,9 @@ mod tests {
         let snap = sim.snapshot(0);
         let map = sim.map();
         let mut ctx = ScriptContext::new(
-            &snap, map, 0,
+            &snap,
+            map,
+            0,
             cc_core::terrain::FactionId::from_u8(0).unwrap_or(cc_core::terrain::FactionId::CatGPT),
         );
 
@@ -664,7 +705,9 @@ mod tests {
         let snap = sim.snapshot(0);
         let map = sim.map();
         let mut ctx = ScriptContext::new(
-            &snap, map, 0,
+            &snap,
+            map,
+            0,
             cc_core::terrain::FactionId::from_u8(0).unwrap_or(cc_core::terrain::FactionId::CatGPT),
         );
 
@@ -675,7 +718,7 @@ mod tests {
 
     #[test]
     fn snapshot_captures_status_effects_from_ecs() {
-        use cc_core::status_effects::{StatusEffects, StatusInstance, StatusEffectId};
+        use cc_core::status_effects::{StatusEffectId, StatusEffects, StatusInstance};
 
         let mut sim = HeadlessSim::new(32, 32);
         let entity_bits = sim.spawn_unit(UnitKind::Hisser, GridPos::new(5, 5), 0);
@@ -733,9 +776,8 @@ mod tests {
 
         // Add AbilitySlots component
         let entity = Entity::from_bits(entity_bits);
-        let mut ability_slots = AbilitySlots::from_abilities(
-            cc_core::abilities::unit_abilities(UnitKind::Hisser),
-        );
+        let mut ability_slots =
+            AbilitySlots::from_abilities(cc_core::abilities::unit_abilities(UnitKind::Hisser));
         // Put slot 1 on cooldown
         ability_slots.slots[1].cooldown_remaining = 25;
         sim.world.entity_mut(entity).insert(ability_slots);
@@ -779,7 +821,8 @@ mod tests {
     #[test]
     fn snapshot_captures_research_queue_from_ecs() {
         let mut sim = HeadlessSim::new(32, 32);
-        let building_bits = sim.spawn_building(BuildingKind::ScratchingPost, GridPos::new(10, 10), 0);
+        let building_bits =
+            sim.spawn_building(BuildingKind::ScratchingPost, GridPos::new(10, 10), 0);
 
         // Add ResearchQueue to the building
         let entity = Entity::from_bits(building_bits);
@@ -808,7 +851,7 @@ mod tests {
 
     #[test]
     fn get_unit_details_via_snapshot() {
-        use cc_core::status_effects::{StatusEffects, StatusInstance, StatusEffectId};
+        use cc_core::status_effects::{StatusEffectId, StatusEffects, StatusInstance};
 
         let mut sim = HeadlessSim::new(32, 32);
         let entity_bits = sim.spawn_unit(UnitKind::Chonk, GridPos::new(8, 8), 0);
@@ -822,9 +865,8 @@ mod tests {
             stacks: 1,
             source: EntityId(0),
         });
-        let ability_slots = AbilitySlots::from_abilities(
-            cc_core::abilities::unit_abilities(UnitKind::Chonk),
-        );
+        let ability_slots =
+            AbilitySlots::from_abilities(cc_core::abilities::unit_abilities(UnitKind::Chonk));
         sim.world.entity_mut(entity).insert((se, ability_slots));
 
         let snap = sim.snapshot(0);
@@ -841,9 +883,7 @@ mod tests {
         let mut sim = HeadlessSim::new(32, 32);
 
         // Add a completed upgrade
-        sim.world
-            .resource_mut::<PlayerResources>()
-            .players[0]
+        sim.world.resource_mut::<PlayerResources>().players[0]
             .completed_upgrades
             .insert(UpgradeType::SharperClaws);
 

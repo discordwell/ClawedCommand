@@ -52,11 +52,7 @@ pub struct MissionDefinition {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MissionMap {
     /// Procedurally generated from a seed.
-    Generated {
-        seed: u64,
-        width: u32,
-        height: u32,
-    },
+    Generated { seed: u64, width: u32, height: u32 },
     /// Inline tile data (row-major, TerrainType per tile).
     Inline {
         width: u32,
@@ -246,7 +242,10 @@ pub enum TriggerCondition {
     /// Fires when a hazard reaches a certain level.
     HazardLevel { hazard_type: String, level: u32 },
     /// Fires periodically at fixed intervals.
-    Periodic { interval_ticks: u64, offset_ticks: u64 },
+    Periodic {
+        interval_ticks: u64,
+        offset_ticks: u64,
+    },
 }
 
 /// Actions performed when a trigger fires.
@@ -267,9 +266,16 @@ pub enum TriggerAction {
     /// Toggle a mutator on or off by its index in the mission's mutators vec.
     ToggleMutator { mutator_index: usize, active: bool },
     /// Set terrain type at specific positions.
-    SetTerrain { positions: Vec<GridPos>, terrain: TerrainType },
+    SetTerrain {
+        positions: Vec<GridPos>,
+        terrain: TerrainType,
+    },
     /// Deal damage to all units in an area.
-    AreaDamage { center: GridPos, radius: u32, damage: u32 },
+    AreaDamage {
+        center: GridPos,
+        radius: u32,
+        damage: u32,
+    },
 }
 
 /// What mission comes after this one.
@@ -364,7 +370,11 @@ impl MissionDefinition {
         }
 
         // Build lookup sets once
-        let wave_ids: Vec<&str> = self.enemy_waves.iter().map(|w| w.wave_id.as_str()).collect();
+        let wave_ids: Vec<&str> = self
+            .enemy_waves
+            .iter()
+            .map(|w| w.wave_id.as_str())
+            .collect();
         let obj_ids: Vec<&str> = self.objectives.iter().map(|o| o.id.as_str()).collect();
 
         // Single pass over triggers: check dialogue indices, wave refs, objective refs,
@@ -589,8 +599,14 @@ mod tests {
         }];
         let errs = mission.validate().unwrap_err();
         assert!(errs.iter().any(|e| e.contains("dialogue index 42")));
-        assert!(errs.iter().any(|e| e.contains("unknown wave 'phantom_wave'")));
-        assert!(errs.iter().any(|e| e.contains("unknown objective 'phantom_obj'")));
+        assert!(
+            errs.iter()
+                .any(|e| e.contains("unknown wave 'phantom_wave'"))
+        );
+        assert!(
+            errs.iter()
+                .any(|e| e.contains("unknown objective 'phantom_obj'"))
+        );
         assert_eq!(errs.len(), 3);
     }
 
@@ -616,7 +632,11 @@ mod tests {
             ron::ser::to_string_pretty(&mission, ron::ser::PrettyConfig::default()).unwrap();
         let parsed: MissionDefinition = ron::from_str(&ron_str).unwrap();
         match &parsed.next_mission {
-            NextMission::Branching { flag, on_true, on_false } => {
+            NextMission::Branching {
+                flag,
+                on_true,
+                on_false,
+            } => {
                 assert_eq!(flag, "helped_rex");
                 assert_eq!(on_true, "act3_ally");
                 assert_eq!(on_false, "act3_rival");
@@ -676,7 +696,10 @@ mod tests {
         use crate::mutator::MissionMutator;
         let mut mission = minimal_mission();
         mission.mutators = vec![
-            MissionMutator::TimeLimit { max_ticks: 3000, warning_at: 2500 },
+            MissionMutator::TimeLimit {
+                max_ticks: 3000,
+                warning_at: 2500,
+            },
             MissionMutator::NoBuildMode,
         ];
         let ron_str =
@@ -712,23 +735,47 @@ mod tests {
 
     #[test]
     fn new_trigger_conditions_serialize() {
-        let cond = TriggerCondition::Periodic { interval_ticks: 100, offset_ticks: 10 };
+        let cond = TriggerCondition::Periodic {
+            interval_ticks: 100,
+            offset_ticks: 10,
+        };
         let ron_str = ron::to_string(&cond).unwrap();
         let parsed: TriggerCondition = ron::from_str(&ron_str).unwrap();
-        assert!(matches!(parsed, TriggerCondition::Periodic { interval_ticks: 100, .. }));
+        assert!(matches!(
+            parsed,
+            TriggerCondition::Periodic {
+                interval_ticks: 100,
+                ..
+            }
+        ));
 
-        let cond2 = TriggerCondition::HazardLevel { hazard_type: "lava".into(), level: 3 };
+        let cond2 = TriggerCondition::HazardLevel {
+            hazard_type: "lava".into(),
+            level: 3,
+        };
         let ron_str2 = ron::to_string(&cond2).unwrap();
         let parsed2: TriggerCondition = ron::from_str(&ron_str2).unwrap();
-        assert!(matches!(parsed2, TriggerCondition::HazardLevel { level: 3, .. }));
+        assert!(matches!(
+            parsed2,
+            TriggerCondition::HazardLevel { level: 3, .. }
+        ));
     }
 
     #[test]
     fn new_trigger_actions_serialize() {
-        let action = TriggerAction::ToggleMutator { mutator_index: 0, active: true };
+        let action = TriggerAction::ToggleMutator {
+            mutator_index: 0,
+            active: true,
+        };
         let ron_str = ron::to_string(&action).unwrap();
         let parsed: TriggerAction = ron::from_str(&ron_str).unwrap();
-        assert!(matches!(parsed, TriggerAction::ToggleMutator { mutator_index: 0, active: true }));
+        assert!(matches!(
+            parsed,
+            TriggerAction::ToggleMutator {
+                mutator_index: 0,
+                active: true
+            }
+        ));
 
         let action2 = TriggerAction::SetTerrain {
             positions: vec![GridPos::new(1, 2)],
@@ -738,17 +785,24 @@ mod tests {
         let parsed2: TriggerAction = ron::from_str(&ron_str2).unwrap();
         assert!(matches!(parsed2, TriggerAction::SetTerrain { .. }));
 
-        let action3 = TriggerAction::AreaDamage { center: GridPos::new(5, 5), radius: 3, damage: 50 };
+        let action3 = TriggerAction::AreaDamage {
+            center: GridPos::new(5, 5),
+            radius: 3,
+            damage: 50,
+        };
         let ron_str3 = ron::to_string(&action3).unwrap();
         let parsed3: TriggerAction = ron::from_str(&ron_str3).unwrap();
-        assert!(matches!(parsed3, TriggerAction::AreaDamage { damage: 50, .. }));
+        assert!(matches!(
+            parsed3,
+            TriggerAction::AreaDamage { damage: 50, .. }
+        ));
     }
 
     #[test]
     fn parse_act5_m1_grotto_assembly_ron() {
         let ron_str = include_str!("../../../assets/campaign/act5_m1_grotto_assembly.ron");
-        let mission: MissionDefinition = ron::from_str(ron_str)
-            .expect("Failed to parse act5_m1_grotto_assembly.ron");
+        let mission: MissionDefinition =
+            ron::from_str(ron_str).expect("Failed to parse act5_m1_grotto_assembly.ron");
         assert_eq!(mission.id, "act5_m1_grotto_assembly");
         assert_eq!(mission.act, 5);
         assert_eq!(mission.mission_index, 1);
@@ -760,8 +814,14 @@ mod tests {
         assert_eq!(mission.objectives.len(), 3);
         // Two mutators: Flooding + TimeLimit
         assert_eq!(mission.mutators.len(), 2);
-        assert!(matches!(mission.mutators[0], crate::mutator::MissionMutator::Flooding { .. }));
-        assert!(matches!(mission.mutators[1], crate::mutator::MissionMutator::TimeLimit { .. }));
+        assert!(matches!(
+            mission.mutators[0],
+            crate::mutator::MissionMutator::Flooding { .. }
+        ));
+        assert!(matches!(
+            mission.mutators[1],
+            crate::mutator::MissionMutator::TimeLimit { .. }
+        ));
         // Triggers include flood activation and wave spawning
         assert!(mission.triggers.len() >= 8);
         // Dialogue lines
@@ -773,13 +833,18 @@ mod tests {
     #[test]
     fn parse_demo_canyon_ron() {
         let ron_str = include_str!("../../../assets/campaign/demo_canyon.ron");
-        let mission: MissionDefinition = ron::from_str(ron_str)
-            .expect("Failed to parse demo_canyon.ron");
+        let mission: MissionDefinition =
+            ron::from_str(ron_str).expect("Failed to parse demo_canyon.ron");
         assert_eq!(mission.id, "demo_canyon");
         assert_eq!(mission.name, "Canyon Battle");
         // Inline map: 80x48 = 3840 tiles
         match &mission.map {
-            MissionMap::Inline { width, height, tiles, elevation } => {
+            MissionMap::Inline {
+                width,
+                height,
+                tiles,
+                elevation,
+            } => {
                 assert_eq!(*width, 80);
                 assert_eq!(*height, 48);
                 assert_eq!(tiles.len(), 80 * 48);
@@ -792,9 +857,15 @@ mod tests {
         assert!(mission.player_setup.units.is_empty());
         // Two buildings (TheBox for P0, TheBurrow for P1)
         assert_eq!(mission.player_setup.buildings.len(), 2);
-        assert_eq!(mission.player_setup.buildings[0].kind, crate::components::BuildingKind::TheBox);
+        assert_eq!(
+            mission.player_setup.buildings[0].kind,
+            crate::components::BuildingKind::TheBox
+        );
         assert_eq!(mission.player_setup.buildings[0].player_id, 0);
-        assert_eq!(mission.player_setup.buildings[1].kind, crate::components::BuildingKind::TheBurrow);
+        assert_eq!(
+            mission.player_setup.buildings[1].kind,
+            crate::components::BuildingKind::TheBurrow
+        );
         assert_eq!(mission.player_setup.buildings[1].player_id, 1);
         // Two waves (P0 army, P1 army)
         assert_eq!(mission.enemy_waves.len(), 2);
@@ -807,7 +878,10 @@ mod tests {
         // Single EliminateAll objective
         assert_eq!(mission.objectives.len(), 1);
         assert!(mission.objectives[0].primary);
-        assert!(matches!(mission.objectives[0].condition, ObjectiveCondition::EliminateAll));
+        assert!(matches!(
+            mission.objectives[0].condition,
+            ObjectiveCondition::EliminateAll
+        ));
         // Zero resources
         assert_eq!(mission.player_setup.starting_food, 0);
         assert_eq!(mission.player_setup.starting_gpu, 0);
@@ -820,33 +894,54 @@ mod tests {
     fn demo_canyon_map_terrain_distribution() {
         let ron_str = include_str!("../../../assets/campaign/demo_canyon.ron");
         let mission: MissionDefinition = ron::from_str(ron_str).unwrap();
-        let MissionMap::Inline { tiles, elevation, .. } = &mission.map else {
+        let MissionMap::Inline {
+            tiles, elevation, ..
+        } = &mission.map
+        else {
             panic!("Expected Inline map");
         };
         // Rock walls exist (top and bottom rows)
         let rock_count = tiles.iter().filter(|t| **t == TerrainType::Rock).count();
-        assert!(rock_count > 400, "Should have substantial rock walls, got {rock_count}");
+        assert!(
+            rock_count > 400,
+            "Should have substantial rock walls, got {rock_count}"
+        );
         // Water river exists
         let water_count = tiles.iter().filter(|t| **t == TerrainType::Water).count();
-        assert!(water_count > 100, "Should have a river, got {water_count} water tiles");
+        assert!(
+            water_count > 100,
+            "Should have a river, got {water_count} water tiles"
+        );
         // Shallows crossings exist
-        let shallows_count = tiles.iter().filter(|t| **t == TerrainType::Shallows).count();
-        assert!(shallows_count > 10, "Should have ford crossings, got {shallows_count} shallows");
+        let shallows_count = tiles
+            .iter()
+            .filter(|t| **t == TerrainType::Shallows)
+            .count();
+        assert!(
+            shallows_count > 10,
+            "Should have ford crossings, got {shallows_count} shallows"
+        );
         // Road bridges exist
         let road_count = tiles.iter().filter(|t| **t == TerrainType::Road).count();
-        assert!(road_count > 10, "Should have road bridges, got {road_count} road tiles");
+        assert!(
+            road_count > 10,
+            "Should have road bridges, got {road_count} road tiles"
+        );
         // Elevation levels present
         let max_elev = *elevation.iter().max().unwrap();
         assert_eq!(max_elev, 2, "Should have elevation 2 for rock walls");
         let elev_1_count = elevation.iter().filter(|e| **e == 1).count();
-        assert!(elev_1_count > 1000, "Plateaus should be elevation 1, got {elev_1_count}");
+        assert!(
+            elev_1_count > 1000,
+            "Plateaus should be elevation 1, got {elev_1_count}"
+        );
     }
 
     #[test]
     fn parse_act3_m9_jinx_ron() {
         let ron_str = include_str!("../../../assets/campaign/act3_m9_jinx.ron");
-        let mission: MissionDefinition = ron::from_str(ron_str)
-            .expect("Failed to parse act3_m9_jinx.ron");
+        let mission: MissionDefinition =
+            ron::from_str(ron_str).expect("Failed to parse act3_m9_jinx.ron");
         assert_eq!(mission.id, "act3_m9_jinx");
         assert_eq!(mission.act, 3);
         assert_eq!(mission.mission_index, 9);
@@ -855,18 +950,31 @@ mod tests {
         assert_eq!(mission.objectives.len(), 2);
         assert_eq!(mission.mutators.len(), 3);
         assert_eq!(mission.dialogue.len(), 12);
-        assert!(matches!(mission.mutators[0], crate::mutator::MissionMutator::WindStorm { .. }));
-        assert!(matches!(mission.mutators[1], crate::mutator::MissionMutator::RestrictedUnits { .. }));
-        assert!(matches!(mission.mutators[2], crate::mutator::MissionMutator::NoBuildMode));
-        assert!(matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act3_m10_llama_perimeter"));
-        mission.validate().expect("Mission validation failed for act3_m9_jinx");
+        assert!(matches!(
+            mission.mutators[0],
+            crate::mutator::MissionMutator::WindStorm { .. }
+        ));
+        assert!(matches!(
+            mission.mutators[1],
+            crate::mutator::MissionMutator::RestrictedUnits { .. }
+        ));
+        assert!(matches!(
+            mission.mutators[2],
+            crate::mutator::MissionMutator::NoBuildMode
+        ));
+        assert!(
+            matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act3_m10_llama_perimeter")
+        );
+        mission
+            .validate()
+            .expect("Mission validation failed for act3_m9_jinx");
     }
 
     #[test]
     fn parse_act3_m10_llama_perimeter_ron() {
         let ron_str = include_str!("../../../assets/campaign/act3_m10_llama_perimeter.ron");
-        let mission: MissionDefinition = ron::from_str(ron_str)
-            .expect("Failed to parse act3_m10_llama_perimeter.ron");
+        let mission: MissionDefinition =
+            ron::from_str(ron_str).expect("Failed to parse act3_m10_llama_perimeter.ron");
         assert_eq!(mission.id, "act3_m10_llama_perimeter");
         assert_eq!(mission.act, 3);
         assert_eq!(mission.mission_index, 10);
@@ -875,17 +983,27 @@ mod tests {
         assert_eq!(mission.objectives.len(), 3);
         assert_eq!(mission.mutators.len(), 2);
         assert_eq!(mission.dialogue.len(), 15);
-        assert!(matches!(mission.mutators[0], crate::mutator::MissionMutator::ResourceScarcity { .. }));
-        assert!(matches!(mission.mutators[1], crate::mutator::MissionMutator::SpeedMultiplier { .. }));
-        assert!(matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act3_m11_junkyard"));
-        mission.validate().expect("Mission validation failed for act3_m10_llama_perimeter");
+        assert!(matches!(
+            mission.mutators[0],
+            crate::mutator::MissionMutator::ResourceScarcity { .. }
+        ));
+        assert!(matches!(
+            mission.mutators[1],
+            crate::mutator::MissionMutator::SpeedMultiplier { .. }
+        ));
+        assert!(
+            matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act3_m11_junkyard")
+        );
+        mission
+            .validate()
+            .expect("Mission validation failed for act3_m10_llama_perimeter");
     }
 
     #[test]
     fn parse_act3_m11_junkyard_ron() {
         let ron_str = include_str!("../../../assets/campaign/act3_m11_junkyard.ron");
-        let mission: MissionDefinition = ron::from_str(ron_str)
-            .expect("Failed to parse act3_m11_junkyard.ron");
+        let mission: MissionDefinition =
+            ron::from_str(ron_str).expect("Failed to parse act3_m11_junkyard.ron");
         assert_eq!(mission.id, "act3_m11_junkyard");
         assert_eq!(mission.act, 3);
         assert_eq!(mission.mission_index, 11);
@@ -894,18 +1012,31 @@ mod tests {
         assert_eq!(mission.objectives.len(), 3);
         assert_eq!(mission.mutators.len(), 3);
         assert_eq!(mission.dialogue.len(), 15);
-        assert!(matches!(mission.mutators[0], crate::mutator::MissionMutator::DamageZone { .. }));
-        assert!(matches!(mission.mutators[1], crate::mutator::MissionMutator::Tremors { .. }));
-        assert!(matches!(mission.mutators[2], crate::mutator::MissionMutator::AiOnlyControl { tool_tier: 2 }));
-        assert!(matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act3_m12_rexs_truth"));
-        mission.validate().expect("Mission validation failed for act3_m11_junkyard");
+        assert!(matches!(
+            mission.mutators[0],
+            crate::mutator::MissionMutator::DamageZone { .. }
+        ));
+        assert!(matches!(
+            mission.mutators[1],
+            crate::mutator::MissionMutator::Tremors { .. }
+        ));
+        assert!(matches!(
+            mission.mutators[2],
+            crate::mutator::MissionMutator::AiOnlyControl { tool_tier: 2 }
+        ));
+        assert!(
+            matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act3_m12_rexs_truth")
+        );
+        mission
+            .validate()
+            .expect("Mission validation failed for act3_m11_junkyard");
     }
 
     #[test]
     fn parse_act3_m12_rexs_truth_ron() {
         let ron_str = include_str!("../../../assets/campaign/act3_m12_rexs_truth.ron");
-        let mission: MissionDefinition = ron::from_str(ron_str)
-            .expect("Failed to parse act3_m12_rexs_truth.ron");
+        let mission: MissionDefinition =
+            ron::from_str(ron_str).expect("Failed to parse act3_m12_rexs_truth.ron");
         assert_eq!(mission.id, "act3_m12_rexs_truth");
         assert_eq!(mission.act, 3);
         assert_eq!(mission.mission_index, 12);
@@ -914,16 +1045,27 @@ mod tests {
         assert_eq!(mission.objectives.len(), 2);
         assert_eq!(mission.mutators.len(), 1);
         assert_eq!(mission.dialogue.len(), 20);
-        assert!(matches!(mission.mutators[0], crate::mutator::MissionMutator::VoiceOnlyControl { ai_enabled: true, .. }));
-        assert!(matches!(mission.next_mission, NextMission::Branching { .. }));
-        mission.validate().expect("Mission validation failed for act3_m12_rexs_truth");
+        assert!(matches!(
+            mission.mutators[0],
+            crate::mutator::MissionMutator::VoiceOnlyControl {
+                ai_enabled: true,
+                ..
+            }
+        ));
+        assert!(matches!(
+            mission.next_mission,
+            NextMission::Branching { .. }
+        ));
+        mission
+            .validate()
+            .expect("Mission validation failed for act3_m12_rexs_truth");
     }
 
     #[test]
     fn parse_act3_m13_escape_parliament_ron() {
         let ron_str = include_str!("../../../assets/campaign/act3_m13_escape_parliament.ron");
-        let mission: MissionDefinition = ron::from_str(ron_str)
-            .expect("Failed to parse act3_m13_escape_parliament.ron");
+        let mission: MissionDefinition =
+            ron::from_str(ron_str).expect("Failed to parse act3_m13_escape_parliament.ron");
         assert_eq!(mission.id, "act3_m13_escape_parliament");
         assert_eq!(mission.act, 3);
         assert_eq!(mission.mission_index, 13);
@@ -932,10 +1074,20 @@ mod tests {
         assert_eq!(mission.objectives.len(), 2);
         assert_eq!(mission.mutators.len(), 2);
         assert_eq!(mission.dialogue.len(), 12);
-        assert!(matches!(mission.mutators[0], crate::mutator::MissionMutator::LavaRise { .. }));
-        assert!(matches!(mission.mutators[1], crate::mutator::MissionMutator::SpeedMultiplier { .. }));
-        assert!(matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act4_m14_junkyard_fort"));
-        mission.validate().expect("Mission validation failed for act3_m13_escape_parliament");
+        assert!(matches!(
+            mission.mutators[0],
+            crate::mutator::MissionMutator::LavaRise { .. }
+        ));
+        assert!(matches!(
+            mission.mutators[1],
+            crate::mutator::MissionMutator::SpeedMultiplier { .. }
+        ));
+        assert!(
+            matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act4_m14_junkyard_fort")
+        );
+        mission
+            .validate()
+            .expect("Mission validation failed for act3_m13_escape_parliament");
     }
 
     #[test]
@@ -994,21 +1146,41 @@ mod tests {
         };
         let w = *width;
         for hero in &mission.player_setup.heroes {
-            assert_passable(tiles, w, hero.position.x, hero.position.y,
-                &format!("hero {:?}", hero.hero_id));
+            assert_passable(
+                tiles,
+                w,
+                hero.position.x,
+                hero.position.y,
+                &format!("hero {:?}", hero.hero_id),
+            );
         }
         for unit in &mission.player_setup.units {
-            assert_passable(tiles, w, unit.position.x, unit.position.y,
-                &format!("player unit {:?}", unit.kind));
+            assert_passable(
+                tiles,
+                w,
+                unit.position.x,
+                unit.position.y,
+                &format!("player unit {:?}", unit.kind),
+            );
         }
         for wave in &mission.enemy_waves {
             for unit in &wave.units {
-                assert_passable(tiles, w, unit.position.x, unit.position.y,
-                    &format!("wave '{}' unit", wave.wave_id));
+                assert_passable(
+                    tiles,
+                    w,
+                    unit.position.x,
+                    unit.position.y,
+                    &format!("wave '{}' unit", wave.wave_id),
+                );
             }
             if let WaveAiBehavior::AttackMove(pos) = &wave.ai_behavior {
-                assert_passable(tiles, w, pos.x, pos.y,
-                    &format!("wave '{}' attack_move target", wave.wave_id));
+                assert_passable(
+                    tiles,
+                    w,
+                    pos.x,
+                    pos.y,
+                    &format!("wave '{}' attack_move target", wave.wave_id),
+                );
             }
         }
     }
@@ -1036,7 +1208,12 @@ mod tests {
     fn prologue_has_inline_map() {
         let mission = load_prologue();
         match &mission.map {
-            MissionMap::Inline { width, height, tiles, elevation } => {
+            MissionMap::Inline {
+                width,
+                height,
+                tiles,
+                elevation,
+            } => {
                 assert_eq!(*width, 48);
                 assert_eq!(*height, 48);
                 assert_eq!(tiles.len(), 48 * 48);
@@ -1049,21 +1226,45 @@ mod tests {
     #[test]
     fn prologue_terrain_distribution() {
         let mission = load_prologue();
-        let MissionMap::Inline { tiles, elevation, .. } = &mission.map else {
+        let MissionMap::Inline {
+            tiles, elevation, ..
+        } = &mission.map
+        else {
             panic!("Expected Inline map");
         };
         let rock_count = tiles.iter().filter(|t| **t == TerrainType::Rock).count();
-        assert!(rock_count > 300, "Should have rock border, got {rock_count}");
+        assert!(
+            rock_count > 300,
+            "Should have rock border, got {rock_count}"
+        );
         let water_count = tiles.iter().filter(|t| **t == TerrainType::Water).count();
-        assert!(water_count > 50, "Should have river water, got {water_count}");
-        let shallows_count = tiles.iter().filter(|t| **t == TerrainType::Shallows).count();
-        assert!(shallows_count > 40, "Should have ford crossings, got {shallows_count}");
-        let ruins_count = tiles.iter().filter(|t| **t == TerrainType::TechRuins).count();
-        assert!(ruins_count >= 6, "Should have tech ruins, got {ruins_count}");
+        assert!(
+            water_count > 50,
+            "Should have river water, got {water_count}"
+        );
+        let shallows_count = tiles
+            .iter()
+            .filter(|t| **t == TerrainType::Shallows)
+            .count();
+        assert!(
+            shallows_count > 40,
+            "Should have ford crossings, got {shallows_count}"
+        );
+        let ruins_count = tiles
+            .iter()
+            .filter(|t| **t == TerrainType::TechRuins)
+            .count();
+        assert!(
+            ruins_count >= 6,
+            "Should have tech ruins, got {ruins_count}"
+        );
         let max_elev = *elevation.iter().max().unwrap();
         assert_eq!(max_elev, 2, "Should have elevation 2 for rock walls");
         let elev_1_count = elevation.iter().filter(|e| **e == 1).count();
-        assert!(elev_1_count > 400, "East bank should be elevation 1, got {elev_1_count}");
+        assert!(
+            elev_1_count > 400,
+            "East bank should be elevation 1, got {elev_1_count}"
+        );
     }
 
     #[test]
@@ -1091,7 +1292,12 @@ mod tests {
     fn pond_defense_has_inline_map() {
         let mission = load_pond_defense();
         match &mission.map {
-            MissionMap::Inline { width, height, tiles, elevation } => {
+            MissionMap::Inline {
+                width,
+                height,
+                tiles,
+                elevation,
+            } => {
                 assert_eq!(*width, 48);
                 assert_eq!(*height, 48);
                 assert_eq!(tiles.len(), 48 * 48);
@@ -1104,23 +1310,50 @@ mod tests {
     #[test]
     fn pond_defense_terrain_distribution() {
         let mission = load_pond_defense();
-        let MissionMap::Inline { tiles, elevation, .. } = &mission.map else {
+        let MissionMap::Inline {
+            tiles, elevation, ..
+        } = &mission.map
+        else {
             panic!("Expected Inline map");
         };
         let rock_count = tiles.iter().filter(|t| **t == TerrainType::Rock).count();
-        assert!(rock_count > 300, "Should have rock border, got {rock_count}");
+        assert!(
+            rock_count > 300,
+            "Should have rock border, got {rock_count}"
+        );
         let water_count = tiles.iter().filter(|t| **t == TerrainType::Water).count();
-        assert!(water_count >= 18, "Should have pond water, got {water_count}");
-        let shallows_count = tiles.iter().filter(|t| **t == TerrainType::Shallows).count();
-        assert!(shallows_count > 20, "Should have shallows rings, got {shallows_count}");
+        assert!(
+            water_count >= 18,
+            "Should have pond water, got {water_count}"
+        );
+        let shallows_count = tiles
+            .iter()
+            .filter(|t| **t == TerrainType::Shallows)
+            .count();
+        assert!(
+            shallows_count > 20,
+            "Should have shallows rings, got {shallows_count}"
+        );
         let forest_count = tiles.iter().filter(|t| **t == TerrainType::Forest).count();
-        assert!(forest_count > 200, "Should have forest corridors, got {forest_count}");
-        let ruins_count = tiles.iter().filter(|t| **t == TerrainType::TechRuins).count();
-        assert!(ruins_count >= 9, "Should have tech ruins, got {ruins_count}");
+        assert!(
+            forest_count > 200,
+            "Should have forest corridors, got {forest_count}"
+        );
+        let ruins_count = tiles
+            .iter()
+            .filter(|t| **t == TerrainType::TechRuins)
+            .count();
+        assert!(
+            ruins_count >= 9,
+            "Should have tech ruins, got {ruins_count}"
+        );
         let max_elev = *elevation.iter().max().unwrap();
         assert_eq!(max_elev, 2, "Should have elevation 2 for rock walls");
         let elev_1_count = elevation.iter().filter(|e| **e == 1).count();
-        assert!(elev_1_count > 200, "Player base should be elevation 1, got {elev_1_count}");
+        assert!(
+            elev_1_count > 200,
+            "Player base should be elevation 1, got {elev_1_count}"
+        );
     }
 
     #[test]

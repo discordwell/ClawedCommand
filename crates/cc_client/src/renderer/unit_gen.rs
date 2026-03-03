@@ -255,47 +255,137 @@ mod tests {
     #[test]
     fn sprite_file_paths_match_catalog() {
         // Cat unit paths
-        assert_eq!(sprite_file_path(UnitKind::Pawdler), "sprites/units/pawdler_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::Nuisance), "sprites/units/nuisance_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::Chonk), "sprites/units/chonk_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::FlyingFox), "sprites/units/flying_fox_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::Hisser), "sprites/units/hisser_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::Yowler), "sprites/units/yowler_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::Mouser), "sprites/units/mouser_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::Catnapper), "sprites/units/catnapper_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::FerretSapper), "sprites/units/ferret_sapper_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::MechCommander), "sprites/units/mech_commander_idle.png");
+        assert_eq!(
+            sprite_file_path(UnitKind::Pawdler),
+            "sprites/units/pawdler_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::Nuisance),
+            "sprites/units/nuisance_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::Chonk),
+            "sprites/units/chonk_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::FlyingFox),
+            "sprites/units/flying_fox_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::Hisser),
+            "sprites/units/hisser_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::Yowler),
+            "sprites/units/yowler_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::Mouser),
+            "sprites/units/mouser_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::Catnapper),
+            "sprites/units/catnapper_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::FerretSapper),
+            "sprites/units/ferret_sapper_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::MechCommander),
+            "sprites/units/mech_commander_idle.png"
+        );
         // Clawed (mice) unit paths
-        assert_eq!(sprite_file_path(UnitKind::Nibblet), "sprites/units/nibblet_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::Swarmer), "sprites/units/swarmer_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::Gnawer), "sprites/units/gnawer_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::Shrieker), "sprites/units/shrieker_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::Tunneler), "sprites/units/tunneler_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::Sparks), "sprites/units/sparks_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::Quillback), "sprites/units/quillback_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::Whiskerwitch), "sprites/units/whiskerwitch_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::Plaguetail), "sprites/units/plaguetail_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::WarrenMarshal), "sprites/units/warren_marshal_idle.png");
+        assert_eq!(
+            sprite_file_path(UnitKind::Nibblet),
+            "sprites/units/nibblet_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::Swarmer),
+            "sprites/units/swarmer_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::Gnawer),
+            "sprites/units/gnawer_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::Shrieker),
+            "sprites/units/shrieker_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::Tunneler),
+            "sprites/units/tunneler_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::Sparks),
+            "sprites/units/sparks_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::Quillback),
+            "sprites/units/quillback_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::Whiskerwitch),
+            "sprites/units/whiskerwitch_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::Plaguetail),
+            "sprites/units/plaguetail_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::WarrenMarshal),
+            "sprites/units/warren_marshal_idle.png"
+        );
         // Murder (corvid) paths
-        assert_eq!(sprite_file_path(UnitKind::MurderScrounger), "sprites/units/murder_scrounger_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::CorvusRex), "sprites/units/corvus_rex_idle.png");
+        assert_eq!(
+            sprite_file_path(UnitKind::MurderScrounger),
+            "sprites/units/murder_scrounger_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::CorvusRex),
+            "sprites/units/corvus_rex_idle.png"
+        );
         // Seekers (badger) paths
-        assert_eq!(sprite_file_path(UnitKind::Delver), "sprites/units/delver_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::Gutripper), "sprites/units/gutripper_idle.png");
+        assert_eq!(
+            sprite_file_path(UnitKind::Delver),
+            "sprites/units/delver_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::Gutripper),
+            "sprites/units/gutripper_idle.png"
+        );
         // Croak (axolotl) paths
-        assert_eq!(sprite_file_path(UnitKind::Ponderer), "sprites/units/ponderer_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::MurkCommander), "sprites/units/murk_commander_idle.png");
+        assert_eq!(
+            sprite_file_path(UnitKind::Ponderer),
+            "sprites/units/ponderer_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::MurkCommander),
+            "sprites/units/murk_commander_idle.png"
+        );
         // LLAMA (raccoon) paths
-        assert_eq!(sprite_file_path(UnitKind::Scrounger), "sprites/units/scrounger_idle.png");
-        assert_eq!(sprite_file_path(UnitKind::JunkyardKing), "sprites/units/junkyard_king_idle.png");
+        assert_eq!(
+            sprite_file_path(UnitKind::Scrounger),
+            "sprites/units/scrounger_idle.png"
+        );
+        assert_eq!(
+            sprite_file_path(UnitKind::JunkyardKing),
+            "sprites/units/junkyard_king_idle.png"
+        );
     }
 
     #[test]
     fn all_kinds_have_sprite_paths() {
         for kind in ALL_KINDS {
             let path = sprite_file_path(kind);
-            assert!(path.starts_with("sprites/units/"), "Path should be under sprites/units/: {path}");
-            assert!(path.ends_with("_idle.png"), "Path should end with _idle.png: {path}");
+            assert!(
+                path.starts_with("sprites/units/"),
+                "Path should be under sprites/units/: {path}"
+            );
+            assert!(
+                path.ends_with("_idle.png"),
+                "Path should end with _idle.png: {path}"
+            );
         }
     }
 
@@ -331,7 +421,10 @@ mod tests {
         for kind in &ALL_KINDS[10..] {
             let slug = unit_slug(*kind);
             assert!(!slug.is_empty(), "Empty slug for {kind:?}");
-            assert_ne!(slug, "pawdler", "Unit {kind:?} should not fall through to pawdler");
+            assert_ne!(
+                slug, "pawdler",
+                "Unit {kind:?} should not fall through to pawdler"
+            );
         }
     }
 

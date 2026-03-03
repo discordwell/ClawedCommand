@@ -2,8 +2,8 @@ use bevy::prelude::*;
 
 use cc_core::commands::EntityId;
 use cc_core::coords::WorldPos;
-use cc_core::math::{Fixed, FIXED_ZERO};
-use cc_core::status_effects::{is_cc, StatusEffectId, StatusEffects, StatusInstance};
+use cc_core::math::{FIXED_ZERO, Fixed};
+use cc_core::status_effects::{StatusEffectId, StatusEffects, StatusInstance, is_cc};
 
 /// Shared command to apply damage, avoiding borrow conflicts between attacker/target queries.
 /// Used by both combat_system (melee) and projectile_system (ranged hits).
@@ -90,7 +90,11 @@ impl Command for AoeCcCommand {
 
         // Collect targets first to avoid borrow issues
         let targets: Vec<Entity> = world
-            .query::<(Entity, &cc_core::components::Position, &cc_core::components::Owner)>()
+            .query::<(
+                Entity,
+                &cc_core::components::Position,
+                &cc_core::components::Owner,
+            )>()
             .iter(world)
             .filter(|(e, pos, owner)| {
                 *e != self.source_entity
@@ -142,7 +146,11 @@ impl Command for RevulsionAoeCommand {
 
         // Collect targets
         let targets: Vec<(Entity, WorldPos)> = world
-            .query::<(Entity, &cc_core::components::Position, &cc_core::components::Owner)>()
+            .query::<(
+                Entity,
+                &cc_core::components::Position,
+                &cc_core::components::Owner,
+            )>()
             .iter(world)
             .filter(|(e, pos, owner)| {
                 *e != self.source_entity
@@ -190,7 +198,9 @@ impl Command for RevulsionAoeCommand {
             }
 
             // Clear movement to interrupt
-            world.entity_mut(target).remove::<cc_core::components::Path>();
+            world
+                .entity_mut(target)
+                .remove::<cc_core::components::Path>();
             world
                 .entity_mut(target)
                 .remove::<cc_core::components::MoveTarget>();
@@ -250,7 +260,12 @@ impl Command for AoeDamageCommand {
             .unwrap_or(self.source_pos);
 
         let targets: Vec<(Entity, bool)> = world
-            .query::<(Entity, &cc_core::components::Position, &cc_core::components::Owner, Option<&cc_core::components::Building>)>()
+            .query::<(
+                Entity,
+                &cc_core::components::Position,
+                &cc_core::components::Owner,
+                Option<&cc_core::components::Building>,
+            )>()
             .iter(world)
             .filter(|(e, pos, owner, _)| {
                 *e != self.source_entity
@@ -261,9 +276,7 @@ impl Command for AoeDamageCommand {
             .collect();
 
         for (target, is_building) in targets {
-            if let Some(mut health) =
-                world.get_mut::<cc_core::components::Health>(target)
-            {
+            if let Some(mut health) = world.get_mut::<cc_core::components::Health>(target) {
                 let dmg = if is_building {
                     self.damage * self.building_multiplier
                 } else {

@@ -49,7 +49,14 @@ const TYPEWRITER_SPEED: f32 = 40.0;
 
 /// Scan dialogue lines to assign speakers to left/right positions.
 /// First unique speaker → left, second unique speaker → right.
-pub fn detect_speakers(lines: &[DialogueLine]) -> (Option<String>, Option<String>, Option<String>, Option<String>) {
+pub fn detect_speakers(
+    lines: &[DialogueLine],
+) -> (
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+) {
     let mut left_speaker: Option<String> = None;
     let mut right_speaker: Option<String> = None;
     let mut left_portrait: Option<String> = None;
@@ -227,19 +234,39 @@ pub fn update_dialogue(
     mut portraits: ResMut<PortraitHandles>,
     mut root_vis: Query<
         &mut Visibility,
-        (With<DialogueRoot>, Without<DialogueSpeaker>, Without<DialogueText>, Without<DialoguePrompt>),
+        (
+            With<DialogueRoot>,
+            Without<DialogueSpeaker>,
+            Without<DialogueText>,
+            Without<DialoguePrompt>,
+        ),
     >,
     mut speaker_q: Query<
         (&mut Text, &mut TextColor),
-        (With<DialogueSpeaker>, Without<DialogueRoot>, Without<DialogueText>, Without<DialoguePrompt>),
+        (
+            With<DialogueSpeaker>,
+            Without<DialogueRoot>,
+            Without<DialogueText>,
+            Without<DialoguePrompt>,
+        ),
     >,
     mut text_q: Query<
         &mut Text,
-        (With<DialogueText>, Without<DialogueRoot>, Without<DialogueSpeaker>, Without<DialoguePrompt>),
+        (
+            With<DialogueText>,
+            Without<DialogueRoot>,
+            Without<DialogueSpeaker>,
+            Without<DialoguePrompt>,
+        ),
     >,
     mut prompt_q: Query<
         &mut Text,
-        (With<DialoguePrompt>, Without<DialogueRoot>, Without<DialogueSpeaker>, Without<DialogueText>),
+        (
+            With<DialoguePrompt>,
+            Without<DialogueRoot>,
+            Without<DialogueSpeaker>,
+            Without<DialogueText>,
+        ),
     >,
     mut left_q: Query<
         (&mut ImageNode, &mut Node, &mut BackgroundColor),
@@ -348,11 +375,14 @@ pub fn update_dialogue(
     let is_left_speaker = state.left_speaker.as_deref() == Some(&current_line.speaker);
 
     // Helper: load or retrieve a portrait handle
-    let load_portrait = |key: &str, handles: &mut PortraitHandles, server: &AssetServer| -> Handle<Image> {
-        handles.handles.entry(key.to_string()).or_insert_with(|| {
-            server.load(format!("portraits/{key}.png"))
-        }).clone()
-    };
+    let load_portrait =
+        |key: &str, handles: &mut PortraitHandles, server: &AssetServer| -> Handle<Image> {
+            handles
+                .handles
+                .entry(key.to_string())
+                .or_insert_with(|| server.load(format!("portraits/{key}.png")))
+                .clone()
+        };
 
     // Left portrait
     if let Ok((mut img, mut node, mut bg)) = left_q.single_mut() {

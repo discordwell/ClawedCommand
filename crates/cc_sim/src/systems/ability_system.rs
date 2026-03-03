@@ -43,8 +43,7 @@ pub fn ability_cooldown_system(
                 if slot.charges < def.max_charges {
                     // Apply cooldown multiplier to charge regen cooldown
                     let base_cd = def.cooldown_ticks;
-                    let adjusted = (cc_core::math::Fixed::from_num(base_cd as i32)
-                        * cooldown_mult)
+                    let adjusted = (cc_core::math::Fixed::from_num(base_cd as i32) * cooldown_mult)
                         .to_num::<u32>();
                     slot.cooldown_remaining = adjusted.max(1);
                 }

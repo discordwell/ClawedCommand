@@ -56,7 +56,14 @@ fn bar_width_for_building(kind: BuildingKind) -> f32 {
 /// Unit health bars use inverse parent scale for consistent world-space sizing.
 pub fn spawn_health_bars(
     mut commands: Commands,
-    units: Query<(Entity, &Transform, Option<&UnitType>, Option<&Building>), (Or<(With<UnitMesh>, With<BuildingMesh>)>, With<Health>, Without<HasHealthBar>)>,
+    units: Query<
+        (Entity, &Transform, Option<&UnitType>, Option<&Building>),
+        (
+            Or<(With<UnitMesh>, With<BuildingMesh>)>,
+            With<Health>,
+            Without<HasHealthBar>,
+        ),
+    >,
 ) {
     for (entity, parent_transform, unit_type, building) in units.iter() {
         let parent_scale = parent_transform.scale.x.max(0.01);
@@ -70,7 +77,12 @@ pub fn spawn_health_bars(
                 1.0 / parent_scale,
             )
         } else if let Some(b) = building {
-            (bar_width_for_building(b.kind), BUILDING_BAR_HEIGHT, BUILDING_BAR_Y_OFFSET, 1.0)
+            (
+                bar_width_for_building(b.kind),
+                BUILDING_BAR_HEIGHT,
+                BUILDING_BAR_Y_OFFSET,
+                1.0,
+            )
         } else {
             (20.0, BUILDING_BAR_HEIGHT, BUILDING_BAR_Y_OFFSET, 1.0)
         };
@@ -87,8 +99,7 @@ pub fn spawn_health_bars(
                     custom_size: Some(Vec2::new(bar_width, bar_height)),
                     ..default()
                 },
-                Transform::from_xyz(0.0, local_y, 0.1)
-                    .with_scale(Vec3::splat(inverse_scale)),
+                Transform::from_xyz(0.0, local_y, 0.1).with_scale(Vec3::splat(inverse_scale)),
                 Visibility::Hidden,
             ))
             .id();
@@ -102,8 +113,7 @@ pub fn spawn_health_bars(
                     custom_size: Some(Vec2::new(bar_width, bar_height)),
                     ..default()
                 },
-                Transform::from_xyz(0.0, local_y, 0.2)
-                    .with_scale(Vec3::splat(inverse_scale)),
+                Transform::from_xyz(0.0, local_y, 0.2).with_scale(Vec3::splat(inverse_scale)),
                 Visibility::Hidden,
             ))
             .id();
@@ -137,8 +147,20 @@ pub fn hide_dead_health_bars(
 /// Shows bars always for enemy units/buildings (not just when damaged).
 pub fn update_health_bars(
     units: Query<
-        (&Health, &Transform, Option<&UnitType>, Option<&Building>, &Owner, &Children),
-        (Or<(With<UnitMesh>, With<BuildingMesh>)>, Without<Dead>, Without<HealthBarFg>, Without<HealthBarBg>),
+        (
+            &Health,
+            &Transform,
+            Option<&UnitType>,
+            Option<&Building>,
+            &Owner,
+            &Children,
+        ),
+        (
+            Or<(With<UnitMesh>, With<BuildingMesh>)>,
+            Without<Dead>,
+            Without<HealthBarFg>,
+            Without<HealthBarBg>,
+        ),
     >,
     mut bg_bars: Query<(&mut Sprite, &mut Visibility), (With<HealthBarBg>, Without<HealthBarFg>)>,
     mut fg_bars: Query<
@@ -148,7 +170,9 @@ pub fn update_health_bars(
 ) {
     for (health, parent_transform, unit_type, building, owner, children) in units.iter() {
         let ratio: f32 = if health.max > cc_core::math::FIXED_ZERO {
-            (health.current / health.max).to_num::<f32>().clamp(0.0, 1.0)
+            (health.current / health.max)
+                .to_num::<f32>()
+                .clamp(0.0, 1.0)
         } else {
             0.0
         };

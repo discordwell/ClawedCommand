@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use cc_core::coords::{world_to_screen, GridPos, WorldPos};
+use cc_core::coords::{GridPos, WorldPos, world_to_screen};
 use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
 
 /// Marker + state for an expanding, fading sonar-ping ring.
@@ -91,6 +91,12 @@ pub fn spawn_voice_pings_from_events(
     mut ping_events: MessageReader<cc_voice::events::VoicePingRequest>,
 ) {
     for event in ping_events.read() {
-        spawn_voice_ping(&mut commands, &mut meshes, &mut materials, event.target, event.elevation);
+        spawn_voice_ping(
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+            event.target,
+            event.elevation,
+        );
     }
 }

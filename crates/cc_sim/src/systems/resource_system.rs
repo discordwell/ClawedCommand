@@ -108,29 +108,25 @@ pub fn gathering_system(
                 } else {
                     // Finished harvesting — pick up resources, deplete deposit
                     let deposit_entity = Entity::from_bits(gathering.deposit_entity.0);
-                    let actual_carry = if let Ok((_, _, mut deposit)) =
-                        deposits.get_mut(deposit_entity)
-                    {
-                        let actual = CARRY_AMOUNT.min(deposit.remaining);
-                        deposit.remaining -= actual;
-                        actual
-                    } else {
-                        // Deposit gone — stop gathering
-                        commands.entity(entity).remove::<Gathering>();
-                        continue;
-                    };
+                    let actual_carry =
+                        if let Ok((_, _, mut deposit)) = deposits.get_mut(deposit_entity) {
+                            let actual = CARRY_AMOUNT.min(deposit.remaining);
+                            deposit.remaining -= actual;
+                            actual
+                        } else {
+                            // Deposit gone — stop gathering
+                            commands.entity(entity).remove::<Gathering>();
+                            continue;
+                        };
                     gathering.carried_amount = actual_carry;
 
                     // Find nearest resource dropoff building owned by same player
-                    let nearest_dropoff = find_nearest_dropoff(
-                        pos.world,
-                        owner.player_id,
-                        &drop_offs,
-                    );
+                    let nearest_dropoff =
+                        find_nearest_dropoff(pos.world, owner.player_id, &drop_offs);
 
                     if let Some(dropoff_pos) = nearest_dropoff {
-                        let faction = FactionId::from_u8(owner.player_id)
-                            .unwrap_or(FactionId::CatGPT);
+                        let faction =
+                            FactionId::from_u8(owner.player_id).unwrap_or(FactionId::CatGPT);
                         let start = pos.world.to_grid();
                         let target = dropoff_pos.to_grid();
 
@@ -190,8 +186,8 @@ pub fn gathering_system(
                         // Return to deposit for another trip
                         let deposit_entity = Entity::from_bits(gathering.deposit_entity.0);
                         if let Ok((_, deposit_pos, _)) = deposits.get(deposit_entity) {
-                            let faction = FactionId::from_u8(owner.player_id)
-                                .unwrap_or(FactionId::CatGPT);
+                            let faction =
+                                FactionId::from_u8(owner.player_id).unwrap_or(FactionId::CatGPT);
                             let start = pos.world.to_grid();
                             let target = deposit_pos.world.to_grid();
 
@@ -301,8 +297,8 @@ fn is_near_dropoff(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cc_core::components::Faction;
     use crate::ai::fsm::faction_map;
+    use cc_core::components::Faction;
 
     /// Ensure is_dropoff_building accepts the HQ and resource depot for every faction.
     /// Regression test: previously only CatGPT buildings were accepted, causing

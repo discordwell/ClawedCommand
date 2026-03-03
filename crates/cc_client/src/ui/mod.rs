@@ -1,7 +1,7 @@
-pub mod build_menu;
-pub mod building_info;
 pub mod ability_bar;
 pub mod briefing;
+pub mod build_menu;
+pub mod building_info;
 pub mod campaign_menu;
 pub mod command_card;
 pub mod dialogue;

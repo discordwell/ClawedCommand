@@ -6,7 +6,7 @@ use cc_core::components::{
     AttackStats, AttackTypeMarker, Building, Dead, Owner, Position, Projectile, ProjectileKind,
     ProjectileTarget, StatModifiers, UnderConstruction, UnitType, Velocity,
 };
-use cc_core::math::{Fixed, FIXED_ONE};
+use cc_core::math::{FIXED_ONE, Fixed};
 use cc_core::tuning::TOWER_PROJECTILE_SPEED;
 
 /// Tower combat system: buildings with AttackStats auto-attack nearest enemy in range.

@@ -11,7 +11,7 @@ use bevy::prelude::*;
 use cc_core::components::{
     AbilitySlots, AttackMoveTarget, AttackStats, AttackTarget, AttackTypeMarker, Building,
     ChasingTarget, Dead, Gathering, Health, MoveTarget, MovementSpeed, Owner, Path, Position,
-    ProductionQueue, ResearchQueue, ResourceDeposit, UnitType, UnderConstruction,
+    ProductionQueue, ResearchQueue, ResourceDeposit, UnderConstruction, UnitType,
 };
 use cc_core::status_effects::StatusEffects;
 use cc_sim::resources::{MapResource, PlayerResources, SimClock};
@@ -104,8 +104,25 @@ pub fn agent_decision_system(
     let unit_data: Vec<_> = units
         .iter()
         .map(
-            |(e, pos, own, ut, hp, spd, atk, atk_type, mt, at, path, gath, (chase, amove, dead, se, abs))| {
-                (e, pos, own, ut, hp, spd, atk, atk_type, mt, at, path, gath, chase, amove, dead, se, abs)
+            |(
+                e,
+                pos,
+                own,
+                ut,
+                hp,
+                spd,
+                atk,
+                atk_type,
+                mt,
+                at,
+                path,
+                gath,
+                (chase, amove, dead, se, abs),
+            )| {
+                (
+                    e, pos, own, ut, hp, spd, atk, atk_type, mt, at, path, gath, chase, amove,
+                    dead, se, abs,
+                )
             },
         )
         .collect();
@@ -115,10 +132,7 @@ pub fn agent_decision_system(
         .map(|(e, pos, own, bld, hp, uc, pq, rq)| (e, pos, own, bld, hp, uc, pq, rq))
         .collect();
 
-    let deposit_data: Vec<_> = deposits
-        .iter()
-        .map(|(e, pos, dep)| (e, pos, dep))
-        .collect();
+    let deposit_data: Vec<_> = deposits.iter().map(|(e, pos, dep)| (e, pos, dep)).collect();
 
     let ai_players: Vec<u8> = decision_state.ai_players.iter().copied().collect();
     for player_id in ai_players {

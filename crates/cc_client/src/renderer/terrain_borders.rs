@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use cc_core::coords::{GridPos, WorldPos, world_to_screen, TILE_HALF_HEIGHT, TILE_HALF_WIDTH};
+use cc_core::coords::{GridPos, TILE_HALF_HEIGHT, TILE_HALF_WIDTH, WorldPos, world_to_screen};
 use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
 use cc_sim::resources::MapResource;
 
@@ -34,10 +34,7 @@ pub fn draw_terrain_borders(
                 let east = GridPos::new(x + 1, y);
                 if let Some(east_tile) = map.get(east) {
                     if east_tile.terrain != tile.terrain {
-                        result.push((
-                            Vec2::new(sx + HALF_W, sy),
-                            Vec2::new(sx, sy - HALF_H),
-                        ));
+                        result.push((Vec2::new(sx + HALF_W, sy), Vec2::new(sx, sy - HALF_H)));
                     }
                 }
 
@@ -45,10 +42,7 @@ pub fn draw_terrain_borders(
                 let south = GridPos::new(x, y + 1);
                 if let Some(south_tile) = map.get(south) {
                     if south_tile.terrain != tile.terrain {
-                        result.push((
-                            Vec2::new(sx, sy - HALF_H),
-                            Vec2::new(sx - HALF_W, sy),
-                        ));
+                        result.push((Vec2::new(sx, sy - HALF_H), Vec2::new(sx - HALF_W, sy)));
                     }
                 }
             }

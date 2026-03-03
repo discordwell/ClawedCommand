@@ -3,9 +3,9 @@
 //! Shares state with ConstructModeState so Tab and `/` views show the same
 //! script/chat data.
 
-use bevy::prelude::*;
-use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::input::ButtonState;
+use bevy::input::keyboard::{Key, KeyboardInput};
+use bevy::prelude::*;
 
 use cc_agent::agent_bridge::{AgentBridge, AgentRequest, AgentSource};
 use cc_agent::construct_mode::{ConstructModeState, ScriptLibrary, ScriptTestResult};
@@ -13,8 +13,8 @@ use cc_agent::script_registry::ScriptRegistry;
 use cc_agent::tool_tier::ToolTier;
 use cc_sim::resources::GameState;
 
-use crate::input::InputMode;
 use super::LocalPlayer;
+use crate::input::InputMode;
 
 /// Marker for the prompt overlay root node.
 #[derive(Component)]
@@ -191,10 +191,12 @@ pub fn prompt_text_input(
                 construct_state.test_result = None;
 
                 // Add user message to chat history
-                construct_state.chat_history.push(cc_agent::llm_client::ChatMessage {
-                    role: "user".to_string(),
-                    content: prompt.clone(),
-                });
+                construct_state
+                    .chat_history
+                    .push(cc_agent::llm_client::ChatMessage {
+                        role: "user".to_string(),
+                        content: prompt.clone(),
+                    });
                 construct_state.waiting_for_response = true;
 
                 // Send request through AgentBridge
@@ -271,11 +273,7 @@ pub fn prompt_text_input(
                     }
 
                     // Ensure registered (idempotent — may already be auto-registered)
-                    registry.register_lua_script(
-                        &script.name,
-                        &script.source,
-                        local_player.0,
-                    );
+                    registry.register_lua_script(&script.name, &script.source, local_player.0);
 
                     // Add to library if not already there
                     if !library.scripts.iter().any(|s| s.name == script.name) {
@@ -353,7 +351,9 @@ pub fn update_prompt_display(
     if let Ok(mut text) = response_q.single_mut() {
         if construct_state.waiting_for_response && construct_state.editable_source.is_empty() {
             text.0 = "Minstral is thinking...".to_string();
-        } else if construct_state.waiting_for_response && !construct_state.editable_source.is_empty() {
+        } else if construct_state.waiting_for_response
+            && !construct_state.editable_source.is_empty()
+        {
             // Streaming in progress — show tokens as they arrive
             text.0 = format!("{}|", construct_state.editable_source);
         } else if !construct_state.editable_source.is_empty() {
@@ -378,7 +378,9 @@ pub fn update_prompt_display(
                 text.0 = msg.content.chars().take(800).collect();
             }
         } else {
-            text.0 = "Type a request and press Enter.\nExample: \"make my ranged units kite enemies\"".to_string();
+            text.0 =
+                "Type a request and press Enter.\nExample: \"make my ranged units kite enemies\""
+                    .to_string();
         }
     }
 

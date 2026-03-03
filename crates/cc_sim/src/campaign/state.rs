@@ -142,10 +142,7 @@ impl CampaignState {
         };
         for obj in &mission.objectives {
             if obj.primary {
-                let status = self
-                    .objective_status
-                    .iter()
-                    .find(|s| s.id == obj.id);
+                let status = self.objective_status.iter().find(|s| s.id == obj.id);
                 if status.is_none_or(|s| !s.completed) {
                     return false;
                 }
@@ -214,10 +211,7 @@ pub fn mission_objective_system(
 
     // Check each objective's condition
     for obj in &mission.objectives {
-        let status = campaign
-            .objective_status
-            .iter()
-            .find(|s| s.id == obj.id);
+        let status = campaign.objective_status.iter().find(|s| s.id == obj.id);
         if status.is_some_and(|s| s.completed) {
             continue;
         }
@@ -264,10 +258,7 @@ pub fn mission_objective_system(
                 for (identity, _owner, is_dead, _pos) in heroes.iter() {
                     if identity.hero_id == *hero_id && is_dead {
                         fail_writer.write(MissionFailedEvent {
-                            reason: format!(
-                                "{:?} has fallen. Mission failed.",
-                                hero_id
-                            ),
+                            reason: format!("{:?} has fallen. Mission failed.", hero_id),
                         });
                         campaign.phase = CampaignPhase::Debriefing;
                         return;
@@ -276,7 +267,9 @@ pub fn mission_objective_system(
             }
             ObjectiveCondition::EliminateWave(wave_id) => {
                 // Auto-evaluate: complete when wave has been fully eliminated
-                if wave_tracker.waves.get(wave_id)
+                if wave_tracker
+                    .waves
+                    .get(wave_id)
                     .is_some_and(|(total, alive)| *total > 0 && *alive == 0)
                 {
                     campaign.complete_objective(&obj.id);
@@ -292,7 +285,10 @@ pub fn mission_objective_system(
     for (identity, _owner, is_dead, _pos) in heroes.iter() {
         if identity.mission_critical && is_dead {
             fail_writer.write(MissionFailedEvent {
-                reason: format!("{:?} was mission-critical and has fallen.", identity.hero_id),
+                reason: format!(
+                    "{:?} was mission-critical and has fallen.",
+                    identity.hero_id
+                ),
             });
             campaign.phase = CampaignPhase::Debriefing;
             return;
@@ -441,5 +437,4 @@ mod tests {
         persistent.set_flag("test".into());
         assert!(persistent.has_flag("test"));
     }
-
 }

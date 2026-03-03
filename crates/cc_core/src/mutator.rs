@@ -78,9 +78,7 @@ pub enum MissionMutator {
     /// Building placement disabled.
     NoBuildMode,
     /// Only AI controls units (player input disabled).
-    AiOnlyControl {
-        tool_tier: u8,
-    },
+    AiOnlyControl { tool_tier: u8 },
     /// Only specific unit types allowed; optional population cap.
     RestrictedUnits {
         allowed_kinds: Vec<UnitKind>,
@@ -89,10 +87,7 @@ pub enum MissionMutator {
 
     // -- Gameplay Modifiers --
     /// Mission fails after max_ticks; warning shown at warning_at.
-    TimeLimit {
-        max_ticks: u64,
-        warning_at: u64,
-    },
+    TimeLimit { max_ticks: u64, warning_at: u64 },
     /// Resource gather rates are multiplied.
     ResourceScarcity {
         food_multiplier: Fixed,
@@ -143,7 +138,13 @@ mod tests {
         };
         let s = ron::to_string(&m).unwrap();
         let parsed: MissionMutator = ron::from_str(&s).unwrap();
-        assert!(matches!(parsed, MissionMutator::LavaRise { interval_ticks: 50, .. }));
+        assert!(matches!(
+            parsed,
+            MissionMutator::LavaRise {
+                interval_ticks: 50,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -158,7 +159,13 @@ mod tests {
         };
         let s = ron::to_string(&m).unwrap();
         let parsed: MissionMutator = ron::from_str(&s).unwrap();
-        assert!(matches!(parsed, MissionMutator::WindStorm { can_push_off_map: true, .. }));
+        assert!(matches!(
+            parsed,
+            MissionMutator::WindStorm {
+                can_push_off_map: true,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -173,7 +180,13 @@ mod tests {
         };
         let s = ron::to_string(&m).unwrap();
         let parsed: MissionMutator = ron::from_str(&s).unwrap();
-        assert!(matches!(parsed, MissionMutator::ToxicTide { min_safe_radius: 8, .. }));
+        assert!(matches!(
+            parsed,
+            MissionMutator::ToxicTide {
+                min_safe_radius: 8,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -187,7 +200,13 @@ mod tests {
         };
         let s = ron::to_string(&m).unwrap();
         let parsed: MissionMutator = ron::from_str(&s).unwrap();
-        assert!(matches!(parsed, MissionMutator::Tremors { building_damage: 25, .. }));
+        assert!(matches!(
+            parsed,
+            MissionMutator::Tremors {
+                building_damage: 25,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -200,7 +219,13 @@ mod tests {
         };
         let s = ron::to_string(&m).unwrap();
         let parsed: MissionMutator = ron::from_str(&s).unwrap();
-        assert!(matches!(parsed, MissionMutator::Flooding { max_water_level: 3, .. }));
+        assert!(matches!(
+            parsed,
+            MissionMutator::Flooding {
+                max_water_level: 3,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -214,7 +239,13 @@ mod tests {
         };
         let s = ron::to_string(&m).unwrap();
         let parsed: MissionMutator = ron::from_str(&s).unwrap();
-        assert!(matches!(parsed, MissionMutator::DenseFog { vision_reduction: 4, .. }));
+        assert!(matches!(
+            parsed,
+            MissionMutator::DenseFog {
+                vision_reduction: 4,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -227,7 +258,10 @@ mod tests {
         let parsed: MissionMutator = ron::from_str(&s).unwrap();
         assert!(matches!(
             parsed,
-            MissionMutator::DenseFog { periodic_clearing: None, .. }
+            MissionMutator::DenseFog {
+                periodic_clearing: None,
+                ..
+            }
         ));
     }
 
@@ -241,7 +275,13 @@ mod tests {
         };
         let s = ron::to_string(&m).unwrap();
         let parsed: MissionMutator = ron::from_str(&s).unwrap();
-        assert!(matches!(parsed, MissionMutator::DamageZone { active_from_start: false, .. }));
+        assert!(matches!(
+            parsed,
+            MissionMutator::DamageZone {
+                active_from_start: false,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -252,7 +292,13 @@ mod tests {
         };
         let s = ron::to_string(&m).unwrap();
         let parsed: MissionMutator = ron::from_str(&s).unwrap();
-        assert!(matches!(parsed, MissionMutator::VoiceOnlyControl { ai_enabled: false, .. }));
+        assert!(matches!(
+            parsed,
+            MissionMutator::VoiceOnlyControl {
+                ai_enabled: false,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -276,7 +322,10 @@ mod tests {
         let m = MissionMutator::AiOnlyControl { tool_tier: 2 };
         let s = ron::to_string(&m).unwrap();
         let parsed: MissionMutator = ron::from_str(&s).unwrap();
-        assert!(matches!(parsed, MissionMutator::AiOnlyControl { tool_tier: 2 }));
+        assert!(matches!(
+            parsed,
+            MissionMutator::AiOnlyControl { tool_tier: 2 }
+        ));
     }
 
     #[test]
@@ -287,7 +336,13 @@ mod tests {
         };
         let s = ron::to_string(&m).unwrap();
         let parsed: MissionMutator = ron::from_str(&s).unwrap();
-        assert!(matches!(parsed, MissionMutator::RestrictedUnits { max_unit_count: Some(6), .. }));
+        assert!(matches!(
+            parsed,
+            MissionMutator::RestrictedUnits {
+                max_unit_count: Some(6),
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -298,7 +353,13 @@ mod tests {
         };
         let s = ron::to_string(&m).unwrap();
         let parsed: MissionMutator = ron::from_str(&s).unwrap();
-        assert!(matches!(parsed, MissionMutator::TimeLimit { max_ticks: 3000, .. }));
+        assert!(matches!(
+            parsed,
+            MissionMutator::TimeLimit {
+                max_ticks: 3000,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -364,9 +425,15 @@ mod tests {
     #[test]
     fn vec_of_mutators_round_trip() {
         let mutators = vec![
-            MissionMutator::TimeLimit { max_ticks: 1000, warning_at: 800 },
+            MissionMutator::TimeLimit {
+                max_ticks: 1000,
+                warning_at: 800,
+            },
             MissionMutator::NoBuildMode,
-            MissionMutator::DenseFog { vision_reduction: 3, periodic_clearing: None },
+            MissionMutator::DenseFog {
+                vision_reduction: 3,
+                periodic_clearing: None,
+            },
         ];
         let s = ron::to_string(&mutators).unwrap();
         let parsed: Vec<MissionMutator> = ron::from_str(&s).unwrap();

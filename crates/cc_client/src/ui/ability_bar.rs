@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use cc_core::abilities::{ability_def, AbilityActivation};
+use cc_core::abilities::{AbilityActivation, ability_def};
 use cc_core::commands::{AbilityTarget, EntityId, GameCommand};
 use cc_core::components::{AbilitySlots, Owner, Selected, UnitType};
 use cc_sim::resources::CommandQueue;

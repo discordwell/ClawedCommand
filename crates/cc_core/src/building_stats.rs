@@ -4,7 +4,7 @@ use crate::math::Fixed;
 /// Compile-time base stats for each building type.
 pub struct BuildingBaseStats {
     pub health: Fixed,
-    pub build_time: u32,    // ticks (0 = pre-built)
+    pub build_time: u32, // ticks (0 = pre-built)
     pub food_cost: u32,
     pub gpu_cost: u32,
     pub supply_provided: u32,
@@ -318,23 +318,155 @@ pub fn building_stats(kind: BuildingKind) -> BuildingBaseStats {
             can_produce: &[],
         },
         // --- Seekers of the Deep (Badgers) ---
-        BuildingKind::TheSett => BuildingBaseStats { health: Fixed::from_bits(600 << 16), build_time: 0, food_cost: 0, gpu_cost: 0, supply_provided: 10, can_produce: &[UnitKind::Delver] },
-        BuildingKind::WarHollow => BuildingBaseStats { health: Fixed::from_bits(400 << 16), build_time: 150, food_cost: 150, gpu_cost: 0, supply_provided: 0, can_produce: &[UnitKind::Ironhide, UnitKind::Sapjaw, UnitKind::Warden, UnitKind::Gutripper, UnitKind::Dustclaw] },
-        BuildingKind::BurrowDepot => BuildingBaseStats { health: Fixed::from_bits(250 << 16), build_time: 120, food_cost: 100, gpu_cost: 0, supply_provided: 0, can_produce: &[] },
-        BuildingKind::CoreTap => BuildingBaseStats { health: Fixed::from_bits(300 << 16), build_time: 150, food_cost: 125, gpu_cost: 100, supply_provided: 0, can_produce: &[UnitKind::SeekerTunneler, UnitKind::Embermaw, UnitKind::Cragback, UnitKind::Wardenmother] },
-        BuildingKind::ClawMarks => BuildingBaseStats { health: Fixed::from_bits(250 << 16), build_time: 120, food_cost: 125, gpu_cost: 75, supply_provided: 0, can_produce: &[] },
-        BuildingKind::DeepWarren => BuildingBaseStats { health: Fixed::from_bits(125 << 16), build_time: 95, food_cost: 80, gpu_cost: 0, supply_provided: 12, can_produce: &[] },
-        BuildingKind::BulwarkGate => BuildingBaseStats { health: Fixed::from_bits(500 << 16), build_time: 120, food_cost: 175, gpu_cost: 0, supply_provided: 0, can_produce: &[] },
-        BuildingKind::SlagThrower => BuildingBaseStats { health: Fixed::from_bits(200 << 16), build_time: 100, food_cost: 100, gpu_cost: 50, supply_provided: 0, can_produce: &[] },
+        BuildingKind::TheSett => BuildingBaseStats {
+            health: Fixed::from_bits(600 << 16),
+            build_time: 0,
+            food_cost: 0,
+            gpu_cost: 0,
+            supply_provided: 10,
+            can_produce: &[UnitKind::Delver],
+        },
+        BuildingKind::WarHollow => BuildingBaseStats {
+            health: Fixed::from_bits(400 << 16),
+            build_time: 150,
+            food_cost: 150,
+            gpu_cost: 0,
+            supply_provided: 0,
+            can_produce: &[
+                UnitKind::Ironhide,
+                UnitKind::Sapjaw,
+                UnitKind::Warden,
+                UnitKind::Gutripper,
+                UnitKind::Dustclaw,
+            ],
+        },
+        BuildingKind::BurrowDepot => BuildingBaseStats {
+            health: Fixed::from_bits(250 << 16),
+            build_time: 120,
+            food_cost: 100,
+            gpu_cost: 0,
+            supply_provided: 0,
+            can_produce: &[],
+        },
+        BuildingKind::CoreTap => BuildingBaseStats {
+            health: Fixed::from_bits(300 << 16),
+            build_time: 150,
+            food_cost: 125,
+            gpu_cost: 100,
+            supply_provided: 0,
+            can_produce: &[
+                UnitKind::SeekerTunneler,
+                UnitKind::Embermaw,
+                UnitKind::Cragback,
+                UnitKind::Wardenmother,
+            ],
+        },
+        BuildingKind::ClawMarks => BuildingBaseStats {
+            health: Fixed::from_bits(250 << 16),
+            build_time: 120,
+            food_cost: 125,
+            gpu_cost: 75,
+            supply_provided: 0,
+            can_produce: &[],
+        },
+        BuildingKind::DeepWarren => BuildingBaseStats {
+            health: Fixed::from_bits(125 << 16),
+            build_time: 95,
+            food_cost: 80,
+            gpu_cost: 0,
+            supply_provided: 12,
+            can_produce: &[],
+        },
+        BuildingKind::BulwarkGate => BuildingBaseStats {
+            health: Fixed::from_bits(500 << 16),
+            build_time: 120,
+            food_cost: 175,
+            gpu_cost: 0,
+            supply_provided: 0,
+            can_produce: &[],
+        },
+        BuildingKind::SlagThrower => BuildingBaseStats {
+            health: Fixed::from_bits(200 << 16),
+            build_time: 100,
+            food_cost: 100,
+            gpu_cost: 50,
+            supply_provided: 0,
+            can_produce: &[],
+        },
         // --- LLAMA (Raccoons) ---
-        BuildingKind::TheDumpster => BuildingBaseStats { health: Fixed::from_bits(500 << 16), build_time: 0, food_cost: 0, gpu_cost: 0, supply_provided: 10, can_produce: &[UnitKind::Scrounger] },
-        BuildingKind::ScrapHeap => BuildingBaseStats { health: Fixed::from_bits(180 << 16), build_time: 90, food_cost: 90, gpu_cost: 0, supply_provided: 0, can_produce: &[] },
-        BuildingKind::ChopShop => BuildingBaseStats { health: Fixed::from_bits(280 << 16), build_time: 140, food_cost: 140, gpu_cost: 0, supply_provided: 0, can_produce: &[UnitKind::Bandit, UnitKind::Wrecker, UnitKind::HeapTitan, UnitKind::GreaseMonkey] },
-        BuildingKind::JunkServer => BuildingBaseStats { health: Fixed::from_bits(230 << 16), build_time: 110, food_cost: 90, gpu_cost: 65, supply_provided: 0, can_produce: &[UnitKind::GlitchRat, UnitKind::PatchPossum] },
-        BuildingKind::TinkerBench => BuildingBaseStats { health: Fixed::from_bits(190 << 16), build_time: 95, food_cost: 85, gpu_cost: 55, supply_provided: 0, can_produce: &[UnitKind::DeadDropUnit, UnitKind::DumpsterDiver, UnitKind::JunkyardKing] },
-        BuildingKind::TrashPile => BuildingBaseStats { health: Fixed::from_bits(90 << 16), build_time: 70, food_cost: 70, gpu_cost: 0, supply_provided: 10, can_produce: &[] },
-        BuildingKind::DumpsterRelay => BuildingBaseStats { health: Fixed::from_bits(150 << 16), build_time: 80, food_cost: 80, gpu_cost: 30, supply_provided: 0, can_produce: &[] },
-        BuildingKind::TetanusTower => BuildingBaseStats { health: Fixed::from_bits(140 << 16), build_time: 75, food_cost: 70, gpu_cost: 20, supply_provided: 0, can_produce: &[] },
+        BuildingKind::TheDumpster => BuildingBaseStats {
+            health: Fixed::from_bits(500 << 16),
+            build_time: 0,
+            food_cost: 0,
+            gpu_cost: 0,
+            supply_provided: 10,
+            can_produce: &[UnitKind::Scrounger],
+        },
+        BuildingKind::ScrapHeap => BuildingBaseStats {
+            health: Fixed::from_bits(180 << 16),
+            build_time: 90,
+            food_cost: 90,
+            gpu_cost: 0,
+            supply_provided: 0,
+            can_produce: &[],
+        },
+        BuildingKind::ChopShop => BuildingBaseStats {
+            health: Fixed::from_bits(280 << 16),
+            build_time: 140,
+            food_cost: 140,
+            gpu_cost: 0,
+            supply_provided: 0,
+            can_produce: &[
+                UnitKind::Bandit,
+                UnitKind::Wrecker,
+                UnitKind::HeapTitan,
+                UnitKind::GreaseMonkey,
+            ],
+        },
+        BuildingKind::JunkServer => BuildingBaseStats {
+            health: Fixed::from_bits(230 << 16),
+            build_time: 110,
+            food_cost: 90,
+            gpu_cost: 65,
+            supply_provided: 0,
+            can_produce: &[UnitKind::GlitchRat, UnitKind::PatchPossum],
+        },
+        BuildingKind::TinkerBench => BuildingBaseStats {
+            health: Fixed::from_bits(190 << 16),
+            build_time: 95,
+            food_cost: 85,
+            gpu_cost: 55,
+            supply_provided: 0,
+            can_produce: &[
+                UnitKind::DeadDropUnit,
+                UnitKind::DumpsterDiver,
+                UnitKind::JunkyardKing,
+            ],
+        },
+        BuildingKind::TrashPile => BuildingBaseStats {
+            health: Fixed::from_bits(90 << 16),
+            build_time: 70,
+            food_cost: 70,
+            gpu_cost: 0,
+            supply_provided: 10,
+            can_produce: &[],
+        },
+        BuildingKind::DumpsterRelay => BuildingBaseStats {
+            health: Fixed::from_bits(150 << 16),
+            build_time: 80,
+            food_cost: 80,
+            gpu_cost: 30,
+            supply_provided: 0,
+            can_produce: &[],
+        },
+        BuildingKind::TetanusTower => BuildingBaseStats {
+            health: Fixed::from_bits(140 << 16),
+            build_time: 75,
+            food_cost: 70,
+            gpu_cost: 20,
+            supply_provided: 0,
+            can_produce: &[],
+        },
         other => unimplemented!("building_stats not yet defined for {other:?}"),
     }
 }
@@ -357,7 +489,10 @@ mod tests {
         ];
         for kind in kinds {
             let stats = building_stats(kind);
-            assert!(stats.health > Fixed::ZERO, "{kind:?} should have positive health");
+            assert!(
+                stats.health > Fixed::ZERO,
+                "{kind:?} should have positive health"
+            );
         }
     }
 
@@ -432,7 +567,10 @@ mod tests {
         ];
         for kind in kinds {
             let stats = building_stats(kind);
-            assert!(stats.health > Fixed::ZERO, "{kind:?} should have positive health");
+            assert!(
+                stats.health > Fixed::ZERO,
+                "{kind:?} should have positive health"
+            );
         }
     }
 
@@ -491,7 +629,10 @@ mod tests {
         ];
         for kind in kinds {
             let stats = building_stats(kind);
-            assert!(stats.health > Fixed::ZERO, "{kind:?} should have positive health");
+            assert!(
+                stats.health > Fixed::ZERO,
+                "{kind:?} should have positive health"
+            );
         }
     }
 
@@ -556,7 +697,10 @@ mod tests {
         ];
         for kind in kinds {
             let stats = building_stats(kind);
-            assert!(stats.health > Fixed::ZERO, "{kind:?} should have positive health");
+            assert!(
+                stats.health > Fixed::ZERO,
+                "{kind:?} should have positive health"
+            );
         }
     }
 
@@ -598,13 +742,21 @@ mod tests {
     #[test]
     fn all_seekers_buildings_have_stats() {
         let kinds = [
-            BuildingKind::TheSett, BuildingKind::WarHollow, BuildingKind::BurrowDepot,
-            BuildingKind::CoreTap, BuildingKind::ClawMarks, BuildingKind::DeepWarren,
-            BuildingKind::BulwarkGate, BuildingKind::SlagThrower,
+            BuildingKind::TheSett,
+            BuildingKind::WarHollow,
+            BuildingKind::BurrowDepot,
+            BuildingKind::CoreTap,
+            BuildingKind::ClawMarks,
+            BuildingKind::DeepWarren,
+            BuildingKind::BulwarkGate,
+            BuildingKind::SlagThrower,
         ];
         for kind in kinds {
             let stats = building_stats(kind);
-            assert!(stats.health > Fixed::ZERO, "{kind:?} should have positive health");
+            assert!(
+                stats.health > Fixed::ZERO,
+                "{kind:?} should have positive health"
+            );
         }
     }
 
@@ -670,7 +822,10 @@ mod tests {
         ];
         for kind in kinds {
             let stats = building_stats(kind);
-            assert!(stats.health > Fixed::ZERO, "{kind:?} should have positive health");
+            assert!(
+                stats.health > Fixed::ZERO,
+                "{kind:?} should have positive health"
+            );
         }
     }
 

@@ -130,7 +130,12 @@ pub fn render_minimap(world: &mut World, width: u32, height: u32) -> Vec<u8> {
         use image::ImageEncoder;
         let encoder = image::codecs::png::PngEncoder::new(&mut cursor);
         encoder
-            .write_image(&scaled, sw as u32, sh as u32, image::ExtendedColorType::Rgba8)
+            .write_image(
+                &scaled,
+                sw as u32,
+                sh as u32,
+                image::ExtendedColorType::Rgba8,
+            )
             .expect("PNG encode failed");
     }
     cursor.into_inner()

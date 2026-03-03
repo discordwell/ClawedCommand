@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use cc_core::components::{Building, Owner, Producer, RallyPoint, Selected};
-use cc_core::coords::{WorldPos, depth_z, world_to_screen, TILE_HALF_HEIGHT};
+use cc_core::coords::{TILE_HALF_HEIGHT, WorldPos, depth_z, world_to_screen};
 
 /// Local player ID for rally flag rendering.
 const LOCAL_PLAYER: u8 = 0;
@@ -44,10 +44,7 @@ pub fn rally_flag_system(
             *visibility = Visibility::Inherited;
         } else {
             // Spawn new flag — small green diamond
-            let mesh = meshes.add(Rhombus::new(
-                TILE_HALF_HEIGHT * 0.6,
-                TILE_HALF_HEIGHT * 0.6,
-            ));
+            let mesh = meshes.add(Rhombus::new(TILE_HALF_HEIGHT * 0.6, TILE_HALF_HEIGHT * 0.6));
             let mat = materials.add(ColorMaterial::from_color(Color::srgba(0.2, 1.0, 0.4, 0.7)));
 
             commands.spawn((

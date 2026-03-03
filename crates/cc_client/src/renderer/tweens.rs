@@ -62,21 +62,21 @@ fn archetype_of(kind: UnitKind) -> Archetype {
 #[derive(Clone, Debug)]
 pub struct TweenParams {
     // Idle
-    pub bob_amplitude: f32,    // pixels
-    pub bob_speed: f32,        // Hz
-    pub breathe_scale: f32,    // ±fraction (e.g. 0.02 = ±2%)
-    pub breathe_speed: f32,    // Hz
+    pub bob_amplitude: f32, // pixels
+    pub bob_speed: f32,     // Hz
+    pub breathe_scale: f32, // ±fraction (e.g. 0.02 = ±2%)
+    pub breathe_speed: f32, // Hz
 
     // Walk
-    pub stride_bounce: f32,    // pixels
-    pub stride_speed: f32,     // Hz
-    pub lean_angle: f32,       // radians
-    pub lean_speed: f32,       // Hz
+    pub stride_bounce: f32, // pixels
+    pub stride_speed: f32,  // Hz
+    pub lean_angle: f32,    // radians
+    pub lean_speed: f32,    // Hz
 
     // Attack
-    pub lunge_distance: f32,   // pixels
-    pub lunge_duration: f32,   // seconds
-    pub recoil_duration: f32,  // seconds
+    pub lunge_distance: f32,  // pixels
+    pub lunge_duration: f32,  // seconds
+    pub recoil_duration: f32, // seconds
 
     // Hit reaction
     pub hit_flash_duration: f32, // seconds
@@ -232,9 +232,12 @@ fn idle_offsets(elapsed: f32, params: &TweenParams) -> (f32, f32) {
 
 /// Walk: stride bounce (Y offset) + lean sway (rotation Z in radians).
 fn walk_offsets(elapsed: f32, params: &TweenParams) -> (f32, f32) {
-    let dy =
-        (elapsed * params.stride_speed * std::f32::consts::TAU).sin().abs() * params.stride_bounce;
-    let rotation_z = (elapsed * params.lean_speed * std::f32::consts::TAU).sin() * params.lean_angle;
+    let dy = (elapsed * params.stride_speed * std::f32::consts::TAU)
+        .sin()
+        .abs()
+        * params.stride_bounce;
+    let rotation_z =
+        (elapsed * params.lean_speed * std::f32::consts::TAU).sin() * params.lean_angle;
     (dy, rotation_z)
 }
 
@@ -382,20 +385,14 @@ pub fn apply_unit_tweens(
         }
 
         // 4. Compute current state offsets
-        let (cur_dy, cur_scale_offset, cur_rotation) = state_offsets(
-            *anim_state,
-            tween.elapsed,
-            &tween.params,
-        );
+        let (cur_dy, cur_scale_offset, cur_rotation) =
+            state_offsets(*anim_state, tween.elapsed, &tween.params);
 
         // 5. Blend with previous state if transitioning
         let (dy, scale_offset, rotation) = if tween.blend_out > 0.0 {
             let blend_t = 1.0 - (tween.blend_out / tween.params.blend_duration).clamp(0.0, 1.0);
-            let (prev_dy, prev_scale, prev_rot) = state_offsets(
-                tween.blend_from,
-                tween.elapsed,
-                &tween.params,
-            );
+            let (prev_dy, prev_scale, prev_rot) =
+                state_offsets(tween.blend_from, tween.elapsed, &tween.params);
             (
                 prev_dy + (cur_dy - prev_dy) * blend_t,
                 prev_scale + (cur_scale_offset - prev_scale) * blend_t,
@@ -549,7 +546,10 @@ mod tests {
     fn attack_lunge_starts_at_zero() {
         let params = TweenParams::for_archetype(Archetype::Medium);
         let offset = attack_offset(0.0, &params);
-        assert!(offset.abs() < 0.01, "attack should start near 0, got {offset}");
+        assert!(
+            offset.abs() < 0.01,
+            "attack should start near 0, got {offset}"
+        );
     }
 
     #[test]
@@ -569,7 +569,10 @@ mod tests {
     fn attack_lunge_returns_to_zero() {
         let params = TweenParams::for_archetype(Archetype::Medium);
         let offset = attack_offset(1.0, &params);
-        assert!(offset.abs() < 0.01, "attack should end near 0, got {offset}");
+        assert!(
+            offset.abs() < 0.01,
+            "attack should end near 0, got {offset}"
+        );
     }
 
     // --- Spawn scale ---
@@ -597,7 +600,10 @@ mod tests {
     fn spawn_scale_settles_to_one() {
         let params = TweenParams::for_archetype(Archetype::Tank);
         let s = spawn_scale(1.0, &params);
-        assert!((s - 1.0).abs() < f32::EPSILON, "spawn should settle to 1.0, got {s}");
+        assert!(
+            (s - 1.0).abs() < f32::EPSILON,
+            "spawn should settle to 1.0, got {s}"
+        );
     }
 
     // --- Hit flash ---
@@ -605,13 +611,19 @@ mod tests {
     #[test]
     fn hit_flash_full_at_start() {
         let factor = hit_flash_factor(0.3, 0.3);
-        assert!((factor - 1.0).abs() < 0.01, "flash should be ~1.0 at start, got {factor}");
+        assert!(
+            (factor - 1.0).abs() < 0.01,
+            "flash should be ~1.0 at start, got {factor}"
+        );
     }
 
     #[test]
     fn hit_flash_zero_when_expired() {
         let factor = hit_flash_factor(0.0, 0.3);
-        assert!(factor.abs() < f32::EPSILON, "flash should be 0.0 when expired, got {factor}");
+        assert!(
+            factor.abs() < f32::EPSILON,
+            "flash should be 0.0 when expired, got {factor}"
+        );
     }
 
     // --- Knockback ---
@@ -630,7 +642,10 @@ mod tests {
     fn knockback_zero_when_expired() {
         let params = TweenParams::for_archetype(Archetype::Medium);
         let kb = knockback_offset(0.0, &params);
-        assert!(kb.abs() < f32::EPSILON, "knockback should be 0 when expired, got {kb}");
+        assert!(
+            kb.abs() < f32::EPSILON,
+            "knockback should be 0 when expired, got {kb}"
+        );
     }
 
     // --- All unit kinds have valid params ---
@@ -639,29 +654,71 @@ mod tests {
     fn all_unit_kinds_have_positive_params() {
         let all_kinds = [
             // Cat
-            UnitKind::Pawdler, UnitKind::Nuisance, UnitKind::Chonk, UnitKind::FlyingFox,
-            UnitKind::Hisser, UnitKind::Yowler, UnitKind::Mouser, UnitKind::Catnapper,
-            UnitKind::FerretSapper, UnitKind::MechCommander,
+            UnitKind::Pawdler,
+            UnitKind::Nuisance,
+            UnitKind::Chonk,
+            UnitKind::FlyingFox,
+            UnitKind::Hisser,
+            UnitKind::Yowler,
+            UnitKind::Mouser,
+            UnitKind::Catnapper,
+            UnitKind::FerretSapper,
+            UnitKind::MechCommander,
             // Murder
-            UnitKind::MurderScrounger, UnitKind::Sentinel, UnitKind::Rookclaw,
-            UnitKind::Magpike, UnitKind::Magpyre, UnitKind::Jaycaller, UnitKind::Jayflicker,
-            UnitKind::Dusktalon, UnitKind::Hootseer, UnitKind::CorvusRex,
+            UnitKind::MurderScrounger,
+            UnitKind::Sentinel,
+            UnitKind::Rookclaw,
+            UnitKind::Magpike,
+            UnitKind::Magpyre,
+            UnitKind::Jaycaller,
+            UnitKind::Jayflicker,
+            UnitKind::Dusktalon,
+            UnitKind::Hootseer,
+            UnitKind::CorvusRex,
             // Seekers
-            UnitKind::Delver, UnitKind::Ironhide, UnitKind::Cragback, UnitKind::Warden,
-            UnitKind::Sapjaw, UnitKind::Wardenmother, UnitKind::SeekerTunneler,
-            UnitKind::Embermaw, UnitKind::Dustclaw, UnitKind::Gutripper,
+            UnitKind::Delver,
+            UnitKind::Ironhide,
+            UnitKind::Cragback,
+            UnitKind::Warden,
+            UnitKind::Sapjaw,
+            UnitKind::Wardenmother,
+            UnitKind::SeekerTunneler,
+            UnitKind::Embermaw,
+            UnitKind::Dustclaw,
+            UnitKind::Gutripper,
             // Clawed
-            UnitKind::Nibblet, UnitKind::Swarmer, UnitKind::Gnawer, UnitKind::Shrieker,
-            UnitKind::Tunneler, UnitKind::Sparks, UnitKind::Quillback, UnitKind::Whiskerwitch,
-            UnitKind::Plaguetail, UnitKind::WarrenMarshal,
+            UnitKind::Nibblet,
+            UnitKind::Swarmer,
+            UnitKind::Gnawer,
+            UnitKind::Shrieker,
+            UnitKind::Tunneler,
+            UnitKind::Sparks,
+            UnitKind::Quillback,
+            UnitKind::Whiskerwitch,
+            UnitKind::Plaguetail,
+            UnitKind::WarrenMarshal,
             // Croak
-            UnitKind::Ponderer, UnitKind::Regeneron, UnitKind::Broodmother, UnitKind::Gulper,
-            UnitKind::Eftsaber, UnitKind::Croaker, UnitKind::Leapfrog, UnitKind::Shellwarden,
-            UnitKind::Bogwhisper, UnitKind::MurkCommander,
+            UnitKind::Ponderer,
+            UnitKind::Regeneron,
+            UnitKind::Broodmother,
+            UnitKind::Gulper,
+            UnitKind::Eftsaber,
+            UnitKind::Croaker,
+            UnitKind::Leapfrog,
+            UnitKind::Shellwarden,
+            UnitKind::Bogwhisper,
+            UnitKind::MurkCommander,
             // LLAMA
-            UnitKind::Scrounger, UnitKind::Bandit, UnitKind::HeapTitan, UnitKind::GlitchRat,
-            UnitKind::PatchPossum, UnitKind::GreaseMonkey, UnitKind::DeadDropUnit,
-            UnitKind::Wrecker, UnitKind::DumpsterDiver, UnitKind::JunkyardKing,
+            UnitKind::Scrounger,
+            UnitKind::Bandit,
+            UnitKind::HeapTitan,
+            UnitKind::GlitchRat,
+            UnitKind::PatchPossum,
+            UnitKind::GreaseMonkey,
+            UnitKind::DeadDropUnit,
+            UnitKind::Wrecker,
+            UnitKind::DumpsterDiver,
+            UnitKind::JunkyardKing,
         ];
         assert_eq!(all_kinds.len(), 60, "should cover all 60 unit kinds");
 

@@ -382,10 +382,7 @@ fn camera_orbit(
 }
 
 /// Exit on Escape.
-fn exit_on_esc(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    mut exit: MessageWriter<AppExit>,
-) {
+fn exit_on_esc(keyboard: Res<ButtonInput<KeyCode>>, mut exit: MessageWriter<AppExit>) {
     if keyboard.just_pressed(KeyCode::Escape) {
         exit.write(AppExit::Success);
     }

@@ -12,7 +12,7 @@ use cc_core::components::{
     ProjectileTarget, StatModifiers, UnitKind, UnitType, Velocity,
 };
 use cc_core::coords::WorldPos;
-use cc_core::math::{Fixed, FIXED_ONE};
+use cc_core::math::{FIXED_ONE, Fixed};
 use cc_core::status_effects::StatusEffectId;
 use cc_core::terrain::FactionId;
 use cc_core::tuning::PROJECTILE_SPEED;
@@ -37,9 +37,24 @@ pub fn combat_system(
         ),
         Without<Dead>,
     >,
-    targets: Query<(Entity, &Position, Option<&StatModifiers>), (Or<(With<UnitType>, With<Building>)>, Without<Dead>)>,
+    targets: Query<
+        (Entity, &Position, Option<&StatModifiers>),
+        (Or<(With<UnitType>, With<Building>)>, Without<Dead>),
+    >,
 ) {
-    for (entity, pos, mut stats, atk_type, attack_target, owner, hold, attacker_mods, unit_type, mut dream_siege_timer) in attackers.iter_mut() {
+    for (
+        entity,
+        pos,
+        mut stats,
+        atk_type,
+        attack_target,
+        owner,
+        hold,
+        attacker_mods,
+        unit_type,
+        mut dream_siege_timer,
+    ) in attackers.iter_mut()
+    {
         // Tick cooldown
         if stats.cooldown_remaining > 0 {
             stats.cooldown_remaining -= 1;
@@ -75,7 +90,8 @@ pub fn combat_system(
                 // Apply attack_speed_multiplier to cooldown reset
                 let base_cooldown = stats.attack_speed;
                 let cooldown = if let Some(mods) = attacker_mods {
-                    let adjusted = Fixed::from_num(base_cooldown as i32) * mods.attack_speed_multiplier;
+                    let adjusted =
+                        Fixed::from_num(base_cooldown as i32) * mods.attack_speed_multiplier;
                     adjusted.to_num::<u32>().max(1)
                 } else {
                     base_cooldown
@@ -93,8 +109,7 @@ pub fn combat_system(
                     .unwrap_or(FIXED_ONE);
 
                 let elev_advantage = map_res.map.elevation_advantage(attacker_grid, target_grid);
-                let elev_mult =
-                    cc_core::terrain::elevation_damage_multiplier(elev_advantage);
+                let elev_mult = cc_core::terrain::elevation_damage_multiplier(elev_advantage);
 
                 let mut final_damage = stats.damage * cover_mult * elev_mult;
 
@@ -107,7 +122,8 @@ pub fn combat_system(
                 // Increment by attack_speed to approximate elapsed ticks between attacks
                 if unit_type.kind == UnitKind::Catnapper {
                     if let Some(ref mut siege_timer) = dream_siege_timer {
-                        if siege_timer.current_target == Some(EntityId::from_entity(target_entity)) {
+                        if siege_timer.current_target == Some(EntityId::from_entity(target_entity))
+                        {
                             siege_timer.ticks_on_target += stats.attack_speed as u32;
                         } else {
                             siege_timer.current_target = Some(EntityId::from_entity(target_entity));
@@ -191,11 +207,9 @@ pub fn combat_system(
                 commands.entity(entity).insert(Path {
                     waypoints: VecDeque::from(waypoints),
                 });
-                commands
-                    .entity(entity)
-                    .insert(MoveTarget {
-                        target: WorldPos::from_grid(first_waypoint),
-                    });
+                commands.entity(entity).insert(MoveTarget {
+                    target: WorldPos::from_grid(first_waypoint),
+                });
             }
         }
     }

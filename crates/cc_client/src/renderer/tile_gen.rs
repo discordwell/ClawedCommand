@@ -147,7 +147,11 @@ fn terrain_pixel(terrain: TerrainType, px: usize, py: usize, variant: u8) -> (u8
             let base_b = 217u8;
             // Wave line pattern with highlights
             let wave_offset = if variant == 0 { 0 } else { 3 };
-            let wave = if (py + wave_offset + px / 8) % 5 == 0 { 15i16 } else { 0 };
+            let wave = if (py + wave_offset + px / 8) % 5 == 0 {
+                15i16
+            } else {
+                0
+            };
             let ripple = if fine > 230 { 20i16 } else { 0 };
             let variation = ((noise as i16) - 128) / 12;
             (
@@ -162,7 +166,11 @@ fn terrain_pixel(terrain: TerrainType, px: usize, py: usize, variant: u8) -> (u8
             let base_b = 232u8;
             // Sparse waves, ground color bleed-through
             let wave_offset = if variant == 0 { 0 } else { 2 };
-            let wave = if (py + wave_offset + px / 6) % 7 == 0 { 10i16 } else { 0 };
+            let wave = if (py + wave_offset + px / 6) % 7 == 0 {
+                10i16
+            } else {
+                0
+            };
             let ground_bleed = if fine < 40 { 15i16 } else { 0 };
             let variation = ((noise as i16) - 128) / 14;
             (
@@ -219,7 +227,11 @@ fn terrain_pixel(terrain: TerrainType, px: usize, py: usize, variant: u8) -> (u8
             let base_g = 110u8;
             let base_b = 122u8;
             // Grid circuit lines with cyan accent dots
-            let grid_line = if px % 8 == 0 || py % 8 == 0 { -15i16 } else { 0 };
+            let grid_line = if px % 8 == 0 || py % 8 == 0 {
+                -15i16
+            } else {
+                0
+            };
             let accent = px % 16 == 4 && py % 8 == 4;
             if accent {
                 (80, 220, 220) // Cyan accent dot
@@ -237,8 +249,7 @@ fn terrain_pixel(terrain: TerrainType, px: usize, py: usize, variant: u8) -> (u8
 
 /// Pseudo-random noise based on pixel position (deterministic hash).
 fn pseudo_noise(px: usize, py: usize) -> u8 {
-    let h = px.wrapping_mul(374761393)
-        ^ py.wrapping_mul(668265263);
+    let h = px.wrapping_mul(374761393) ^ py.wrapping_mul(668265263);
     let h = h.wrapping_mul(h).wrapping_shr(16);
     (h & 0xFF) as u8
 }

@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
-use cc_core::coords::{GridPos, WorldPos, world_to_screen, TILE_HALF_HEIGHT, TILE_HALF_WIDTH};
-use cc_core::terrain::TerrainType;
+use cc_core::coords::{GridPos, TILE_HALF_HEIGHT, TILE_HALF_WIDTH, WorldPos, world_to_screen};
 use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
+use cc_core::terrain::TerrainType;
 use cc_sim::resources::MapResource;
 
 use super::tile_gen::ProceduralTiles;
@@ -91,18 +91,13 @@ pub fn spawn_tilemap(
                         if neighbor.elevation < tile.elevation {
                             let nworld = WorldPos::from_grid(neighbor_grid);
                             let nscreen = world_to_screen(nworld);
-                            let n_elev_offset =
-                                neighbor.elevation as f32 * ELEVATION_PIXEL_OFFSET;
+                            let n_elev_offset = neighbor.elevation as f32 * ELEVATION_PIXEL_OFFSET;
 
                             commands.spawn((
                                 CliffShadow,
                                 Mesh2d(shadow_mesh.clone()),
                                 MeshMaterial2d(shadow_material.clone()),
-                                Transform::from_xyz(
-                                    nscreen.x,
-                                    -nscreen.y + n_elev_offset,
-                                    -9.9,
-                                ),
+                                Transform::from_xyz(nscreen.x, -nscreen.y + n_elev_offset, -9.9),
                             ));
                         }
                     }
@@ -214,34 +209,74 @@ fn terrain_base_color(terrain: TerrainType, x: i32, y: i32) -> Color {
     let checker = (x + y) % 2 == 0;
     match terrain {
         TerrainType::Grass => {
-            if checker { Color::srgb(0.28, 0.55, 0.25) } else { Color::srgb(0.32, 0.58, 0.28) }
+            if checker {
+                Color::srgb(0.28, 0.55, 0.25)
+            } else {
+                Color::srgb(0.32, 0.58, 0.28)
+            }
         }
         TerrainType::Dirt => {
-            if checker { Color::srgb(0.55, 0.42, 0.28) } else { Color::srgb(0.58, 0.45, 0.30) }
+            if checker {
+                Color::srgb(0.55, 0.42, 0.28)
+            } else {
+                Color::srgb(0.58, 0.45, 0.30)
+            }
         }
         TerrainType::Sand => {
-            if checker { Color::srgb(0.83, 0.76, 0.53) } else { Color::srgb(0.85, 0.78, 0.55) }
+            if checker {
+                Color::srgb(0.83, 0.76, 0.53)
+            } else {
+                Color::srgb(0.85, 0.78, 0.55)
+            }
         }
         TerrainType::Forest => {
-            if checker { Color::srgb(0.18, 0.42, 0.15) } else { Color::srgb(0.22, 0.45, 0.18) }
+            if checker {
+                Color::srgb(0.18, 0.42, 0.15)
+            } else {
+                Color::srgb(0.22, 0.45, 0.18)
+            }
         }
         TerrainType::Water => {
-            if checker { Color::srgb(0.15, 0.35, 0.65) } else { Color::srgb(0.18, 0.38, 0.68) }
+            if checker {
+                Color::srgb(0.15, 0.35, 0.65)
+            } else {
+                Color::srgb(0.18, 0.38, 0.68)
+            }
         }
         TerrainType::Shallows => {
-            if checker { Color::srgb(0.40, 0.68, 0.88) } else { Color::srgb(0.42, 0.70, 0.90) }
+            if checker {
+                Color::srgb(0.40, 0.68, 0.88)
+            } else {
+                Color::srgb(0.42, 0.70, 0.90)
+            }
         }
         TerrainType::Rock => {
-            if checker { Color::srgb(0.33, 0.30, 0.28) } else { Color::srgb(0.35, 0.32, 0.30) }
+            if checker {
+                Color::srgb(0.33, 0.30, 0.28)
+            } else {
+                Color::srgb(0.35, 0.32, 0.30)
+            }
         }
         TerrainType::Ramp => {
-            if checker { Color::srgb(0.48, 0.43, 0.36) } else { Color::srgb(0.50, 0.45, 0.38) }
+            if checker {
+                Color::srgb(0.48, 0.43, 0.36)
+            } else {
+                Color::srgb(0.50, 0.45, 0.38)
+            }
         }
         TerrainType::Road => {
-            if checker { Color::srgb(0.60, 0.52, 0.40) } else { Color::srgb(0.62, 0.54, 0.42) }
+            if checker {
+                Color::srgb(0.60, 0.52, 0.40)
+            } else {
+                Color::srgb(0.62, 0.54, 0.42)
+            }
         }
         TerrainType::TechRuins => {
-            if checker { Color::srgb(0.41, 0.41, 0.46) } else { Color::srgb(0.43, 0.43, 0.48) }
+            if checker {
+                Color::srgb(0.41, 0.41, 0.46)
+            } else {
+                Color::srgb(0.43, 0.43, 0.48)
+            }
         }
     }
 }

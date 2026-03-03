@@ -4,14 +4,15 @@ use cc_core::abilities::unit_abilities;
 use cc_core::building_stats::building_stats;
 use cc_core::commands::EntityId;
 use cc_core::components::{
-    AbilitySlots, AttackStats, AttackType, AttackTypeMarker, Aura, AuraType, BogPatchCounter,
-    Building, BuildingKind, ContagionCloudOnDeath, CorrodedApplicator, DreamSiegeTimer,
-    FeignDeathTracker, BloodgreedTracker, FrankensteinTracker, FrenzyStacks, GatherState,
-    Gathering, GridCell, Health, HeavyUnit, JunkLauncherState, LimbTracker, MoveTarget,
-    MovementSpeed, NineLivesTracker, Owner, PocketStashInventory, StationaryTimer,
-    StaticChargeStacks, StructuralWeaknessTimer,
+    AbilitySlots, Aerial, AttackStats, AttackType, AttackTypeMarker, Aura, AuraType,
+    BloodgreedTracker, BogPatchCounter, Building, BuildingKind, ContagionCloudOnDeath,
+    CorrodedApplicator, DreamSiegeTimer, FeignDeathTracker, FrankensteinTracker, FrenzyStacks,
+    GatherState, Gathering, GridCell, Health, HeavyUnit, JunkLauncherState, LimbTracker,
+    MoveTarget, MovementSpeed, NineLivesTracker, Owner, PanopticGazeCone, PocketStashInventory,
     Position, Producer, ProductionQueue, RallyPoint, ResearchQueue, Researcher, ResourceDeposit,
-    SpawnlingCounter, StatModifiers, UnderConstruction, Aerial, PanopticGazeCone, Stealth, TrinketWardTracker, UniqueBuildingLimit, UnitKind, UnitType, Velocity,
+    SpawnlingCounter, StatModifiers, StaticChargeStacks, StationaryTimer, Stealth,
+    StructuralWeaknessTimer, TrinketWardTracker, UnderConstruction, UniqueBuildingLimit, UnitKind,
+    UnitType, Velocity,
 };
 use cc_core::coords::WorldPos;
 use cc_core::math::Fixed;
@@ -151,9 +152,11 @@ pub fn production_system(
 
                 // Panopticon (Murder research, limit 1) gets Researcher + ResearchQueue + UniqueBuildingLimit
                 if building.kind == BuildingKind::Panopticon {
-                    commands
-                        .entity(entity)
-                        .insert((Researcher, ResearchQueue::default(), UniqueBuildingLimit));
+                    commands.entity(entity).insert((
+                        Researcher,
+                        ResearchQueue::default(),
+                        UniqueBuildingLimit,
+                    ));
                 }
 
                 // Watchtower (Murder defense tower) gets AttackStats
@@ -384,14 +387,19 @@ pub fn production_system(
                         ));
                     }
 
-
                     // --- Murder spawn-time components ---
 
                     // Aerial marker for flying Murder units
-                    if matches!(kind,
-                        UnitKind::MurderScrounger | UnitKind::Sentinel | UnitKind::Rookclaw |
-                        UnitKind::Magpike | UnitKind::Magpyre | UnitKind::Jaycaller |
-                        UnitKind::Jayflicker | UnitKind::Hootseer
+                    if matches!(
+                        kind,
+                        UnitKind::MurderScrounger
+                            | UnitKind::Sentinel
+                            | UnitKind::Rookclaw
+                            | UnitKind::Magpike
+                            | UnitKind::Magpyre
+                            | UnitKind::Jaycaller
+                            | UnitKind::Jayflicker
+                            | UnitKind::Hootseer
                     ) {
                         entity_cmds.insert(Aerial);
                     }
@@ -435,20 +443,51 @@ pub fn production_system(
                         });
                     }
                     // --- Seekers of the Deep spawn-time components ---
-                    if matches!(kind, UnitKind::Delver | UnitKind::Ironhide | UnitKind::Cragback | UnitKind::Warden | UnitKind::Sapjaw | UnitKind::Wardenmother | UnitKind::SeekerTunneler | UnitKind::Embermaw | UnitKind::Dustclaw | UnitKind::Gutripper) {
+                    if matches!(
+                        kind,
+                        UnitKind::Delver
+                            | UnitKind::Ironhide
+                            | UnitKind::Cragback
+                            | UnitKind::Warden
+                            | UnitKind::Sapjaw
+                            | UnitKind::Wardenmother
+                            | UnitKind::SeekerTunneler
+                            | UnitKind::Embermaw
+                            | UnitKind::Dustclaw
+                            | UnitKind::Gutripper
+                    ) {
                         entity_cmds.insert(StationaryTimer::default());
                     }
-                    if matches!(kind, UnitKind::Ironhide | UnitKind::Cragback | UnitKind::Wardenmother | UnitKind::Gutripper) {
+                    if matches!(
+                        kind,
+                        UnitKind::Ironhide
+                            | UnitKind::Cragback
+                            | UnitKind::Wardenmother
+                            | UnitKind::Gutripper
+                    ) {
                         entity_cmds.insert(HeavyUnit);
                     }
                     if kind == UnitKind::Warden {
-                        entity_cmds.insert(Aura { aura_type: AuraType::VigilanceAura, radius: Fixed::from_bits(5 << 16), active: true });
+                        entity_cmds.insert(Aura {
+                            aura_type: AuraType::VigilanceAura,
+                            radius: Fixed::from_bits(5 << 16),
+                            active: true,
+                        });
                     }
                     if kind == UnitKind::Wardenmother {
-                        entity_cmds.insert(Aura { aura_type: AuraType::DeepseekUplinkAura, radius: Fixed::from_bits(8 << 16), active: true });
+                        entity_cmds.insert(Aura {
+                            aura_type: AuraType::DeepseekUplinkAura,
+                            radius: Fixed::from_bits(8 << 16),
+                            active: true,
+                        });
                     }
                     if kind == UnitKind::Gutripper {
-                        entity_cmds.insert((FrenzyStacks::default(), BloodgreedTracker { lifesteal_fraction: Fixed::from_num(0.20f32) }));
+                        entity_cmds.insert((
+                            FrenzyStacks::default(),
+                            BloodgreedTracker {
+                                lifesteal_fraction: Fixed::from_num(0.20f32),
+                            },
+                        ));
                     }
 
                     // --- The Clawed (Mice) spawn-time components ---
@@ -474,10 +513,16 @@ pub fn production_system(
                     // Auto-move to rally point if set
                     if let Some(rally) = rally {
                         let rally_world = WorldPos::from_grid(rally.target);
-                        commands
-                            .entity(new_entity)
-                            .insert(MoveTarget { target: rally_world });
-                    } else if kind == UnitKind::Pawdler || kind == UnitKind::Ponderer || kind == UnitKind::MurderScrounger || kind == UnitKind::Scrounger || kind == UnitKind::Delver || kind == UnitKind::Nibblet {
+                        commands.entity(new_entity).insert(MoveTarget {
+                            target: rally_world,
+                        });
+                    } else if kind == UnitKind::Pawdler
+                        || kind == UnitKind::Ponderer
+                        || kind == UnitKind::MurderScrounger
+                        || kind == UnitKind::Scrounger
+                        || kind == UnitKind::Delver
+                        || kind == UnitKind::Nibblet
+                    {
                         // Auto-gather: send newly produced workers to nearest deposit
                         let spawn_pos = spawn_world;
                         let mut best_dist_sq = i64::MAX;

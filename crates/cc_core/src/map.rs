@@ -1,15 +1,15 @@
 use crate::coords::GridPos;
 use crate::math::Fixed;
 use crate::terrain::{
-    FactionId, TerrainType, is_passable_for_faction, FLAG_TEMP_BLOCKED, FLAG_WATER_CONVERTED,
+    FLAG_TEMP_BLOCKED, FLAG_WATER_CONVERTED, FactionId, TerrainType, is_passable_for_faction,
 };
 
 /// Per-tile data.
 #[derive(Debug, Clone, Copy)]
 pub struct TileData {
     pub terrain: TerrainType,
-    pub elevation: u8,       // 0-2 height levels
-    pub dynamic_flags: u8,   // Bit 0 = temp blocked, Bit 1 = water converted
+    pub elevation: u8,     // 0-2 height levels
+    pub dynamic_flags: u8, // Bit 0 = temp blocked, Bit 1 = water converted
 }
 
 impl Default for TileData {
@@ -57,11 +57,7 @@ impl GameMap {
     }
 
     fn index(&self, pos: GridPos) -> Option<usize> {
-        if pos.x >= 0
-            && pos.y >= 0
-            && (pos.x as u32) < self.width
-            && (pos.y as u32) < self.height
-        {
+        if pos.x >= 0 && pos.y >= 0 && (pos.x as u32) < self.width && (pos.y as u32) < self.height {
             Some((pos.y as u32 * self.width + pos.x as u32) as usize)
         } else {
             None
@@ -78,16 +74,14 @@ impl GameMap {
 
     /// Backward-compatible passability check (uses base_passable, ignores faction).
     pub fn is_passable(&self, pos: GridPos) -> bool {
-        self.get(pos).is_some_and(|t| {
-            !t.is_dynamically_blocked() && t.effective_terrain().base_passable()
-        })
+        self.get(pos)
+            .is_some_and(|t| !t.is_dynamically_blocked() && t.effective_terrain().base_passable())
     }
 
     /// Faction-aware passability check.
     pub fn is_passable_for(&self, pos: GridPos, faction: FactionId) -> bool {
         self.get(pos).is_some_and(|t| {
-            !t.is_dynamically_blocked()
-                && is_passable_for_faction(t.effective_terrain(), faction)
+            !t.is_dynamically_blocked() && is_passable_for_faction(t.effective_terrain(), faction)
         })
     }
 
@@ -122,10 +116,7 @@ impl GameMap {
     }
 
     pub fn in_bounds(&self, pos: GridPos) -> bool {
-        pos.x >= 0
-            && pos.y >= 0
-            && (pos.x as u32) < self.width
-            && (pos.y as u32) < self.height
+        pos.x >= 0 && pos.y >= 0 && (pos.x as u32) < self.width && (pos.y as u32) < self.height
     }
 
     /// Return all passable neighbors (8-directional), using base passability.
@@ -274,7 +265,7 @@ mod tests {
         let catgpt_neighbors = map.neighbors_for_faction(GridPos::new(5, 5), FactionId::CatGPT);
         let croak_neighbors = map.neighbors_for_faction(GridPos::new(5, 5), FactionId::Croak);
         assert_eq!(catgpt_neighbors.len(), 7); // water excluded
-        assert_eq!(croak_neighbors.len(), 8);  // water included
+        assert_eq!(croak_neighbors.len(), 8); // water included
     }
 
     #[test]
@@ -335,8 +326,14 @@ mod tests {
 
         assert_eq!(map.elevation_at(GridPos::new(3, 3)), 2);
         assert_eq!(map.elevation_at(GridPos::new(5, 5)), 0);
-        assert_eq!(map.elevation_advantage(GridPos::new(3, 3), GridPos::new(5, 5)), 2);
-        assert_eq!(map.elevation_advantage(GridPos::new(5, 5), GridPos::new(3, 3)), -2);
+        assert_eq!(
+            map.elevation_advantage(GridPos::new(3, 3), GridPos::new(5, 5)),
+            2
+        );
+        assert_eq!(
+            map.elevation_advantage(GridPos::new(5, 5), GridPos::new(3, 3)),
+            -2
+        );
     }
 
     #[test]

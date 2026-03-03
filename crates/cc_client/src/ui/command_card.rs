@@ -72,13 +72,7 @@ pub fn update_command_card(
         ),
         With<Selected>,
     >,
-    mut root_vis: Query<
-        &mut Visibility,
-        (
-            With<CommandCardRoot>,
-            Without<CommandCardText>,
-        ),
-    >,
+    mut root_vis: Query<&mut Visibility, (With<CommandCardRoot>, Without<CommandCardText>)>,
     mut text_q: Query<&mut Text, With<CommandCardText>>,
 ) {
     let has_units = selected_units.iter().count() > 0;
@@ -242,8 +236,10 @@ pub fn update_command_card(
                         KeyCode::Digit5 => "5",
                         _ => "?",
                     };
-                    research_parts
-                        .push(format!("[{key_num}] {label} {}f/{}g{marker}", ustats.food_cost, ustats.gpu_cost));
+                    research_parts.push(format!(
+                        "[{key_num}] {label} {}f/{}g{marker}",
+                        ustats.food_cost, ustats.gpu_cost
+                    ));
 
                     if keys.just_pressed(*key) && can_afford {
                         cmd_queue.push(GameCommand::Research {

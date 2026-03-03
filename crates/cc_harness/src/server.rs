@@ -372,15 +372,19 @@ impl HarnessServer {
     // Query tools (11)
     // =======================================================================
 
-    #[tool(description = "Get own units for a player. Optional filter: 'idle' (idle units), 'wounded' (below 50% HP), 'attacking' (currently attacking), 'gathering' (gathering workers). Omit filter for all units. Returns array of unit objects with id, kind, pos, hp, state.")]
+    #[tool(
+        description = "Get own units for a player. Optional filter: 'idle' (idle units), 'wounded' (below 50% HP), 'attacking' (currently attacking), 'gathering' (gathering workers). Omit filter for all units. Returns array of unit objects with id, kind, pos, hp, state."
+    )]
     async fn get_units(
         &self,
         Parameters(params): Parameters<PlayerFilterParams>,
     ) -> Result<CallToolResult, McpError> {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
-        let units: Vec<_> = snap.my_units.iter().filter(|u| {
-            match params.filter.as_deref() {
+        let units: Vec<_> = snap
+            .my_units
+            .iter()
+            .filter(|u| match params.filter.as_deref() {
                 Some("idle") => u.is_idle,
                 Some("wounded") => {
                     let half_hp = u.health_max / Fixed::from_num(2);
@@ -389,18 +393,24 @@ impl HarnessServer {
                 Some("attacking") => u.is_attacking,
                 Some("gathering") => u.is_gathering,
                 _ => true,
-            }
-        }).collect();
-        let json = serde_json::to_string_pretty(&units.iter().map(|u| {
-            serde_json::json!({
-                "id": u.id.0, "kind": format!("{:?}", u.kind),
-                "x": u.pos.x, "y": u.pos.y,
-                "hp": u.health_current.to_num::<f64>(),
-                "hp_max": u.health_max.to_num::<f64>(),
-                "moving": u.is_moving, "attacking": u.is_attacking,
-                "idle": u.is_idle, "gathering": u.is_gathering,
             })
-        }).collect::<Vec<_>>()).unwrap_or_default();
+            .collect();
+        let json = serde_json::to_string_pretty(
+            &units
+                .iter()
+                .map(|u| {
+                    serde_json::json!({
+                        "id": u.id.0, "kind": format!("{:?}", u.kind),
+                        "x": u.pos.x, "y": u.pos.y,
+                        "hp": u.health_current.to_num::<f64>(),
+                        "hp_max": u.health_max.to_num::<f64>(),
+                        "moving": u.is_moving, "attacking": u.is_attacking,
+                        "idle": u.is_idle, "gathering": u.is_gathering,
+                    })
+                })
+                .collect::<Vec<_>>(),
+        )
+        .unwrap_or_default();
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
 
@@ -411,14 +421,21 @@ impl HarnessServer {
     ) -> Result<CallToolResult, McpError> {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
-        let json = serde_json::to_string_pretty(&snap.enemy_units.iter().map(|u| {
-            serde_json::json!({
-                "id": u.id.0, "kind": format!("{:?}", u.kind),
-                "x": u.pos.x, "y": u.pos.y,
-                "hp": u.health_current.to_num::<f64>(),
-                "hp_max": u.health_max.to_num::<f64>(),
-            })
-        }).collect::<Vec<_>>()).unwrap_or_default();
+        let json = serde_json::to_string_pretty(
+            &snap
+                .enemy_units
+                .iter()
+                .map(|u| {
+                    serde_json::json!({
+                        "id": u.id.0, "kind": format!("{:?}", u.kind),
+                        "x": u.pos.x, "y": u.pos.y,
+                        "hp": u.health_current.to_num::<f64>(),
+                        "hp_max": u.health_max.to_num::<f64>(),
+                    })
+                })
+                .collect::<Vec<_>>(),
+        )
+        .unwrap_or_default();
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
 
@@ -430,8 +447,17 @@ impl HarnessServer {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let map = sim.map();
-        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
-        let enemies = ctx.enemies_in_range(GridPos::new(params.x, params.y), Fixed::from_num(params.range));
+        let mut ctx = ScriptContext::new(
+            &snap,
+            map,
+            params.player_id,
+            cc_core::terrain::FactionId::from_u8(params.player_id)
+                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+        );
+        let enemies = ctx.enemies_in_range(
+            GridPos::new(params.x, params.y),
+            Fixed::from_num(params.range),
+        );
         let json = serde_json::to_string_pretty(&enemies.iter().map(|u| {
             serde_json::json!({"id": u.id.0, "kind": format!("{:?}", u.kind), "hp": u.health_current.to_num::<f64>()})
         }).collect::<Vec<_>>()).unwrap_or_default();
@@ -446,12 +472,22 @@ impl HarnessServer {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let map = sim.map();
-        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+        let mut ctx = ScriptContext::new(
+            &snap,
+            map,
+            params.player_id,
+            cc_core::terrain::FactionId::from_u8(params.player_id)
+                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+        );
         let result = match ctx.nearest_enemy(GridPos::new(params.x, params.y)) {
-            Some(u) => serde_json::json!({"id": u.id.0, "kind": format!("{:?}", u.kind), "x": u.pos.x, "y": u.pos.y, "hp": u.health_current.to_num::<f64>()}),
+            Some(u) => {
+                serde_json::json!({"id": u.id.0, "kind": format!("{:?}", u.kind), "x": u.pos.x, "y": u.pos.y, "hp": u.health_current.to_num::<f64>()})
+            }
             None => serde_json::json!(null),
         };
-        Ok(CallToolResult::success(vec![Content::text(result.to_string())]))
+        Ok(CallToolResult::success(vec![Content::text(
+            result.to_string(),
+        )]))
     }
 
     #[tool(description = "Get enemies that threaten a specific unit (within their attack range).")]
@@ -462,7 +498,13 @@ impl HarnessServer {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let map = sim.map();
-        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+        let mut ctx = ScriptContext::new(
+            &snap,
+            map,
+            params.player_id,
+            cc_core::terrain::FactionId::from_u8(params.player_id)
+                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+        );
         let mut all_threats = Vec::new();
         for unit in &snap.my_units {
             let threats = ctx.threats_to(unit);
@@ -482,7 +524,13 @@ impl HarnessServer {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let map = sim.map();
-        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+        let mut ctx = ScriptContext::new(
+            &snap,
+            map,
+            params.player_id,
+            cc_core::terrain::FactionId::from_u8(params.player_id)
+                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+        );
         let mut all_targets = Vec::new();
         for unit in &snap.my_units {
             let targets = ctx.targets_for(unit);
@@ -494,7 +542,9 @@ impl HarnessServer {
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
 
-    #[tool(description = "Get current resource levels for a player (food, gpu_cores, nfts, supply).")]
+    #[tool(
+        description = "Get current resource levels for a player (food, gpu_cores, nfts, supply)."
+    )]
     async fn get_resources(
         &self,
         Parameters(params): Parameters<PlayerOnly>,
@@ -505,7 +555,9 @@ impl HarnessServer {
             "food": res.food, "gpu_cores": res.gpu_cores, "nfts": res.nfts,
             "supply": res.supply, "supply_cap": res.supply_cap,
         });
-        Ok(CallToolResult::success(vec![Content::text(json.to_string())]))
+        Ok(CallToolResult::success(vec![Content::text(
+            json.to_string(),
+        )]))
     }
 
     #[tool(description = "Get terrain type, elevation, and cover at a position.")]
@@ -516,7 +568,13 @@ impl HarnessServer {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let map = sim.map();
-        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+        let mut ctx = ScriptContext::new(
+            &snap,
+            map,
+            params.player_id,
+            cc_core::terrain::FactionId::from_u8(params.player_id)
+                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+        );
         let pos = GridPos::new(params.x, params.y);
         let json = serde_json::json!({
             "terrain": ctx.terrain_at(pos).map(|t| t.to_string()),
@@ -524,7 +582,9 @@ impl HarnessServer {
             "cover": ctx.cover_at(pos).to_string(),
             "passable": ctx.is_passable(pos),
         });
-        Ok(CallToolResult::success(vec![Content::text(json.to_string())]))
+        Ok(CallToolResult::success(vec![Content::text(
+            json.to_string(),
+        )]))
     }
 
     #[tool(description = "Get own buildings for a player.")]
@@ -554,17 +614,26 @@ impl HarnessServer {
     ) -> Result<CallToolResult, McpError> {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
-        let json = serde_json::to_string_pretty(&snap.enemy_buildings.iter().map(|b| {
-            serde_json::json!({
-                "id": b.id.0, "kind": format!("{:?}", b.kind),
-                "x": b.pos.x, "y": b.pos.y,
-                "hp": b.health_current.to_num::<f64>(),
-            })
-        }).collect::<Vec<_>>()).unwrap_or_default();
+        let json = serde_json::to_string_pretty(
+            &snap
+                .enemy_buildings
+                .iter()
+                .map(|b| {
+                    serde_json::json!({
+                        "id": b.id.0, "kind": format!("{:?}", b.kind),
+                        "x": b.pos.x, "y": b.pos.y,
+                        "hp": b.health_current.to_num::<f64>(),
+                    })
+                })
+                .collect::<Vec<_>>(),
+        )
+        .unwrap_or_default();
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
 
-    #[tool(description = "Get all resource deposits on the map. Returns array with id, resource_type, pos, remaining.")]
+    #[tool(
+        description = "Get all resource deposits on the map. Returns array with id, resource_type, pos, remaining."
+    )]
     async fn get_resource_deposits(
         &self,
         Parameters(params): Parameters<PlayerOnly>,
@@ -572,31 +641,55 @@ impl HarnessServer {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let map = sim.map();
-        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+        let mut ctx = ScriptContext::new(
+            &snap,
+            map,
+            params.player_id,
+            cc_core::terrain::FactionId::from_u8(params.player_id)
+                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+        );
         let deposits = ctx.resource_deposits();
-        let json = serde_json::to_string_pretty(&deposits.iter().map(|d| {
-            serde_json::json!({
-                "id": d.id.0,
-                "resource_type": format!("{:?}", d.resource_type),
-                "x": d.pos.x,
-                "y": d.pos.y,
-                "remaining": d.remaining,
-            })
-        }).collect::<Vec<_>>()).unwrap_or_default();
+        let json = serde_json::to_string_pretty(
+            &deposits
+                .iter()
+                .map(|d| {
+                    serde_json::json!({
+                        "id": d.id.0,
+                        "resource_type": format!("{:?}", d.resource_type),
+                        "x": d.pos.x,
+                        "y": d.pos.y,
+                        "remaining": d.remaining,
+                    })
+                })
+                .collect::<Vec<_>>(),
+        )
+        .unwrap_or_default();
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
 
-    #[tool(description = "Find nearest resource deposit of a given type to a position. Types: Food, GpuCores, Nft.")]
+    #[tool(
+        description = "Find nearest resource deposit of a given type to a position. Types: Food, GpuCores, Nft."
+    )]
     async fn get_nearest_deposit(
         &self,
         Parameters(params): Parameters<NearestDepositParams>,
     ) -> Result<CallToolResult, McpError> {
-        let kind = params.resource_type.parse::<ResourceType>()
-            .map_err(|_| McpError::invalid_params(format!("Unknown resource type: {}", params.resource_type), None))?;
+        let kind = params.resource_type.parse::<ResourceType>().map_err(|_| {
+            McpError::invalid_params(
+                format!("Unknown resource type: {}", params.resource_type),
+                None,
+            )
+        })?;
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let map = sim.map();
-        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+        let mut ctx = ScriptContext::new(
+            &snap,
+            map,
+            params.player_id,
+            cc_core::terrain::FactionId::from_u8(params.player_id)
+                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+        );
         let result = match ctx.nearest_deposit(GridPos::new(params.x, params.y), Some(kind)) {
             Some(d) => serde_json::json!({
                 "id": d.id.0,
@@ -607,7 +700,9 @@ impl HarnessServer {
             }),
             None => serde_json::json!(null),
         };
-        Ok(CallToolResult::success(vec![Content::text(result.to_string())]))
+        Ok(CallToolResult::success(vec![Content::text(
+            result.to_string(),
+        )]))
     }
 
     #[tool(description = "Get map dimensions, tick count, and game state.")]
@@ -619,10 +714,14 @@ impl HarnessServer {
             "tick": sim.tick(),
             "game_state": format!("{:?}", sim.game_state()),
         });
-        Ok(CallToolResult::success(vec![Content::text(json.to_string())]))
+        Ok(CallToolResult::success(vec![Content::text(
+            json.to_string(),
+        )]))
     }
 
-    #[tool(description = "Get full details for a specific unit including status effects and abilities.")]
+    #[tool(
+        description = "Get full details for a specific unit including status effects and abilities."
+    )]
     async fn get_unit_details(
         &self,
         Parameters(params): Parameters<PlayerUnitId>,
@@ -665,10 +764,15 @@ impl HarnessServer {
                         })
                     }).collect::<Vec<_>>(),
                 });
-                Ok(CallToolResult::success(vec![Content::text(json.to_string())]))
+                Ok(CallToolResult::success(vec![Content::text(
+                    json.to_string(),
+                )]))
             }
             None => Err(McpError::invalid_params(
-                format!("Unit {} not found for player {}", params.unit_id, params.player_id),
+                format!(
+                    "Unit {} not found for player {}",
+                    params.unit_id, params.player_id
+                ),
                 None,
             )),
         }
@@ -681,19 +785,27 @@ impl HarnessServer {
     ) -> Result<CallToolResult, McpError> {
         let sim = self.sim.lock().await;
         let res = sim.player_resources(params.player_id);
-        let upgrades: Vec<String> = res.completed_upgrades.iter().map(|u| format!("{}", u)).collect();
+        let upgrades: Vec<String> = res
+            .completed_upgrades
+            .iter()
+            .map(|u| format!("{}", u))
+            .collect();
         let json = serde_json::json!({
             "player_id": params.player_id,
             "completed_upgrades": upgrades,
         });
-        Ok(CallToolResult::success(vec![Content::text(json.to_string())]))
+        Ok(CallToolResult::success(vec![Content::text(
+            json.to_string(),
+        )]))
     }
 
     // =======================================================================
     // Spatial / Pathfinding query tools
     // =======================================================================
 
-    #[tool(description = "Get safe positions for a unit — passable tiles within search_radius that are outside all enemy attack ranges. Returns array of {x, y} positions.")]
+    #[tool(
+        description = "Get safe positions for a unit — passable tiles within search_radius that are outside all enemy attack ranges. Returns array of {x, y} positions."
+    )]
     async fn get_safe_positions(
         &self,
         Parameters(params): Parameters<GetSafePositionsParams>,
@@ -701,18 +813,35 @@ impl HarnessServer {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let map = sim.map();
-        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
-        let unit = snap.my_units.iter().find(|u| u.id.0 == params.unit_id)
-            .ok_or_else(|| McpError::invalid_params(format!("Unit {} not found", params.unit_id), None))?;
+        let mut ctx = ScriptContext::new(
+            &snap,
+            map,
+            params.player_id,
+            cc_core::terrain::FactionId::from_u8(params.player_id)
+                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+        );
+        let unit = snap
+            .my_units
+            .iter()
+            .find(|u| u.id.0 == params.unit_id)
+            .ok_or_else(|| {
+                McpError::invalid_params(format!("Unit {} not found", params.unit_id), None)
+            })?;
         let radius = params.search_radius.unwrap_or(8) as i32;
         let positions = ctx.safe_positions(unit, radius);
-        let json = serde_json::to_string_pretty(&positions.iter().map(|p| {
-            serde_json::json!({"x": p.x, "y": p.y})
-        }).collect::<Vec<_>>()).unwrap_or_default();
+        let json = serde_json::to_string_pretty(
+            &positions
+                .iter()
+                .map(|p| serde_json::json!({"x": p.x, "y": p.y}))
+                .collect::<Vec<_>>(),
+        )
+        .unwrap_or_default();
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
 
-    #[tool(description = "Get the optimal kite position: a passable tile at exactly desired_range from target, closest to the unit. Returns {x, y} or null if none found.")]
+    #[tool(
+        description = "Get the optimal kite position: a passable tile at exactly desired_range from target, closest to the unit. Returns {x, y} or null if none found."
+    )]
     async fn get_kite_position(
         &self,
         Parameters(params): Parameters<GetKitePositionParams>,
@@ -720,20 +849,40 @@ impl HarnessServer {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let map = sim.map();
-        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
-        let unit = snap.my_units.iter().find(|u| u.id.0 == params.unit_id)
-            .ok_or_else(|| McpError::invalid_params(format!("Unit {} not found", params.unit_id), None))?;
-        let target = snap.enemy_units.iter().find(|u| u.id.0 == params.target_id)
-            .ok_or_else(|| McpError::invalid_params(format!("Target {} not found", params.target_id), None))?;
+        let mut ctx = ScriptContext::new(
+            &snap,
+            map,
+            params.player_id,
+            cc_core::terrain::FactionId::from_u8(params.player_id)
+                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+        );
+        let unit = snap
+            .my_units
+            .iter()
+            .find(|u| u.id.0 == params.unit_id)
+            .ok_or_else(|| {
+                McpError::invalid_params(format!("Unit {} not found", params.unit_id), None)
+            })?;
+        let target = snap
+            .enemy_units
+            .iter()
+            .find(|u| u.id.0 == params.target_id)
+            .ok_or_else(|| {
+                McpError::invalid_params(format!("Target {} not found", params.target_id), None)
+            })?;
         let result = ctx.position_at_range(unit.pos, target.pos, params.desired_range as i32);
         let json = match result {
             Some(pos) => serde_json::json!({"x": pos.x, "y": pos.y}),
             None => serde_json::json!(null),
         };
-        Ok(CallToolResult::success(vec![Content::text(json.to_string())]))
+        Ok(CallToolResult::success(vec![Content::text(
+            json.to_string(),
+        )]))
     }
 
-    #[tool(description = "Check if a path exists between two grid positions using A* pathfinding. Returns boolean.")]
+    #[tool(
+        description = "Check if a path exists between two grid positions using A* pathfinding. Returns boolean."
+    )]
     async fn can_reach(
         &self,
         Parameters(params): Parameters<PathQueryParams>,
@@ -741,15 +890,25 @@ impl HarnessServer {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let map = sim.map();
-        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+        let mut ctx = ScriptContext::new(
+            &snap,
+            map,
+            params.player_id,
+            cc_core::terrain::FactionId::from_u8(params.player_id)
+                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+        );
         let reachable = ctx.can_reach(
             GridPos::new(params.from_x, params.from_y),
             GridPos::new(params.to_x, params.to_y),
         );
-        Ok(CallToolResult::success(vec![Content::text(format!("{reachable}"))]))
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "{reachable}"
+        ))]))
     }
 
-    #[tool(description = "Get the A* path length in tiles between two grid positions. Returns integer length or null if unreachable.")]
+    #[tool(
+        description = "Get the A* path length in tiles between two grid positions. Returns integer length or null if unreachable."
+    )]
     async fn get_path_length(
         &self,
         Parameters(params): Parameters<PathQueryParams>,
@@ -757,7 +916,13 @@ impl HarnessServer {
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let map = sim.map();
-        let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+        let mut ctx = ScriptContext::new(
+            &snap,
+            map,
+            params.player_id,
+            cc_core::terrain::FactionId::from_u8(params.player_id)
+                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+        );
         let length = ctx.path_length(
             GridPos::new(params.from_x, params.from_y),
             GridPos::new(params.to_x, params.to_y),
@@ -766,7 +931,9 @@ impl HarnessServer {
             Some(len) => serde_json::json!(len),
             None => serde_json::json!(null),
         };
-        Ok(CallToolResult::success(vec![Content::text(json.to_string())]))
+        Ok(CallToolResult::success(vec![Content::text(
+            json.to_string(),
+        )]))
     }
 
     // =======================================================================
@@ -854,8 +1021,12 @@ impl HarnessServer {
         &self,
         Parameters(params): Parameters<BuildParams>,
     ) -> Result<CallToolResult, McpError> {
-        let kind = params.building_kind.parse::<BuildingKind>()
-            .map_err(|_| McpError::invalid_params(format!("Unknown building kind: {}", params.building_kind), None))?;
+        let kind = params.building_kind.parse::<BuildingKind>().map_err(|_| {
+            McpError::invalid_params(
+                format!("Unknown building kind: {}", params.building_kind),
+                None,
+            )
+        })?;
         let mut sim = self.sim.lock().await;
         sim.inject_command(GameCommand::Build {
             builder: EntityId(params.builder_id),
@@ -870,8 +1041,9 @@ impl HarnessServer {
         &self,
         Parameters(params): Parameters<TrainParams>,
     ) -> Result<CallToolResult, McpError> {
-        let kind = params.unit_kind.parse::<UnitKind>()
-            .map_err(|_| McpError::invalid_params(format!("Unknown unit kind: {}", params.unit_kind), None))?;
+        let kind = params.unit_kind.parse::<UnitKind>().map_err(|_| {
+            McpError::invalid_params(format!("Unknown unit kind: {}", params.unit_kind), None)
+        })?;
         let mut sim = self.sim.lock().await;
         sim.inject_command(GameCommand::TrainUnit {
             building: EntityId(params.building_id),
@@ -880,7 +1052,9 @@ impl HarnessServer {
         Ok(CallToolResult::success(vec![Content::text("OK")]))
     }
 
-    #[tool(description = "Activate a unit's ability by slot index. target_type: 'self', 'position', or 'entity'.")]
+    #[tool(
+        description = "Activate a unit's ability by slot index. target_type: 'self', 'position', or 'entity'."
+    )]
     async fn activate_ability(
         &self,
         Parameters(params): Parameters<AbilityParams>,
@@ -888,15 +1062,26 @@ impl HarnessServer {
         let target = match params.target_type.as_str() {
             "self" => AbilityTarget::SelfCast,
             "position" => {
-                let x = params.x.ok_or_else(|| McpError::invalid_params("position target requires x", None))?;
-                let y = params.y.ok_or_else(|| McpError::invalid_params("position target requires y", None))?;
+                let x = params
+                    .x
+                    .ok_or_else(|| McpError::invalid_params("position target requires x", None))?;
+                let y = params
+                    .y
+                    .ok_or_else(|| McpError::invalid_params("position target requires y", None))?;
                 AbilityTarget::Position(GridPos::new(x, y))
             }
             "entity" => {
-                let eid = params.target_entity_id.ok_or_else(|| McpError::invalid_params("entity target requires target_entity_id", None))?;
+                let eid = params.target_entity_id.ok_or_else(|| {
+                    McpError::invalid_params("entity target requires target_entity_id", None)
+                })?;
                 AbilityTarget::Entity(EntityId(eid))
             }
-            _ => return Err(McpError::invalid_params(format!("Unknown target_type: {}", params.target_type), None)),
+            _ => {
+                return Err(McpError::invalid_params(
+                    format!("Unknown target_type: {}", params.target_type),
+                    None,
+                ));
+            }
         };
         let mut sim = self.sim.lock().await;
         sim.inject_command(GameCommand::ActivateAbility {
@@ -907,13 +1092,16 @@ impl HarnessServer {
         Ok(CallToolResult::success(vec![Content::text("OK")]))
     }
 
-    #[tool(description = "Queue research at a building. Upgrades: SharperClaws, ThickerFur, NimblePaws, SiegeTraining, MechPrototype.")]
+    #[tool(
+        description = "Queue research at a building. Upgrades: SharperClaws, ThickerFur, NimblePaws, SiegeTraining, MechPrototype."
+    )]
     async fn research(
         &self,
         Parameters(params): Parameters<ResearchParams>,
     ) -> Result<CallToolResult, McpError> {
-        let upgrade = params.upgrade.parse::<UpgradeType>()
-            .map_err(|_| McpError::invalid_params(format!("Unknown upgrade: {}", params.upgrade), None))?;
+        let upgrade = params.upgrade.parse::<UpgradeType>().map_err(|_| {
+            McpError::invalid_params(format!("Unknown upgrade: {}", params.upgrade), None)
+        })?;
         let mut sim = self.sim.lock().await;
         sim.inject_command(GameCommand::Research {
             building: EntityId(params.building_id),
@@ -972,7 +1160,13 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
             let ids: Vec<EntityId> = params.attacker_ids.into_iter().map(EntityId).collect();
             let result = behaviors::focus_fire(&mut ctx, &ids, EntityId(params.target_id));
             (result, ctx.take_commands())
@@ -980,7 +1174,10 @@ impl HarnessServer {
         for cmd in commands {
             sim.inject_command(cmd);
         }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
     #[tool(description = "Kite squad: ranged units maintain attack range from nearest enemy.")]
@@ -992,7 +1189,13 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
             let result = behaviors::kite_squad(&mut ctx, &ids);
             (result, ctx.take_commands())
@@ -1000,7 +1203,10 @@ impl HarnessServer {
         for cmd in commands {
             sim.inject_command(cmd);
         }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
     #[tool(description = "Retreat wounded: move units below HP% threshold to safe positions.")]
@@ -1012,14 +1218,23 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
             let result = behaviors::retreat_wounded(&mut ctx, params.threshold);
             (result, ctx.take_commands())
         };
         for cmd in commands {
             sim.inject_command(cmd);
         }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
     #[tool(description = "Defend area: attack enemies inside radius, hold position otherwise.")]
@@ -1031,18 +1246,34 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
-            let result = behaviors::defend_area(&mut ctx, &ids, GridPos::new(params.x, params.y), Fixed::from_num(params.radius));
+            let result = behaviors::defend_area(
+                &mut ctx,
+                &ids,
+                GridPos::new(params.x, params.y),
+                Fixed::from_num(params.radius),
+            );
             (result, ctx.take_commands())
         };
         for cmd in commands {
             sim.inject_command(cmd);
         }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
-    #[tool(description = "Harass economy: attack enemy workers, or attack-move toward enemy buildings if no workers visible.")]
+    #[tool(
+        description = "Harass economy: attack enemy workers, or attack-move toward enemy buildings if no workers visible."
+    )]
     async fn harass_economy(
         &self,
         Parameters(params): Parameters<HarassParams>,
@@ -1051,7 +1282,13 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
             let ids: Vec<EntityId> = params.raider_ids.into_iter().map(EntityId).collect();
             let result = behaviors::harass_economy(&mut ctx, &ids);
             (result, ctx.take_commands())
@@ -1059,10 +1296,15 @@ impl HarnessServer {
         for cmd in commands {
             sim.inject_command(cmd);
         }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
-    #[tool(description = "Focus weakest: find weakest enemy in range of any unit, then focus fire all on it.")]
+    #[tool(
+        description = "Focus weakest: find weakest enemy in range of any unit, then focus fire all on it."
+    )]
     async fn focus_weakest(
         &self,
         Parameters(params): Parameters<FocusWeakestParams>,
@@ -1071,7 +1313,13 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
             let result = behaviors::focus_weakest(&mut ctx, &ids, Fixed::from_num(params.range));
             (result, ctx.take_commands())
@@ -1079,7 +1327,10 @@ impl HarnessServer {
         for cmd in commands {
             sim.inject_command(cmd);
         }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
     // =======================================================================
@@ -1095,12 +1346,23 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
             let result = behaviors::assign_idle_workers(&mut ctx);
             (result, ctx.take_commands())
         };
-        for cmd in commands { sim.inject_command(cmd); }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        for cmd in commands {
+            sim.inject_command(cmd);
+        }
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
     #[tool(description = "Group attack-move with ranged positioned behind melee.")]
@@ -1112,13 +1374,25 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
-            let result = behaviors::attack_move_group(&mut ctx, &ids, GridPos::new(params.x, params.y));
+            let result =
+                behaviors::attack_move_group(&mut ctx, &ids, GridPos::new(params.x, params.y));
             (result, ctx.take_commands())
         };
-        for cmd in commands { sim.inject_command(cmd); }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        for cmd in commands {
+            sim.inject_command(cmd);
+        }
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
     #[tool(description = "Smart ability activation (validates unit, issues command).")]
@@ -1129,26 +1403,49 @@ impl HarnessServer {
         let target = match params.target_type.as_str() {
             "self" => AbilityTarget::SelfCast,
             "position" => {
-                let x = params.x.ok_or_else(|| McpError::invalid_params("position target requires x", None))?;
-                let y = params.y.ok_or_else(|| McpError::invalid_params("position target requires y", None))?;
+                let x = params
+                    .x
+                    .ok_or_else(|| McpError::invalid_params("position target requires x", None))?;
+                let y = params
+                    .y
+                    .ok_or_else(|| McpError::invalid_params("position target requires y", None))?;
                 AbilityTarget::Position(GridPos::new(x, y))
             }
             "entity" => {
-                let eid = params.target_entity_id.ok_or_else(|| McpError::invalid_params("entity target requires target_entity_id", None))?;
+                let eid = params.target_entity_id.ok_or_else(|| {
+                    McpError::invalid_params("entity target requires target_entity_id", None)
+                })?;
                 AbilityTarget::Entity(EntityId(eid))
             }
-            _ => return Err(McpError::invalid_params(format!("Unknown target_type: {}", params.target_type), None)),
+            _ => {
+                return Err(McpError::invalid_params(
+                    format!("Unknown target_type: {}", params.target_type),
+                    None,
+                ));
+            }
         };
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
-            let result = behaviors::use_ability(&mut ctx, EntityId(params.unit_id), params.slot, target);
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
+            let result =
+                behaviors::use_ability(&mut ctx, EntityId(params.unit_id), params.slot, target);
             (result, ctx.take_commands())
         };
-        for cmd in commands { sim.inject_command(cmd); }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        for cmd in commands {
+            sim.inject_command(cmd);
+        }
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
     #[tool(description = "Categorize units into melee/ranged/support groups. Returns group IDs.")]
@@ -1160,7 +1457,13 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let json = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
             let (melee, ranged, support, result) = behaviors::split_squads(&mut ctx, &ids);
             serde_json::json!({
@@ -1170,7 +1473,9 @@ impl HarnessServer {
                 "description": result.description,
             })
         };
-        Ok(CallToolResult::success(vec![Content::text(json.to_string())]))
+        Ok(CallToolResult::success(vec![Content::text(
+            json.to_string(),
+        )]))
     }
 
     #[tool(description = "Escort units stay near a VIP and engage threats within guard radius.")]
@@ -1182,14 +1487,25 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
             let ids: Vec<EntityId> = params.escort_ids.into_iter().map(EntityId).collect();
             let radius = Fixed::from_num(params.guard_radius.unwrap_or(5.0));
             let result = behaviors::protect_unit(&mut ctx, &ids, EntityId(params.vip_id), radius);
             (result, ctx.take_commands())
         };
-        for cmd in commands { sim.inject_command(cmd); }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        for cmd in commands {
+            sim.inject_command(cmd);
+        }
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
     #[tool(description = "Position units in ring around enemy target, then attack.")]
@@ -1201,14 +1517,26 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
             let radius = Fixed::from_num(params.ring_radius.unwrap_or(3.0));
-            let result = behaviors::surround_target(&mut ctx, &ids, EntityId(params.target_id), radius);
+            let result =
+                behaviors::surround_target(&mut ctx, &ids, EntityId(params.target_id), radius);
             (result, ctx.take_commands())
         };
-        for cmd in commands { sim.inject_command(cmd); }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        for cmd in commands {
+            sim.inject_command(cmd);
+        }
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
     #[tool(description = "Check resources and train unit if affordable.")]
@@ -1216,21 +1544,35 @@ impl HarnessServer {
         &self,
         Parameters(params): Parameters<AutoProduceParams>,
     ) -> Result<CallToolResult, McpError> {
-        let kind = params.unit_kind.parse::<UnitKind>()
-            .map_err(|_| McpError::invalid_params(format!("Unknown unit kind: {}", params.unit_kind), None))?;
+        let kind = params.unit_kind.parse::<UnitKind>().map_err(|_| {
+            McpError::invalid_params(format!("Unknown unit kind: {}", params.unit_kind), None)
+        })?;
         let mut sim = self.sim.lock().await;
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
             let result = behaviors::auto_produce(&mut ctx, EntityId(params.building_id), kind);
             (result, ctx.take_commands())
         };
-        for cmd in commands { sim.inject_command(cmd); }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        for cmd in commands {
+            sim.inject_command(cmd);
+        }
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
-    #[tool(description = "Analyze army comp and auto-queue the least-represented combat unit type.")]
+    #[tool(
+        description = "Analyze army comp and auto-queue the least-represented combat unit type."
+    )]
     async fn balanced_production(
         &self,
         Parameters(params): Parameters<BalancedProductionParams>,
@@ -1239,15 +1581,28 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
             let result = behaviors::balanced_production(&mut ctx, EntityId(params.building_id));
             (result, ctx.take_commands())
         };
-        for cmd in commands { sim.inject_command(cmd); }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        for cmd in commands {
+            sim.inject_command(cmd);
+        }
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
-    #[tool(description = "Build economic infrastructure: FishMarkets near deposits, LitterBoxes for supply.")]
+    #[tool(
+        description = "Build economic infrastructure: FishMarkets near deposits, LitterBoxes for supply."
+    )]
     async fn expand_economy(
         &self,
         Parameters(params): Parameters<ExpandEconomyParams>,
@@ -1256,15 +1611,28 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
             let result = behaviors::expand_economy(&mut ctx, EntityId(params.builder_id));
             (result, ctx.take_commands())
         };
-        for cmd in commands { sim.inject_command(cmd); }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        for cmd in commands {
+            sim.inject_command(cmd);
+        }
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
-    #[tool(description = "Split army into main force (70%) + flanking group (30%) for coordinated attack.")]
+    #[tool(
+        description = "Split army into main force (70%) + flanking group (30%) for coordinated attack."
+    )]
     async fn coordinate_assault(
         &self,
         Parameters(params): Parameters<CoordinateAssaultParams>,
@@ -1273,13 +1641,28 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
-            let result = behaviors::coordinate_assault(&mut ctx, &ids, GridPos::new(params.target_x, params.target_y));
+            let result = behaviors::coordinate_assault(
+                &mut ctx,
+                &ids,
+                GridPos::new(params.target_x, params.target_y),
+            );
             (result, ctx.take_commands())
         };
-        for cmd in commands { sim.inject_command(cmd); }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        for cmd in commands {
+            sim.inject_command(cmd);
+        }
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
     #[tool(description = "Auto-queue the best available research upgrade at a building.")]
@@ -1291,15 +1674,28 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
             let result = behaviors::research_priority(&mut ctx, EntityId(params.building_id));
             (result, ctx.take_commands())
         };
-        for cmd in commands { sim.inject_command(cmd); }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        for cmd in commands {
+            sim.inject_command(cmd);
+        }
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
-    #[tool(description = "Position defenses adaptively: melee forward, ranged back, support center.")]
+    #[tool(
+        description = "Position defenses adaptively: melee forward, ranged back, support center."
+    )]
     async fn adaptive_defense(
         &self,
         Parameters(params): Parameters<AdaptiveDefenseParams>,
@@ -1308,13 +1704,29 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
-            let result = behaviors::adaptive_defense(&mut ctx, &ids, GridPos::new(params.center_x, params.center_y), Fixed::from_num(params.radius));
+            let result = behaviors::adaptive_defense(
+                &mut ctx,
+                &ids,
+                GridPos::new(params.center_x, params.center_y),
+                Fixed::from_num(params.radius),
+            );
             (result, ctx.take_commands())
         };
-        for cmd in commands { sim.inject_command(cmd); }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        for cmd in commands {
+            sim.inject_command(cmd);
+        }
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
     #[tool(description = "Move scout to nearest unvisited waypoint from a list.")]
@@ -1326,41 +1738,66 @@ impl HarnessServer {
         let snap = sim.snapshot(params.player_id);
         let (result, commands) = {
             let map = sim.map();
-            let mut ctx = ScriptContext::new(&snap, map, params.player_id, cc_core::terrain::FactionId::from_u8(params.player_id).unwrap_or(cc_core::terrain::FactionId::CatGPT));
-            let waypoints: Vec<GridPos> = params.waypoints.iter().map(|wp| GridPos::new(wp.x, wp.y)).collect();
+            let mut ctx = ScriptContext::new(
+                &snap,
+                map,
+                params.player_id,
+                cc_core::terrain::FactionId::from_u8(params.player_id)
+                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            );
+            let waypoints: Vec<GridPos> = params
+                .waypoints
+                .iter()
+                .map(|wp| GridPos::new(wp.x, wp.y))
+                .collect();
             let result = behaviors::scout_pattern(&mut ctx, EntityId(params.scout_id), &waypoints);
             (result, ctx.take_commands())
         };
-        for cmd in commands { sim.inject_command(cmd); }
-        Ok(CallToolResult::success(vec![Content::text(format!("Issued {} commands: {}", result.commands_issued, result.description))]))
+        for cmd in commands {
+            sim.inject_command(cmd);
+        }
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Issued {} commands: {}",
+            result.commands_issued, result.description
+        ))]))
     }
 
     // =======================================================================
     // Sim control tools (8)
     // =======================================================================
 
-    #[tool(description = "Spawn a unit at a position for a player. Returns entity ID. Cat: Pawdler, Nuisance, Chonk, FlyingFox, Hisser, Yowler, Mouser, Catnapper, FerretSapper, MechCommander. Corvid: MurderScrounger, Sentinel, Rookclaw, Magpike, Magpyre, Jaycaller, Jayflicker, Dusktalon, Hootseer, CorvusRex. Badger: Delver, Ironhide, Cragback, Warden, Sapjaw, Wardenmother, SeekerTunneler, Embermaw, Dustclaw, Gutripper. Mouse: Nibblet, Swarmer, Gnawer, Shrieker, Tunneler, Sparks, Quillback, Whiskerwitch, Plaguetail, WarrenMarshal. Croak: Ponderer, Regeneron, Broodmother, Gulper, Eftsaber, Croaker, Leapfrog, Shellwarden, Bogwhisper, MurkCommander. Raccoon: Scrounger, Bandit, HeapTitan, GlitchRat, PatchPossum, GreaseMonkey, DeadDropUnit, Wrecker, DumpsterDiver, JunkyardKing.")]
+    #[tool(
+        description = "Spawn a unit at a position for a player. Returns entity ID. Cat: Pawdler, Nuisance, Chonk, FlyingFox, Hisser, Yowler, Mouser, Catnapper, FerretSapper, MechCommander. Corvid: MurderScrounger, Sentinel, Rookclaw, Magpike, Magpyre, Jaycaller, Jayflicker, Dusktalon, Hootseer, CorvusRex. Badger: Delver, Ironhide, Cragback, Warden, Sapjaw, Wardenmother, SeekerTunneler, Embermaw, Dustclaw, Gutripper. Mouse: Nibblet, Swarmer, Gnawer, Shrieker, Tunneler, Sparks, Quillback, Whiskerwitch, Plaguetail, WarrenMarshal. Croak: Ponderer, Regeneron, Broodmother, Gulper, Eftsaber, Croaker, Leapfrog, Shellwarden, Bogwhisper, MurkCommander. Raccoon: Scrounger, Bandit, HeapTitan, GlitchRat, PatchPossum, GreaseMonkey, DeadDropUnit, Wrecker, DumpsterDiver, JunkyardKing."
+    )]
     async fn spawn_unit(
         &self,
         Parameters(params): Parameters<SpawnUnitParams>,
     ) -> Result<CallToolResult, McpError> {
-        let kind = params.kind.parse::<UnitKind>()
-            .map_err(|_| McpError::invalid_params(format!("Unknown unit kind: {}", params.kind), None))?;
+        let kind = params.kind.parse::<UnitKind>().map_err(|_| {
+            McpError::invalid_params(format!("Unknown unit kind: {}", params.kind), None)
+        })?;
         let mut sim = self.sim.lock().await;
         let id = sim.spawn_unit(kind, GridPos::new(params.x, params.y), params.player_id);
-        Ok(CallToolResult::success(vec![Content::text(format!("{id}"))]))
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "{id}"
+        ))]))
     }
 
-    #[tool(description = "Spawn a building at a position for a player. Returns entity ID. Cat: TheBox, CatTree, FishMarket, LitterBox, ServerRack, ScratchingPost, CatFlap, LaserPointer. Corvid: TheParliament, Rookery, CarrionCache, AntennaArray, Panopticon, NestBox, ThornHedge, Watchtower. Mouse: TheBurrow, NestingBox, SeedVault, JunkTransmitter, GnawLab, WarrenExpansion, Mousehole, SqueakTower. Badger: TheSett, WarHollow, BurrowDepot, CoreTap, ClawMarks, DeepWarren, BulwarkGate, SlagThrower. Croak: TheGrotto, SpawningPools, LilyMarket, SunkenServer, FossilStones, ReedBed, TidalGate, SporeTower. Raccoon: TheDumpster, ScrapHeap, ChopShop, JunkServer, TinkerBench, TrashPile, DumpsterRelay, TetanusTower.")]
+    #[tool(
+        description = "Spawn a building at a position for a player. Returns entity ID. Cat: TheBox, CatTree, FishMarket, LitterBox, ServerRack, ScratchingPost, CatFlap, LaserPointer. Corvid: TheParliament, Rookery, CarrionCache, AntennaArray, Panopticon, NestBox, ThornHedge, Watchtower. Mouse: TheBurrow, NestingBox, SeedVault, JunkTransmitter, GnawLab, WarrenExpansion, Mousehole, SqueakTower. Badger: TheSett, WarHollow, BurrowDepot, CoreTap, ClawMarks, DeepWarren, BulwarkGate, SlagThrower. Croak: TheGrotto, SpawningPools, LilyMarket, SunkenServer, FossilStones, ReedBed, TidalGate, SporeTower. Raccoon: TheDumpster, ScrapHeap, ChopShop, JunkServer, TinkerBench, TrashPile, DumpsterRelay, TetanusTower."
+    )]
     async fn spawn_building(
         &self,
         Parameters(params): Parameters<SpawnBuildingParams>,
     ) -> Result<CallToolResult, McpError> {
-        let kind = params.kind.parse::<BuildingKind>()
-            .map_err(|_| McpError::invalid_params(format!("Unknown building kind: {}", params.kind), None))?;
+        let kind = params.kind.parse::<BuildingKind>().map_err(|_| {
+            McpError::invalid_params(format!("Unknown building kind: {}", params.kind), None)
+        })?;
         let mut sim = self.sim.lock().await;
         let id = sim.spawn_building(kind, GridPos::new(params.x, params.y), params.player_id);
-        Ok(CallToolResult::success(vec![Content::text(format!("{id}"))]))
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "{id}"
+        ))]))
     }
 
     #[tool(description = "Spawn a resource deposit. Types: Food, GpuCores, Nft.")]
@@ -1368,11 +1805,21 @@ impl HarnessServer {
         &self,
         Parameters(params): Parameters<SpawnDepositParams>,
     ) -> Result<CallToolResult, McpError> {
-        let resource_type = params.resource_type.parse::<ResourceType>()
-            .map_err(|_| McpError::invalid_params(format!("Unknown resource type: {}", params.resource_type), None))?;
+        let resource_type = params.resource_type.parse::<ResourceType>().map_err(|_| {
+            McpError::invalid_params(
+                format!("Unknown resource type: {}", params.resource_type),
+                None,
+            )
+        })?;
         let mut sim = self.sim.lock().await;
-        let id = sim.spawn_deposit(resource_type, GridPos::new(params.x, params.y), params.amount);
-        Ok(CallToolResult::success(vec![Content::text(format!("{id}"))]))
+        let id = sim.spawn_deposit(
+            resource_type,
+            GridPos::new(params.x, params.y),
+            params.amount,
+        );
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "{id}"
+        ))]))
     }
 
     #[tool(description = "Advance the simulation by N ticks.")]
@@ -1383,7 +1830,9 @@ impl HarnessServer {
         let mut sim = self.sim.lock().await;
         sim.advance(params.ticks);
         let tick = sim.tick();
-        Ok(CallToolResult::success(vec![Content::text(format!("Advanced to tick {tick}"))]))
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Advanced to tick {tick}"
+        ))]))
     }
 
     #[tool(description = "Reset the simulation with a new map size.")]
@@ -1393,10 +1842,14 @@ impl HarnessServer {
     ) -> Result<CallToolResult, McpError> {
         let mut sim = self.sim.lock().await;
         sim.reset(params.width, params.height);
-        Ok(CallToolResult::success(vec![Content::text("Reset complete")]))
+        Ok(CallToolResult::success(vec![Content::text(
+            "Reset complete",
+        )]))
     }
 
-    #[tool(description = "Get complete game state for a player: all units, buildings, resources, map info.")]
+    #[tool(
+        description = "Get complete game state for a player: all units, buildings, resources, map info."
+    )]
     async fn get_full_state(
         &self,
         Parameters(params): Parameters<PlayerOnly>,
@@ -1418,10 +1871,14 @@ impl HarnessServer {
                 "supply_cap": snap.my_resources.supply_cap,
             },
         });
-        Ok(CallToolResult::success(vec![Content::text(json.to_string())]))
+        Ok(CallToolResult::success(vec![Content::text(
+            json.to_string(),
+        )]))
     }
 
-    #[tool(description = "Execute a Lua script against the current game state. Returns commands produced.")]
+    #[tool(
+        description = "Execute a Lua script against the current game state. Returns commands produced."
+    )]
     async fn run_lua_script(
         &self,
         Parameters(params): Parameters<LuaScriptParams>,
@@ -1433,13 +1890,19 @@ impl HarnessServer {
                 for cmd in cmds {
                     sim.inject_command(cmd);
                 }
-                Ok(CallToolResult::success(vec![Content::text(format!("Script produced {count} commands"))]))
+                Ok(CallToolResult::success(vec![Content::text(format!(
+                    "Script produced {count} commands"
+                ))]))
             }
-            Err(e) => Ok(CallToolResult::success(vec![Content::text(format!("Script error: {e}"))]))
+            Err(e) => Ok(CallToolResult::success(vec![Content::text(format!(
+                "Script error: {e}"
+            ))])),
         }
     }
 
-    #[tool(description = "Register a named Lua script for a player. The script is executed immediately and its commands injected.")]
+    #[tool(
+        description = "Register a named Lua script for a player. The script is executed immediately and its commands injected."
+    )]
     async fn register_script(
         &self,
         Parameters(params): Parameters<RegisterScriptParams>,
@@ -1451,9 +1914,14 @@ impl HarnessServer {
                 for cmd in cmds {
                     sim.inject_command(cmd);
                 }
-                Ok(CallToolResult::success(vec![Content::text(format!("Registered '{}' -- produced {count} commands", params.name))]))
+                Ok(CallToolResult::success(vec![Content::text(format!(
+                    "Registered '{}' -- produced {count} commands",
+                    params.name
+                ))]))
             }
-            Err(e) => Ok(CallToolResult::success(vec![Content::text(format!("Script error: {e}"))]))
+            Err(e) => Ok(CallToolResult::success(vec![Content::text(format!(
+                "Script error: {e}"
+            ))])),
         }
     }
 }
@@ -1669,8 +2137,7 @@ mod tests {
             .await
             .unwrap();
         let text = &result.content[0];
-        let val: serde_json::Value =
-            serde_json::from_str(&text.as_text().unwrap().text).unwrap();
+        let val: serde_json::Value = serde_json::from_str(&text.as_text().unwrap().text).unwrap();
         assert!(val.is_number(), "Expected path length number, got {val}");
         let len = val.as_u64().unwrap();
         // Straight-line Chebyshev distance is 5; A* path should be >= 5
@@ -1749,8 +2216,7 @@ mod tests {
             .await
             .unwrap();
         let text = &result.content[0];
-        let val: serde_json::Value =
-            serde_json::from_str(&text.as_text().unwrap().text).unwrap();
+        let val: serde_json::Value = serde_json::from_str(&text.as_text().unwrap().text).unwrap();
         assert!(!val.is_null(), "Expected a kite position, got null");
         assert!(val["x"].is_number());
         assert!(val["y"].is_number());
@@ -1777,7 +2243,9 @@ mod tests {
                 .unwrap();
             let text = &result.content[0];
             let id_str = &text.as_text().unwrap().text;
-            let id: u64 = id_str.parse().expect(&format!("Failed to parse entity ID for {kind}"));
+            let id: u64 = id_str
+                .parse()
+                .expect(&format!("Failed to parse entity ID for {kind}"));
             assert!(id > 0, "Entity ID for {kind} should be non-zero");
         }
     }

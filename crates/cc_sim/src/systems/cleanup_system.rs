@@ -10,8 +10,7 @@ use cc_core::components::{
 use cc_core::math::FIXED_ZERO;
 use cc_core::status_effects::StatusEffectId;
 use cc_core::tuning::{
-    NINE_LIVES_COOLDOWN_TICKS, NINE_LIVES_GPU_COST, NINE_LIVES_HP_FRACTION,
-    NINE_LIVES_REVIVE_TICKS,
+    NINE_LIVES_COOLDOWN_TICKS, NINE_LIVES_GPU_COST, NINE_LIVES_HP_FRACTION, NINE_LIVES_REVIVE_TICKS,
 };
 use cc_core::unit_stats::base_stats;
 
@@ -39,17 +38,14 @@ pub fn cleanup_system(
     mut hairballs: Query<(Entity, &mut HairballObstacle)>,
     mut vis_fog: Query<(Entity, &mut VisibleThroughFog)>,
 ) {
-    for (entity, mut health, owner, unit_type, building, slots, nine_lives) in
-        newly_dead.iter_mut()
+    for (entity, mut health, owner, unit_type, building, slots, nine_lives) in newly_dead.iter_mut()
     {
         if health.current <= FIXED_ZERO {
             // Check NineLives passive for Chonk revive
             let revived = if let (Some(mut tracker), Some(slots)) = (nine_lives, slots) {
                 let has_nine_lives = slots.slots.iter().any(|s| s.id == AbilityId::NineLives);
                 let cooldown_ok = tracker.last_triggered_tick == 0
-                    || clock
-                        .tick
-                        .saturating_sub(tracker.last_triggered_tick)
+                    || clock.tick.saturating_sub(tracker.last_triggered_tick)
                         >= NINE_LIVES_COOLDOWN_TICKS;
                 let can_afford = player_resources
                     .players
@@ -59,9 +55,7 @@ pub fn cleanup_system(
                 if has_nine_lives && cooldown_ok && can_afford {
                     health.current = health.max * NINE_LIVES_HP_FRACTION;
                     tracker.last_triggered_tick = clock.tick;
-                    if let Some(pres) =
-                        player_resources.players.get_mut(owner.player_id as usize)
-                    {
+                    if let Some(pres) = player_resources.players.get_mut(owner.player_id as usize) {
                         pres.gpu_cores -= NINE_LIVES_GPU_COST;
                     }
                     commands.queue(ApplyStatusCommand {

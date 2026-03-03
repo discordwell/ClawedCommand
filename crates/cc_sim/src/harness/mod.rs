@@ -21,26 +21,33 @@ use cc_core::map::GameMap;
 use cc_core::map_gen::{self, MapGenParams};
 use cc_core::unit_stats::base_stats;
 
-use crate::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState};
-pub use crate::ai::fsm::BotConfig;
 use crate::ai::MultiAiState;
+pub use crate::ai::fsm::BotConfig;
+use crate::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState};
 use crate::resources::{
     CombatStats, CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock,
     SpawnPositions, VoiceOverride,
 };
 use crate::systems::{
     ability_effect_system::ability_effect_system,
-    ability_system::ability_cooldown_system, aura_system::aura_system,
+    ability_system::ability_cooldown_system,
+    aura_system::aura_system,
     builder_system::builder_system,
-    cleanup_system::cleanup_system, combat_system::combat_system,
-    command_system::process_commands, grid_sync_system::grid_sync_system,
-    movement_system::movement_system, production_system::production_system,
-    projectile_system::{projectile_system, ProjectileHit},
+    cleanup_system::cleanup_system,
+    combat_system::combat_system,
+    command_system::process_commands,
+    grid_sync_system::grid_sync_system,
+    movement_system::movement_system,
+    production_system::production_system,
+    projectile_system::{ProjectileHit, projectile_system},
     research_system::research_system,
-    resource_system::gathering_system, stat_modifier_system::stat_modifier_system,
+    resource_system::gathering_system,
+    stat_modifier_system::stat_modifier_system,
     status_effect_system::status_effect_system,
-    target_acquisition_system::target_acquisition_system, tick_system::tick_system,
-    tower_combat_system::tower_combat_system, victory_system::victory_system,
+    target_acquisition_system::target_acquisition_system,
+    tick_system::tick_system,
+    tower_combat_system::tower_combat_system,
+    victory_system::victory_system,
 };
 
 use invariants::{InvariantChecker, Severity};
@@ -110,10 +117,21 @@ impl Default for HarnessConfig {
 /// Outcome of a completed match.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MatchOutcome {
-    Victory { winner: u8, tick: u64 },
-    Draw { tick: u64 },
-    Timeout { tick: u64, leading_player: Option<u8> },
-    Error { tick: u64, message: String },
+    Victory {
+        winner: u8,
+        tick: u64,
+    },
+    Draw {
+        tick: u64,
+    },
+    Timeout {
+        tick: u64,
+        leading_player: Option<u8>,
+    },
+    Error {
+        tick: u64,
+        message: String,
+    },
 }
 
 impl std::fmt::Display for MatchOutcome {
@@ -123,7 +141,10 @@ impl std::fmt::Display for MatchOutcome {
                 write!(f, "Victory(player {winner} at tick {tick})")
             }
             MatchOutcome::Draw { tick } => write!(f, "Draw(tick {tick})"),
-            MatchOutcome::Timeout { tick, leading_player } => {
+            MatchOutcome::Timeout {
+                tick,
+                leading_player,
+            } => {
                 write!(f, "Timeout(tick {tick}, leading: {leading_player:?})")
             }
             MatchOutcome::Error { tick, message } => {
@@ -493,9 +514,7 @@ pub fn spawn_starting_entities(
         },
         GridCell { pos: spawn_pos },
         Owner { player_id },
-        Building {
-            kind: fmap.hq,
-        },
+        Building { kind: fmap.hq },
         Health {
             current: hq_stats.health,
             max: hq_stats.health,
@@ -555,7 +574,12 @@ pub fn spawn_starting_entities(
     }
 }
 
-pub fn spawn_combat_unit(world: &mut World, grid: GridPos, player_id: u8, kind: UnitKind) -> Entity {
+pub fn spawn_combat_unit(
+    world: &mut World,
+    grid: GridPos,
+    player_id: u8,
+    kind: UnitKind,
+) -> Entity {
     let stats = base_stats(kind);
     world
         .spawn((

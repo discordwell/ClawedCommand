@@ -92,7 +92,10 @@ pub fn update_unit_info(
         if let Ok((building, health, uc, queue, rally)) = selected_buildings.single() {
             let hp_cur: f32 = health.current.to_num();
             let hp_max: f32 = health.max.to_num();
-            let mut parts = vec![format!("{:?}  |  HP: {:.0}/{:.0}", building.kind, hp_cur, hp_max)];
+            let mut parts = vec![format!(
+                "{:?}  |  HP: {:.0}/{:.0}",
+                building.kind, hp_cur, hp_max
+            )];
 
             if let Some(uc) = uc {
                 parts.push(format!("Building... {:.0}%", uc.progress_f32() * 100.0));
@@ -102,7 +105,10 @@ pub fn update_unit_info(
                     let total_secs = stats.train_time as f32 / 10.0;
                     let remaining_secs = *ticks_remaining as f32 / 10.0;
                     let elapsed_secs = (total_secs - remaining_secs).max(0.0);
-                    parts.push(format!("Training: {:?} {:.0}/{:.0}s", kind, elapsed_secs, total_secs));
+                    parts.push(format!(
+                        "Training: {:?} {:.0}/{:.0}s",
+                        kind, elapsed_secs, total_secs
+                    ));
                     let queued = queue.queue.len() - 1;
                     if queued > 0 {
                         parts.push(format!("+{} queued", queued));

@@ -17,7 +17,10 @@ pub struct ProjectileSprite;
 pub fn spawn_projectile_sprites(
     mut commands: Commands,
     proj_sprites: Option<Res<ProjectileSprites>>,
-    projectiles: Query<(Entity, Option<&ProjectileKind>), (With<Projectile>, Without<ProjectileSprite>)>,
+    projectiles: Query<
+        (Entity, Option<&ProjectileKind>),
+        (With<Projectile>, Without<ProjectileSprite>),
+    >,
 ) {
     for (entity, proj_kind) in projectiles.iter() {
         let kind = proj_kind.copied().unwrap_or_default();
@@ -37,11 +40,9 @@ pub fn spawn_projectile_sprites(
             // sprites — keep custom_size so the tint color works as overlay
         }
 
-        commands.entity(entity).insert((
-            ProjectileSprite,
-            sprite,
-            Transform::default(),
-        ));
+        commands
+            .entity(entity)
+            .insert((ProjectileSprite, sprite, Transform::default()));
     }
 }
 

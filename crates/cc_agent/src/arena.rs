@@ -17,9 +17,9 @@ use cc_core::coords::GridPos;
 use cc_core::map::GameMap;
 use cc_core::map_gen::{self, MapGenParams};
 
-use cc_sim::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState, AiTier};
-pub use cc_sim::ai::fsm::BotConfig;
 use cc_sim::ai::MultiAiState;
+pub use cc_sim::ai::fsm::BotConfig;
+use cc_sim::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState, AiTier};
 use cc_sim::harness::invariants::{InvariantChecker, InvariantViolation, Severity};
 use cc_sim::harness::snapshot::capture_snapshot;
 use cc_sim::harness::{
@@ -41,7 +41,7 @@ use cc_sim::systems::{
     grid_sync_system::grid_sync_system,
     movement_system::movement_system,
     production_system::production_system,
-    projectile_system::{projectile_system, ProjectileHit},
+    projectile_system::{ProjectileHit, projectile_system},
     research_system::research_system,
     resource_system::gathering_system,
     stat_modifier_system::stat_modifier_system,
@@ -53,7 +53,7 @@ use cc_sim::systems::{
 };
 
 use crate::events::ScriptRegistration;
-use crate::runner::{script_runner_system, PreviousSnapshots, ScriptRegistry};
+use crate::runner::{PreviousSnapshots, ScriptRegistry, script_runner_system};
 use crate::tool_tier::FactionToolStates;
 
 // ---------------------------------------------------------------------------
@@ -799,8 +799,8 @@ mod tests {
     /// Cat formation AI should give P0 a significant advantage.
     #[test]
     fn demo_scenario_1_cat_formation_wins() {
-        let scripts_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../assets/scripts");
+        let scripts_dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/scripts");
 
         let config = ArenaConfig {
             max_ticks: 3000,
@@ -818,10 +818,7 @@ mod tests {
             "Match should complete without errors: {:?}",
             result.violations,
         );
-        assert_eq!(
-            result.scripts_loaded[0],
-            vec!["cat_formation".to_string()],
-        );
+        assert_eq!(result.scripts_loaded[0], vec!["cat_formation".to_string()],);
         assert!(result.scripts_loaded[1].is_empty());
     }
 
@@ -830,8 +827,8 @@ mod tests {
     fn demo_scenario_2_both_formations_load() {
         use cc_core::components::Faction;
 
-        let scripts_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../assets/scripts");
+        let scripts_dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/scripts");
 
         let mut config = ArenaConfig {
             max_ticks: 1000,
@@ -852,10 +849,7 @@ mod tests {
             "Both formation scripts should run without errors: {:?}",
             result.violations,
         );
-        assert_eq!(
-            result.scripts_loaded[0],
-            vec!["cat_formation".to_string()],
-        );
+        assert_eq!(result.scripts_loaded[0], vec!["cat_formation".to_string()],);
         assert_eq!(
             result.scripts_loaded[1],
             vec!["clawed_formation".to_string()],
@@ -868,8 +862,8 @@ mod tests {
     fn demo_scenario_3_advanced_scripts_load() {
         use cc_core::components::Faction;
 
-        let scripts_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../assets/scripts");
+        let scripts_dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/scripts");
 
         let mut config = ArenaConfig {
             max_ticks: 1000,

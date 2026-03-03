@@ -90,8 +90,7 @@ pub fn update_building_info(
     if let Some(uc) = uc {
         let progress = (uc.progress_f32() * 100.0) as u32;
         let filled = (progress as usize) / 10;
-        let bar: String = "\u{2588}".repeat(filled)
-            + &"\u{2591}".repeat(10 - filled);
+        let bar: String = "\u{2588}".repeat(filled) + &"\u{2591}".repeat(10 - filled);
         lines.push(format!("{name} (Building...)"));
         lines.push(format!("{bar} {progress}%"));
     } else if producer.is_some() {
@@ -153,4 +152,3 @@ pub fn update_building_info(
 
     text.0 = lines.join("\n");
 }
-

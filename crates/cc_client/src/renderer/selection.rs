@@ -21,12 +21,21 @@ pub fn render_selection_indicators(
     mut meshes: ResMut<Assets<Mesh>>,
     // Units with Sprite (new procedural sprites)
     mut sprite_units: Query<
-        (Entity, &mut Sprite, &Owner, Option<&Selected>, Option<&Children>),
+        (
+            Entity,
+            &mut Sprite,
+            &Owner,
+            Option<&Selected>,
+            Option<&Children>,
+        ),
         (With<UnitMesh>, Without<Dead>),
     >,
     ring_query: Query<Entity, With<SelectionRing>>,
     added_selected_units: Query<Entity, (With<UnitMesh>, Added<Selected>)>,
-    added_selected_buildings: Query<Entity, (With<BuildingMesh>, Added<Selected>, Without<UnitMesh>)>,
+    added_selected_buildings: Query<
+        Entity,
+        (With<BuildingMesh>, Added<Selected>, Without<UnitMesh>),
+    >,
     mut removed_selected: RemovedComponents<Selected>,
     all_with_children: Query<Option<&Children>, Or<(With<UnitMesh>, With<BuildingMesh>)>>,
     all_transforms: Query<&Transform, Or<(With<UnitMesh>, With<BuildingMesh>)>>,
@@ -36,7 +45,11 @@ pub fn render_selection_indicators(
     };
 
     // In Strategic mode, hide unit sprites via alpha=0 so children (StrategicIcon) stay visible
-    let sprite_alpha = if *tier == ZoomTier::Strategic { 0.0 } else { 1.0 };
+    let sprite_alpha = if *tier == ZoomTier::Strategic {
+        0.0
+    } else {
+        1.0
+    };
 
     // Update sprite tint based on selection state
     for (_entity, mut sprite, owner, selected, _children) in sprite_units.iter_mut() {
@@ -71,8 +84,7 @@ pub fn render_selection_indicators(
                     RingBaseScale(inverse_scale),
                     Mesh2d(ring_mesh.clone()),
                     MeshMaterial2d(ring_mat.clone()),
-                    Transform::from_xyz(0.0, 0.0, 0.05)
-                        .with_scale(Vec3::splat(inverse_scale)),
+                    Transform::from_xyz(0.0, 0.0, 0.05).with_scale(Vec3::splat(inverse_scale)),
                 ))
                 .id();
             commands.entity(entity).add_children(&[ring]);

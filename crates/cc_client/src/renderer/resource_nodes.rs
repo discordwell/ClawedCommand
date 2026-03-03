@@ -104,7 +104,13 @@ fn generate_berry_bush() -> Image {
     fill_circle(&mut data, c - 2.0, c - 1.0, 5.0, 70, 160, 60, 255);
     fill_circle(&mut data, c + 2.0, c + 1.0, 5.0, 65, 150, 55, 255);
     // Berry dots
-    let berries = [(c - 3.0, c - 2.0), (c + 2.0, c - 1.0), (c, c + 3.0), (c - 1.0, c + 1.0), (c + 3.0, c + 2.0)];
+    let berries = [
+        (c - 3.0, c - 2.0),
+        (c + 2.0, c - 1.0),
+        (c, c + 3.0),
+        (c - 1.0, c + 1.0),
+        (c + 3.0, c + 2.0),
+    ];
     for (bx, by) in berries {
         fill_circle(&mut data, bx, by, 1.5, 200, 50, 80, 255);
     }

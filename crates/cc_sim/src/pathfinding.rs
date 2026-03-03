@@ -152,15 +152,25 @@ mod tests {
     #[test]
     fn path_to_self() {
         let map = GameMap::new(10, 10);
-        let path = find_path(&map, GridPos::new(5, 5), GridPos::new(5, 5), FactionId::CatGPT);
+        let path = find_path(
+            &map,
+            GridPos::new(5, 5),
+            GridPos::new(5, 5),
+            FactionId::CatGPT,
+        );
         assert_eq!(path, Some(vec![GridPos::new(5, 5)]));
     }
 
     #[test]
     fn straight_line_path() {
         let map = GameMap::new(10, 10);
-        let path =
-            find_path(&map, GridPos::new(0, 0), GridPos::new(3, 0), FactionId::CatGPT).unwrap();
+        let path = find_path(
+            &map,
+            GridPos::new(0, 0),
+            GridPos::new(3, 0),
+            FactionId::CatGPT,
+        )
+        .unwrap();
         assert_eq!(*path.last().unwrap(), GridPos::new(3, 0));
         assert_eq!(path.len(), 3);
     }
@@ -171,7 +181,12 @@ mod tests {
         for y in 0..5 {
             map.get_mut(GridPos::new(3, y)).unwrap().terrain = TerrainType::Rock;
         }
-        let path = find_path(&map, GridPos::new(1, 2), GridPos::new(5, 2), FactionId::CatGPT);
+        let path = find_path(
+            &map,
+            GridPos::new(1, 2),
+            GridPos::new(5, 2),
+            FactionId::CatGPT,
+        );
         assert!(path.is_some());
         let path = path.unwrap();
         for pos in &path {
@@ -195,7 +210,12 @@ mod tests {
         ] {
             map.get_mut(GridPos::new(2 + dx, 2 + dy)).unwrap().terrain = TerrainType::Rock;
         }
-        let path = find_path(&map, GridPos::new(0, 0), GridPos::new(2, 2), FactionId::CatGPT);
+        let path = find_path(
+            &map,
+            GridPos::new(0, 0),
+            GridPos::new(2, 2),
+            FactionId::CatGPT,
+        );
         assert!(path.is_none());
     }
 
@@ -221,7 +241,12 @@ mod tests {
         for y in 0..8 {
             map.get_mut(GridPos::new(4, y)).unwrap().terrain = TerrainType::Rock;
         }
-        let path = find_path(&map, GridPos::new(2, 4), GridPos::new(6, 4), FactionId::CatGPT);
+        let path = find_path(
+            &map,
+            GridPos::new(2, 4),
+            GridPos::new(6, 4),
+            FactionId::CatGPT,
+        );
         assert!(path.is_some());
         let path = path.unwrap();
         for pos in &path {
@@ -234,7 +259,12 @@ mod tests {
     fn path_to_impassable_target() {
         let mut map = GameMap::new(10, 10);
         map.get_mut(GridPos::new(5, 5)).unwrap().terrain = TerrainType::Rock;
-        let path = find_path(&map, GridPos::new(0, 0), GridPos::new(5, 5), FactionId::CatGPT);
+        let path = find_path(
+            &map,
+            GridPos::new(0, 0),
+            GridPos::new(5, 5),
+            FactionId::CatGPT,
+        );
         assert!(path.is_none());
     }
 
@@ -249,11 +279,21 @@ mod tests {
         }
 
         // CatGPT cannot cross water
-        let catgpt_path = find_path(&map, GridPos::new(2, 5), GridPos::new(8, 5), FactionId::CatGPT);
+        let catgpt_path = find_path(
+            &map,
+            GridPos::new(2, 5),
+            GridPos::new(8, 5),
+            FactionId::CatGPT,
+        );
         assert!(catgpt_path.is_none()); // Water wall blocks entire column
 
         // Croak can traverse water
-        let croak_path = find_path(&map, GridPos::new(2, 5), GridPos::new(8, 5), FactionId::Croak);
+        let croak_path = find_path(
+            &map,
+            GridPos::new(2, 5),
+            GridPos::new(8, 5),
+            FactionId::Croak,
+        );
         assert!(croak_path.is_some());
         let croak_path = croak_path.unwrap();
         assert_eq!(*croak_path.last().unwrap(), GridPos::new(8, 5));
@@ -273,9 +313,19 @@ mod tests {
         }
 
         // Path from (0,0) to (9,0) should stay on road row
-        let path = find_path(&map, GridPos::new(0, 0), GridPos::new(9, 0), FactionId::CatGPT).unwrap();
+        let path = find_path(
+            &map,
+            GridPos::new(0, 0),
+            GridPos::new(9, 0),
+            FactionId::CatGPT,
+        )
+        .unwrap();
         for pos in &path {
-            assert_eq!(pos.y, 0, "Path should stay on road row, but visited {:?}", pos);
+            assert_eq!(
+                pos.y, 0,
+                "Path should stay on road row, but visited {:?}",
+                pos
+            );
         }
     }
 
@@ -289,11 +339,19 @@ mod tests {
         // Ford (shallows) at (5, 5)
         map.get_mut(GridPos::new(5, 5)).unwrap().terrain = TerrainType::Shallows;
 
-        let path = find_path(&map, GridPos::new(3, 5), GridPos::new(7, 5), FactionId::CatGPT);
+        let path = find_path(
+            &map,
+            GridPos::new(3, 5),
+            GridPos::new(7, 5),
+            FactionId::CatGPT,
+        );
         assert!(path.is_some());
         let path = path.unwrap();
         // Path should cross through the ford
-        assert!(path.contains(&GridPos::new(5, 5)), "Path should use the ford");
+        assert!(
+            path.contains(&GridPos::new(5, 5)),
+            "Path should use the ford"
+        );
         assert_eq!(*path.last().unwrap(), GridPos::new(7, 5));
     }
 
@@ -308,8 +366,16 @@ mod tests {
         }
         // No ramps — should not be able to cross
 
-        let path = find_path(&map, GridPos::new(3, 5), GridPos::new(7, 5), FactionId::CatGPT);
-        assert!(path.is_none(), "Should not path across elevation without ramp");
+        let path = find_path(
+            &map,
+            GridPos::new(3, 5),
+            GridPos::new(7, 5),
+            FactionId::CatGPT,
+        );
+        assert!(
+            path.is_none(),
+            "Should not path across elevation without ramp"
+        );
     }
 
     #[test]
@@ -325,10 +391,18 @@ mod tests {
         map.get_mut(GridPos::new(5, 5)).unwrap().terrain = TerrainType::Ramp;
         map.get_mut(GridPos::new(5, 5)).unwrap().elevation = 1;
 
-        let path = find_path(&map, GridPos::new(3, 5), GridPos::new(7, 5), FactionId::CatGPT);
+        let path = find_path(
+            &map,
+            GridPos::new(3, 5),
+            GridPos::new(7, 5),
+            FactionId::CatGPT,
+        );
         assert!(path.is_some(), "Should path via ramp");
         let path = path.unwrap();
-        assert!(path.contains(&GridPos::new(5, 5)), "Path should go through ramp");
+        assert!(
+            path.contains(&GridPos::new(5, 5)),
+            "Path should go through ramp"
+        );
     }
 
     #[test]
@@ -346,11 +420,21 @@ mod tests {
         }
 
         // Uphill path (low → high)
-        let up_path = find_path(&map, GridPos::new(0, 1), GridPos::new(9, 1), FactionId::CatGPT);
+        let up_path = find_path(
+            &map,
+            GridPos::new(0, 1),
+            GridPos::new(9, 1),
+            FactionId::CatGPT,
+        );
         assert!(up_path.is_some());
 
         // Downhill path (high → low)
-        let down_path = find_path(&map, GridPos::new(9, 1), GridPos::new(0, 1), FactionId::CatGPT);
+        let down_path = find_path(
+            &map,
+            GridPos::new(9, 1),
+            GridPos::new(0, 1),
+            FactionId::CatGPT,
+        );
         assert!(down_path.is_some());
 
         // Both should find paths (the cost difference is internal to A*)

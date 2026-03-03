@@ -7,10 +7,10 @@ use cc_core::mission::MissionDefinition;
 use cc_core::mutator::{HazardDirection, MissionMutator};
 use cc_core::terrain::{FLAG_LAVA, FLAG_TEMP_BLOCKED, FLAG_TOXIC, FLAG_WATER_CONVERTED};
 
-use crate::campaign::mutator_state::{
-    should_fire, ControlRestrictions, FogState, MutatorState,
+use crate::campaign::mutator_state::{ControlRestrictions, FogState, MutatorState, should_fire};
+use crate::campaign::state::{
+    CampaignPhase, CampaignState, MissionFailedEvent, TimeLimitWarningEvent,
 };
-use crate::campaign::state::{CampaignPhase, CampaignState, MissionFailedEvent, TimeLimitWarningEvent};
 use crate::resources::{MapResource, SimClock, SimRng};
 use crate::systems::damage::ApplyDamageCommand;
 
@@ -31,12 +31,19 @@ pub fn mutator_init(
 
     for (i, mutator) in mission.mutators.iter().enumerate() {
         // DamageZone with active_from_start=false starts inactive
-        if let MissionMutator::DamageZone { active_from_start: false, .. } = mutator {
+        if let MissionMutator::DamageZone {
+            active_from_start: false,
+            ..
+        } = mutator
+        {
             active[i] = false;
         }
 
         match mutator {
-            MissionMutator::VoiceOnlyControl { ai_enabled, enemy_difficulty_multiplier } => {
+            MissionMutator::VoiceOnlyControl {
+                ai_enabled,
+                enemy_difficulty_multiplier,
+            } => {
                 restrictions.mouse_keyboard_enabled = false;
                 restrictions.voice_enabled = true;
                 restrictions.ai_enabled = *ai_enabled;
@@ -53,15 +60,23 @@ pub fn mutator_init(
                 restrictions.voice_enabled = false;
                 restrictions.ai_enabled = true;
             }
-            MissionMutator::RestrictedUnits { allowed_kinds, max_unit_count } => {
+            MissionMutator::RestrictedUnits {
+                allowed_kinds,
+                max_unit_count,
+            } => {
                 restrictions.allowed_unit_kinds = Some(allowed_kinds.clone());
                 restrictions.max_unit_count = *max_unit_count;
             }
-            MissionMutator::DenseFog { vision_reduction, .. } => {
+            MissionMutator::DenseFog {
+                vision_reduction, ..
+            } => {
                 fog.vision_reduction = *vision_reduction;
                 fog.currently_clear = false;
             }
-            MissionMutator::Flooding { initial_water_level, .. } => {
+            MissionMutator::Flooding {
+                initial_water_level,
+                ..
+            } => {
                 mutator_state.current_water_level = *initial_water_level;
             }
             _ => {}
@@ -292,7 +307,9 @@ pub fn environmental_hazard_system(
                 mutator_state.wind_active = cycle < *duration_ticks;
             }
 
-            MissionMutator::DenseFog { periodic_clearing, .. } => {
+            MissionMutator::DenseFog {
+                periodic_clearing, ..
+            } => {
                 if let Some(clearing) = periodic_clearing {
                     if clearing.interval_ticks > 0 {
                         let cycle = tick % clearing.interval_ticks;
@@ -335,13 +352,22 @@ pub fn hazard_damage_system(
             continue;
         }
         match mutator {
-            MissionMutator::LavaRise { damage_per_tick, .. } => {
+            MissionMutator::LavaRise {
+                damage_per_tick, ..
+            } => {
                 lava_dpt = lava_dpt.max(*damage_per_tick);
             }
-            MissionMutator::ToxicTide { damage_per_tick, .. } => {
+            MissionMutator::ToxicTide {
+                damage_per_tick, ..
+            } => {
                 toxic_dpt = toxic_dpt.max(*damage_per_tick);
             }
-            MissionMutator::DamageZone { tiles, damage_per_tick, toggle_flag, .. } => {
+            MissionMutator::DamageZone {
+                tiles,
+                damage_per_tick,
+                toggle_flag,
+                ..
+            } => {
                 let flag_active = match toggle_flag {
                     Some(flag_name) => campaign.flags.contains(flag_name),
                     None => true,
@@ -419,7 +445,11 @@ pub fn mutator_tick_system(
         if !mutator_state.is_active(i) {
             continue;
         }
-        if let MissionMutator::TimeLimit { max_ticks, warning_at } = mutator {
+        if let MissionMutator::TimeLimit {
+            max_ticks,
+            warning_at,
+        } = mutator
+        {
             // Fire warning event once when reaching warning_at threshold
             if !mutator_state.time_warning_fired && tick >= *warning_at {
                 mutator_state.time_warning_fired = true;
@@ -465,7 +495,13 @@ pub fn wind_displacement_system(
         if !mutator_state.is_active(i) {
             continue;
         }
-        if let MissionMutator::WindStorm { direction, force, can_push_off_map, .. } = mutator {
+        if let MissionMutator::WindStorm {
+            direction,
+            force,
+            can_push_off_map,
+            ..
+        } = mutator
+        {
             wind_dir = Some(*direction);
             wind_force = *force;
             push_off = *can_push_off_map;
@@ -514,6 +550,9 @@ pub fn wind_displacement_system(
         }
 
         // Clear movement targets to prevent walk-back
-        commands.entity(entity).remove::<MoveTarget>().remove::<Path>();
+        commands
+            .entity(entity)
+            .remove::<MoveTarget>()
+            .remove::<Path>();
     }
 }

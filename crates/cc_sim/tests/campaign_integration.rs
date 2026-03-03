@@ -6,17 +6,23 @@ use bevy::prelude::*;
 
 use cc_core::components::*;
 use cc_core::coords::{GridPos, WorldPos};
-use cc_core::hero::{hero_base_kind, hero_modifiers, HeroId};
+use cc_core::hero::{HeroId, hero_base_kind, hero_modifiers};
 use cc_core::map::GameMap;
 use cc_core::mission::*;
 use cc_core::unit_stats::base_stats;
 use cc_sim::campaign::mutator_state::MutatorState;
-use cc_sim::campaign::state::{CampaignPhase, CampaignState, MissionFailedEvent, MissionVictoryEvent};
-use cc_sim::campaign::wave_spawner::{WaveTracker, MissionStarted, wave_spawner_system, wave_tracking_system};
-use cc_sim::campaign::triggers::{
-    trigger_check_system, DialogueEvent, ObjectiveCompleteEvent, TriggerFiredEvent,
+use cc_sim::campaign::state::{
+    CampaignPhase, CampaignState, MissionFailedEvent, MissionVictoryEvent,
 };
-use cc_sim::resources::{CommandQueue, ControlGroups, MapResource, PlayerResources, SimClock, SimRng, VoiceOverride};
+use cc_sim::campaign::triggers::{
+    DialogueEvent, ObjectiveCompleteEvent, TriggerFiredEvent, trigger_check_system,
+};
+use cc_sim::campaign::wave_spawner::{
+    MissionStarted, WaveTracker, wave_spawner_system, wave_tracking_system,
+};
+use cc_sim::resources::{
+    CommandQueue, ControlGroups, MapResource, PlayerResources, SimClock, SimRng, VoiceOverride,
+};
 use cc_sim::systems::tick_system::tick_system;
 
 // ---------------------------------------------------------------------------
@@ -60,7 +66,13 @@ fn make_campaign_sim(map: GameMap) -> (World, Schedule) {
 }
 
 /// Spawn a hero entity with boosted stats.
-fn spawn_hero(world: &mut World, hero_id: HeroId, pos: GridPos, player_id: u8, mission_critical: bool) -> Entity {
+fn spawn_hero(
+    world: &mut World,
+    hero_id: HeroId,
+    pos: GridPos,
+    player_id: u8,
+    mission_critical: bool,
+) -> Entity {
     let kind = hero_base_kind(hero_id);
     let base = base_stats(kind);
     let mods = hero_modifiers(hero_id);
@@ -77,7 +89,9 @@ fn spawn_hero(world: &mut World, hero_id: HeroId, pos: GridPos, player_id: u8, m
             },
             Velocity::zero(),
             GridCell { pos },
-            MovementSpeed { speed: boosted_speed },
+            MovementSpeed {
+                speed: boosted_speed,
+            },
             Owner { player_id },
             UnitType { kind },
             Health {
@@ -252,13 +266,22 @@ fn hero_entity_has_hero_identity() {
 fn hero_has_more_hp_than_regular_unit() {
     let (mut world, _) = make_campaign_sim(GameMap::new(16, 16));
 
-    let hero = spawn_hero(&mut world, HeroId::MotherGranite, GridPos::new(2, 2), 0, true);
+    let hero = spawn_hero(
+        &mut world,
+        HeroId::MotherGranite,
+        GridPos::new(2, 2),
+        0,
+        true,
+    );
     let regular = spawn_combat_unit(&mut world, UnitKind::Chonk, GridPos::new(5, 5), 0);
 
     let hero_hp = world.get::<Health>(hero).unwrap().max;
     let regular_hp = world.get::<Health>(regular).unwrap().max;
 
-    assert!(hero_hp > regular_hp, "Mother Granite hero should have more HP than regular Chonk");
+    assert!(
+        hero_hp > regular_hp,
+        "Mother Granite hero should have more HP than regular Chonk"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -307,7 +330,9 @@ fn kill_count_trigger_fires() {
 
     let campaign = world.resource::<CampaignState>();
     assert!(
-        campaign.fired_triggers.contains(&"kill_trigger".to_string()),
+        campaign
+            .fired_triggers
+            .contains(&"kill_trigger".to_string()),
         "Kill trigger should have fired after enemy_kill_count=1"
     );
     assert!(
@@ -402,15 +427,25 @@ fn compound_all_condition_requires_both() {
 
     // Run tick 1 — first trigger fires, but compound needs kill count too
     run_ticks(&mut world, &mut schedule, 1);
-    assert!(!world.resource::<CampaignState>().fired_triggers.contains(&"compound".to_string()),
-        "Compound should NOT fire yet — kill count not met");
+    assert!(
+        !world
+            .resource::<CampaignState>()
+            .fired_triggers
+            .contains(&"compound".to_string()),
+        "Compound should NOT fire yet — kill count not met"
+    );
 
     // Set kill count and run again
     world.resource_mut::<CampaignState>().enemy_kill_count = 2;
     run_ticks(&mut world, &mut schedule, 1);
 
-    assert!(world.resource::<CampaignState>().fired_triggers.contains(&"compound".to_string()),
-        "Compound should fire now — both conditions met");
+    assert!(
+        world
+            .resource::<CampaignState>()
+            .fired_triggers
+            .contains(&"compound".to_string()),
+        "Compound should fire now — both conditions met"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -444,8 +479,16 @@ fn mission_victory_when_all_primary_objectives_complete() {
     run_ticks(&mut world, &mut schedule, 3);
 
     let campaign = world.resource::<CampaignState>();
-    assert_eq!(campaign.phase, CampaignPhase::Debriefing, "Mission should transition to Debriefing on victory");
-    assert!(campaign.completed_missions.contains(&"test_mission".to_string()));
+    assert_eq!(
+        campaign.phase,
+        CampaignPhase::Debriefing,
+        "Mission should transition to Debriefing on victory"
+    );
+    assert!(
+        campaign
+            .completed_missions
+            .contains(&"test_mission".to_string())
+    );
 }
 
 #[test]
@@ -465,7 +508,11 @@ fn mission_fails_when_mission_critical_hero_dies() {
     run_ticks(&mut world, &mut schedule, 1);
 
     let campaign = world.resource::<CampaignState>();
-    assert_eq!(campaign.phase, CampaignPhase::Debriefing, "Mission should transition to Debriefing on hero death");
+    assert_eq!(
+        campaign.phase,
+        CampaignPhase::Debriefing,
+        "Mission should transition to Debriefing on hero death"
+    );
 }
 
 #[test]
@@ -492,7 +539,11 @@ fn mission_does_not_fail_for_non_critical_hero_death() {
     run_ticks(&mut world, &mut schedule, 2);
 
     let campaign = world.resource::<CampaignState>();
-    assert_eq!(campaign.phase, CampaignPhase::InMission, "Mission should NOT fail for non-critical hero death");
+    assert_eq!(
+        campaign.phase,
+        CampaignPhase::InMission,
+        "Mission should NOT fail for non-critical hero death"
+    );
 }
 
 #[test]
@@ -517,14 +568,22 @@ fn kill_count_objective_auto_completes() {
     run_ticks(&mut world, &mut schedule, 1);
 
     let campaign = world.resource::<CampaignState>();
-    assert_eq!(campaign.phase, CampaignPhase::InMission, "Should not complete at 3 kills");
+    assert_eq!(
+        campaign.phase,
+        CampaignPhase::InMission,
+        "Should not complete at 3 kills"
+    );
 
     // Set kill count to target
     world.resource_mut::<CampaignState>().enemy_kill_count = 5;
     run_ticks(&mut world, &mut schedule, 1);
 
     let campaign = world.resource::<CampaignState>();
-    assert_eq!(campaign.phase, CampaignPhase::Debriefing, "Should complete at 5 kills");
+    assert_eq!(
+        campaign.phase,
+        CampaignPhase::Debriefing,
+        "Should complete at 5 kills"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -534,13 +593,18 @@ fn kill_count_objective_auto_completes() {
 #[test]
 fn ai_personality_profiles_are_distinct() {
     use cc_core::components::Faction;
-    use cc_sim::ai::fsm::{faction_personality, AiPersonalityProfile};
+    use cc_sim::ai::fsm::{AiPersonalityProfile, faction_personality};
 
     let factions = [
-        Faction::CatGpt, Faction::TheClawed, Faction::SeekersOfTheDeep,
-        Faction::TheMurder, Faction::Llama, Faction::Croak,
+        Faction::CatGpt,
+        Faction::TheClawed,
+        Faction::SeekersOfTheDeep,
+        Faction::TheMurder,
+        Faction::Llama,
+        Faction::Croak,
     ];
-    let profiles: Vec<AiPersonalityProfile> = factions.iter().map(|f| faction_personality(*f)).collect();
+    let profiles: Vec<AiPersonalityProfile> =
+        factions.iter().map(|f| faction_personality(*f)).collect();
 
     // All profiles should have different names
     let names: Vec<&str> = profiles.iter().map(|p| p.name.as_str()).collect();
@@ -579,7 +643,10 @@ fn default_personality_for_unknown_faction() {
 
     let default = faction_personality_by_name("Unknown Faction");
     // Unknown factions get a fallback profile (Neutral)
-    assert!(!default.name.is_empty(), "Default profile should have a name");
+    assert!(
+        !default.name.is_empty(),
+        "Default profile should have a name"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -601,7 +668,10 @@ fn prologue_mission_has_correct_structure() {
     assert!(mission.player_setup.heroes[0].mission_critical);
 
     // Has enemy waves
-    assert!(mission.enemy_waves.len() >= 3, "Prologue should have at least 3 waves");
+    assert!(
+        mission.enemy_waves.len() >= 3,
+        "Prologue should have at least 3 waves"
+    );
 
     // Has primary objectives
     assert!(
@@ -610,19 +680,30 @@ fn prologue_mission_has_correct_structure() {
     );
 
     // Has triggers
-    assert!(mission.triggers.len() >= 8, "Prologue should have at least 8 triggers");
+    assert!(
+        mission.triggers.len() >= 8,
+        "Prologue should have at least 8 triggers"
+    );
 
     // Has dialogue
-    assert!(mission.dialogue.len() >= 20, "Prologue should have at least 20 dialogue lines");
+    assert!(
+        mission.dialogue.len() >= 20,
+        "Prologue should have at least 20 dialogue lines"
+    );
 
     // All dialogue speakers are non-empty
     for (i, line) in mission.dialogue.iter().enumerate() {
-        assert!(!line.speaker.is_empty(), "Dialogue line {i} has empty speaker");
+        assert!(
+            !line.speaker.is_empty(),
+            "Dialogue line {i} has empty speaker"
+        );
         assert!(!line.text.is_empty(), "Dialogue line {i} has empty text");
     }
 
     // Validate internal consistency
-    mission.validate().expect("Prologue should be internally consistent");
+    mission
+        .validate()
+        .expect("Prologue should be internally consistent");
 }
 
 #[test]
@@ -631,23 +712,42 @@ fn prologue_trigger_chain_is_sound() {
     let mission: MissionDefinition = ron::from_str(ron_str).expect("prologue.ron should parse");
 
     // Verify opening trigger fires at tick 1
-    let opening = mission.triggers.iter().find(|t| t.id == "opening_dialogue").unwrap();
+    let opening = mission
+        .triggers
+        .iter()
+        .find(|t| t.id == "opening_dialogue")
+        .unwrap();
     assert!(matches!(&opening.condition, TriggerCondition::AtTick(1)));
     assert!(opening.once);
 
     // Verify spawn_flankers fires on kill count 4
-    let flankers = mission.triggers.iter().find(|t| t.id == "spawn_flankers").unwrap();
-    assert!(matches!(&flankers.condition, TriggerCondition::EnemyKillCount(4)));
+    let flankers = mission
+        .triggers
+        .iter()
+        .find(|t| t.id == "spawn_flankers")
+        .unwrap();
+    assert!(matches!(
+        &flankers.condition,
+        TriggerCondition::EnemyKillCount(4)
+    ));
 
     // Verify pack_leader_dead fires when all enemies dead
-    let dead = mission.triggers.iter().find(|t| t.id == "pack_leader_dead").unwrap();
+    let dead = mission
+        .triggers
+        .iter()
+        .find(|t| t.id == "pack_leader_dead")
+        .unwrap();
     assert!(matches!(&dead.condition, TriggerCondition::AllEnemiesDead));
 
     // Verify it completes the defeat_pack_leader objective
-    let completes_obj = dead.actions.iter().any(|a| {
-        matches!(a, TriggerAction::CompleteObjective(id) if id == "defeat_pack_leader")
-    });
-    assert!(completes_obj, "pack_leader_dead trigger should complete the defeat_pack_leader objective");
+    let completes_obj = dead
+        .actions
+        .iter()
+        .any(|a| matches!(a, TriggerAction::CompleteObjective(id) if id == "defeat_pack_leader"));
+    assert!(
+        completes_obj,
+        "pack_leader_dead trigger should complete the defeat_pack_leader objective"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -659,12 +759,18 @@ fn campaign_inactive_systems_are_noop() {
     let (mut world, mut schedule) = make_campaign_sim(GameMap::new(16, 16));
 
     // Don't load any mission — phase should be Inactive
-    assert_eq!(world.resource::<CampaignState>().phase, CampaignPhase::Inactive);
+    assert_eq!(
+        world.resource::<CampaignState>().phase,
+        CampaignPhase::Inactive
+    );
 
     // Running ticks should not panic or change state
     run_ticks(&mut world, &mut schedule, 10);
 
-    assert_eq!(world.resource::<CampaignState>().phase, CampaignPhase::Inactive);
+    assert_eq!(
+        world.resource::<CampaignState>().phase,
+        CampaignPhase::Inactive
+    );
 }
 
 #[test]
@@ -702,11 +808,19 @@ fn prologue_pack_leader_hurt_requires_higher_kill_count_than_spawn() {
     let mission: MissionDefinition = ron::from_str(ron_str).expect("prologue.ron should parse");
 
     // spawn_pack_leader fires at EnemyKillCount(8)
-    let spawn_trigger = mission.triggers.iter().find(|t| t.id == "spawn_pack_leader").unwrap();
+    let spawn_trigger = mission
+        .triggers
+        .iter()
+        .find(|t| t.id == "spawn_pack_leader")
+        .unwrap();
     let spawn_kill_threshold = extract_kill_count_from_condition(&spawn_trigger.condition);
 
     // pack_leader_hurt must have a HIGHER kill count threshold
-    let hurt_trigger = mission.triggers.iter().find(|t| t.id == "pack_leader_hurt").unwrap();
+    let hurt_trigger = mission
+        .triggers
+        .iter()
+        .find(|t| t.id == "pack_leader_hurt")
+        .unwrap();
     let hurt_kill_threshold = extract_kill_count_from_condition(&hurt_trigger.condition);
 
     assert!(
@@ -719,9 +833,11 @@ fn prologue_pack_leader_hurt_requires_higher_kill_count_than_spawn() {
 fn extract_kill_count_from_condition(condition: &TriggerCondition) -> u32 {
     match condition {
         TriggerCondition::EnemyKillCount(n) => *n,
-        TriggerCondition::All(conditions) | TriggerCondition::Any(conditions) => {
-            conditions.iter().map(|c| extract_kill_count_from_condition(c)).max().unwrap_or(0)
-        }
+        TriggerCondition::All(conditions) | TriggerCondition::Any(conditions) => conditions
+            .iter()
+            .map(|c| extract_kill_count_from_condition(c))
+            .max()
+            .unwrap_or(0),
         _ => 0,
     }
 }
@@ -746,32 +862,55 @@ fn wave_eliminated_fires_when_all_wave_members_dead() {
     world.resource_mut::<CampaignState>().load_mission(mission);
     world.resource_mut::<CampaignState>().phase = CampaignPhase::InMission;
     // Mark wave as spawned
-    world.resource_mut::<CampaignState>().spawned_waves.insert("test_wave".into());
+    world
+        .resource_mut::<CampaignState>()
+        .spawned_waves
+        .insert("test_wave".into());
 
     // Register the wave in WaveTracker (2 total, 2 alive)
-    world.resource_mut::<WaveTracker>().waves.insert("test_wave".into(), (2, 2));
+    world
+        .resource_mut::<WaveTracker>()
+        .waves
+        .insert("test_wave".into(), (2, 2));
 
     spawn_hero(&mut world, HeroId::Kelpie, GridPos::new(2, 2), 0, true);
 
     // Spawn 2 wave members
     let e1 = spawn_combat_unit(&mut world, UnitKind::Nuisance, GridPos::new(10, 10), 1);
     let e2 = spawn_combat_unit(&mut world, UnitKind::Nuisance, GridPos::new(11, 11), 1);
-    world.entity_mut(e1).insert(WaveMember { wave_id: "test_wave".into() });
-    world.entity_mut(e2).insert(WaveMember { wave_id: "test_wave".into() });
+    world.entity_mut(e1).insert(WaveMember {
+        wave_id: "test_wave".into(),
+    });
+    world.entity_mut(e2).insert(WaveMember {
+        wave_id: "test_wave".into(),
+    });
 
     // Run — wave members alive, trigger should NOT fire
     run_ticks(&mut world, &mut schedule, 1);
-    assert!(!world.resource::<CampaignState>().flags.contains("wave_cleared"),
-        "WaveEliminated should not fire while members are alive");
+    assert!(
+        !world
+            .resource::<CampaignState>()
+            .flags
+            .contains("wave_cleared"),
+        "WaveEliminated should not fire while members are alive"
+    );
 
     // Kill both members and update WaveTracker
     world.entity_mut(e1).insert(Dead);
     world.entity_mut(e2).insert(Dead);
-    world.resource_mut::<WaveTracker>().waves.insert("test_wave".into(), (2, 0));
+    world
+        .resource_mut::<WaveTracker>()
+        .waves
+        .insert("test_wave".into(), (2, 0));
 
     run_ticks(&mut world, &mut schedule, 1);
-    assert!(world.resource::<CampaignState>().flags.contains("wave_cleared"),
-        "WaveEliminated should fire when all wave members are dead");
+    assert!(
+        world
+            .resource::<CampaignState>()
+            .flags
+            .contains("wave_cleared"),
+        "WaveEliminated should fire when all wave members are dead"
+    );
 }
 
 #[test]
@@ -794,8 +933,13 @@ fn wave_eliminated_does_not_fire_for_unspawned_wave() {
     spawn_hero(&mut world, HeroId::Kelpie, GridPos::new(2, 2), 0, true);
 
     run_ticks(&mut world, &mut schedule, 3);
-    assert!(!world.resource::<CampaignState>().flags.contains("should_not_fire"),
-        "WaveEliminated should not fire for unspawned wave");
+    assert!(
+        !world
+            .resource::<CampaignState>()
+            .flags
+            .contains("should_not_fire"),
+        "WaveEliminated should not fire for unspawned wave"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -822,14 +966,20 @@ fn eliminate_all_objective_auto_completes() {
 
     // Enemy alive — objective should not be complete
     run_ticks(&mut world, &mut schedule, 1);
-    assert_eq!(world.resource::<CampaignState>().phase, CampaignPhase::InMission);
+    assert_eq!(
+        world.resource::<CampaignState>().phase,
+        CampaignPhase::InMission
+    );
 
     // Kill enemy
     world.entity_mut(enemy).insert(Dead);
     run_ticks(&mut world, &mut schedule, 1);
 
-    assert_eq!(world.resource::<CampaignState>().phase, CampaignPhase::Debriefing,
-        "EliminateAll objective should auto-complete when all enemies are dead");
+    assert_eq!(
+        world.resource::<CampaignState>().phase,
+        CampaignPhase::Debriefing,
+        "EliminateAll objective should auto-complete when all enemies are dead"
+    );
 }
 
 #[test]
@@ -851,13 +1001,19 @@ fn survive_objective_auto_completes_at_tick() {
 
     // Run 4 ticks — not yet
     run_ticks(&mut world, &mut schedule, 4);
-    assert_eq!(world.resource::<CampaignState>().phase, CampaignPhase::InMission,
-        "Should not complete at tick 4");
+    assert_eq!(
+        world.resource::<CampaignState>().phase,
+        CampaignPhase::InMission,
+        "Should not complete at tick 4"
+    );
 
     // Run 1 more tick — now at tick 5
     run_ticks(&mut world, &mut schedule, 1);
-    assert_eq!(world.resource::<CampaignState>().phase, CampaignPhase::Debriefing,
-        "Survive(5) objective should auto-complete at tick 5");
+    assert_eq!(
+        world.resource::<CampaignState>().phase,
+        CampaignPhase::Debriefing,
+        "Survive(5) objective should auto-complete at tick 5"
+    );
 }
 
 #[test]
@@ -884,8 +1040,11 @@ fn hero_reaches_pos_objective_auto_completes() {
 
     run_ticks(&mut world, &mut schedule, 1);
 
-    assert_eq!(world.resource::<CampaignState>().phase, CampaignPhase::Debriefing,
-        "HeroReachesPos objective should auto-complete when hero is at target");
+    assert_eq!(
+        world.resource::<CampaignState>().phase,
+        CampaignPhase::Debriefing,
+        "HeroReachesPos objective should auto-complete when hero is at target"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -894,18 +1053,27 @@ fn hero_reaches_pos_objective_auto_completes() {
 
 #[test]
 fn hero_data_consolidation_works() {
-    use cc_core::hero::{hero_data, hero_base_kind, hero_modifiers, hero_name, hero_faction};
+    use cc_core::hero::{hero_base_kind, hero_data, hero_faction, hero_modifiers, hero_name};
 
     let heroes = [
-        HeroId::Kelpie, HeroId::FelixNine, HeroId::Thimble, HeroId::MotherGranite,
-        HeroId::RexSolstice, HeroId::KingRingtail, HeroId::TheEternal, HeroId::Patches,
+        HeroId::Kelpie,
+        HeroId::FelixNine,
+        HeroId::Thimble,
+        HeroId::MotherGranite,
+        HeroId::RexSolstice,
+        HeroId::KingRingtail,
+        HeroId::TheEternal,
+        HeroId::Patches,
     ];
     for hero in heroes {
         let data = hero_data(hero);
         assert_eq!(data.base_kind, hero_base_kind(hero));
         assert_eq!(data.name, hero_name(hero));
         assert_eq!(data.faction, hero_faction(hero));
-        assert_eq!(data.modifiers.health_bonus, hero_modifiers(hero).health_bonus);
+        assert_eq!(
+            data.modifiers.health_bonus,
+            hero_modifiers(hero).health_bonus
+        );
     }
 }
 
@@ -926,15 +1094,27 @@ fn campaign_state_hashset_collections_no_duplicates() {
 
     state.fired_triggers.insert("t1".into());
     state.fired_triggers.insert("t1".into());
-    assert_eq!(state.fired_triggers.len(), 1, "HashSet should deduplicate fired_triggers");
+    assert_eq!(
+        state.fired_triggers.len(),
+        1,
+        "HashSet should deduplicate fired_triggers"
+    );
 
     state.spawned_waves.insert("wave1".into());
     state.spawned_waves.insert("wave1".into());
-    assert_eq!(state.spawned_waves.len(), 1, "HashSet should deduplicate spawned_waves");
+    assert_eq!(
+        state.spawned_waves.len(),
+        1,
+        "HashSet should deduplicate spawned_waves"
+    );
 
     state.completed_missions.insert("m1".into());
     state.completed_missions.insert("m1".into());
-    assert_eq!(state.completed_missions.len(), 1, "HashSet should deduplicate completed_missions");
+    assert_eq!(
+        state.completed_missions.len(),
+        1,
+        "HashSet should deduplicate completed_missions"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -950,7 +1130,10 @@ fn mission_definition_is_arc_wrapped() {
     let arc1 = state.current_mission.as_ref().unwrap().clone();
     let arc2 = state.current_mission.as_ref().unwrap().clone();
     // Both arcs point to same allocation
-    assert!(Arc::ptr_eq(&arc1, &arc2), "Arc clones should share the same allocation");
+    assert!(
+        Arc::ptr_eq(&arc1, &arc2),
+        "Arc clones should share the same allocation"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -962,8 +1145,13 @@ fn faction_enum_round_trip() {
     use cc_core::components::Faction;
 
     let factions = [
-        Faction::Neutral, Faction::CatGpt, Faction::TheClawed,
-        Faction::SeekersOfTheDeep, Faction::TheMurder, Faction::Llama, Faction::Croak,
+        Faction::Neutral,
+        Faction::CatGpt,
+        Faction::TheClawed,
+        Faction::SeekersOfTheDeep,
+        Faction::TheMurder,
+        Faction::Llama,
+        Faction::Croak,
     ];
     for f in factions {
         let s = f.as_str();
@@ -981,12 +1169,15 @@ fn faction_enum_unknown_string_returns_none() {
 #[test]
 fn hero_faction_returns_faction_enum() {
     use cc_core::components::Faction;
-    use cc_core::hero::{hero_faction, HeroId};
+    use cc_core::hero::{HeroId, hero_faction};
 
     assert_eq!(hero_faction(HeroId::Kelpie), Faction::Neutral);
     assert_eq!(hero_faction(HeroId::FelixNine), Faction::CatGpt);
     assert_eq!(hero_faction(HeroId::Thimble), Faction::TheClawed);
-    assert_eq!(hero_faction(HeroId::MotherGranite), Faction::SeekersOfTheDeep);
+    assert_eq!(
+        hero_faction(HeroId::MotherGranite),
+        Faction::SeekersOfTheDeep
+    );
     assert_eq!(hero_faction(HeroId::RexSolstice), Faction::TheMurder);
     assert_eq!(hero_faction(HeroId::KingRingtail), Faction::Llama);
     assert_eq!(hero_faction(HeroId::TheEternal), Faction::Croak);
@@ -1001,22 +1192,29 @@ fn hero_faction_returns_faction_enum() {
 fn validate_catches_all_errors_in_single_pass() {
     let mut mission = test_mission();
     // Add triggers with multiple types of errors
-    mission.triggers = vec![
-        ScriptedTrigger {
-            id: "bad_all".into(),
-            condition: TriggerCondition::AtTick(1),
-            actions: vec![
-                TriggerAction::ShowDialogue(vec![99]),      // bad dialogue index
-                TriggerAction::SpawnWave("ghost".into()),   // bad wave ref
-                TriggerAction::CompleteObjective("nope".into()), // bad objective ref
-            ],
-            once: true,
-        },
-    ];
+    mission.triggers = vec![ScriptedTrigger {
+        id: "bad_all".into(),
+        condition: TriggerCondition::AtTick(1),
+        actions: vec![
+            TriggerAction::ShowDialogue(vec![99]),    // bad dialogue index
+            TriggerAction::SpawnWave("ghost".into()), // bad wave ref
+            TriggerAction::CompleteObjective("nope".into()), // bad objective ref
+        ],
+        once: true,
+    }];
     let errs = mission.validate().unwrap_err();
-    assert!(errs.iter().any(|e| e.contains("dialogue index 99")), "Should catch bad dialogue");
-    assert!(errs.iter().any(|e| e.contains("unknown wave 'ghost'")), "Should catch bad wave");
-    assert!(errs.iter().any(|e| e.contains("unknown objective 'nope'")), "Should catch bad objective");
+    assert!(
+        errs.iter().any(|e| e.contains("dialogue index 99")),
+        "Should catch bad dialogue"
+    );
+    assert!(
+        errs.iter().any(|e| e.contains("unknown wave 'ghost'")),
+        "Should catch bad wave"
+    );
+    assert!(
+        errs.iter().any(|e| e.contains("unknown objective 'nope'")),
+        "Should catch bad objective"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1033,13 +1231,17 @@ fn ai_personality_profile_presets_work() {
 
     let aggressive = AiPersonalityProfile::aggressive();
     assert_eq!(aggressive.attack_threshold, 6);
-    assert!(aggressive.eval_speed_mult < balanced.eval_speed_mult,
-        "Aggressive should decide faster than balanced");
+    assert!(
+        aggressive.eval_speed_mult < balanced.eval_speed_mult,
+        "Aggressive should decide faster than balanced"
+    );
 
     let defensive = AiPersonalityProfile::defensive();
     assert_eq!(defensive.attack_threshold, 12);
-    assert!(defensive.target_workers > aggressive.target_workers,
-        "Defensive should want more workers");
+    assert!(
+        defensive.target_workers > aggressive.target_workers,
+        "Defensive should want more workers"
+    );
 }
 
 #[test]
@@ -1061,14 +1263,13 @@ fn ai_fsm_refactored_behavior_unchanged() {
     // The actual FSM behavior is tested by the existing ai_phase_transitions
     // and ai_default_state tests in fsm.rs. This integration test ensures
     // the census extraction didn't break the system composition.
-    use cc_sim::ai::fsm::{AiState, AiPhase};
+    use cc_sim::ai::fsm::{AiPhase, AiState};
 
     let state = AiState::default();
     assert_eq!(state.phase, AiPhase::EarlyGame);
     assert_eq!(state.profile.target_workers, 4);
     assert_eq!(state.profile.attack_threshold, 8);
 }
-
 
 // ---------------------------------------------------------------------------
 // Wave Spawner + Tracking Tests
@@ -1116,7 +1317,11 @@ fn wave_test_mission() -> MissionDefinition {
         name: "Wave Test".into(),
         act: 0,
         mission_index: 0,
-        map: MissionMap::Generated { seed: 42, width: 16, height: 16 },
+        map: MissionMap::Generated {
+            seed: 42,
+            width: 16,
+            height: 16,
+        },
         player_setup: PlayerSetup {
             heroes: vec![HeroSpawn {
                 hero_id: HeroId::Kelpie,
@@ -1135,25 +1340,37 @@ fn wave_test_mission() -> MissionDefinition {
                 wave_id: "imm_wave".into(),
                 trigger: WaveTrigger::Immediate,
                 units: vec![
-                    UnitSpawn { kind: UnitKind::Nuisance, position: GridPos::new(10, 10), player_id: 1 },
-                    UnitSpawn { kind: UnitKind::Nuisance, position: GridPos::new(11, 10), player_id: 1 },
+                    UnitSpawn {
+                        kind: UnitKind::Nuisance,
+                        position: GridPos::new(10, 10),
+                        player_id: 1,
+                    },
+                    UnitSpawn {
+                        kind: UnitKind::Nuisance,
+                        position: GridPos::new(11, 10),
+                        player_id: 1,
+                    },
                 ],
                 ai_behavior: WaveAiBehavior::Idle,
             },
             EnemyWave {
                 wave_id: "tick_wave".into(),
                 trigger: WaveTrigger::AtTick(5),
-                units: vec![
-                    UnitSpawn { kind: UnitKind::Hisser, position: GridPos::new(12, 12), player_id: 1 },
-                ],
+                units: vec![UnitSpawn {
+                    kind: UnitKind::Hisser,
+                    position: GridPos::new(12, 12),
+                    player_id: 1,
+                }],
                 ai_behavior: WaveAiBehavior::Defend,
             },
             EnemyWave {
                 wave_id: "trigger_wave".into(),
                 trigger: WaveTrigger::OnTrigger("spawn_reinforcements".into()),
-                units: vec![
-                    UnitSpawn { kind: UnitKind::Chonk, position: GridPos::new(14, 14), player_id: 1 },
-                ],
+                units: vec![UnitSpawn {
+                    kind: UnitKind::Chonk,
+                    position: GridPos::new(14, 14),
+                    player_id: 1,
+                }],
                 ai_behavior: WaveAiBehavior::Idle,
             },
         ],
@@ -1222,13 +1439,19 @@ fn wave_spawner_spawns_at_tick_waves() {
 
     // tick_wave should NOT be spawned yet
     let tracker = world.resource::<WaveTracker>();
-    assert!(!tracker.waves.contains_key("tick_wave"), "tick_wave should not spawn before tick 5");
+    assert!(
+        !tracker.waves.contains_key("tick_wave"),
+        "tick_wave should not spawn before tick 5"
+    );
 
     // Run tick 5
     schedule.run(&mut world);
 
     let tracker = world.resource::<WaveTracker>();
-    assert!(tracker.waves.contains_key("tick_wave"), "tick_wave should spawn at tick 5");
+    assert!(
+        tracker.waves.contains_key("tick_wave"),
+        "tick_wave should spawn at tick 5"
+    );
     let (total, alive) = tracker.waves.get("tick_wave").unwrap();
     assert_eq!(*total, 1);
     assert_eq!(*alive, 1);
@@ -1256,10 +1479,13 @@ fn wave_spawner_spawns_on_trigger() {
 
     // Run another tick — trigger should fire and wave should spawn
     schedule.run(&mut world);
-    schedule.run(&mut world);  // may need extra tick for command application
+    schedule.run(&mut world); // may need extra tick for command application
 
     let tracker = world.resource::<WaveTracker>();
-    assert!(tracker.waves.contains_key("trigger_wave"), "trigger_wave should spawn after flag set");
+    assert!(
+        tracker.waves.contains_key("trigger_wave"),
+        "trigger_wave should spawn after flag set"
+    );
 }
 
 #[test]
@@ -1294,7 +1520,10 @@ fn wave_tracking_decrements_on_death() {
 
     // Kill count should increment
     let campaign = world.resource::<CampaignState>();
-    assert!(campaign.enemy_kill_count >= 1, "Kill count should increment");
+    assert!(
+        campaign.enemy_kill_count >= 1,
+        "Kill count should increment"
+    );
 }
 
 #[test]
@@ -1334,7 +1563,10 @@ fn wave_eliminated_fires_when_all_dead() {
     schedule.run(&mut world);
 
     let campaign = world.resource::<CampaignState>();
-    assert!(campaign.flags.contains("wave_done"), "WaveEliminated trigger should fire");
+    assert!(
+        campaign.flags.contains("wave_done"),
+        "WaveEliminated trigger should fire"
+    );
 }
 
 #[test]
@@ -1398,7 +1630,10 @@ fn mission_reset_clears_wave_tracker_on_new_mission() {
 
     // Verify immediate wave spawned
     let tracker = world.resource::<WaveTracker>();
-    assert!(tracker.waves.contains_key("imm_wave"), "First mission should spawn imm_wave");
+    assert!(
+        tracker.waves.contains_key("imm_wave"),
+        "First mission should spawn imm_wave"
+    );
     assert!(tracker.processed.contains("imm_wave"));
 
     // Load a second mission with a different ID
@@ -1413,7 +1648,10 @@ fn mission_reset_clears_wave_tracker_on_new_mission() {
 
     // WaveTracker should have been reset and re-populated for the new mission
     let tracker = world.resource::<WaveTracker>();
-    assert!(tracker.waves.contains_key("imm_wave"), "Second mission should also spawn imm_wave");
+    assert!(
+        tracker.waves.contains_key("imm_wave"),
+        "Second mission should also spawn imm_wave"
+    );
     let (total, alive) = tracker.waves.get("imm_wave").unwrap();
     assert_eq!(*total, 2);
     assert_eq!(*alive, 2);
@@ -1426,12 +1664,19 @@ fn mission_reset_clears_wave_tracker_on_new_mission() {
 #[test]
 fn all_act1_missions_parse_and_validate() {
     let campaign_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent().unwrap()
-        .parent().unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
         .join("assets/campaign");
 
-    let expected_files = ["prologue.ron", "act1_m1_pond_defense.ron", "act1_m2_dead_drop.ron",
-                          "act1_m3_counter_raid.ron", "act1_m4_envoy.ron"];
+    let expected_files = [
+        "prologue.ron",
+        "act1_m1_pond_defense.ron",
+        "act1_m2_dead_drop.ron",
+        "act1_m3_counter_raid.ron",
+        "act1_m4_envoy.ron",
+    ];
 
     for filename in &expected_files {
         let path = campaign_dir.join(filename);
@@ -1449,8 +1694,10 @@ fn all_act1_missions_parse_and_validate() {
 #[test]
 fn all_campaign_missions_parse_and_validate() {
     let campaign_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent().unwrap()
-        .parent().unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
         .join("assets/campaign");
 
     let mut ron_count = 0;
@@ -1472,5 +1719,9 @@ fn all_campaign_missions_parse_and_validate() {
         }
     }
     // We expect at least 23 campaign files (6 original + 17 new)
-    assert!(ron_count >= 23, "Expected at least 23 RON files, found {}", ron_count);
+    assert!(
+        ron_count >= 23,
+        "Expected at least 23 RON files, found {}",
+        ron_count
+    );
 }

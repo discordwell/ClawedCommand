@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::math::{Fixed, FIXED_ONE, FIXED_ZERO};
+use crate::math::{FIXED_ONE, FIXED_ZERO, Fixed};
 use crate::mutator::HazardDirection;
 
 /// Terrain type for each tile on the map.
@@ -23,16 +23,16 @@ impl TerrainType {
     /// Movement cost multiplier. Higher = slower.
     pub fn movement_cost(self) -> Fixed {
         match self {
-            Self::Grass => FIXED_ONE,                    // 1.0x
-            Self::Dirt => Fixed::from_bits(62259),       // 0.95x
-            Self::Sand => Fixed::from_bits(78643),       // 1.2x
-            Self::Forest => Fixed::from_bits(85196),     // 1.3x
-            Self::Water => FIXED_ONE,                    // 1.0x for Croak
-            Self::Shallows => Fixed::from_bits(98304),   // 1.5x
-            Self::Rock => FIXED_ZERO,                    // impassable
-            Self::Ramp => Fixed::from_bits(72089),       // 1.1x
-            Self::Road => Fixed::from_bits(45875),       // 0.7x
-            Self::TechRuins => Fixed::from_bits(75366),  // 1.15x
+            Self::Grass => FIXED_ONE,                   // 1.0x
+            Self::Dirt => Fixed::from_bits(62259),      // 0.95x
+            Self::Sand => Fixed::from_bits(78643),      // 1.2x
+            Self::Forest => Fixed::from_bits(85196),    // 1.3x
+            Self::Water => FIXED_ONE,                   // 1.0x for Croak
+            Self::Shallows => Fixed::from_bits(98304),  // 1.5x
+            Self::Rock => FIXED_ZERO,                   // impassable
+            Self::Ramp => Fixed::from_bits(72089),      // 1.1x
+            Self::Road => Fixed::from_bits(45875),      // 0.7x
+            Self::TechRuins => Fixed::from_bits(75366), // 1.15x
         }
     }
 
@@ -144,8 +144,8 @@ impl std::str::FromStr for TerrainType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CoverLevel {
     None,
-    Light,  // -15% damage taken
-    Heavy,  // -30% damage taken
+    Light, // -15% damage taken
+    Heavy, // -30% damage taken
 }
 
 impl CoverLevel {
@@ -155,8 +155,8 @@ impl CoverLevel {
     pub fn damage_multiplier(self) -> Fixed {
         match self {
             Self::None => FIXED_ONE,
-            Self::Light => Fixed::from_bits(55705),  // 0.85
-            Self::Heavy => Fixed::from_bits(45875),  // 0.70
+            Self::Light => Fixed::from_bits(55705), // 0.85
+            Self::Heavy => Fixed::from_bits(45875), // 0.70
         }
     }
 }
@@ -245,7 +245,10 @@ pub enum OverlayEffect {
     /// Toxic hazard — damages units on this tile.
     Toxic { damage_per_tick: u32 },
     /// Wind zone — displaces units in a direction.
-    WindZone { direction: HazardDirection, force: u32 },
+    WindZone {
+        direction: HazardDirection,
+        force: u32,
+    },
 }
 
 /// A temporary terrain modification applied by an ability.
@@ -336,11 +339,26 @@ mod tests {
 
     #[test]
     fn croak_can_traverse_water() {
-        assert!(is_passable_for_faction(TerrainType::Water, FactionId::Croak));
-        assert!(!is_passable_for_faction(TerrainType::Water, FactionId::CatGPT));
-        assert!(!is_passable_for_faction(TerrainType::Water, FactionId::TheClawed));
-        assert!(!is_passable_for_faction(TerrainType::Water, FactionId::TheMurder));
-        assert!(!is_passable_for_faction(TerrainType::Water, FactionId::LLAMA));
+        assert!(is_passable_for_faction(
+            TerrainType::Water,
+            FactionId::Croak
+        ));
+        assert!(!is_passable_for_faction(
+            TerrainType::Water,
+            FactionId::CatGPT
+        ));
+        assert!(!is_passable_for_faction(
+            TerrainType::Water,
+            FactionId::TheClawed
+        ));
+        assert!(!is_passable_for_faction(
+            TerrainType::Water,
+            FactionId::TheMurder
+        ));
+        assert!(!is_passable_for_faction(
+            TerrainType::Water,
+            FactionId::LLAMA
+        ));
     }
 
     #[test]
@@ -354,10 +372,22 @@ mod tests {
     #[test]
     fn faction_aware_neighbor_filtering() {
         // Croak should traverse water, CatGPT should not
-        assert!(is_passable_for_faction(TerrainType::Shallows, FactionId::CatGPT));
-        assert!(is_passable_for_faction(TerrainType::Shallows, FactionId::Croak));
-        assert!(!is_passable_for_faction(TerrainType::Water, FactionId::CatGPT));
-        assert!(is_passable_for_faction(TerrainType::Water, FactionId::Croak));
+        assert!(is_passable_for_faction(
+            TerrainType::Shallows,
+            FactionId::CatGPT
+        ));
+        assert!(is_passable_for_faction(
+            TerrainType::Shallows,
+            FactionId::Croak
+        ));
+        assert!(!is_passable_for_faction(
+            TerrainType::Water,
+            FactionId::CatGPT
+        ));
+        assert!(is_passable_for_faction(
+            TerrainType::Water,
+            FactionId::Croak
+        ));
     }
 
     #[test]
@@ -447,7 +477,12 @@ mod tests {
     #[test]
     fn hazard_flags_no_overlap() {
         // All four dynamic flags must use distinct bits
-        let all_flags = [FLAG_TEMP_BLOCKED, FLAG_WATER_CONVERTED, FLAG_LAVA, FLAG_TOXIC];
+        let all_flags = [
+            FLAG_TEMP_BLOCKED,
+            FLAG_WATER_CONVERTED,
+            FLAG_LAVA,
+            FLAG_TOXIC,
+        ];
         for i in 0..all_flags.len() {
             for j in (i + 1)..all_flags.len() {
                 assert_eq!(

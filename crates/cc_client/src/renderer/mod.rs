@@ -81,13 +81,15 @@ impl Plugin for RenderPlugin {
             )
             // Phase 3: Systems that depend on the tilemap being spawned
             .add_systems(Startup, props::spawn_props.after(tilemap::spawn_tilemap))
-            .add_systems(Startup, minimap::setup_minimap.after(tilemap::spawn_tilemap))
+            .add_systems(
+                Startup,
+                minimap::setup_minimap.after(tilemap::spawn_tilemap),
+            )
             .add_systems(
                 Startup,
                 (
                     fog::init_fog.after(tilemap::spawn_tilemap),
-                    fog::spawn_fog_overlays
-                        .after(fog::init_fog),
+                    fog::spawn_fog_overlays.after(fog::init_fog),
                 ),
             )
             .add_systems(
@@ -103,34 +105,26 @@ impl Plugin for RenderPlugin {
                     buildings::spawn_building_visuals,
                     buildings::sync_building_sprites,
                     buildings::render_placement_preview,
-                    selection::render_selection_indicators
-                        .after(zoom_lod::detect_zoom_tier),
-                    health_bars::spawn_health_bars
-                        .run_if(zoom_lod::is_tactical),
-                    health_bars::update_health_bars
-                        .run_if(zoom_lod::is_tactical),
+                    selection::render_selection_indicators.after(zoom_lod::detect_zoom_tier),
+                    health_bars::spawn_health_bars.run_if(zoom_lod::is_tactical),
+                    health_bars::update_health_bars.run_if(zoom_lod::is_tactical),
                     health_bars::hide_dead_health_bars,
                     death::isolate_dead_material,
                     death::death_fade_system
                         .after(death::isolate_dead_material)
                         .run_if(zoom_lod::is_tactical),
-                    terrain_borders::draw_terrain_borders
-                        .run_if(zoom_lod::is_tactical),
-                    water::animate_water
-                        .run_if(zoom_lod::is_tactical),
-                    selection::pulse_selection_rings
-                        .run_if(zoom_lod::is_tactical),
+                    terrain_borders::draw_terrain_borders.run_if(zoom_lod::is_tactical),
+                    water::animate_water.run_if(zoom_lod::is_tactical),
+                    selection::pulse_selection_rings.run_if(zoom_lod::is_tactical),
                     minimap::update_minimap,
-                    minimap::minimap_click
-                        .after(camera::camera_system),
+                    minimap::minimap_click.after(camera::camera_system),
                 ),
             )
             // Construction visuals (separate block to avoid tuple size limit)
             .add_systems(
                 Update,
                 (
-                    buildings::spawn_construction_bars
-                        .after(buildings::spawn_building_visuals),
+                    buildings::spawn_construction_bars.after(buildings::spawn_building_visuals),
                     buildings::update_construction_bars,
                     buildings::remove_construction_bars,
                     buildings::update_construction_alpha_sprite,
@@ -161,8 +155,7 @@ impl Plugin for RenderPlugin {
                 Update,
                 (
                     animation::derive_anim_state,
-                    animation::advance_animation
-                        .after(animation::derive_anim_state),
+                    animation::advance_animation.after(animation::derive_anim_state),
                     tweens::apply_unit_tweens
                         .after(units::sync_unit_sprites)
                         .after(selection::render_selection_indicators)
@@ -176,10 +169,8 @@ impl Plugin for RenderPlugin {
                 (
                     vfx::update_particles,
                     vfx::update_emitters,
-                    vfx::spawn_trail_particles
-                        .run_if(zoom_lod::is_tactical),
-                    vfx::spawn_impact_vfx
-                        .run_if(zoom_lod::is_tactical),
+                    vfx::spawn_trail_particles.run_if(zoom_lod::is_tactical),
+                    vfx::spawn_impact_vfx.run_if(zoom_lod::is_tactical),
                 ),
             )
             // Voice-command sonar-ping VFX

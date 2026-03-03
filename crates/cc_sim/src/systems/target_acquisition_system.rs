@@ -30,7 +30,9 @@ pub fn target_acquisition_system(
         (Or<(With<UnitType>, With<Building>)>, Without<Dead>),
     >,
 ) {
-    for (entity, pos, owner, stats, current_target, hold, atk_move, move_target, chasing) in units.iter() {
+    for (entity, pos, owner, stats, current_target, hold, atk_move, move_target, chasing) in
+        units.iter()
+    {
         // Check if current target is still alive
         if let Some(target) = current_target {
             let target_entity = Entity::from_bits(target.target.0);

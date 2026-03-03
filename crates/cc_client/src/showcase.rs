@@ -60,18 +60,41 @@ pub fn build_showcase_mission() -> MissionDefinition {
 
     // Forest corners for visual interest
     for &(cx, cy) in &[(3, 3), (76, 3), (3, 44), (76, 44)] {
-        stamp_diamond(&mut tiles, &mut elevation, cx, cy, 3, TerrainType::Forest, 1);
+        stamp_diamond(
+            &mut tiles,
+            &mut elevation,
+            cx,
+            cy,
+            3,
+            TerrainType::Forest,
+            1,
+        );
     }
 
     // Small decorative ponds between neighborhoods
     for &(px, py) in &[(26, 13), (52, 13), (26, 35), (52, 35)] {
-        stamp_diamond(&mut tiles, &mut elevation, px, py, 1, TerrainType::Shallows, 0);
+        stamp_diamond(
+            &mut tiles,
+            &mut elevation,
+            px,
+            py,
+            1,
+            TerrainType::Shallows,
+            0,
+        );
     }
 
     // Central intersection plaza (small water feature)
     for dy in -1..=1i32 {
         for dx in -1..=1i32 {
-            set_tile(&mut tiles, &mut elevation, 40 + dx, 24 + dy, TerrainType::Water, 0);
+            set_tile(
+                &mut tiles,
+                &mut elevation,
+                40 + dx,
+                24 + dy,
+                TerrainType::Water,
+                0,
+            );
         }
     }
 
@@ -174,7 +197,9 @@ mod tests {
     #[test]
     fn showcase_mission_validates() {
         let mission = build_showcase_mission();
-        mission.validate().expect("Showcase mission should validate");
+        mission
+            .validate()
+            .expect("Showcase mission should validate");
     }
 
     #[test]
@@ -186,7 +211,13 @@ mod tests {
     #[test]
     fn showcase_buildings_on_passable_tiles() {
         let mission = build_showcase_mission();
-        let MissionMap::Inline { width, height, tiles, .. } = &mission.map else {
+        let MissionMap::Inline {
+            width,
+            height,
+            tiles,
+            ..
+        } = &mission.map
+        else {
             panic!("Expected Inline map");
         };
         for bspawn in &mission.player_setup.buildings {

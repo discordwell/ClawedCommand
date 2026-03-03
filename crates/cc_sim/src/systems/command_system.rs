@@ -3,37 +3,35 @@ use std::collections::VecDeque;
 
 use crate::pathfinding;
 use crate::resources::{CommandQueue, ControlGroups, MapResource, PlayerResources, VoiceOverride};
-use cc_core::abilities::{ability_def, AbilityActivation, AbilityId};
+use cc_core::abilities::{AbilityActivation, AbilityId, ability_def};
 use cc_core::building_stats::building_stats;
 use cc_core::commands::{CommandSource, EntityId, GameCommand};
 use cc_core::components::{
-    AbilitySlots, AttackMoveTarget, AttackTarget, BuildOrder, Aura, AuraType, Building, ChasingTarget,
-    Gathering, GatherState, HoldPosition, MoveTarget, Owner, Path, Position, Producer,
-    ProductionQueue, RallyPoint, ResearchQueue, Researcher, ResourceDeposit, Selected,
+    AbilitySlots, AttackMoveTarget, AttackTarget, Aura, AuraType, BuildOrder, Building,
+    ChasingTarget, GatherState, Gathering, HoldPosition, MoveTarget, Owner, Path, Position,
+    Producer, ProductionQueue, RallyPoint, ResearchQueue, Researcher, ResourceDeposit, Selected,
     StatModifiers, UnderConstruction, UnitKind, UpgradeType,
 };
 use cc_core::coords::WorldPos;
-use cc_core::math::{Fixed, FIXED_ONE, fixed_from_i32};
+use cc_core::math::{FIXED_ONE, Fixed, fixed_from_i32};
 use cc_core::status_effects::StatusEffectId;
 use cc_core::terrain::FactionId;
 use cc_core::unit_stats::base_stats;
 use cc_core::upgrade_stats::upgrade_stats;
 
-use cc_core::tuning::{
-    CHAIN_BREAK_BUILDING_MULT, CHAIN_BREAK_DAMAGE, CHAIN_BREAK_RADIUS,
-    DEEP_BORE_DAMAGE, DISGUST_MORTAR_DAMAGE, DISGUST_MORTAR_RADIUS,
-    ECHOLOCATION_REVEAL_TICKS, FRANKENSTEIN_DAMAGE, HAIRBALL_DURATION_TICKS,
-    LIMB_TOSS_DAMAGE, QUILL_BURST_DAMAGE, QUILL_BURST_RADIUS,
-    REGURGITATE_DAMAGE, SALVAGE_TURRET_DAMAGE, SCORCHED_EARTH_DAMAGE,
-    SCORCHED_EARTH_RADIUS, SEISMIC_SLAM_STUN_TICKS, SHAPED_CHARGE_BUILDING_MULT,
-    SHAPED_CHARGE_DAMAGE, SHAPED_CHARGE_RADIUS, SHORT_CIRCUIT_SILENCE_TICKS,
-    SILENT_STRIKE_DAMAGE, SONIC_SPIT_STUN_TICKS, TALON_DIVE_DAMAGE,
-    TALON_DIVE_RADIUS, VENOMSTRIKE_DAMAGE, VENOMSTRIKE_WATERLOGGED_TICKS,
-    WRECK_BALL_DAMAGE, WRECK_BALL_RADIUS,
-};
 use crate::systems::damage::{
     AoeCcCommand, AoeDamageCommand, EcholocationRevealCommand, RevulsionAoeCommand,
     SpawnHairballCommand,
+};
+use cc_core::tuning::{
+    CHAIN_BREAK_BUILDING_MULT, CHAIN_BREAK_DAMAGE, CHAIN_BREAK_RADIUS, DEEP_BORE_DAMAGE,
+    DISGUST_MORTAR_DAMAGE, DISGUST_MORTAR_RADIUS, ECHOLOCATION_REVEAL_TICKS, FRANKENSTEIN_DAMAGE,
+    HAIRBALL_DURATION_TICKS, LIMB_TOSS_DAMAGE, QUILL_BURST_DAMAGE, QUILL_BURST_RADIUS,
+    REGURGITATE_DAMAGE, SALVAGE_TURRET_DAMAGE, SCORCHED_EARTH_DAMAGE, SCORCHED_EARTH_RADIUS,
+    SEISMIC_SLAM_STUN_TICKS, SHAPED_CHARGE_BUILDING_MULT, SHAPED_CHARGE_DAMAGE,
+    SHAPED_CHARGE_RADIUS, SHORT_CIRCUIT_SILENCE_TICKS, SILENT_STRIKE_DAMAGE, SONIC_SPIT_STUN_TICKS,
+    TALON_DIVE_DAMAGE, TALON_DIVE_RADIUS, VENOMSTRIKE_DAMAGE, VENOMSTRIKE_WATERLOGGED_TICKS,
+    WRECK_BALL_DAMAGE, WRECK_BALL_RADIUS,
 };
 
 /// Process all queued commands for this tick.
@@ -55,7 +53,13 @@ pub fn process_commands(
     )>,
     mut control_groups: ResMut<ControlGroups>,
     mut player_resources: ResMut<PlayerResources>,
-    buildings: Query<(Entity, &Building, &Owner, Option<&Producer>, Option<&UnderConstruction>)>,
+    buildings: Query<(
+        Entity,
+        &Building,
+        &Owner,
+        Option<&Producer>,
+        Option<&UnderConstruction>,
+    )>,
     mut prod_queues: Query<&mut ProductionQueue>,
     deposits: Query<&Position, With<ResourceDeposit>>,
     mut ability_query: Query<(&mut AbilitySlots, Option<&StatModifiers>)>,
@@ -118,7 +122,10 @@ pub fn process_commands(
                     // Refund building cost if cancelling a build order
                     if let Ok((bo, bo_owner)) = build_orders.get(entity) {
                         let bstats = building_stats(bo.building_kind);
-                        if let Some(pres) = player_resources.players.get_mut(bo_owner.player_id as usize) {
+                        if let Some(pres) = player_resources
+                            .players
+                            .get_mut(bo_owner.player_id as usize)
+                        {
                             pres.food += bstats.food_cost;
                             pres.gpu_cores += bstats.gpu_cost;
                         }
@@ -151,7 +158,9 @@ pub fn process_commands(
                         if let Some(mut mt) = move_target {
                             mt.target = first_wp;
                         } else {
-                            commands.entity(entity).insert(MoveTarget { target: first_wp });
+                            commands
+                                .entity(entity)
+                                .insert(MoveTarget { target: first_wp });
                         }
                     }
                 }
@@ -173,7 +182,9 @@ pub fn process_commands(
                     // Refund building cost if cancelling a build order
                     if let Ok((build_order, owner)) = build_orders.get(entity) {
                         let bstats = building_stats(build_order.building_kind);
-                        if let Some(pres) = player_resources.players.get_mut(owner.player_id as usize) {
+                        if let Some(pres) =
+                            player_resources.players.get_mut(owner.player_id as usize)
+                        {
                             pres.food += bstats.food_cost;
                             pres.gpu_cores += bstats.gpu_cost;
                         }
@@ -234,9 +245,7 @@ pub fn process_commands(
                     commands.entity(entity).remove::<Gathering>();
 
                     // Set attack-move marker
-                    commands
-                        .entity(entity)
-                        .insert(AttackMoveTarget { target });
+                    commands.entity(entity).insert(AttackMoveTarget { target });
 
                     // Pathfind toward the destination
                     let faction = owner
@@ -262,7 +271,9 @@ pub fn process_commands(
                         if let Some(mut mt) = move_target {
                             mt.target = first_wp;
                         } else {
-                            commands.entity(entity).insert(MoveTarget { target: first_wp });
+                            commands
+                                .entity(entity)
+                                .insert(MoveTarget { target: first_wp });
                         }
                     }
                 }
@@ -282,7 +293,6 @@ pub fn process_commands(
             }
 
             // --- Economy / Production / Control Group commands ---
-
             GameCommand::GatherResource { unit_ids, deposit } => {
                 // Look up deposit position for pathfinding
                 let deposit_entity = Entity::from_bits(deposit.0);
@@ -335,7 +345,9 @@ pub fn process_commands(
                             if let Some(mut mt) = move_target {
                                 mt.target = first_wp;
                             } else {
-                                commands.entity(entity).insert(MoveTarget { target: first_wp });
+                                commands
+                                    .entity(entity)
+                                    .insert(MoveTarget { target: first_wp });
                             }
                         }
                     }
@@ -351,7 +363,10 @@ pub fn process_commands(
                 let Some(terrain) = map_res.map.terrain_at(position) else {
                     continue; // Out of bounds
                 };
-                if !cc_core::terrain::is_passable_for_faction(terrain, cc_core::terrain::FactionId::CatGPT) {
+                if !cc_core::terrain::is_passable_for_faction(
+                    terrain,
+                    cc_core::terrain::FactionId::CatGPT,
+                ) {
                     continue; // Can't build on impassable terrain
                 }
 
@@ -381,7 +396,10 @@ pub fn process_commands(
                     commands.entity(builder_entity).remove::<Gathering>();
 
                     // Attach BuildOrder -- builder_system will spawn the building on arrival
-                    commands.entity(builder_entity).insert(BuildOrder { building_kind, position });
+                    commands.entity(builder_entity).insert(BuildOrder {
+                        building_kind,
+                        position,
+                    });
 
                     // Pathfind to build site
                     let faction = owner
@@ -407,7 +425,9 @@ pub fn process_commands(
                         if let Some(mut mt) = move_target {
                             mt.target = first_wp;
                         } else {
-                            commands.entity(builder_entity).insert(MoveTarget { target: first_wp });
+                            commands
+                                .entity(builder_entity)
+                                .insert(MoveTarget { target: first_wp });
                         }
                     } else {
                         // Pathfinding failed -- refund resources and cancel build
@@ -446,12 +466,16 @@ pub fn process_commands(
                     // Gate advanced units behind upgrade prerequisites
                     if let Some(pres) = player_resources.players.get(player_id as usize) {
                         if unit_kind == UnitKind::Catnapper
-                            && !pres.completed_upgrades.contains(&UpgradeType::SiegeTraining)
+                            && !pres
+                                .completed_upgrades
+                                .contains(&UpgradeType::SiegeTraining)
                         {
                             continue;
                         }
                         if unit_kind == UnitKind::MechCommander
-                            && !pres.completed_upgrades.contains(&UpgradeType::MechPrototype)
+                            && !pres
+                                .completed_upgrades
+                                .contains(&UpgradeType::MechPrototype)
                         {
                             continue;
                         }
@@ -466,9 +490,8 @@ pub fn process_commands(
                                 }
                             }
                             if let Some(max_count) = r.max_unit_count {
-                                let current = unit_owners.iter()
-                                    .filter(|o| o.player_id == 0)
-                                    .count() as u32;
+                                let current =
+                                    unit_owners.iter().filter(|o| o.player_id == 0).count() as u32;
                                 if current >= max_count {
                                     continue;
                                 }
@@ -504,7 +527,9 @@ pub fn process_commands(
             GameCommand::SetRallyPoint { building, target } => {
                 let building_entity = Entity::from_bits(building.0);
                 if buildings.get(building_entity).is_ok() {
-                    commands.entity(building_entity).insert(RallyPoint { target });
+                    commands
+                        .entity(building_entity)
+                        .insert(RallyPoint { target });
                 }
             }
 
@@ -516,8 +541,7 @@ pub fn process_commands(
                         if let Ok((_, _, owner, _, _)) = buildings.get(building_entity) {
                             let player_id = owner.player_id;
                             let ustats = base_stats(unit_kind);
-                            if let Some(pres) =
-                                player_resources.players.get_mut(player_id as usize)
+                            if let Some(pres) = player_resources.players.get_mut(player_id as usize)
                             {
                                 pres.food += ustats.food_cost;
                                 pres.gpu_cores += ustats.gpu_cost;
@@ -592,7 +616,9 @@ pub fn process_commands(
 
                     // Check GPU cost
                     if def.gpu_cost > 0 {
-                        if let Some(pres) = player_resources.players.get_mut(owner_player_id as usize) {
+                        if let Some(pres) =
+                            player_resources.players.get_mut(owner_player_id as usize)
+                        {
                             if pres.gpu_cores < def.gpu_cost {
                                 continue;
                             }
@@ -603,8 +629,11 @@ pub fn process_commands(
                     }
 
                     // Apply cooldown_multiplier from StatModifiers (e.g. TacticalUplink)
-                    let cd_mult = stat_mods.map(|m| m.cooldown_multiplier).unwrap_or(FIXED_ONE);
-                    let effective_cooldown = (fixed_from_i32(def.cooldown_ticks as i32) * cd_mult).to_num::<u32>();
+                    let cd_mult = stat_mods
+                        .map(|m| m.cooldown_multiplier)
+                        .unwrap_or(FIXED_ONE);
+                    let effective_cooldown =
+                        (fixed_from_i32(def.cooldown_ticks as i32) * cd_mult).to_num::<u32>();
 
                     // Activate
                     match def.activation {

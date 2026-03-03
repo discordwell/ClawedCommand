@@ -48,10 +48,7 @@ pub fn spawn_briefing(mut commands: Commands) {
 
 pub fn update_briefing(
     campaign: Res<CampaignState>,
-    mut root_vis: Query<
-        &mut Visibility,
-        (With<BriefingRoot>, Without<BriefingText>),
-    >,
+    mut root_vis: Query<&mut Visibility, (With<BriefingRoot>, Without<BriefingText>)>,
     mut text_q: Query<&mut Text, With<BriefingText>>,
 ) {
     let show = campaign.phase == CampaignPhase::Briefing;
@@ -105,10 +102,7 @@ pub fn update_briefing(
 }
 
 /// Transition from Briefing to InMission when the player presses Enter or Space.
-pub fn briefing_input_system(
-    keys: Res<ButtonInput<KeyCode>>,
-    mut campaign: ResMut<CampaignState>,
-) {
+pub fn briefing_input_system(keys: Res<ButtonInput<KeyCode>>, mut campaign: ResMut<CampaignState>) {
     if campaign.phase != CampaignPhase::Briefing {
         return;
     }

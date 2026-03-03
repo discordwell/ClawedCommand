@@ -18,11 +18,15 @@ pub fn handle_keyboard(
     mut input_mode: ResMut<InputMode>,
     mut dbl_click: ResMut<DoubleClickState>,
     restrictions: Option<Res<cc_sim::campaign::mutator_state::ControlRestrictions>>,
-    #[cfg(any(feature = "native", feature = "wasm-agent"))]
-    construct_state: Res<cc_agent::construct_mode::ConstructModeState>,
+    #[cfg(any(feature = "native", feature = "wasm-agent"))] construct_state: Res<
+        cc_agent::construct_mode::ConstructModeState,
+    >,
 ) {
     // Gate: skip all keyboard commands (except camera, handled separately) if restricted
-    if restrictions.as_ref().is_some_and(|r| !r.mouse_keyboard_enabled) {
+    if restrictions
+        .as_ref()
+        .is_some_and(|r| !r.mouse_keyboard_enabled)
+    {
         return;
     }
 

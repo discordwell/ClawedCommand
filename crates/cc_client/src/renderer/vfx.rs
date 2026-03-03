@@ -180,7 +180,9 @@ pub fn spawn_impact_vfx(
         let profile = impact_profile(hit.kind);
 
         // Spawn burst particles
-        let count = profile.particle_count.min((MAX_PARTICLES - current_particles) as u32);
+        let count = profile
+            .particle_count
+            .min((MAX_PARTICLES - current_particles) as u32);
         for i in 0..count {
             let angle = std::f32::consts::TAU * (i as f32 / count as f32);
             let speed = profile.speed;
@@ -334,7 +336,10 @@ mod tests {
         for kind in kinds {
             let color = trail_color_for_kind(kind);
             let alpha = color.alpha();
-            assert!(alpha > 0.0 && alpha < 1.0, "Trail color for {kind:?} should be semi-transparent");
+            assert!(
+                alpha > 0.0 && alpha < 1.0,
+                "Trail color for {kind:?} should be semi-transparent"
+            );
         }
     }
 
@@ -351,10 +356,19 @@ mod tests {
         for kind in kinds {
             let profile = impact_profile(kind);
             assert!(profile.particle_count > 0, "{kind:?} should have particles");
-            assert!(profile.lifetime > 0.0, "{kind:?} should have positive lifetime");
+            assert!(
+                profile.lifetime > 0.0,
+                "{kind:?} should have positive lifetime"
+            );
             assert!(profile.speed > 0.0, "{kind:?} should have positive speed");
-            assert!(profile.flash_duration > 0.0, "{kind:?} should have positive flash duration");
-            assert!(profile.flash_size > 0.0, "{kind:?} should have positive flash size");
+            assert!(
+                profile.flash_duration > 0.0,
+                "{kind:?} should have positive flash duration"
+            );
+            assert!(
+                profile.flash_size > 0.0,
+                "{kind:?} should have positive flash size"
+            );
         }
     }
 

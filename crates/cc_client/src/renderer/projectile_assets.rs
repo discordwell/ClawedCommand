@@ -25,12 +25,12 @@ pub fn kind_to_index(kind: ProjectileKind) -> usize {
 /// Fallback color per projectile kind.
 pub fn kind_color(kind: ProjectileKind) -> Color {
     match kind {
-        ProjectileKind::Spit => Color::srgb(0.3, 0.9, 0.2),       // Green
-        ProjectileKind::LaserBeam => Color::srgb(1.0, 0.2, 0.2),   // Red
-        ProjectileKind::SonicWave => Color::srgb(0.7, 0.3, 1.0),   // Purple
-        ProjectileKind::MechShot => Color::srgb(0.3, 0.9, 1.0),    // Cyan
-        ProjectileKind::Explosive => Color::srgb(1.0, 0.6, 0.1),   // Orange
-        ProjectileKind::Generic => Color::srgb(1.0, 0.9, 0.3),     // Yellow
+        ProjectileKind::Spit => Color::srgb(0.3, 0.9, 0.2), // Green
+        ProjectileKind::LaserBeam => Color::srgb(1.0, 0.2, 0.2), // Red
+        ProjectileKind::SonicWave => Color::srgb(0.7, 0.3, 1.0), // Purple
+        ProjectileKind::MechShot => Color::srgb(0.3, 0.9, 1.0), // Cyan
+        ProjectileKind::Explosive => Color::srgb(1.0, 0.6, 0.1), // Orange
+        ProjectileKind::Generic => Color::srgb(1.0, 0.9, 0.3), // Yellow
     }
 }
 

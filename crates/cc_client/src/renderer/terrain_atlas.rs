@@ -41,13 +41,7 @@ impl TerrainAtlas {
         // Expected: assets/terrain/terrain_base_atlas.png (10 tiles in a row, 128x128 each)
         let base_path = "terrain/terrain_base_atlas.png";
         if asset_server.get_handle::<Image>(base_path).is_some() {
-            let layout = TextureAtlasLayout::from_grid(
-                UVec2::new(128, 128),
-                10,
-                1,
-                None,
-                None,
-            );
+            let layout = TextureAtlasLayout::from_grid(UVec2::new(128, 128), 10, 1, None, None);
             let layout_handle = layouts.add(layout);
             atlas.base_atlas = Some(layout_handle);
             atlas.base_image = Some(asset_server.load(base_path));
@@ -59,13 +53,7 @@ impl TerrainAtlas {
             let idx = terrain as usize;
             let path = format!("terrain/transition_{}.png", terrain_name(terrain));
             if asset_server.get_handle::<Image>(&path).is_some() {
-                let layout = TextureAtlasLayout::from_grid(
-                    UVec2::new(128, 128),
-                    4,
-                    3,
-                    None,
-                    None,
-                );
+                let layout = TextureAtlasLayout::from_grid(UVec2::new(128, 128), 4, 3, None, None);
                 let layout_handle = layouts.add(layout);
                 atlas.transition_atlases[idx] = Some(TransitionAtlasEntry {
                     layout: layout_handle,

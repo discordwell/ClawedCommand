@@ -11,16 +11,18 @@ use cc_core::coords::{GridPos, WorldPos};
 use cc_core::map::GameMap;
 use cc_core::math::Fixed;
 use cc_sim::pathfinding;
-use cc_sim::resources::{CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock, SimRng, SpawnPositions, VoiceOverride};
+use cc_sim::resources::{
+    CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock, SimRng,
+    SpawnPositions, VoiceOverride,
+};
 use cc_sim::systems::{
     ability_effect_system::ability_effect_system, ability_system::ability_cooldown_system,
-    aura_system::aura_system, builder_system::builder_system,
-    cleanup_system::cleanup_system, combat_system::combat_system,
-    command_system::process_commands, grid_sync_system::grid_sync_system,
-    movement_system::movement_system, production_system::production_system,
-    projectile_system::projectile_system, research_system::research_system,
-    resource_system::gathering_system, stat_modifier_system::stat_modifier_system,
-    status_effect_system::status_effect_system,
+    aura_system::aura_system, builder_system::builder_system, cleanup_system::cleanup_system,
+    combat_system::combat_system, command_system::process_commands,
+    grid_sync_system::grid_sync_system, movement_system::movement_system,
+    production_system::production_system, projectile_system::projectile_system,
+    research_system::research_system, resource_system::gathering_system,
+    stat_modifier_system::stat_modifier_system, status_effect_system::status_effect_system,
     target_acquisition_system::target_acquisition_system, tick_system::tick_system,
     tower_combat_system::tower_combat_system, victory_system::victory_system,
 };
@@ -113,18 +115,22 @@ fn issue_stop(world: &mut World, entities: &[Entity]) {
 }
 
 fn issue_build(world: &mut World, builder: Entity, kind: BuildingKind, pos: GridPos) {
-    world.resource_mut::<CommandQueue>().push(GameCommand::Build {
-        builder: EntityId(builder.to_bits()),
-        building_kind: kind,
-        position: pos,
-    });
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::Build {
+            builder: EntityId(builder.to_bits()),
+            building_kind: kind,
+            position: pos,
+        });
 }
 
 fn issue_train(world: &mut World, building: Entity, unit_kind: UnitKind) {
-    world.resource_mut::<CommandQueue>().push(GameCommand::TrainUnit {
-        building: EntityId(building.to_bits()),
-        unit_kind,
-    });
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::TrainUnit {
+            building: EntityId(building.to_bits()),
+            unit_kind,
+        });
 }
 
 /// Simple LCG (PCG-like output) for deterministic pseudo-random test data.
@@ -354,7 +360,8 @@ fn pathfinding_stress_64x64() {
     for y in 0..64 {
         for x in 0..64 {
             if lcg_next(&mut seed) % 5 == 0 {
-                map.get_mut(GridPos::new(x, y)).unwrap().terrain = cc_core::terrain::TerrainType::Rock;
+                map.get_mut(GridPos::new(x, y)).unwrap().terrain =
+                    cc_core::terrain::TerrainType::Rock;
             }
         }
     }
@@ -375,7 +382,9 @@ fn pathfinding_stress_64x64() {
             continue;
         }
 
-        if let Some(path) = pathfinding::find_path(&map, start, end, cc_core::terrain::FactionId::CatGPT) {
+        if let Some(path) =
+            pathfinding::find_path(&map, start, end, cc_core::terrain::FactionId::CatGPT)
+        {
             paths_found += 1;
 
             // Every waypoint must be passable
@@ -457,7 +466,11 @@ fn unit_moves_slower_through_forest() {
     let forest_final = world.get::<Position>(forest_unit).unwrap().world.to_grid();
 
     assert_eq!(grass_final, GridPos::new(10, 5), "Grass unit should arrive");
-    assert_eq!(forest_final, GridPos::new(10, 10), "Forest unit should arrive");
+    assert_eq!(
+        forest_final,
+        GridPos::new(10, 10),
+        "Forest unit should arrive"
+    );
 }
 
 #[test]
@@ -512,7 +525,11 @@ fn water_river_with_ford_catgpt_uses_ford() {
     run_ticks(&mut world, &mut schedule, 200);
 
     let final_pos = world.get::<Position>(unit).unwrap().world.to_grid();
-    assert_eq!(final_pos, GridPos::new(12, 10), "CatGPT should cross via ford");
+    assert_eq!(
+        final_pos,
+        GridPos::new(12, 10),
+        "CatGPT should cross via ford"
+    );
 }
 
 #[test]
@@ -623,9 +640,14 @@ fn generated_map_is_valid_for_simulation() {
 
 #[test]
 fn generated_templates_work_in_simulation() {
-    use cc_core::map_gen::{self, MapGenParams, MapTemplate, MapSize};
+    use cc_core::map_gen::{self, MapGenParams, MapSize, MapTemplate};
 
-    let templates = [MapTemplate::Valley, MapTemplate::Crossroads, MapTemplate::Fortress, MapTemplate::Islands];
+    let templates = [
+        MapTemplate::Valley,
+        MapTemplate::Crossroads,
+        MapTemplate::Fortress,
+        MapTemplate::Islands,
+    ];
 
     for template in &templates {
         let params = MapGenParams {
@@ -635,7 +657,11 @@ fn generated_templates_work_in_simulation() {
             ..Default::default()
         };
         let def = map_gen::generate_map(&params);
-        assert!(def.validate().is_ok(), "Validation failed for {:?}", template);
+        assert!(
+            def.validate().is_ok(),
+            "Validation failed for {:?}",
+            template
+        );
 
         let map = def.to_game_map();
         let (mut world, mut schedule) = make_sim(map);
@@ -656,12 +682,7 @@ fn generated_templates_work_in_simulation() {
 use cc_core::unit_stats::base_stats;
 
 /// Spawn a combat-ready unit with full stats from base_stats().
-fn spawn_combat_unit(
-    world: &mut World,
-    grid: GridPos,
-    player_id: u8,
-    kind: UnitKind,
-) -> Entity {
+fn spawn_combat_unit(world: &mut World, grid: GridPos, player_id: u8, kind: UnitKind) -> Entity {
     let stats = base_stats(kind);
     world
         .spawn((
@@ -676,9 +697,7 @@ fn spawn_combat_unit(
                 current: stats.health,
                 max: stats.health,
             },
-            MovementSpeed {
-                speed: stats.speed,
-            },
+            MovementSpeed { speed: stats.speed },
             AttackStats {
                 damage: stats.damage,
                 range: stats.range,
@@ -1048,27 +1067,35 @@ fn combat_determinism() {
 // Phase 2: Economy, Production, Victory integration tests
 // ---------------------------------------------------------------------------
 
-
 /// Spawn a pre-built building for a given player.
 fn spawn_building(world: &mut World, kind: BuildingKind, grid: GridPos, player_id: u8) -> Entity {
     let bstats = cc_core::building_stats::building_stats(kind);
     let entity = world
         .spawn((
-            Position { world: WorldPos::from_grid(grid) },
+            Position {
+                world: WorldPos::from_grid(grid),
+            },
             Velocity::zero(),
             GridCell { pos: grid },
             Owner { player_id },
             Building { kind },
-            Health { current: bstats.health, max: bstats.health },
+            Health {
+                current: bstats.health,
+                max: bstats.health,
+            },
         ))
         .id();
     // Add capability components based on kind
     match kind {
         BuildingKind::TheBox | BuildingKind::CatTree | BuildingKind::ServerRack => {
-            world.entity_mut(entity).insert((Producer, ProductionQueue::default()));
+            world
+                .entity_mut(entity)
+                .insert((Producer, ProductionQueue::default()));
         }
         BuildingKind::ScratchingPost => {
-            world.entity_mut(entity).insert((Researcher, ResearchQueue::default()));
+            world
+                .entity_mut(entity)
+                .insert((Researcher, ResearchQueue::default()));
         }
         BuildingKind::LaserPointer => {
             world.entity_mut(entity).insert((
@@ -1078,14 +1105,20 @@ fn spawn_building(world: &mut World, kind: BuildingKind, grid: GridPos, player_i
                     attack_speed: 15,
                     cooldown_remaining: 0,
                 },
-                AttackTypeMarker { attack_type: AttackType::Ranged },
+                AttackTypeMarker {
+                    attack_type: AttackType::Ranged,
+                },
             ));
         }
         _ => {}
     }
     // TheBox grants supply cap
     if kind == BuildingKind::TheBox {
-        if let Some(pres) = world.resource_mut::<PlayerResources>().players.get_mut(player_id as usize) {
+        if let Some(pres) = world
+            .resource_mut::<PlayerResources>()
+            .players
+            .get_mut(player_id as usize)
+        {
             pres.supply_cap += bstats.supply_provided;
         }
     }
@@ -1096,7 +1129,9 @@ fn spawn_building(world: &mut World, kind: BuildingKind, grid: GridPos, player_i
 fn spawn_deposit(world: &mut World, grid: GridPos) -> Entity {
     world
         .spawn((
-            Position { world: WorldPos::from_grid(grid) },
+            Position {
+                world: WorldPos::from_grid(grid),
+            },
             Velocity::zero(),
             GridCell { pos: grid },
             ResourceDeposit {
@@ -1119,10 +1154,12 @@ fn test_full_economy_loop() {
     let initial_food = world.resource::<PlayerResources>().players[0].food;
 
     // Issue gather command
-    world.resource_mut::<CommandQueue>().push(GameCommand::GatherResource {
-        unit_ids: vec![EntityId(worker.to_bits())],
-        deposit: EntityId(deposit.to_bits()),
-    });
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::GatherResource {
+            unit_ids: vec![EntityId(worker.to_bits())],
+            deposit: EntityId(deposit.to_bits()),
+        });
 
     // Run 200 ticks — enough for multiple gather trips (15 ticks harvest + travel time)
     run_ticks(&mut world, &mut schedule, 200);
@@ -1189,7 +1226,10 @@ fn test_build_command_spawns_building() {
         .filter(|(b, _)| b.kind == BuildingKind::LitterBox)
         .count();
 
-    assert_eq!(building_count, 1, "LitterBox should be under construction after builder walks there");
+    assert_eq!(
+        building_count, 1,
+        "LitterBox should be under construction after builder walks there"
+    );
 
     // Run until construction completes (75 ticks)
     run_ticks(&mut world, &mut schedule, 80);
@@ -1212,7 +1252,12 @@ fn test_build_insufficient_resources() {
     // Set food too low for CatTree (needs 150)
     world.resource_mut::<PlayerResources>().players[0].food = 50;
 
-    issue_build(&mut world, builder, BuildingKind::CatTree, GridPos::new(12, 10));
+    issue_build(
+        &mut world,
+        builder,
+        BuildingKind::CatTree,
+        GridPos::new(12, 10),
+    );
 
     run_ticks(&mut world, &mut schedule, 5);
 
@@ -1222,7 +1267,10 @@ fn test_build_insufficient_resources() {
         .filter(|b| b.kind == BuildingKind::CatTree)
         .count();
 
-    assert_eq!(building_count, 0, "CatTree should not spawn without enough food");
+    assert_eq!(
+        building_count, 0,
+        "CatTree should not spawn without enough food"
+    );
 }
 
 #[test]
@@ -1236,7 +1284,12 @@ fn test_build_and_train_loop() {
     world.resource_mut::<PlayerResources>().players[0].supply_cap = 20; // enough room
 
     // Step 1: Build CatTree
-    issue_build(&mut world, builder, BuildingKind::CatTree, GridPos::new(12, 10));
+    issue_build(
+        &mut world,
+        builder,
+        BuildingKind::CatTree,
+        GridPos::new(12, 10),
+    );
 
     // Wait for builder walk (~20 ticks) + construction (150 ticks) + buffer
     run_ticks(&mut world, &mut schedule, 180);
@@ -1262,7 +1315,10 @@ fn test_build_and_train_loop() {
         .filter(|ut| ut.kind == UnitKind::Nuisance)
         .count();
 
-    assert!(nuisance_count >= 1, "A Nuisance should have been trained from CatTree");
+    assert!(
+        nuisance_count >= 1,
+        "A Nuisance should have been trained from CatTree"
+    );
 }
 
 #[test]
@@ -1340,7 +1396,10 @@ fn test_sim_freezes_on_victory() {
     world.entity_mut(enemy_box).insert(Dead);
 
     run_ticks(&mut world, &mut schedule, 1);
-    assert_eq!(*world.resource::<GameState>(), GameState::Victory { winner: 0 });
+    assert_eq!(
+        *world.resource::<GameState>(),
+        GameState::Victory { winner: 0 }
+    );
 
     // Record tick count, run more ticks — note that in the full game, the main chain
     // has run_if(game_is_playing), but our test schedule doesn't replicate that.
@@ -1417,7 +1476,12 @@ fn test_supply_cap_from_buildings() {
     let initial_cap = world.resource::<PlayerResources>().players[0].supply_cap;
 
     // Build a LitterBox (provides +10 supply)
-    issue_build(&mut world, builder, BuildingKind::LitterBox, GridPos::new(12, 10));
+    issue_build(
+        &mut world,
+        builder,
+        BuildingKind::LitterBox,
+        GridPos::new(12, 10),
+    );
 
     // Builder walks from (10,10) to adjacent (12,10) — ~20 ticks for arrival
     run_ticks(&mut world, &mut schedule, 20);
@@ -1454,7 +1518,10 @@ fn test_resource_deposit_depletes() {
 
     // Deposit should have been decremented
     let remaining = world.get::<ResourceDeposit>(deposit).unwrap().remaining;
-    assert!(remaining < 20, "Deposit should deplete during gathering: remaining={remaining}");
+    assert!(
+        remaining < 20,
+        "Deposit should deplete during gathering: remaining={remaining}"
+    );
 }
 
 #[test]
@@ -1468,7 +1535,9 @@ fn test_dead_gatherer_stops_gathering() {
         deposit_entity: EntityId(deposit.to_bits()),
         carried_type: ResourceType::Food,
         carried_amount: 0,
-        state: GatherState::Harvesting { ticks_remaining: 10 },
+        state: GatherState::Harvesting {
+            ticks_remaining: 10,
+        },
         last_pos: (Fixed::from_num(7), Fixed::from_num(7)),
         stale_ticks: 0,
     });
@@ -1502,7 +1571,12 @@ fn test_build_on_water_rejected() {
 
     let initial_food = world.resource::<PlayerResources>().players[0].food;
 
-    issue_build(&mut world, builder, BuildingKind::LitterBox, GridPos::new(15, 15));
+    issue_build(
+        &mut world,
+        builder,
+        BuildingKind::LitterBox,
+        GridPos::new(15, 15),
+    );
 
     run_ticks(&mut world, &mut schedule, 5);
 
@@ -1517,7 +1591,10 @@ fn test_build_on_water_rejected() {
 
     // Resources should NOT have been deducted
     let final_food = world.resource::<PlayerResources>().players[0].food;
-    assert_eq!(initial_food, final_food, "Resources should not be deducted for rejected build");
+    assert_eq!(
+        initial_food, final_food,
+        "Resources should not be deducted for rejected build"
+    );
 }
 
 #[test]
@@ -1525,9 +1602,10 @@ fn test_victory_with_more_than_two_players() {
     let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
 
     // Add a third player to PlayerResources
-    world.resource_mut::<PlayerResources>().players.push(
-        cc_sim::resources::PlayerResourceState::default()
-    );
+    world
+        .resource_mut::<PlayerResources>()
+        .players
+        .push(cc_sim::resources::PlayerResourceState::default());
 
     // Three players with TheBox
     spawn_building(&mut world, BuildingKind::TheBox, GridPos::new(5, 5), 0);
@@ -1558,21 +1636,21 @@ use cc_core::commands::AbilityTarget;
 use cc_core::status_effects::StatusEffects;
 
 /// Spawn a combat unit with full Phase 4A components (AbilitySlots, StatusEffects, StatModifiers).
-fn spawn_full_unit(
-    world: &mut World,
-    grid: GridPos,
-    player_id: u8,
-    kind: UnitKind,
-) -> Entity {
+fn spawn_full_unit(world: &mut World, grid: GridPos, player_id: u8, kind: UnitKind) -> Entity {
     let stats = base_stats(kind);
     world
         .spawn((
-            Position { world: WorldPos::from_grid(grid) },
+            Position {
+                world: WorldPos::from_grid(grid),
+            },
             Velocity::zero(),
             GridCell { pos: grid },
             Owner { player_id },
             UnitType { kind },
-            Health { current: stats.health, max: stats.health },
+            Health {
+                current: stats.health,
+                max: stats.health,
+            },
             MovementSpeed { speed: stats.speed },
             AttackStats {
                 damage: stats.damage,
@@ -1580,7 +1658,9 @@ fn spawn_full_unit(
                 attack_speed: stats.attack_speed,
                 cooldown_remaining: 0,
             },
-            AttackTypeMarker { attack_type: stats.attack_type },
+            AttackTypeMarker {
+                attack_type: stats.attack_type,
+            },
             AbilitySlots::from_abilities(unit_abilities(kind)),
             StatusEffects::default(),
             StatModifiers::default(),
@@ -1604,7 +1684,10 @@ fn test_ability_infrastructure_on_spawn() {
         .iter(&world)
         .any(|(ut, _, _, _)| ut.kind == UnitKind::Pawdler);
 
-    assert!(has_full_components, "Trained unit should have AbilitySlots, StatusEffects, and StatModifiers");
+    assert!(
+        has_full_components,
+        "Trained unit should have AbilitySlots, StatusEffects, and StatModifiers"
+    );
 }
 
 #[test]
@@ -1617,35 +1700,54 @@ fn test_activate_ability_cooldown_cycle() {
     world.resource_mut::<PlayerResources>().players[0].gpu_cores = 100;
 
     // Activate Zoomies (slot 2)
-    world.resource_mut::<CommandQueue>().push(GameCommand::ActivateAbility {
-        unit_id: EntityId(unit.to_bits()),
-        slot: 2,
-        target: AbilityTarget::SelfCast,
-    });
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::ActivateAbility {
+            unit_id: EntityId(unit.to_bits()),
+            slot: 2,
+            target: AbilityTarget::SelfCast,
+        });
 
     run_ticks(&mut world, &mut schedule, 1);
 
     let slots = world.get::<AbilitySlots>(unit).unwrap();
-    assert!(slots.slots[2].active, "Zoomies should be active after activation");
-    assert!(slots.slots[2].cooldown_remaining > 0, "Cooldown should be set");
+    assert!(
+        slots.slots[2].active,
+        "Zoomies should be active after activation"
+    );
+    assert!(
+        slots.slots[2].cooldown_remaining > 0,
+        "Cooldown should be set"
+    );
 
     // Try to activate again — should be rejected (on cooldown)
     let gpu_before = world.resource::<PlayerResources>().players[0].gpu_cores;
-    world.resource_mut::<CommandQueue>().push(GameCommand::ActivateAbility {
-        unit_id: EntityId(unit.to_bits()),
-        slot: 2,
-        target: AbilityTarget::SelfCast,
-    });
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::ActivateAbility {
+            unit_id: EntityId(unit.to_bits()),
+            slot: 2,
+            target: AbilityTarget::SelfCast,
+        });
     run_ticks(&mut world, &mut schedule, 1);
     let gpu_after = world.resource::<PlayerResources>().players[0].gpu_cores;
-    assert_eq!(gpu_before, gpu_after, "GPU should not be deducted when ability is on cooldown");
+    assert_eq!(
+        gpu_before, gpu_after,
+        "GPU should not be deducted when ability is on cooldown"
+    );
 
     // Run until cooldown expires (120 ticks)
     run_ticks(&mut world, &mut schedule, 125);
 
     let slots = world.get::<AbilitySlots>(unit).unwrap();
-    assert_eq!(slots.slots[2].cooldown_remaining, 0, "Cooldown should have expired");
-    assert!(!slots.slots[2].active, "Duration should have expired (30 ticks < 125 ticks)");
+    assert_eq!(
+        slots.slots[2].cooldown_remaining, 0,
+        "Cooldown should have expired"
+    );
+    assert!(
+        !slots.slots[2].active,
+        "Duration should have expired (30 ticks < 125 ticks)"
+    );
 }
 
 #[test]
@@ -1656,7 +1758,10 @@ fn test_stat_modifiers_affect_combat() {
     let target = spawn_full_unit(&mut world, GridPos::new(6, 5), 1, UnitKind::Chonk);
 
     // Boost attacker's damage_multiplier to 2x via stat modifiers
-    world.get_mut::<StatModifiers>(attacker).unwrap().damage_multiplier = Fixed::from_num(2);
+    world
+        .get_mut::<StatModifiers>(attacker)
+        .unwrap()
+        .damage_multiplier = Fixed::from_num(2);
 
     let initial_hp = world.get::<Health>(target).unwrap().current;
     issue_attack(&mut world, &[attacker], target);
@@ -1681,12 +1786,16 @@ fn test_stat_modifiers_affect_movement() {
     let normal_unit = spawn_full_unit(&mut world, GridPos::new(5, 8), 0, UnitKind::Nuisance);
 
     // Apply Zoomies status effect (grants +100% speed via stat_modifier_system)
-    world.get_mut::<StatusEffects>(fast_unit).unwrap().effects.push(StatusInstance {
-        effect: StatusEffectId::Zoomies,
-        remaining_ticks: 100,
-        stacks: 1,
-        source: EntityId(0),
-    });
+    world
+        .get_mut::<StatusEffects>(fast_unit)
+        .unwrap()
+        .effects
+        .push(StatusInstance {
+            effect: StatusEffectId::Zoomies,
+            remaining_ticks: 100,
+            stacks: 1,
+            source: EntityId(0),
+        });
 
     issue_move(&mut world, &[fast_unit], GridPos::new(15, 5));
     issue_move(&mut world, &[normal_unit], GridPos::new(15, 8));
@@ -1699,14 +1808,20 @@ fn test_stat_modifiers_affect_movement() {
     assert!(
         fast_pos.x > normal_pos.x,
         "Boosted unit should move faster: fast_x={}, normal_x={}",
-        fast_pos.x, normal_pos.x
+        fast_pos.x,
+        normal_pos.x
     );
 }
 
 #[test]
 fn test_server_rack_trains_advanced_units() {
     let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
-    let rack = spawn_building(&mut world, BuildingKind::ServerRack, GridPos::new(10, 10), 0);
+    let rack = spawn_building(
+        &mut world,
+        BuildingKind::ServerRack,
+        GridPos::new(10, 10),
+        0,
+    );
 
     world.resource_mut::<PlayerResources>().players[0].food = 500;
     world.resource_mut::<PlayerResources>().players[0].gpu_cores = 200;
@@ -1725,13 +1840,21 @@ fn test_server_rack_trains_advanced_units() {
         .filter(|ut| ut.kind == UnitKind::FlyingFox)
         .count();
 
-    assert_eq!(fox_count, 1, "FlyingFox should have been trained from ServerRack");
+    assert_eq!(
+        fox_count, 1,
+        "FlyingFox should have been trained from ServerRack"
+    );
 }
 
 #[test]
 fn test_laser_pointer_fires_at_enemies() {
     let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
-    let _tower = spawn_building(&mut world, BuildingKind::LaserPointer, GridPos::new(10, 10), 0);
+    let _tower = spawn_building(
+        &mut world,
+        BuildingKind::LaserPointer,
+        GridPos::new(10, 10),
+        0,
+    );
     let target = spawn_full_unit(&mut world, GridPos::new(13, 10), 1, UnitKind::Nuisance);
 
     let initial_hp = world.get::<Health>(target).unwrap().current;
@@ -1749,7 +1872,12 @@ fn test_laser_pointer_fires_at_enemies() {
 #[test]
 fn test_research_completes_and_applies() {
     let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
-    let sp = spawn_building(&mut world, BuildingKind::ScratchingPost, GridPos::new(10, 10), 0);
+    let sp = spawn_building(
+        &mut world,
+        BuildingKind::ScratchingPost,
+        GridPos::new(10, 10),
+        0,
+    );
 
     // Give enough resources
     world.resource_mut::<PlayerResources>().players[0].food = 500;
@@ -1760,10 +1888,12 @@ fn test_research_completes_and_applies() {
     let dmg_before = world.get::<AttackStats>(unit).unwrap().damage;
 
     // Research SharperClaws (+2 damage, 200 ticks)
-    world.resource_mut::<CommandQueue>().push(GameCommand::Research {
-        building: EntityId(sp.to_bits()),
-        upgrade: UpgradeType::SharperClaws,
-    });
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::Research {
+            building: EntityId(sp.to_bits()),
+            upgrade: UpgradeType::SharperClaws,
+        });
 
     run_ticks(&mut world, &mut schedule, 205);
 
@@ -1775,13 +1905,21 @@ fn test_research_completes_and_applies() {
 
     // Verify upgrade is recorded
     let completed = &world.resource::<PlayerResources>().players[0].completed_upgrades;
-    assert!(completed.contains(&UpgradeType::SharperClaws), "SharperClaws should be in completed_upgrades");
+    assert!(
+        completed.contains(&UpgradeType::SharperClaws),
+        "SharperClaws should be in completed_upgrades"
+    );
 }
 
 #[test]
 fn test_upgrade_gates_unit_training() {
     let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
-    let rack = spawn_building(&mut world, BuildingKind::ServerRack, GridPos::new(10, 10), 0);
+    let rack = spawn_building(
+        &mut world,
+        BuildingKind::ServerRack,
+        GridPos::new(10, 10),
+        0,
+    );
 
     world.resource_mut::<PlayerResources>().players[0].food = 1000;
     world.resource_mut::<PlayerResources>().players[0].gpu_cores = 500;
@@ -1799,22 +1937,32 @@ fn test_upgrade_gates_unit_training() {
         .filter(|ut| ut.kind == UnitKind::MechCommander)
         .count();
 
-    assert_eq!(mech_count, 0, "MechCommander should not train without MechPrototype upgrade");
+    assert_eq!(
+        mech_count, 0,
+        "MechCommander should not train without MechPrototype upgrade"
+    );
 }
 
 #[test]
 fn test_cancel_research_refunds() {
     let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
-    let sp = spawn_building(&mut world, BuildingKind::ScratchingPost, GridPos::new(10, 10), 0);
+    let sp = spawn_building(
+        &mut world,
+        BuildingKind::ScratchingPost,
+        GridPos::new(10, 10),
+        0,
+    );
 
     world.resource_mut::<PlayerResources>().players[0].food = 500;
     world.resource_mut::<PlayerResources>().players[0].gpu_cores = 200;
 
     // Queue SharperClaws (costs 150F, 50G)
-    world.resource_mut::<CommandQueue>().push(GameCommand::Research {
-        building: EntityId(sp.to_bits()),
-        upgrade: UpgradeType::SharperClaws,
-    });
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::Research {
+            building: EntityId(sp.to_bits()),
+            upgrade: UpgradeType::SharperClaws,
+        });
 
     run_ticks(&mut world, &mut schedule, 1);
 
@@ -1824,9 +1972,11 @@ fn test_cancel_research_refunds() {
     assert_eq!(gpu_after_queue, 150, "50 GPU should be deducted");
 
     // Cancel research
-    world.resource_mut::<CommandQueue>().push(GameCommand::CancelResearch {
-        building: EntityId(sp.to_bits()),
-    });
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::CancelResearch {
+            building: EntityId(sp.to_bits()),
+        });
 
     run_ticks(&mut world, &mut schedule, 1);
 
@@ -1839,7 +1989,12 @@ fn test_cancel_research_refunds() {
 #[test]
 fn test_new_units_get_upgrades() {
     let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
-    let sp = spawn_building(&mut world, BuildingKind::ScratchingPost, GridPos::new(10, 10), 0);
+    let sp = spawn_building(
+        &mut world,
+        BuildingKind::ScratchingPost,
+        GridPos::new(10, 10),
+        0,
+    );
 
     // Build a CatTree (already constructed) to train Nuisance from
     let cat_tree = spawn_building(&mut world, BuildingKind::CatTree, GridPos::new(15, 15), 0);
@@ -1850,17 +2005,20 @@ fn test_new_units_get_upgrades() {
     world.resource_mut::<PlayerResources>().players[0].supply_cap = 20;
 
     // Research ThickerFur (+25 HP for combat units, 200 ticks)
-    world.resource_mut::<CommandQueue>().push(GameCommand::Research {
-        building: EntityId(sp.to_bits()),
-        upgrade: UpgradeType::ThickerFur,
-    });
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::Research {
+            building: EntityId(sp.to_bits()),
+            upgrade: UpgradeType::ThickerFur,
+        });
 
     run_ticks(&mut world, &mut schedule, 205);
 
     // Verify upgrade completed
     assert!(
         world.resource::<PlayerResources>().players[0]
-            .completed_upgrades.contains(&UpgradeType::ThickerFur),
+            .completed_upgrades
+            .contains(&UpgradeType::ThickerFur),
         "ThickerFur should be completed"
     );
 
@@ -1878,7 +2036,10 @@ fn test_new_units_get_upgrades() {
         .iter(&world)
         .any(|(ut, hp)| ut.kind == UnitKind::Nuisance && hp.max >= expected_hp);
 
-    assert!(has_boosted_unit, "Newly trained Nuisance should have +25 HP from ThickerFur");
+    assert!(
+        has_boosted_unit,
+        "Newly trained Nuisance should have +25 HP from ThickerFur"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1895,22 +2056,35 @@ fn test_stale_gatherer_gets_released() {
 
     // Spawn worker with zero movement speed so movement_system cannot advance
     // its position, simulating a stuck gatherer.
-    let worker = world.spawn((
-        Position { world: WorldPos::from_grid(GridPos::new(10, 10)) },
-        Velocity::zero(),
-        GridCell { pos: GridPos::new(10, 10) },
-        Owner { player_id: 0 },
-        UnitType { kind: UnitKind::Pawdler },
-        Health { current: Fixed::from_num(50), max: Fixed::from_num(50) },
-        MovementSpeed { speed: Fixed::ZERO }, // zero speed = can't move
-        AttackStats {
-            damage: Fixed::from_num(5),
-            range: Fixed::from_num(1),
-            attack_speed: 10,
-            cooldown_remaining: 0,
-        },
-        AttackTypeMarker { attack_type: AttackType::Melee },
-    )).id();
+    let worker = world
+        .spawn((
+            Position {
+                world: WorldPos::from_grid(GridPos::new(10, 10)),
+            },
+            Velocity::zero(),
+            GridCell {
+                pos: GridPos::new(10, 10),
+            },
+            Owner { player_id: 0 },
+            UnitType {
+                kind: UnitKind::Pawdler,
+            },
+            Health {
+                current: Fixed::from_num(50),
+                max: Fixed::from_num(50),
+            },
+            MovementSpeed { speed: Fixed::ZERO }, // zero speed = can't move
+            AttackStats {
+                damage: Fixed::from_num(5),
+                range: Fixed::from_num(1),
+                attack_speed: 10,
+                cooldown_remaining: 0,
+            },
+            AttackTypeMarker {
+                attack_type: AttackType::Melee,
+            },
+        ))
+        .id();
 
     // Manually set up gathering + MoveTarget (simulates command having been issued)
     let worker_pos = world.get::<Position>(worker).unwrap().world;
@@ -1959,10 +2133,12 @@ fn test_returning_worker_deposits_near_dropoff() {
     let worker = spawn_combat_unit(&mut world, GridPos::new(11, 10), 0, UnitKind::Pawdler);
 
     // Issue gather command — full cycle should work
-    world.resource_mut::<CommandQueue>().push(GameCommand::GatherResource {
-        unit_ids: vec![EntityId(worker.to_bits())],
-        deposit: EntityId(deposit.to_bits()),
-    });
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::GatherResource {
+            unit_ids: vec![EntityId(worker.to_bits())],
+            deposit: EntityId(deposit.to_bits()),
+        });
 
     let initial_food = world.resource::<PlayerResources>().players[0].food;
 
@@ -2027,16 +2203,43 @@ fn test_tuning_constants_accessible() {
     // Verify that the centralized tuning module constants are sane and accessible.
     use cc_core::tuning;
 
-    assert!(tuning::HARVEST_TICKS > 0, "HARVEST_TICKS should be positive");
+    assert!(
+        tuning::HARVEST_TICKS > 0,
+        "HARVEST_TICKS should be positive"
+    );
     assert!(tuning::CARRY_AMOUNT > 0, "CARRY_AMOUNT should be positive");
-    assert!(tuning::GATHERER_STALE_TICKS > 0, "GATHERER_STALE_TICKS should be positive");
-    assert!(tuning::DROPOFF_PROXIMITY_SQ > 0, "DROPOFF_PROXIMITY_SQ should be positive");
-    assert!(tuning::PROJECTILE_SPEED > Fixed::ZERO, "PROJECTILE_SPEED should be positive");
-    assert!(tuning::TOWER_PROJECTILE_SPEED > Fixed::ZERO, "TOWER_PROJECTILE_SPEED should be positive");
-    assert!(tuning::ATTACK_MOVE_SIGHT_RANGE > 0, "ATTACK_MOVE_SIGHT_RANGE should be positive");
-    assert!(tuning::CC_IMMUNITY_TICKS > 0, "CC_IMMUNITY_TICKS should be positive");
-    assert!(tuning::ATTACK_REISSUE_INTERVAL > 0, "ATTACK_REISSUE_INTERVAL should be positive");
-    assert!(tuning::BASE_THREAT_RADIUS > 0, "BASE_THREAT_RADIUS should be positive");
+    assert!(
+        tuning::GATHERER_STALE_TICKS > 0,
+        "GATHERER_STALE_TICKS should be positive"
+    );
+    assert!(
+        tuning::DROPOFF_PROXIMITY_SQ > 0,
+        "DROPOFF_PROXIMITY_SQ should be positive"
+    );
+    assert!(
+        tuning::PROJECTILE_SPEED > Fixed::ZERO,
+        "PROJECTILE_SPEED should be positive"
+    );
+    assert!(
+        tuning::TOWER_PROJECTILE_SPEED > Fixed::ZERO,
+        "TOWER_PROJECTILE_SPEED should be positive"
+    );
+    assert!(
+        tuning::ATTACK_MOVE_SIGHT_RANGE > 0,
+        "ATTACK_MOVE_SIGHT_RANGE should be positive"
+    );
+    assert!(
+        tuning::CC_IMMUNITY_TICKS > 0,
+        "CC_IMMUNITY_TICKS should be positive"
+    );
+    assert!(
+        tuning::ATTACK_REISSUE_INTERVAL > 0,
+        "ATTACK_REISSUE_INTERVAL should be positive"
+    );
+    assert!(
+        tuning::BASE_THREAT_RADIUS > 0,
+        "BASE_THREAT_RADIUS should be positive"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -2063,7 +2266,10 @@ fn test_builder_walks_to_build_site() {
         .iter(&world)
         .filter(|b| b.kind == BuildingKind::CatTree)
         .count();
-    assert_eq!(building_count, 0, "Building should not exist yet while builder walks");
+    assert_eq!(
+        building_count, 0,
+        "Building should not exist yet while builder walks"
+    );
 
     // Run enough ticks for builder to walk there (~60 ticks for 5 tiles at 0.12/tick)
     run_ticks(&mut world, &mut schedule, 60);
@@ -2074,7 +2280,10 @@ fn test_builder_walks_to_build_site() {
         .iter(&world)
         .filter(|b| b.kind == BuildingKind::CatTree)
         .count();
-    assert_eq!(building_count, 1, "CatTree should be placed after builder arrives");
+    assert_eq!(
+        building_count, 1,
+        "CatTree should be placed after builder arrives"
+    );
 
     // BuildOrder should be removed from builder
     assert!(
@@ -2089,7 +2298,12 @@ fn test_dead_builder_cannot_place_building() {
     let builder = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
     world.resource_mut::<PlayerResources>().players[0].food = 300;
 
-    issue_build(&mut world, builder, BuildingKind::CatTree, GridPos::new(10, 5));
+    issue_build(
+        &mut world,
+        builder,
+        BuildingKind::CatTree,
+        GridPos::new(10, 5),
+    );
 
     run_ticks(&mut world, &mut schedule, 1);
 
@@ -2117,15 +2331,22 @@ fn test_stop_cancels_build_order() {
     let builder = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
     world.resource_mut::<PlayerResources>().players[0].food = 300;
 
-    issue_build(&mut world, builder, BuildingKind::CatTree, GridPos::new(10, 5));
+    issue_build(
+        &mut world,
+        builder,
+        BuildingKind::CatTree,
+        GridPos::new(10, 5),
+    );
 
     run_ticks(&mut world, &mut schedule, 1);
     assert!(world.get::<BuildOrder>(builder).is_some());
 
     // Issue Stop command
-    world.resource_mut::<CommandQueue>().push(GameCommand::Stop {
-        unit_ids: vec![EntityId(builder.to_bits())],
-    });
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::Stop {
+            unit_ids: vec![EntityId(builder.to_bits())],
+        });
 
     run_ticks(&mut world, &mut schedule, 1);
     assert!(
@@ -2140,7 +2361,10 @@ fn test_stop_cancels_build_order() {
         .iter(&world)
         .filter(|b| b.kind == BuildingKind::CatTree)
         .count();
-    assert_eq!(building_count, 0, "No building after stop cancels build order");
+    assert_eq!(
+        building_count, 0,
+        "No building after stop cancels build order"
+    );
 }
 
 #[test]
@@ -2149,16 +2373,23 @@ fn test_move_cancels_build_order() {
     let builder = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
     world.resource_mut::<PlayerResources>().players[0].food = 300;
 
-    issue_build(&mut world, builder, BuildingKind::CatTree, GridPos::new(10, 5));
+    issue_build(
+        &mut world,
+        builder,
+        BuildingKind::CatTree,
+        GridPos::new(10, 5),
+    );
 
     run_ticks(&mut world, &mut schedule, 1);
     assert!(world.get::<BuildOrder>(builder).is_some());
 
     // Issue Move command to redirect builder
-    world.resource_mut::<CommandQueue>().push(GameCommand::Move {
-        unit_ids: vec![EntityId(builder.to_bits())],
-        target: GridPos::new(3, 3),
-    });
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::Move {
+            unit_ids: vec![EntityId(builder.to_bits())],
+            target: GridPos::new(3, 3),
+        });
 
     run_ticks(&mut world, &mut schedule, 1);
     assert!(
@@ -2167,7 +2398,10 @@ fn test_move_cancels_build_order() {
     );
     // CatTree costs 150 food — should be refunded
     let food_after = world.resource::<PlayerResources>().players[0].food;
-    assert_eq!(food_after, 300, "Move should refund CatTree's 150 food cost, got {food_after}");
+    assert_eq!(
+        food_after, 300,
+        "Move should refund CatTree's 150 food cost, got {food_after}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -2182,7 +2416,12 @@ fn test_build_deducts_resources_immediately() {
     let initial_food = world.resource::<PlayerResources>().players[0].food;
 
     // Build CatTree (costs 150 food) far away so builder hasn't arrived after 1 tick
-    issue_build(&mut world, builder, BuildingKind::CatTree, GridPos::new(15, 5));
+    issue_build(
+        &mut world,
+        builder,
+        BuildingKind::CatTree,
+        GridPos::new(15, 5),
+    );
 
     run_ticks(&mut world, &mut schedule, 1);
 
@@ -2199,7 +2438,10 @@ fn test_build_deducts_resources_immediately() {
         .iter(&world)
         .filter(|b| b.kind == BuildingKind::CatTree)
         .count();
-    assert_eq!(building_count, 0, "Building should not exist yet while builder walks");
+    assert_eq!(
+        building_count, 0,
+        "Building should not exist yet while builder walks"
+    );
 }
 
 #[test]
@@ -2210,7 +2452,12 @@ fn test_stop_builder_refunds_resources() {
     let initial_food = world.resource::<PlayerResources>().players[0].food;
 
     // Build CatTree far away (costs 150 food)
-    issue_build(&mut world, builder, BuildingKind::CatTree, GridPos::new(15, 5));
+    issue_build(
+        &mut world,
+        builder,
+        BuildingKind::CatTree,
+        GridPos::new(15, 5),
+    );
 
     run_ticks(&mut world, &mut schedule, 1);
 
@@ -2245,20 +2492,30 @@ fn test_end_to_end_gather_build_train_rally() {
     world.resource_mut::<PlayerResources>().players[0].supply = 1;
 
     // Gather resources until we have enough for CatTree (150 food)
-    world.resource_mut::<CommandQueue>().push(GameCommand::GatherResource {
-        unit_ids: vec![EntityId(worker.to_bits())],
-        deposit: EntityId(deposit.to_bits()),
-    });
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::GatherResource {
+            unit_ids: vec![EntityId(worker.to_bits())],
+            deposit: EntityId(deposit.to_bits()),
+        });
     run_ticks(&mut world, &mut schedule, 300);
 
     let food = world.resource::<PlayerResources>().players[0].food;
-    assert!(food >= 150, "Should have gathered enough food for CatTree, got {food}");
+    assert!(
+        food >= 150,
+        "Should have gathered enough food for CatTree, got {food}"
+    );
 
     // Stop gathering and build a CatTree
     issue_stop(&mut world, &[worker]);
     run_ticks(&mut world, &mut schedule, 1);
 
-    issue_build(&mut world, worker, BuildingKind::CatTree, GridPos::new(14, 10));
+    issue_build(
+        &mut world,
+        worker,
+        BuildingKind::CatTree,
+        GridPos::new(14, 10),
+    );
 
     // Wait for walk (~30 ticks) + construction (150 ticks) + buffer
     run_ticks(&mut world, &mut schedule, 200);
@@ -2274,10 +2531,12 @@ fn test_end_to_end_gather_build_train_rally() {
 
     // Set rally point
     let rally_pos = GridPos::new(16, 10);
-    world.resource_mut::<CommandQueue>().push(GameCommand::SetRallyPoint {
-        building: EntityId(cat_tree.to_bits()),
-        target: rally_pos,
-    });
+    world
+        .resource_mut::<CommandQueue>()
+        .push(GameCommand::SetRallyPoint {
+            building: EntityId(cat_tree.to_bits()),
+            target: rally_pos,
+        });
 
     // Ensure enough resources to train a Nuisance (75 food, 1 supply)
     world.resource_mut::<PlayerResources>().players[0].food += 100;
@@ -2293,7 +2552,10 @@ fn test_end_to_end_gather_build_train_rally() {
         .iter(&world)
         .filter(|ut| ut.kind == UnitKind::Nuisance)
         .count();
-    assert!(nuisance_count >= 1, "Nuisance should have spawned from CatTree");
+    assert!(
+        nuisance_count >= 1,
+        "Nuisance should have spawned from CatTree"
+    );
 }
 
 #[test]
@@ -2355,7 +2617,10 @@ fn test_duplicate_build_at_same_location() {
         .count();
 
     // Each builder independently places a building. 300 food was deducted (150 * 2).
-    assert_eq!(cat_tree_count, 2, "Both builders should place buildings (sim doesn't block overlap)");
+    assert_eq!(
+        cat_tree_count, 2,
+        "Both builders should place buildings (sim doesn't block overlap)"
+    );
     let food = world.resource::<PlayerResources>().players[0].food;
     assert_eq!(food, 600 - 150 - 150, "Both builds should deduct resources");
 }
@@ -2363,8 +2628,8 @@ fn test_duplicate_build_at_same_location() {
 #[test]
 fn test_ai_builds_on_valid_terrain() {
     use cc_core::terrain::TerrainType;
-    use cc_sim::ai::fsm::{AiDifficulty, AiPhase, AiState};
     use cc_sim::ai::MultiAiState;
+    use cc_sim::ai::fsm::{AiDifficulty, AiPhase, AiState};
 
     // Create a 64×64 map with some water patches to test avoidance
     let mut map = GameMap::new(64, 64);
@@ -2471,7 +2736,9 @@ fn test_ai_builds_on_valid_terrain() {
     for (pos, kind) in &ai_buildings {
         // TheBox and CatTree were manually placed; check new ones
         assert!(
-            map_ref.is_passable(*pos) || *kind == BuildingKind::TheBox || *kind == BuildingKind::CatTree,
+            map_ref.is_passable(*pos)
+                || *kind == BuildingKind::TheBox
+                || *kind == BuildingKind::CatTree,
             "Building {kind:?} at {pos:?} is on impassable terrain"
         );
     }
@@ -2524,7 +2791,10 @@ fn supply_reclaimed_on_unit_death() {
     // Supply should be decremented
     let pres = world.resource::<PlayerResources>();
     let p = pres.players.get(0).unwrap();
-    assert_eq!(p.supply, 2, "Supply should decrease by 1 (Nuisance costs 1 supply)");
+    assert_eq!(
+        p.supply, 2,
+        "Supply should decrease by 1 (Nuisance costs 1 supply)"
+    );
 }
 
 #[test]
@@ -2586,12 +2856,21 @@ fn construction_health_scales_during_build() {
 
     let entity = world
         .spawn((
-            Position { world: WorldPos::from_grid(GridPos::new(5, 5)) },
+            Position {
+                world: WorldPos::from_grid(GridPos::new(5, 5)),
+            },
             Velocity::zero(),
-            GridCell { pos: GridPos::new(5, 5) },
+            GridCell {
+                pos: GridPos::new(5, 5),
+            },
             Owner { player_id: 0 },
-            Building { kind: BuildingKind::CatTree },
-            Health { current: starting_hp, max: max_hp },
+            Building {
+                kind: BuildingKind::CatTree,
+            },
+            Health {
+                current: starting_hp,
+                max: max_hp,
+            },
             UnderConstruction {
                 remaining_ticks: 150, // CatTree build time
                 total_ticks: 150,

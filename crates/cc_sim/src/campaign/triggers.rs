@@ -113,13 +113,15 @@ pub fn trigger_check_system(
                 TriggerAction::SetPersistentFlag(flag) => {
                     campaign.persistent.set_flag(flag.clone());
                 }
-                TriggerAction::ToggleMutator { mutator_index, active } => {
+                TriggerAction::ToggleMutator {
+                    mutator_index,
+                    active,
+                } => {
                     if *mutator_index < mutator_state.active.len() {
                         mutator_state.active[*mutator_index] = *active;
                     }
                 }
-                TriggerAction::SetTerrain { .. }
-                | TriggerAction::AreaDamage { .. } => {
+                TriggerAction::SetTerrain { .. } | TriggerAction::AreaDamage { .. } => {
                     // TODO: implement terrain/damage actions (needs MapResource + Commands)
                 }
             }
@@ -171,15 +173,15 @@ fn evaluate_condition(
         TriggerCondition::WaveEliminated(wave_id) => {
             // Use WaveTracker for accurate counts (wave_tracking_system already
             // processed dead entities and decremented alive counts).
-            wave_tracker.waves.get(wave_id)
+            wave_tracker
+                .waves
+                .get(wave_id)
                 .is_some_and(|(total, alive)| *total > 0 && *alive == 0)
         }
 
         TriggerCondition::FlagSet(flag) => campaign.flags.contains(flag),
 
-        TriggerCondition::TriggerFired(trigger_id) => {
-            campaign.fired_triggers.contains(trigger_id)
-        }
+        TriggerCondition::TriggerFired(trigger_id) => campaign.fired_triggers.contains(trigger_id),
 
         TriggerCondition::All(conditions) => conditions
             .iter()
@@ -206,8 +208,13 @@ fn evaluate_condition(
         TriggerCondition::PersistentFlag(flag) => campaign.persistent.has_flag(flag),
 
         TriggerCondition::HazardLevel { .. } => false, // TODO: implement hazard level tracking
-        TriggerCondition::Periodic { interval_ticks, offset_ticks } => {
-            *interval_ticks > 0 && tick >= *offset_ticks && (tick - *offset_ticks) % *interval_ticks == 0
+        TriggerCondition::Periodic {
+            interval_ticks,
+            offset_ticks,
+        } => {
+            *interval_ticks > 0
+                && tick >= *offset_ticks
+                && (tick - *offset_ticks) % *interval_ticks == 0
         }
     }
 }

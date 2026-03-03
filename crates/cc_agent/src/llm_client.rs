@@ -96,10 +96,7 @@ pub fn parse_openai_response(json: &serde_json::Value) -> Result<LlmResponse, Ll
         for call in calls {
             tool_calls.push(ToolCall {
                 id: call["id"].as_str().unwrap_or("").to_string(),
-                name: call["function"]["name"]
-                    .as_str()
-                    .unwrap_or("")
-                    .to_string(),
+                name: call["function"]["name"].as_str().unwrap_or("").to_string(),
                 arguments: serde_json::from_str(
                     call["function"]["arguments"].as_str().unwrap_or("{}"),
                 )
@@ -220,7 +217,10 @@ impl OpenAiCompatibleClient {
                     continue;
                 }
 
-                if let Some(data) = line.strip_prefix("data: ").or_else(|| line.strip_prefix("data:")) {
+                if let Some(data) = line
+                    .strip_prefix("data: ")
+                    .or_else(|| line.strip_prefix("data:"))
+                {
                     if data.trim() == "[DONE]" {
                         // Send final done chunk
                         let _ = token_tx.try_send(TokenChunk {

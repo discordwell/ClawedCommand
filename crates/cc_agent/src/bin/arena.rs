@@ -4,11 +4,11 @@
 
 #[cfg(feature = "harness")]
 fn main() {
-    use clap::Parser;
     use cc_agent::arena::*;
     use cc_sim::ai::fsm::{AiDifficulty, AiPersonalityProfile, BotConfig};
     use cc_sim::harness::MatchOutcome;
     use cc_sim::harness::snapshot::capture_snapshot;
+    use clap::Parser;
     use std::path::PathBuf;
 
     #[derive(Parser, Debug)]
@@ -207,10 +207,7 @@ fn main() {
                 let snap_dir = output_dir.join("snapshots");
                 let _ = std::fs::create_dir_all(&snap_dir);
                 for snap in &result.snapshots {
-                    let snap_path = snap_dir.join(format!(
-                        "seed{seed}_tick{}.json",
-                        snap.tick
-                    ));
+                    let snap_path = snap_dir.join(format!("seed{seed}_tick{}.json", snap.tick));
                     if let Ok(json) = serde_json::to_string_pretty(&snap) {
                         let _ = std::fs::write(&snap_path, &json);
                     }

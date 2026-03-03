@@ -5,8 +5,8 @@ use cc_core::components::{AttackType, UnitKind, UpgradeType};
 use cc_core::coords::GridPos;
 use cc_core::math::Fixed;
 
-use crate::script_context::ScriptContext;
 use super::BehaviorResult;
+use crate::script_context::ScriptContext;
 
 /// Split army into main force (70%) + flanking group (30%) and attack from two angles.
 /// Main force attack-moves directly; flanking group swings wide.
@@ -69,10 +69,7 @@ pub fn coordinate_assault(
             // Flank offset = perpendicular, 5 tiles out
             let flank_offset_x = -dy.signum() * 5;
             let flank_offset_y = dx.signum() * 5;
-            let flank_target = GridPos::new(
-                target.x + flank_offset_x,
-                target.y + flank_offset_y,
-            );
+            let flank_target = GridPos::new(target.x + flank_offset_x, target.y + flank_offset_y);
 
             ctx.cmd_attack_move(flank_group.clone(), flank_target);
             commands_issued += 1;
@@ -93,15 +90,12 @@ pub fn coordinate_assault(
 
 /// Evaluate completed upgrades and auto-queue the best remaining upgrade.
 /// Prioritizes upgrades based on current army composition.
-pub fn research_priority(
-    ctx: &mut ScriptContext,
-    building_id: EntityId,
-) -> BehaviorResult {
+pub fn research_priority(ctx: &mut ScriptContext, building_id: EntityId) -> BehaviorResult {
     let res = ctx.resources().clone();
 
     // Available upgrades in priority order based on general usefulness
     let priorities = [
-        (UpgradeType::SharperClaws, 150, 50),   // food, gpu
+        (UpgradeType::SharperClaws, 150, 50), // food, gpu
         (UpgradeType::ThickerFur, 200, 75),
         (UpgradeType::NimblePaws, 150, 100),
         (UpgradeType::SiegeTraining, 300, 150),
@@ -177,9 +171,11 @@ pub fn adaptive_defense(
     // Place melee units in a forward line toward threat direction
     for (i, &uid) in melee_ids.iter().enumerate() {
         let spread = (i as i32) - (melee_ids.len() as i32 / 2);
-        let forward_x = center.x + (threat_dir.0 * radius_i32 as f64 * 0.7).round() as i32
+        let forward_x = center.x
+            + (threat_dir.0 * radius_i32 as f64 * 0.7).round() as i32
             + (-threat_dir.1 * spread as f64 * 2.0).round() as i32;
-        let forward_y = center.y + (threat_dir.1 * radius_i32 as f64 * 0.7).round() as i32
+        let forward_y = center.y
+            + (threat_dir.1 * radius_i32 as f64 * 0.7).round() as i32
             + (threat_dir.0 * spread as f64 * 2.0).round() as i32;
         ctx.cmd_move(vec![uid], GridPos::new(forward_x, forward_y));
         commands_issued += 1;
@@ -188,9 +184,11 @@ pub fn adaptive_defense(
     // Place ranged units behind melee, try to find elevated positions
     for (i, &uid) in ranged_ids.iter().enumerate() {
         let spread = (i as i32) - (ranged_ids.len() as i32 / 2);
-        let back_x = center.x + (threat_dir.0 * radius_i32 as f64 * 0.3).round() as i32
+        let back_x = center.x
+            + (threat_dir.0 * radius_i32 as f64 * 0.3).round() as i32
             + (-threat_dir.1 * spread as f64 * 2.0).round() as i32;
-        let back_y = center.y + (threat_dir.1 * radius_i32 as f64 * 0.3).round() as i32
+        let back_y = center.y
+            + (threat_dir.1 * radius_i32 as f64 * 0.3).round() as i32
             + (threat_dir.0 * spread as f64 * 2.0).round() as i32;
         ctx.cmd_move(vec![uid], GridPos::new(back_x, back_y));
         commands_issued += 1;
@@ -229,7 +227,7 @@ mod tests {
     use cc_sim::resources::PlayerResourceState;
 
     use crate::snapshot::GameStateSnapshot;
-    use crate::test_fixtures::{make_unit, make_snapshot};
+    use crate::test_fixtures::{make_snapshot, make_unit};
 
     #[test]
     fn coordinate_assault_splits_army() {
@@ -335,9 +333,9 @@ mod tests {
     fn adaptive_defense_positions_units() {
         let snap = make_snapshot(
             vec![
-                make_unit(1, UnitKind::Chonk, 10, 10, 0),   // melee
-                make_unit(2, UnitKind::Hisser, 10, 11, 0),   // ranged
-                make_unit(3, UnitKind::Yowler, 10, 12, 0),   // support
+                make_unit(1, UnitKind::Chonk, 10, 10, 0),  // melee
+                make_unit(2, UnitKind::Hisser, 10, 11, 0), // ranged
+                make_unit(3, UnitKind::Yowler, 10, 12, 0), // support
             ],
             vec![make_unit(20, UnitKind::Nuisance, 20, 10, 1)], // threat from east
         );

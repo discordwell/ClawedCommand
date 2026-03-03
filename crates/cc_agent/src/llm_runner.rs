@@ -7,7 +7,10 @@
 use bevy::prelude::*;
 
 use crate::agent_bridge::{AgentChannels, AgentRequest, AgentResponse, AgentSource, TokenChunk};
-use crate::llm_client::{AgentStatus, ChatMessage, LlmClient, LlmConfig, LlmBackend, OpenAiCompatibleClient, MockLlmClient, LlmResponse};
+use crate::llm_client::{
+    AgentStatus, ChatMessage, LlmBackend, LlmClient, LlmConfig, LlmResponse, MockLlmClient,
+    OpenAiCompatibleClient,
+};
 use crate::mcp_tools;
 use crate::snapshot;
 #[cfg(test)]
@@ -90,15 +93,11 @@ async fn process_request(
         AgentSource::ConstructMode | AgentSource::Prompt => {
             // Both ConstructMode and Prompt use the fine-tuned Devstral path
             if config.finetuned_lua {
-                let has_finetune_prompt = request
-                    .chat_history
-                    .as_ref()
-                    .is_some_and(|h| {
-                        h.iter().any(|m| {
-                            m.role == "system"
-                                && m.content == FINETUNE_CONSTRUCT_SYSTEM_PROMPT
-                        })
-                    });
+                let has_finetune_prompt = request.chat_history.as_ref().is_some_and(|h| {
+                    h.iter().any(|m| {
+                        m.role == "system" && m.content == FINETUNE_CONSTRUCT_SYSTEM_PROMPT
+                    })
+                });
                 if !has_finetune_prompt {
                     messages.push(ChatMessage {
                         role: "system".to_string(),
@@ -131,7 +130,11 @@ async fn process_request(
             if let Some(snap) = snapshot {
                 messages.push(ChatMessage {
                     role: "user".to_string(),
-                    content: format!("{}\n\n{}", snapshot::summarize_snapshot(snap), request.prompt),
+                    content: format!(
+                        "{}\n\n{}",
+                        snapshot::summarize_snapshot(snap),
+                        request.prompt
+                    ),
                 });
             } else {
                 messages.push(ChatMessage {
@@ -144,7 +147,10 @@ async fn process_request(
 
     // Fine-tuned models generate Lua directly — no tool calls needed
     let use_tools = !(config.finetuned_lua
-        && matches!(request.source, AgentSource::ConstructMode | AgentSource::Prompt));
+        && matches!(
+            request.source,
+            AgentSource::ConstructMode | AgentSource::Prompt
+        ));
 
     // Get tool definitions for this tier
     let tool_defs = if use_tools {
@@ -164,11 +170,17 @@ async fn process_request(
     // Use streaming for Prompt/ConstructMode when no tool calls and we have a streaming client
     let use_streaming = !use_tools
         && streaming_client.is_some()
-        && matches!(request.source, AgentSource::Prompt | AgentSource::ConstructMode);
+        && matches!(
+            request.source,
+            AgentSource::Prompt | AgentSource::ConstructMode
+        );
 
     if use_streaming {
         let sc = streaming_client.unwrap();
-        match sc.stream_complete(&messages, token_tx, request.source).await {
+        match sc
+            .stream_complete(&messages, token_tx, request.source)
+            .await
+        {
             Ok(response) => {
                 return AgentResponse {
                     content: response.content,
@@ -257,10 +269,7 @@ async fn process_request(
 
 /// Spawn the LLM runner as a background tokio task.
 /// Returns the tokio JoinHandle (can be ignored — runs until channel closes).
-pub fn spawn_llm_runner(
-    config: LlmConfig,
-    channels: AgentChannels,
-) -> std::thread::JoinHandle<()> {
+pub fn spawn_llm_runner(config: LlmConfig, channels: AgentChannels) -> std::thread::JoinHandle<()> {
     std::thread::spawn(move || {
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -284,11 +293,27 @@ pub fn spawn_llm_runner(
                         config.model.clone(),
                         config.temperature,
                     );
-                    run_loop(&client, Some(&client), &config, request_rx, response_tx, token_tx).await;
+                    run_loop(
+                        &client,
+                        Some(&client),
+                        &config,
+                        request_rx,
+                        response_tx,
+                        token_tx,
+                    )
+                    .await;
                 }
                 _ => {
                     let client = build_client(&config);
-                    run_loop(client.as_ref(), None, &config, request_rx, response_tx, token_tx).await;
+                    run_loop(
+                        client.as_ref(),
+                        None,
+                        &config,
+                        request_rx,
+                        response_tx,
+                        token_tx,
+                    )
+                    .await;
                 }
             }
         });
@@ -310,13 +335,7 @@ async fn run_loop(
             Err(_) => break,
         };
 
-        let response = process_request(
-            client,
-            &request,
-            config,
-            streaming_client,
-            &token_tx,
-        ).await;
+        let response = process_request(client, &request, config, streaming_client, &token_tx).await;
 
         if response_tx.send(response).is_err() {
             break;

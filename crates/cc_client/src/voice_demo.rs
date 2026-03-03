@@ -111,30 +111,94 @@ pub fn build_voice_demo_mission() -> MissionDefinition {
     // Cat units (player 0) — in player_setup.units so they spawn as P0
     let cat_units = vec![
         // 4 Chonks: tank wall at x=6
-        UnitSpawn { kind: UnitKind::Chonk, position: GridPos::new(6, 11), player_id: 0 },
-        UnitSpawn { kind: UnitKind::Chonk, position: GridPos::new(6, 14), player_id: 0 },
-        UnitSpawn { kind: UnitKind::Chonk, position: GridPos::new(6, 17), player_id: 0 },
-        UnitSpawn { kind: UnitKind::Chonk, position: GridPos::new(6, 20), player_id: 0 },
+        UnitSpawn {
+            kind: UnitKind::Chonk,
+            position: GridPos::new(6, 11),
+            player_id: 0,
+        },
+        UnitSpawn {
+            kind: UnitKind::Chonk,
+            position: GridPos::new(6, 14),
+            player_id: 0,
+        },
+        UnitSpawn {
+            kind: UnitKind::Chonk,
+            position: GridPos::new(6, 17),
+            player_id: 0,
+        },
+        UnitSpawn {
+            kind: UnitKind::Chonk,
+            position: GridPos::new(6, 20),
+            player_id: 0,
+        },
         // 5 Hissers: exposed in center at x=18-19
-        UnitSpawn { kind: UnitKind::Hisser, position: GridPos::new(18, 10), player_id: 0 },
-        UnitSpawn { kind: UnitKind::Hisser, position: GridPos::new(19, 13), player_id: 0 },
-        UnitSpawn { kind: UnitKind::Hisser, position: GridPos::new(18, 15), player_id: 0 },
-        UnitSpawn { kind: UnitKind::Hisser, position: GridPos::new(19, 17), player_id: 0 },
-        UnitSpawn { kind: UnitKind::Hisser, position: GridPos::new(18, 20), player_id: 0 },
+        UnitSpawn {
+            kind: UnitKind::Hisser,
+            position: GridPos::new(18, 10),
+            player_id: 0,
+        },
+        UnitSpawn {
+            kind: UnitKind::Hisser,
+            position: GridPos::new(19, 13),
+            player_id: 0,
+        },
+        UnitSpawn {
+            kind: UnitKind::Hisser,
+            position: GridPos::new(18, 15),
+            player_id: 0,
+        },
+        UnitSpawn {
+            kind: UnitKind::Hisser,
+            position: GridPos::new(19, 17),
+            player_id: 0,
+        },
+        UnitSpawn {
+            kind: UnitKind::Hisser,
+            position: GridPos::new(18, 20),
+            player_id: 0,
+        },
     ];
 
     // Mouse units (player 1) — in enemy_waves with Immediate trigger
     let mouse_units = vec![
         // 3 Swarmers
-        UnitSpawn { kind: UnitKind::Swarmer, position: GridPos::new(32, 12), player_id: 1 },
-        UnitSpawn { kind: UnitKind::Swarmer, position: GridPos::new(33, 15), player_id: 1 },
-        UnitSpawn { kind: UnitKind::Swarmer, position: GridPos::new(32, 18), player_id: 1 },
+        UnitSpawn {
+            kind: UnitKind::Swarmer,
+            position: GridPos::new(32, 12),
+            player_id: 1,
+        },
+        UnitSpawn {
+            kind: UnitKind::Swarmer,
+            position: GridPos::new(33, 15),
+            player_id: 1,
+        },
+        UnitSpawn {
+            kind: UnitKind::Swarmer,
+            position: GridPos::new(32, 18),
+            player_id: 1,
+        },
         // 2 Shriekers
-        UnitSpawn { kind: UnitKind::Shrieker, position: GridPos::new(34, 13), player_id: 1 },
-        UnitSpawn { kind: UnitKind::Shrieker, position: GridPos::new(34, 17), player_id: 1 },
+        UnitSpawn {
+            kind: UnitKind::Shrieker,
+            position: GridPos::new(34, 13),
+            player_id: 1,
+        },
+        UnitSpawn {
+            kind: UnitKind::Shrieker,
+            position: GridPos::new(34, 17),
+            player_id: 1,
+        },
         // 2 Quillbacks
-        UnitSpawn { kind: UnitKind::Quillback, position: GridPos::new(30, 14), player_id: 1 },
-        UnitSpawn { kind: UnitKind::Quillback, position: GridPos::new(30, 16), player_id: 1 },
+        UnitSpawn {
+            kind: UnitKind::Quillback,
+            position: GridPos::new(30, 14),
+            player_id: 1,
+        },
+        UnitSpawn {
+            kind: UnitKind::Quillback,
+            position: GridPos::new(30, 16),
+            player_id: 1,
+        },
     ];
 
     // Dialogue — Minstral (AI voice) announcing each command
@@ -293,9 +357,7 @@ pub fn voice_demo_system(
                 // Hissers (P0) fall back behind Chonks
                 let hisser_entities: Vec<Entity> = units
                     .iter()
-                    .filter(|(_, ut, owner)| {
-                        ut.kind == UnitKind::Hisser && owner.player_id == 0
-                    })
+                    .filter(|(_, ut, owner)| ut.kind == UnitKind::Hisser && owner.player_id == 0)
                     .map(|(e, _, _)| e)
                     .collect();
 
@@ -321,7 +383,13 @@ pub fn voice_demo_system(
                     apply_voice_buff(&mut commands, *entity, &status_query);
                 }
 
-                spawn_voice_ping(&mut commands, &mut meshes, &mut materials, target, map_res.map.elevation_at(target));
+                spawn_voice_ping(
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    target,
+                    map_res.map.elevation_at(target),
+                );
             }
         }
         VoiceDemoPhase::Charge => {
@@ -356,7 +424,13 @@ pub fn voice_demo_system(
                     apply_voice_buff(&mut commands, *entity, &status_query);
                 }
 
-                spawn_voice_ping(&mut commands, &mut meshes, &mut materials, target, map_res.map.elevation_at(target));
+                spawn_voice_ping(
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    target,
+                    map_res.map.elevation_at(target),
+                );
             }
         }
         VoiceDemoPhase::Attack => {
@@ -369,10 +443,8 @@ pub fn voice_demo_system(
                     .map(|(e, _, _)| e)
                     .collect();
 
-                let cat_ids: Vec<EntityId> = cat_entities
-                    .iter()
-                    .map(|e| EntityId(e.to_bits()))
-                    .collect();
+                let cat_ids: Vec<EntityId> =
+                    cat_entities.iter().map(|e| EntityId(e.to_bits())).collect();
 
                 let target = GridPos::new(32, 15);
                 if !cat_ids.is_empty() {
@@ -391,7 +463,13 @@ pub fn voice_demo_system(
                     apply_voice_buff(&mut commands, *entity, &status_query);
                 }
 
-                spawn_voice_ping(&mut commands, &mut meshes, &mut materials, target, map_res.map.elevation_at(target));
+                spawn_voice_ping(
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    target,
+                    map_res.map.elevation_at(target),
+                );
             }
         }
         VoiceDemoPhase::Hold => {
@@ -404,18 +482,14 @@ pub fn voice_demo_system(
                     .map(|(e, _, _)| e)
                     .collect();
 
-                let cat_ids: Vec<EntityId> = cat_entities
-                    .iter()
-                    .map(|e| EntityId(e.to_bits()))
-                    .collect();
+                let cat_ids: Vec<EntityId> =
+                    cat_entities.iter().map(|e| EntityId(e.to_bits())).collect();
 
                 if !cat_ids.is_empty() {
                     cmd_queue.push_sourced(
                         Some(0),
                         CommandSource::Script,
-                        GameCommand::HoldPosition {
-                            unit_ids: cat_ids,
-                        },
+                        GameCommand::HoldPosition { unit_ids: cat_ids },
                     );
                 }
 
@@ -445,10 +519,8 @@ pub fn voice_demo_system(
                     .map(|(e, _, _)| e)
                     .collect();
 
-                let cat_ids: Vec<EntityId> = cat_entities
-                    .iter()
-                    .map(|e| EntityId(e.to_bits()))
-                    .collect();
+                let cat_ids: Vec<EntityId> =
+                    cat_entities.iter().map(|e| EntityId(e.to_bits())).collect();
 
                 let target = RETREAT_POS;
                 if !cat_ids.is_empty() {
@@ -467,7 +539,13 @@ pub fn voice_demo_system(
                     apply_voice_buff(&mut commands, *entity, &status_query);
                 }
 
-                spawn_voice_ping(&mut commands, &mut meshes, &mut materials, target, map_res.map.elevation_at(target));
+                spawn_voice_ping(
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    target,
+                    map_res.map.elevation_at(target),
+                );
             }
         }
         VoiceDemoPhase::Done => {} // Combat plays out naturally
@@ -484,11 +562,7 @@ fn apply_voice_buff(
     commands.entity(entity).insert(VoiceBuffed);
 
     // Check if entity already has StatusEffects
-    let has_status = status_query
-        .get(entity)
-        .ok()
-        .flatten()
-        .is_some();
+    let has_status = status_query.get(entity).ok().flatten().is_some();
 
     let buff = StatusInstance {
         effect: StatusEffectId::SpeedBuff,
@@ -500,19 +574,23 @@ fn apply_voice_buff(
     if has_status {
         // Entity already has StatusEffects — add the buff via deferred closure.
         // Also ensure StatModifiers exists (required by stat_modifier_system).
-        commands.entity(entity).queue(move |mut entity_world: EntityWorldMut| {
-            if let Some(mut se) = entity_world.get_mut::<StatusEffects>() {
-                se.effects.push(buff);
-            }
-            if entity_world.get::<StatModifiers>().is_none() {
-                entity_world.insert(StatModifiers::default());
-            }
-        });
+        commands
+            .entity(entity)
+            .queue(move |mut entity_world: EntityWorldMut| {
+                if let Some(mut se) = entity_world.get_mut::<StatusEffects>() {
+                    se.effects.push(buff);
+                }
+                if entity_world.get::<StatModifiers>().is_none() {
+                    entity_world.insert(StatModifiers::default());
+                }
+            });
     } else {
         // Entity lacks StatusEffects — insert both StatusEffects and StatModifiers
         let mut effects = StatusEffects::default();
         effects.effects.push(buff);
-        commands.entity(entity).insert((effects, StatModifiers::default()));
+        commands
+            .entity(entity)
+            .insert((effects, StatModifiers::default()));
     }
 }
 

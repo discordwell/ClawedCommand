@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 
 use crate::input::{InputMode, PlacementPreview};
-use crate::renderer::building_gen::{BuildingRole, BuildingSprites, building_kind_index, building_role, building_scale};
+use crate::renderer::building_gen::{
+    BuildingRole, BuildingSprites, building_kind_index, building_role, building_scale,
+};
 use crate::setup::{BuildingMesh, building_color, team_color};
 use cc_core::components::{Building, BuildingKind, Health, Owner, Position, UnderConstruction};
 use cc_core::coords::{depth_z, world_to_screen};
@@ -76,12 +78,14 @@ pub fn spawn_building_visuals(
                     color: tint,
                     ..default()
                 },
-                Transform::from_xyz(screen.x, -screen.y + elev, z)
-                    .with_scale(Vec3::splat(scale)),
+                Transform::from_xyz(screen.x, -screen.y + elev, z).with_scale(Vec3::splat(scale)),
             ));
         } else {
             // Fallback: colored rectangle mesh
-            let mesh = meshes.add(Rectangle::new(super::BUILDING_SPRITE_SIZE, super::BUILDING_SPRITE_SIZE));
+            let mesh = meshes.add(Rectangle::new(
+                super::BUILDING_SPRITE_SIZE,
+                super::BUILDING_SPRITE_SIZE,
+            ));
             let mat = materials.add(ColorMaterial::from_color(building_color(owner.player_id)));
 
             commands.entity(entity).insert((
@@ -167,7 +171,10 @@ pub fn render_placement_preview(
     } else {
         // Fallback: colored rectangle mesh
         let color = Color::srgba(gr, gg, gb, ghost_alpha);
-        let mesh = meshes.add(Rectangle::new(super::BUILDING_SPRITE_SIZE, super::BUILDING_SPRITE_SIZE));
+        let mesh = meshes.add(Rectangle::new(
+            super::BUILDING_SPRITE_SIZE,
+            super::BUILDING_SPRITE_SIZE,
+        ));
         let mat = materials.add(ColorMaterial::from_color(color));
 
         commands.spawn((
@@ -192,7 +199,11 @@ pub fn spawn_construction_bars(
     mut commands: Commands,
     buildings: Query<
         (Entity, &Building),
-        (With<UnderConstruction>, With<BuildingMesh>, Without<HasConstructionBar>),
+        (
+            With<UnderConstruction>,
+            With<BuildingMesh>,
+            Without<HasConstructionBar>,
+        ),
     >,
 ) {
     for (entity, building) in buildings.iter() {
@@ -254,10 +265,7 @@ pub fn update_construction_bars(
 /// Remove construction bars when building finishes construction.
 pub fn remove_construction_bars(
     mut commands: Commands,
-    finished: Query<
-        (Entity, &Children),
-        (With<HasConstructionBar>, Without<UnderConstruction>),
-    >,
+    finished: Query<(Entity, &Children), (With<HasConstructionBar>, Without<UnderConstruction>)>,
     bg_bars: Query<Entity, With<ConstructionBarBg>>,
     fg_bars: Query<Entity, With<ConstructionBarFg>>,
 ) {
@@ -327,11 +335,19 @@ pub fn update_construction_alpha_mesh(
 pub fn update_building_damage_tint(
     mut sprite_buildings: Query<
         (&Health, &Owner, &mut Sprite),
-        (With<BuildingMesh>, With<SpriteBuilding>, Without<UnderConstruction>),
+        (
+            With<BuildingMesh>,
+            With<SpriteBuilding>,
+            Without<UnderConstruction>,
+        ),
     >,
     mesh_buildings: Query<
         (&Health, &Owner, &MeshMaterial2d<ColorMaterial>),
-        (With<BuildingMesh>, Without<SpriteBuilding>, Without<UnderConstruction>),
+        (
+            With<BuildingMesh>,
+            Without<SpriteBuilding>,
+            Without<UnderConstruction>,
+        ),
     >,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {

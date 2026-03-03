@@ -4,8 +4,8 @@ use cc_core::commands::EntityId;
 use cc_core::components::{BuildingKind, UnitKind};
 use cc_core::coords::GridPos;
 
-use crate::script_context::ScriptContext;
 use super::BehaviorResult;
+use crate::script_context::ScriptContext;
 
 /// Send idle Pawdlers to the nearest resource deposit.
 /// Scans all own idle Pawdlers and assigns each to the closest deposit.
@@ -34,18 +34,11 @@ pub fn assign_idle_workers(ctx: &mut ScriptContext) -> BehaviorResult {
 /// Analyze army composition and auto-queue a missing unit type.
 /// Tries to maintain a balanced army by checking current unit counts
 /// and training the type with the fewest representatives.
-pub fn balanced_production(
-    ctx: &mut ScriptContext,
-    building_id: EntityId,
-) -> BehaviorResult {
+pub fn balanced_production(ctx: &mut ScriptContext, building_id: EntityId) -> BehaviorResult {
     let res = ctx.resources().clone();
 
     // Count current combat units (not Pawdlers)
-    let combat_kinds = [
-        UnitKind::Nuisance,
-        UnitKind::Chonk,
-        UnitKind::Hisser,
-    ];
+    let combat_kinds = [UnitKind::Nuisance, UnitKind::Chonk, UnitKind::Hisser];
 
     let mut counts: Vec<(UnitKind, usize)> = combat_kinds
         .iter()
@@ -80,17 +73,14 @@ pub fn balanced_production(
 
 /// Build economic infrastructure: FishMarkets near deposits, LitterBoxes for supply.
 /// Checks if the builder is idle, finds the nearest unserved deposit, and builds there.
-pub fn expand_economy(
-    ctx: &mut ScriptContext,
-    builder_id: EntityId,
-) -> BehaviorResult {
+pub fn expand_economy(ctx: &mut ScriptContext, builder_id: EntityId) -> BehaviorResult {
     let builder = match ctx.state.unit_by_id(builder_id) {
         Some(u) => u.clone(),
         None => {
             return BehaviorResult {
                 commands_issued: 0,
                 description: "Builder not found".into(),
-            }
+            };
         }
     };
 
@@ -154,7 +144,7 @@ mod tests {
     use cc_sim::resources::PlayerResourceState;
 
     use crate::snapshot::{GameStateSnapshot, ResourceSnapshot};
-    use crate::test_fixtures::{make_unit, make_snapshot};
+    use crate::test_fixtures::{make_snapshot, make_unit};
 
     #[test]
     fn assign_idle_workers_sends_pawdlers_to_deposits() {
@@ -185,7 +175,10 @@ mod tests {
         assert_eq!(result.commands_issued, 1);
 
         let cmds = ctx.take_commands();
-        assert!(matches!(cmds[0], cc_core::commands::GameCommand::GatherResource { .. }));
+        assert!(matches!(
+            cmds[0],
+            cc_core::commands::GameCommand::GatherResource { .. }
+        ));
     }
 
     #[test]

@@ -172,8 +172,7 @@ pub fn harass_economy(ctx: &mut ScriptContext, raider_ids: &[EntityId]) -> Behav
         }
     } else {
         // No workers visible — attack-move toward enemy buildings
-        let enemy_buildings: Vec<GridPos> =
-            ctx.enemy_buildings().iter().map(|b| b.pos).collect();
+        let enemy_buildings: Vec<GridPos> = ctx.enemy_buildings().iter().map(|b| b.pos).collect();
 
         if let Some(&building_pos) = enemy_buildings.first() {
             if !raider_ids.is_empty() {
@@ -201,7 +200,7 @@ pub fn scout_pattern(
             return BehaviorResult {
                 commands_issued: 0,
                 description: "Scout not found".into(),
-            }
+            };
         }
     };
 
@@ -294,13 +293,13 @@ pub fn focus_weakest(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cc_core::math::fixed_from_i32;
     use cc_core::map::GameMap;
+    use cc_core::math::fixed_from_i32;
     use cc_core::terrain::FactionId;
     use cc_sim::resources::PlayerResourceState;
 
     use crate::snapshot::GameStateSnapshot;
-    use crate::test_fixtures::{make_unit, make_snapshot};
+    use crate::test_fixtures::{make_snapshot, make_unit};
 
     #[test]
     fn focus_fire_generates_attack_for_all() {
@@ -361,7 +360,10 @@ mod tests {
 
         let cmds = ctx.take_commands();
         assert_eq!(cmds.len(), 1);
-        assert!(matches!(cmds[0], cc_core::commands::GameCommand::Move { .. }));
+        assert!(matches!(
+            cmds[0],
+            cc_core::commands::GameCommand::Move { .. }
+        ));
     }
 
     #[test]
@@ -382,7 +384,10 @@ mod tests {
         assert_eq!(result.commands_issued, 1);
 
         let cmds = ctx.take_commands();
-        assert!(matches!(cmds[0], cc_core::commands::GameCommand::Attack { .. }));
+        assert!(matches!(
+            cmds[0],
+            cc_core::commands::GameCommand::Attack { .. }
+        ));
     }
 
     #[test]
@@ -403,7 +408,10 @@ mod tests {
         assert_eq!(result.commands_issued, 1);
 
         let cmds = ctx.take_commands();
-        assert!(matches!(cmds[0], cc_core::commands::GameCommand::HoldPosition { .. }));
+        assert!(matches!(
+            cmds[0],
+            cc_core::commands::GameCommand::HoldPosition { .. }
+        ));
     }
 
     #[test]
@@ -458,7 +466,10 @@ mod tests {
         assert_eq!(result.commands_issued, 1);
 
         let cmds = ctx.take_commands();
-        assert!(matches!(cmds[0], cc_core::commands::GameCommand::TrainUnit { .. }));
+        assert!(matches!(
+            cmds[0],
+            cc_core::commands::GameCommand::TrainUnit { .. }
+        ));
     }
 
     #[test]

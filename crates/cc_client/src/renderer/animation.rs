@@ -61,10 +61,7 @@ fn frame_duration(state: AnimState) -> f32 {
 /// - Attacking if cooldown is active (recently fired)
 /// - Idle otherwise
 pub fn derive_anim_state(
-    mut query: Query<
-        (&Velocity, &AttackStats, &mut AnimState),
-        (With<UnitMesh>, Without<Dead>),
-    >,
+    mut query: Query<(&Velocity, &AttackStats, &mut AnimState), (With<UnitMesh>, Without<Dead>)>,
 ) {
     for (vel, attack_stats, mut anim_state) in query.iter_mut() {
         let new_state = if attack_stats.cooldown_remaining > 0
@@ -89,30 +86,35 @@ pub fn advance_animation(
     time: Res<Time>,
     anim_sheets: Option<Res<AnimSheets>>,
     unit_sprites: Option<Res<UnitSprites>>,
-    mut query: Query<(
-        &UnitType,
-        &AnimState,
-        &mut PrevAnimState,
-        &mut AnimIndices,
-        &mut AnimTimer,
-        &mut Sprite,
-    ), With<UnitMesh>>,
+    mut query: Query<
+        (
+            &UnitType,
+            &AnimState,
+            &mut PrevAnimState,
+            &mut AnimIndices,
+            &mut AnimTimer,
+            &mut Sprite,
+        ),
+        With<UnitMesh>,
+    >,
 ) {
-    for (unit_type, anim_state, mut prev_state, mut indices, mut timer, mut sprite) in query.iter_mut() {
+    for (unit_type, anim_state, mut prev_state, mut indices, mut timer, mut sprite) in
+        query.iter_mut()
+    {
         // Detect state transition
         if prev_state.0 != *anim_state {
             prev_state.0 = *anim_state;
-            timer.set_duration(std::time::Duration::from_secs_f32(frame_duration(*anim_state)));
+            timer.set_duration(std::time::Duration::from_secs_f32(frame_duration(
+                *anim_state,
+            )));
             timer.reset();
 
             // Look up the sheet for this state (if any)
             let idx = kind_index(unit_type.kind);
-            let sheet_opt = anim_sheets.as_ref().and_then(|sheets| {
-                match anim_state {
-                    AnimState::Walk => sheets.walk[idx].as_ref(),
-                    AnimState::Attack => sheets.attack[idx].as_ref(),
-                    AnimState::Idle => None,
-                }
+            let sheet_opt = anim_sheets.as_ref().and_then(|sheets| match anim_state {
+                AnimState::Walk => sheets.walk[idx].as_ref(),
+                AnimState::Attack => sheets.attack[idx].as_ref(),
+                AnimState::Idle => None,
             });
 
             if let Some((img, layout)) = sheet_opt {

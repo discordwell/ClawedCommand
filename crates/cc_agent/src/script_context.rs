@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use cc_core::building_stats::building_stats;
 use cc_core::commands::{AbilityTarget, EntityId, GameCommand};
 use cc_core::components::{BuildingKind, ResourceType, UnitKind, UpgradeType};
 use cc_core::coords::GridPos;
@@ -7,7 +8,6 @@ use cc_core::map::GameMap;
 use cc_core::math::{Fixed, fixed_from_i32};
 use cc_core::terrain::{CoverLevel, FactionId, TerrainType};
 use cc_core::unit_stats::base_stats;
-use cc_core::building_stats::building_stats;
 use cc_sim::pathfinding;
 use cc_sim::resources::PlayerResourceState;
 
@@ -237,12 +237,7 @@ impl<'a> ScriptContext<'a> {
                 .iter()
                 .filter(|u| u.kind == kind && !u.is_dead)
                 .collect(),
-            None => self
-                .state
-                .my_units
-                .iter()
-                .filter(|u| !u.is_dead)
-                .collect(),
+            None => self.state.my_units.iter().filter(|u| !u.is_dead).collect(),
         }
     }
 
@@ -251,7 +246,11 @@ impl<'a> ScriptContext<'a> {
         if !self.budget.spend(COST_SIMPLE) {
             return vec![];
         }
-        self.state.enemy_units.iter().filter(|u| !u.is_dead).collect()
+        self.state
+            .enemy_units
+            .iter()
+            .filter(|u| !u.is_dead)
+            .collect()
     }
 
     /// Find a unit by EntityId (own or enemy).
@@ -345,11 +344,7 @@ impl<'a> ScriptContext<'a> {
     }
 
     /// Find nearest ally to a position, optionally filtered by kind.
-    pub fn nearest_ally(
-        &mut self,
-        from: GridPos,
-        kind: Option<UnitKind>,
-    ) -> Option<&UnitSnapshot> {
+    pub fn nearest_ally(&mut self, from: GridPos, kind: Option<UnitKind>) -> Option<&UnitSnapshot> {
         if !self.budget.spend(COST_SPATIAL) {
             return None;
         }
@@ -423,11 +418,7 @@ impl<'a> ScriptContext<'a> {
         self.state
             .my_units
             .iter()
-            .filter(|u| {
-                u.is_idle
-                    && !u.is_dead
-                    && kind.map_or(true, |k| u.kind == k)
-            })
+            .filter(|u| u.is_idle && !u.is_dead && kind.map_or(true, |k| u.kind == k))
             .collect()
     }
 
@@ -505,11 +496,7 @@ impl<'a> ScriptContext<'a> {
     }
 
     /// Lowest HP enemy within range of a position.
-    pub fn weakest_enemy_in_range(
-        &mut self,
-        pos: GridPos,
-        range: Fixed,
-    ) -> Option<&UnitSnapshot> {
+    pub fn weakest_enemy_in_range(&mut self, pos: GridPos, range: Fixed) -> Option<&UnitSnapshot> {
         if !self.budget.spend(COST_SPATIAL) {
             return None;
         }
@@ -667,11 +654,7 @@ impl<'a> ScriptContext<'a> {
 
     /// Find passable positions within `search_radius` of the unit that are
     /// outside all visible enemy attack ranges.
-    pub fn safe_positions(
-        &mut self,
-        unit: &UnitSnapshot,
-        search_radius: i32,
-    ) -> Vec<GridPos> {
+    pub fn safe_positions(&mut self, unit: &UnitSnapshot, search_radius: i32) -> Vec<GridPos> {
         if !self.budget.spend(COST_SPATIAL * 2) {
             return vec![];
         }
@@ -758,8 +741,7 @@ impl<'a> ScriptContext<'a> {
         if !self.budget.spend(COST_PATHFINDING) {
             return None;
         }
-        pathfinding::find_path(self.map, from, to, self.faction)
-            .map(|path| path.len() as u32)
+        pathfinding::find_path(self.map, from, to, self.faction).map(|path| path.len() as u32)
     }
 
     // -----------------------------------------------------------------------
@@ -883,7 +865,10 @@ impl<'a> ScriptContext<'a> {
     /// Costs 1 budget.
     pub fn income_rate(&mut self) -> IncomeEstimate {
         if !self.budget.spend(COST_SIMPLE) {
-            return IncomeEstimate { food_per_tick: 0.0, gpu_per_tick: 0.0 };
+            return IncomeEstimate {
+                food_per_tick: 0.0,
+                gpu_per_tick: 0.0,
+            };
         }
 
         let mut food_workers = 0u32;
@@ -966,14 +951,18 @@ impl<'a> ScriptContext<'a> {
         }
 
         let food_ticks = if food_deficit > 0.0 {
-            if income.food_per_tick <= 0.0 { return None; }
+            if income.food_per_tick <= 0.0 {
+                return None;
+            }
             (food_deficit / income.food_per_tick).ceil() as u64
         } else {
             0
         };
 
         let gpu_ticks = if gpu_deficit > 0.0 {
-            if income.gpu_per_tick <= 0.0 { return None; }
+            if income.gpu_per_tick <= 0.0 {
+                return None;
+            }
             (gpu_deficit / income.gpu_per_tick).ceil() as u64
         } else {
             0
@@ -1013,7 +1002,11 @@ impl<'a> ScriptContext<'a> {
     /// Count workers by state. Costs 1 budget.
     pub fn worker_saturation(&mut self) -> WorkerSaturation {
         if !self.budget.spend(COST_SIMPLE) {
-            return WorkerSaturation { total: 0, gathering: 0, idle: 0 };
+            return WorkerSaturation {
+                total: 0,
+                gathering: 0,
+                idle: 0,
+            };
         }
         let mut total = 0u32;
         let mut gathering = 0u32;
@@ -1029,7 +1022,11 @@ impl<'a> ScriptContext<'a> {
                 idle += 1;
             }
         }
-        WorkerSaturation { total, gathering, idle }
+        WorkerSaturation {
+            total,
+            gathering,
+            idle,
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -1083,15 +1080,18 @@ impl<'a> ScriptContext<'a> {
             } else {
                 0.0
             };
-            memory.insert(unit.id.0, EnemyMemoryEntry {
-                unit_id: unit.id.0,
-                kind: format!("{:?}", unit.kind),
-                x: unit.pos.x,
-                y: unit.pos.y,
-                hp_pct,
-                tick_last_seen: tick as u32,
-                confirmed_dead: unit.is_dead,
-            });
+            memory.insert(
+                unit.id.0,
+                EnemyMemoryEntry {
+                    unit_id: unit.id.0,
+                    kind: format!("{:?}", unit.kind),
+                    x: unit.pos.x,
+                    y: unit.pos.y,
+                    hp_pct,
+                    tick_last_seen: tick as u32,
+                    confirmed_dead: unit.is_dead,
+                },
+            );
         }
     }
 
@@ -1111,7 +1111,9 @@ impl<'a> ScriptContext<'a> {
         if !self.budget.spend(COST_SIMPLE) {
             return None;
         }
-        self.enemy_memory.as_ref().and_then(|m| m.get(&unit_id).cloned())
+        self.enemy_memory
+            .as_ref()
+            .and_then(|m| m.get(&unit_id).cloned())
     }
 
     // -----------------------------------------------------------------------
@@ -1182,11 +1184,7 @@ impl<'a> ScriptContext<'a> {
     /// Read events matching a name, without removing them.
     pub fn poll_events(&mut self, name: &str) -> Vec<ScriptEvent> {
         match self.events.as_ref() {
-            Some(events) => events
-                .iter()
-                .filter(|e| e.name == name)
-                .cloned()
-                .collect(),
+            Some(events) => events.iter().filter(|e| e.name == name).cloned().collect(),
             None => vec![],
         }
     }
@@ -1313,7 +1311,11 @@ impl<'a> ScriptContext<'a> {
             });
         }
 
-        sites.sort_by(|a, b| a.distance_to_base.partial_cmp(&b.distance_to_base).unwrap_or(std::cmp::Ordering::Equal));
+        sites.sort_by(|a, b| {
+            a.distance_to_base
+                .partial_cmp(&b.distance_to_base)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         sites
     }
 
@@ -1411,18 +1413,30 @@ impl<'a> ScriptContext<'a> {
         };
 
         // Confidence based on how one-sided the fight is
-        let ratio = if winner_ttk > 0.0 { loser_ttk / winner_ttk } else { 0.0 };
+        let ratio = if winner_ttk > 0.0 {
+            loser_ttk / winner_ttk
+        } else {
+            0.0
+        };
         let confidence = (1.0 - ratio).clamp(0.0, 1.0);
 
         // Estimate survivors: winner's remaining HP after loser_ttk seconds
         let (my_survivors, enemy_survivors) = if winner == "self" {
             let remaining_hp = my_total_hp - enemy_total_dps * loser_ttk;
-            let avg_hp = if my_count > 0 { my_total_hp / my_count as f64 } else { 1.0 };
+            let avg_hp = if my_count > 0 {
+                my_total_hp / my_count as f64
+            } else {
+                1.0
+            };
             let survivors = (remaining_hp / avg_hp).ceil().max(0.0) as u32;
             (survivors, 0u32)
         } else {
             let remaining_hp = enemy_total_hp - my_total_dps * loser_ttk;
-            let avg_hp = if enemy_count > 0 { enemy_total_hp / enemy_count as f64 } else { 1.0 };
+            let avg_hp = if enemy_count > 0 {
+                enemy_total_hp / enemy_count as f64
+            } else {
+                1.0
+            };
             let survivors = (remaining_hp / avg_hp).ceil().max(0.0) as u32;
             (0u32, survivors)
         };
@@ -1477,7 +1491,8 @@ impl<'a> ScriptContext<'a> {
         };
         // Prune dead units
         members.retain(|id| {
-            self.state.unit_by_id(EntityId(*id))
+            self.state
+                .unit_by_id(EntityId(*id))
                 .map(|u| !u.is_dead)
                 .unwrap_or(false)
         });
@@ -1542,7 +1557,8 @@ impl<'a> ScriptContext<'a> {
                 enemy_count += 1.0;
             }
         }
-        let building_score = self.state.my_buildings.len() as f64 - self.state.enemy_buildings.len() as f64;
+        let building_score =
+            self.state.my_buildings.len() as f64 - self.state.enemy_buildings.len() as f64;
         (my_hp - enemy_hp) + (my_count - enemy_count) * 10.0 + building_score * 50.0
     }
 
@@ -1572,8 +1588,7 @@ impl<'a> ScriptContext<'a> {
     }
 
     pub fn cmd_stop(&mut self, ids: Vec<EntityId>) {
-        self.commands
-            .push(GameCommand::Stop { unit_ids: ids });
+        self.commands.push(GameCommand::Stop { unit_ids: ids });
     }
 
     pub fn cmd_hold(&mut self, ids: Vec<EntityId>) {
@@ -1612,17 +1627,16 @@ impl<'a> ScriptContext<'a> {
     }
 
     pub fn cmd_research(&mut self, building: EntityId, upgrade: UpgradeType) {
-        self.commands.push(GameCommand::Research { building, upgrade });
+        self.commands
+            .push(GameCommand::Research { building, upgrade });
     }
 
     pub fn cmd_cancel_queue(&mut self, building: EntityId) {
-        self.commands
-            .push(GameCommand::CancelQueue { building });
+        self.commands.push(GameCommand::CancelQueue { building });
     }
 
     pub fn cmd_cancel_research(&mut self, building: EntityId) {
-        self.commands
-            .push(GameCommand::CancelResearch { building });
+        self.commands.push(GameCommand::CancelResearch { building });
     }
 
     pub fn cmd_set_control_group(&mut self, group: u8, ids: Vec<EntityId>) {
@@ -1633,10 +1647,8 @@ impl<'a> ScriptContext<'a> {
     }
 
     pub fn cmd_rally(&mut self, building: EntityId, target: GridPos) {
-        self.commands.push(GameCommand::SetRallyPoint {
-            building,
-            target,
-        });
+        self.commands
+            .push(GameCommand::SetRallyPoint { building, target });
     }
 
     /// Drain accumulated commands.
@@ -1648,9 +1660,9 @@ impl<'a> ScriptContext<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_fixtures::{make_snapshot, make_unit};
     use cc_core::coords::WorldPos;
     use cc_core::math::fixed_from_i32;
-    use crate::test_fixtures::{make_unit, make_snapshot};
 
     #[test]
     fn my_units_returns_all_alive() {
@@ -1690,7 +1702,7 @@ mod tests {
         let snap = make_snapshot(
             vec![make_unit(1, UnitKind::Hisser, 5, 5, 0)],
             vec![
-                make_unit(10, UnitKind::Chonk, 7, 5, 1),  // 2 tiles away
+                make_unit(10, UnitKind::Chonk, 7, 5, 1),   // 2 tiles away
                 make_unit(11, UnitKind::Chonk, 20, 20, 1), // far away
             ],
         );
@@ -1709,14 +1721,11 @@ mod tests {
 
         let snap = make_snapshot(
             vec![make_unit(1, UnitKind::Chonk, 5, 5, 0)],
-            vec![
-                enemy,
-                {
-                    let mut far_enemy = make_unit(11, UnitKind::Hisser, 50, 50, 1);
-                    far_enemy.attack_range = fixed_from_i32(5);
-                    far_enemy
-                },
-            ],
+            vec![enemy, {
+                let mut far_enemy = make_unit(11, UnitKind::Hisser, 50, 50, 1);
+                far_enemy.attack_range = fixed_from_i32(5);
+                far_enemy
+            }],
         );
         let map = GameMap::new(64, 64);
         let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
@@ -1749,10 +1758,7 @@ mod tests {
 
     #[test]
     fn budget_limits_queries() {
-        let snap = make_snapshot(
-            vec![make_unit(1, UnitKind::Hisser, 5, 5, 0)],
-            vec![],
-        );
+        let snap = make_snapshot(vec![make_unit(1, UnitKind::Hisser, 5, 5, 0)], vec![]);
         let map = GameMap::new(64, 64);
         let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
         ctx.budget = ComputeBudget::new(2);
@@ -2016,7 +2022,9 @@ mod tests {
         assert_eq!(cmds.len(), 2);
         match &cmds[0] {
             GameCommand::ActivateAbility {
-                unit_id, slot, target,
+                unit_id,
+                slot,
+                target,
             } => {
                 assert_eq!(*unit_id, EntityId(1));
                 assert_eq!(*slot, 0);
@@ -2075,14 +2083,12 @@ mod tests {
             enemy_units: vec![],
             my_buildings: vec![],
             enemy_buildings: vec![],
-            resource_deposits: vec![
-                ResourceSnapshot {
-                    id: EntityId(100),
-                    resource_type: ResourceType::Food,
-                    pos: GridPos::new(5, 5),
-                    remaining: 200,
-                },
-            ],
+            resource_deposits: vec![ResourceSnapshot {
+                id: EntityId(100),
+                resource_type: ResourceType::Food,
+                pos: GridPos::new(5, 5),
+                remaining: 200,
+            }],
             my_resources: PlayerResourceState::default(),
         };
         let map = GameMap::new(64, 64);
@@ -2103,10 +2109,7 @@ mod tests {
 
     #[test]
     fn is_visible_near_own_unit() {
-        let snap = make_snapshot(
-            vec![make_unit(1, UnitKind::Hisser, 10, 10, 0)],
-            vec![],
-        );
+        let snap = make_snapshot(vec![make_unit(1, UnitKind::Hisser, 10, 10, 0)], vec![]);
         let map = GameMap::new(64, 64);
         let ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
 
@@ -2122,10 +2125,7 @@ mod tests {
 
     #[test]
     fn is_visible_far_from_units() {
-        let snap = make_snapshot(
-            vec![make_unit(1, UnitKind::Hisser, 10, 10, 0)],
-            vec![],
-        );
+        let snap = make_snapshot(vec![make_unit(1, UnitKind::Hisser, 10, 10, 0)], vec![]);
         let map = GameMap::new(64, 64);
         let ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
 
@@ -2171,10 +2171,7 @@ mod tests {
 
     #[test]
     fn fog_state_returns_correct_strings() {
-        let snap = make_snapshot(
-            vec![make_unit(1, UnitKind::Hisser, 10, 10, 0)],
-            vec![],
-        );
+        let snap = make_snapshot(vec![make_unit(1, UnitKind::Hisser, 10, 10, 0)], vec![]);
         let map = GameMap::new(64, 64);
         let ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
 
@@ -2190,8 +2187,8 @@ mod tests {
         );
         let map = GameMap::new(64, 64);
         let mut memory = HashMap::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_enemy_memory(&mut memory);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_enemy_memory(&mut memory);
 
         // Update memory from snapshot
         ctx.update_enemy_memory();
@@ -2285,8 +2282,8 @@ mod tests {
             my_resources: PlayerResourceState::default(),
         };
         let map = GameMap::new(64, 64);
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_enemy_memory(&mut memory);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_enemy_memory(&mut memory);
         ctx.update_enemy_memory();
 
         let entry = ctx.last_seen_at(10);
@@ -2299,8 +2296,8 @@ mod tests {
         let snap = make_snapshot(
             vec![],
             vec![
-                make_unit(10, UnitKind::Hisser, 5, 5, 1),   // damage = 10
-                make_unit(11, UnitKind::Chonk, 6, 5, 1),    // damage = 10
+                make_unit(10, UnitKind::Hisser, 5, 5, 1),     // damage = 10
+                make_unit(11, UnitKind::Chonk, 6, 5, 1),      // damage = 10
                 make_unit(12, UnitKind::Nuisance, 50, 50, 1), // far away
             ],
         );
@@ -2309,15 +2306,16 @@ mod tests {
 
         // Radius 3 from (5,5) should include enemies at (5,5) and (6,5) but not (50,50)
         let threat = ctx.threat_level(GridPos::new(5, 5), 3);
-        assert!((threat - 20.0).abs() < 0.01, "Expected 20.0, got {}", threat);
+        assert!(
+            (threat - 20.0).abs() < 0.01,
+            "Expected 20.0, got {}",
+            threat
+        );
     }
 
     #[test]
     fn threat_level_no_enemies_nearby() {
-        let snap = make_snapshot(
-            vec![],
-            vec![make_unit(10, UnitKind::Hisser, 50, 50, 1)],
-        );
+        let snap = make_snapshot(vec![], vec![make_unit(10, UnitKind::Hisser, 50, 50, 1)]);
         let map = GameMap::new(64, 64);
         let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
 
@@ -2348,8 +2346,8 @@ mod tests {
         let snap = make_snapshot(vec![], vec![]);
         let map = GameMap::new(64, 64);
         let mut event_bus = Vec::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_events(&mut event_bus);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_events(&mut event_bus);
 
         // Emit events
         ctx.emit_event("attack".to_string(), "go".to_string());
@@ -2372,8 +2370,8 @@ mod tests {
         let snap = make_snapshot(vec![], vec![]);
         let map = GameMap::new(64, 64);
         let mut event_bus = Vec::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_events(&mut event_bus);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_events(&mut event_bus);
 
         ctx.emit_event("attack".to_string(), "go".to_string());
         ctx.emit_event("retreat".to_string(), "now".to_string());
@@ -2411,10 +2409,7 @@ mod tests {
 
     #[test]
     fn memory_without_hashmap_returns_empty() {
-        let snap = make_snapshot(
-            vec![],
-            vec![make_unit(10, UnitKind::Hisser, 5, 5, 1)],
-        );
+        let snap = make_snapshot(vec![], vec![make_unit(10, UnitKind::Hisser, 5, 5, 1)]);
         let map = GameMap::new(64, 64);
         let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
 
@@ -2433,10 +2428,7 @@ mod tests {
     #[test]
     fn game_phase_returns_early_for_fresh_snapshot() {
         // Default make_snapshot has tick=0, no buildings, small army
-        let snap = make_snapshot(
-            vec![make_unit(1, UnitKind::Hisser, 5, 5, 0)],
-            vec![],
-        );
+        let snap = make_snapshot(vec![make_unit(1, UnitKind::Hisser, 5, 5, 0)], vec![]);
         let map = GameMap::new(64, 64);
         let ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
 
@@ -2445,10 +2437,7 @@ mod tests {
 
     #[test]
     fn game_phase_returns_early_for_low_tick() {
-        let mut snap = make_snapshot(
-            vec![make_unit(1, UnitKind::Hisser, 5, 5, 0)],
-            vec![],
-        );
+        let mut snap = make_snapshot(vec![make_unit(1, UnitKind::Hisser, 5, 5, 0)], vec![]);
         snap.tick = 200;
         let map = GameMap::new(64, 64);
         let ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
@@ -2464,7 +2453,9 @@ mod tests {
             map_width: 64,
             map_height: 64,
             player_id: 0,
-            my_units: (1..=15).map(|i| make_unit(i, UnitKind::Hisser, 5, 5, 0)).collect(),
+            my_units: (1..=15)
+                .map(|i| make_unit(i, UnitKind::Hisser, 5, 5, 0))
+                .collect(),
             enemy_units: vec![],
             my_buildings: vec![BuildingSnapshot {
                 id: EntityId(100),
@@ -2499,7 +2490,9 @@ mod tests {
             map_height: 64,
             player_id: 0,
             // 10 Hissers = 20 supply (each is 2 supply)
-            my_units: (1..=10).map(|i| make_unit(i, UnitKind::Hisser, 5, 5, 0)).collect(),
+            my_units: (1..=10)
+                .map(|i| make_unit(i, UnitKind::Hisser, 5, 5, 0))
+                .collect(),
             enemy_units: vec![],
             my_buildings: vec![
                 BuildingSnapshot {
@@ -2607,14 +2600,12 @@ mod tests {
             enemy_units: vec![],
             my_buildings: vec![],
             enemy_buildings: vec![],
-            resource_deposits: vec![
-                ResourceSnapshot {
-                    id: EntityId(200),
-                    resource_type: ResourceType::Food,
-                    pos: GridPos::new(30, 30),
-                    remaining: 0, // exhausted
-                },
-            ],
+            resource_deposits: vec![ResourceSnapshot {
+                id: EntityId(200),
+                resource_type: ResourceType::Food,
+                pos: GridPos::new(30, 30),
+                remaining: 0, // exhausted
+            }],
             my_resources: PlayerResourceState::default(),
         };
         let map = GameMap::new(64, 64);
@@ -2637,17 +2628,13 @@ mod tests {
                 make_unit(2, UnitKind::Hisser, 6, 5, 0),
                 make_unit(3, UnitKind::Hisser, 7, 5, 0),
             ],
-            vec![
-                make_unit(10, UnitKind::Nuisance, 20, 20, 1),
-            ],
+            vec![make_unit(10, UnitKind::Nuisance, 20, 20, 1)],
         );
         let map = GameMap::new(64, 64);
         let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
 
-        let pred = ctx.predict_engagement(
-            &[EntityId(1), EntityId(2), EntityId(3)],
-            &[EntityId(10)],
-        );
+        let pred =
+            ctx.predict_engagement(&[EntityId(1), EntityId(2), EntityId(3)], &[EntityId(10)]);
 
         assert_eq!(pred.winner, "self");
         assert!(pred.confidence > 0.5);
@@ -2668,10 +2655,8 @@ mod tests {
         let map = GameMap::new(64, 64);
         let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
 
-        let pred = ctx.predict_engagement(
-            &[EntityId(1)],
-            &[EntityId(10), EntityId(11), EntityId(12)],
-        );
+        let pred =
+            ctx.predict_engagement(&[EntityId(1)], &[EntityId(10), EntityId(11), EntityId(12)]);
 
         assert_eq!(pred.winner, "enemy");
         assert!(pred.confidence > 0.5);
@@ -2703,8 +2688,8 @@ mod tests {
         );
         let map = GameMap::new(64, 64);
         let mut squads = HashMap::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_squads(&mut squads);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_squads(&mut squads);
 
         ctx.squad_create("alpha".to_string(), vec![1, 2]);
         let units = ctx.squad_units("alpha");
@@ -2725,8 +2710,8 @@ mod tests {
         );
         let map = GameMap::new(64, 64);
         let mut squads = HashMap::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_squads(&mut squads);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_squads(&mut squads);
 
         ctx.squad_create("alpha".to_string(), vec![1]);
         ctx.squad_add("alpha", vec![2, 3]);
@@ -2736,14 +2721,11 @@ mod tests {
 
     #[test]
     fn squad_add_no_duplicates() {
-        let snap = make_snapshot(
-            vec![make_unit(1, UnitKind::Hisser, 5, 5, 0)],
-            vec![],
-        );
+        let snap = make_snapshot(vec![make_unit(1, UnitKind::Hisser, 5, 5, 0)], vec![]);
         let map = GameMap::new(64, 64);
         let mut squads = HashMap::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_squads(&mut squads);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_squads(&mut squads);
 
         ctx.squad_create("alpha".to_string(), vec![1]);
         ctx.squad_add("alpha", vec![1]); // duplicate
@@ -2762,8 +2744,8 @@ mod tests {
         );
         let map = GameMap::new(64, 64);
         let mut squads = HashMap::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_squads(&mut squads);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_squads(&mut squads);
 
         ctx.squad_create("alpha".to_string(), vec![1, 2]);
         ctx.squad_remove("alpha", &[1]);
@@ -2778,16 +2760,13 @@ mod tests {
         dead_unit.is_dead = true;
 
         let snap = make_snapshot(
-            vec![
-                make_unit(1, UnitKind::Hisser, 5, 5, 0),
-                dead_unit,
-            ],
+            vec![make_unit(1, UnitKind::Hisser, 5, 5, 0), dead_unit],
             vec![],
         );
         let map = GameMap::new(64, 64);
         let mut squads = HashMap::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_squads(&mut squads);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_squads(&mut squads);
 
         ctx.squad_create("alpha".to_string(), vec![1, 2]);
         let units = ctx.squad_units("alpha");
@@ -2807,8 +2786,8 @@ mod tests {
         );
         let map = GameMap::new(64, 64);
         let mut squads = HashMap::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_squads(&mut squads);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_squads(&mut squads);
 
         ctx.squad_create("alpha".to_string(), vec![1, 2]);
         let centroid = ctx.squad_centroid("alpha");
@@ -2820,8 +2799,8 @@ mod tests {
         let snap = make_snapshot(vec![make_unit(1, UnitKind::Hisser, 5, 5, 0)], vec![]);
         let map = GameMap::new(64, 64);
         let mut squads = HashMap::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_squads(&mut squads);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_squads(&mut squads);
 
         ctx.squad_create("alpha".to_string(), vec![1]);
         assert_eq!(ctx.squad_list().len(), 1);
@@ -2835,8 +2814,8 @@ mod tests {
         let snap = make_snapshot(vec![make_unit(1, UnitKind::Hisser, 5, 5, 0)], vec![]);
         let map = GameMap::new(64, 64);
         let mut squads = HashMap::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_squads(&mut squads);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_squads(&mut squads);
 
         ctx.squad_create("alpha".to_string(), vec![1]);
         ctx.squad_create("bravo".to_string(), vec![1]);
@@ -2859,9 +2838,7 @@ mod tests {
                 make_unit(2, UnitKind::Chonk, 6, 5, 0),
                 make_unit(3, UnitKind::Hisser, 7, 5, 0),
             ],
-            enemy_units: vec![
-                make_unit(10, UnitKind::Nuisance, 30, 30, 1),
-            ],
+            enemy_units: vec![make_unit(10, UnitKind::Nuisance, 30, 30, 1)],
             my_buildings: vec![],
             enemy_buildings: vec![],
             resource_deposits: vec![],
@@ -2871,7 +2848,11 @@ mod tests {
         let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
 
         let score = ctx.game_score();
-        assert!(score > 0.0, "Score should be positive with more army: {}", score);
+        assert!(
+            score > 0.0,
+            "Score should be positive with more army: {}",
+            score
+        );
     }
 
     #[test]
@@ -2881,9 +2862,7 @@ mod tests {
             map_width: 64,
             map_height: 64,
             player_id: 0,
-            my_units: vec![
-                make_unit(1, UnitKind::Nuisance, 5, 5, 0),
-            ],
+            my_units: vec![make_unit(1, UnitKind::Nuisance, 5, 5, 0)],
             enemy_units: vec![
                 make_unit(10, UnitKind::Hisser, 30, 30, 1),
                 make_unit(11, UnitKind::Chonk, 31, 30, 1),
@@ -2906,7 +2885,11 @@ mod tests {
         let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
 
         let score = ctx.game_score();
-        assert!(score < 0.0, "Score should be negative with less army: {}", score);
+        assert!(
+            score < 0.0,
+            "Score should be negative with less army: {}",
+            score
+        );
     }
 
     #[test]

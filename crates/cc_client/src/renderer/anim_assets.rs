@@ -27,11 +27,13 @@ pub fn load_anim_assets(
     asset_server: Res<AssetServer>,
     mut layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
-    let layout = TextureAtlasLayout::from_grid(SHEET_FRAME_SIZE, SHEET_COLUMNS, SHEET_ROWS, None, None);
+    let layout =
+        TextureAtlasLayout::from_grid(SHEET_FRAME_SIZE, SHEET_COLUMNS, SHEET_ROWS, None, None);
     let layout_handle = layouts.add(layout);
 
     let mut walk: [Option<(Handle<Image>, Handle<TextureAtlasLayout>)>; 60] = [const { None }; 60];
-    let mut attack: [Option<(Handle<Image>, Handle<TextureAtlasLayout>)>; 60] = [const { None }; 60];
+    let mut attack: [Option<(Handle<Image>, Handle<TextureAtlasLayout>)>; 60] =
+        [const { None }; 60];
 
     for (i, kind) in ALL_KINDS.iter().enumerate() {
         let slug = unit_slug(*kind);
@@ -75,7 +77,10 @@ mod tests {
         for kind in ALL_KINDS {
             let slug = unit_slug(kind);
             let idle_path = crate::renderer::unit_gen::sprite_file_path(kind);
-            assert!(idle_path.contains(slug), "Slug {slug} not found in path {idle_path}");
+            assert!(
+                idle_path.contains(slug),
+                "Slug {slug} not found in path {idle_path}"
+            );
         }
     }
 

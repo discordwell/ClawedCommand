@@ -66,10 +66,7 @@ pub fn builder_system(
             }
 
             if bstats.supply_provided > 0 {
-                if let Some(pres) = player_resources
-                    .players
-                    .get_mut(owner.player_id as usize)
-                {
+                if let Some(pres) = player_resources.players.get_mut(owner.player_id as usize) {
                     pres.supply_cap += bstats.supply_provided;
                 }
             }

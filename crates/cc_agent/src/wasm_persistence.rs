@@ -49,8 +49,7 @@ fn get_storage() -> Option<web_sys::Storage> {
 pub fn save_script(script: &LuaScript) -> Result<(), String> {
     let storage = get_storage().ok_or("localStorage not available")?;
     let stored = StoredScript::from(script);
-    let json =
-        serde_json::to_string(&stored).map_err(|e| format!("serialize error: {e}"))?;
+    let json = serde_json::to_string(&stored).map_err(|e| format!("serialize error: {e}"))?;
     let key = format!("{}{}", KEY_PREFIX, sanitize_name(&script.name));
     storage
         .set_item(&key, &json)
@@ -97,7 +96,13 @@ pub fn delete_script(name: &str) {
 /// Sanitize a script name for use as a storage key.
 fn sanitize_name(name: &str) -> String {
     name.chars()
-        .map(|c| if c.is_alphanumeric() || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 

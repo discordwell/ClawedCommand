@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::resources::MapResource;
 use cc_core::components::{MoveTarget, MovementSpeed, Path, Position, StatModifiers, Velocity};
 use cc_core::coords::WorldPos;
-use cc_core::math::{Fixed, FIXED_ONE, FIXED_ZERO, approx_distance};
+use cc_core::math::{FIXED_ONE, FIXED_ZERO, Fixed, approx_distance};
 
 /// Check if a unit should snap to its target (within one tick's movement).
 pub fn should_snap_to_target(pos: WorldPos, target: WorldPos, speed: Fixed) -> bool {
@@ -44,10 +44,7 @@ pub fn movement_system(
 
         // Get terrain movement cost at current position
         let grid_pos = pos.world.to_grid();
-        let terrain_cost = map_res
-            .map
-            .movement_cost(grid_pos)
-            .unwrap_or(FIXED_ONE);
+        let terrain_cost = map_res.map.movement_cost(grid_pos).unwrap_or(FIXED_ONE);
 
         // Apply speed_multiplier from StatModifiers
         let base_speed = if let Some(mods) = modifiers {

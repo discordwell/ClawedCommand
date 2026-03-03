@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use cc_core::components::{
     AbilitySlots, AttackMoveTarget, AttackStats, AttackTarget, AttackTypeMarker, Building,
     ChasingTarget, Dead, Gathering, Health, MoveTarget, MovementSpeed, Owner, Path, Position,
-    ProductionQueue, ResearchQueue, ResourceDeposit, UnitType, UnderConstruction,
+    ProductionQueue, ResearchQueue, ResourceDeposit, UnderConstruction, UnitType,
 };
 use cc_core::status_effects::StatusEffects;
 use cc_core::terrain::FactionId;
@@ -32,8 +32,7 @@ pub fn script_runner_system(
     mut registry: ResMut<ScriptRegistry>,
     mut prev_snapshots: ResMut<PreviousSnapshots>,
     tool_states: Res<FactionToolStates>,
-    #[cfg(feature = "harness")]
-    mut arena_stats: Option<ResMut<crate::arena::ArenaStats>>,
+    #[cfg(feature = "harness")] mut arena_stats: Option<ResMut<crate::arena::ArenaStats>>,
     units: Query<
         (
             Entity,
@@ -77,8 +76,25 @@ pub fn script_runner_system(
     let unit_data: Vec<_> = units
         .iter()
         .map(
-            |(e, pos, own, ut, hp, spd, atk, atk_type, mt, at, path, gath, (chase, amove, dead, se, abs))| {
-                (e, pos, own, ut, hp, spd, atk, atk_type, mt, at, path, gath, chase, amove, dead, se, abs)
+            |(
+                e,
+                pos,
+                own,
+                ut,
+                hp,
+                spd,
+                atk,
+                atk_type,
+                mt,
+                at,
+                path,
+                gath,
+                (chase, amove, dead, se, abs),
+            )| {
+                (
+                    e, pos, own, ut, hp, spd, atk, atk_type, mt, at, path, gath, chase, amove,
+                    dead, se, abs,
+                )
             },
         )
         .collect();
@@ -88,10 +104,7 @@ pub fn script_runner_system(
         .map(|(e, pos, own, bld, hp, uc, pq, rq)| (e, pos, own, bld, hp, uc, pq, rq))
         .collect();
 
-    let deposit_data: Vec<_> = deposits
-        .iter()
-        .map(|(e, pos, dep)| (e, pos, dep))
-        .collect();
+    let deposit_data: Vec<_> = deposits.iter().map(|(e, pos, dep)| (e, pos, dep)).collect();
 
     // Determine which players have scripts registered
     let player_ids: Vec<u8> = registry
@@ -116,10 +129,8 @@ pub fn script_runner_system(
         );
 
         // Detect events by diffing with this player's previous snapshot
-        let fired_events = events::detect_events(
-            &current_snapshot,
-            prev_snapshots.snapshots.get(&player_id),
-        );
+        let fired_events =
+            events::detect_events(&current_snapshot, prev_snapshots.snapshots.get(&player_id));
 
         let faction = FactionId::from_u8(player_id).unwrap_or(FactionId::CatGPT);
 
@@ -156,12 +167,7 @@ pub fn script_runner_system(
             }
 
             // Create ScriptContext and execute
-            let mut ctx = ScriptContext::new(
-                &current_snapshot,
-                &map_res.map,
-                player_id,
-                faction,
-            );
+            let mut ctx = ScriptContext::new(&current_snapshot, &map_res.map, player_id, faction);
 
             let tier = tool_states.tier_for(player_id);
             match lua_runtime::execute_script_with_context_tiered(&script.source, &mut ctx, tier) {
@@ -201,10 +207,9 @@ impl Plugin for ScriptRunnerPlugin {
             .init_resource::<PreviousSnapshots>()
             .add_systems(
                 FixedUpdate,
-                script_runner_system
-                    .run_if(|state: Res<cc_sim::resources::GameState>| {
-                        *state == cc_sim::resources::GameState::Playing
-                    }),
+                script_runner_system.run_if(|state: Res<cc_sim::resources::GameState>| {
+                    *state == cc_sim::resources::GameState::Playing
+                }),
             );
     }
 }
@@ -234,15 +239,9 @@ mod tests {
     fn script_registry_unregister_by_name() {
         let mut registry = ScriptRegistry::default();
 
-        registry.register(ScriptRegistration::new(
-            "a".into(), "".into(), vec![], 0,
-        ));
-        registry.register(ScriptRegistration::new(
-            "b".into(), "".into(), vec![], 0,
-        ));
-        registry.register(ScriptRegistration::new(
-            "c".into(), "".into(), vec![], 0,
-        ));
+        registry.register(ScriptRegistration::new("a".into(), "".into(), vec![], 0));
+        registry.register(ScriptRegistration::new("b".into(), "".into(), vec![], 0));
+        registry.register(ScriptRegistration::new("c".into(), "".into(), vec![], 0));
 
         registry.unregister("b");
         assert_eq!(registry.scripts.len(), 2);

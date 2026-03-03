@@ -88,10 +88,7 @@ pub fn update_campaign_menu(
     menu_open: Res<CampaignMenuOpen>,
     available: Res<AvailableMissions>,
     campaign: Res<CampaignState>,
-    mut root_vis: Query<
-        &mut Visibility,
-        (With<CampaignMenuRoot>, Without<CampaignMenuText>),
-    >,
+    mut root_vis: Query<&mut Visibility, (With<CampaignMenuRoot>, Without<CampaignMenuText>)>,
     mut text_q: Query<&mut Text, With<CampaignMenuText>>,
 ) {
     let show = menu_open.0 && campaign.phase == CampaignPhase::Inactive;
@@ -121,7 +118,13 @@ pub fn update_campaign_menu(
             let completed = campaign.completed_missions.contains(&mission.id);
             let prefix = if completed { "[DONE] " } else { "" };
             let brief: String = mission.briefing_text.chars().take(50).collect();
-            lines.push(format!("{}. {}{} - {}...", i + 1, prefix, mission.name, brief));
+            lines.push(format!(
+                "{}. {}{} - {}...",
+                i + 1,
+                prefix,
+                mission.name,
+                brief
+            ));
         }
         lines.push(String::new());
         lines.push("Press [Esc] to close".to_string());

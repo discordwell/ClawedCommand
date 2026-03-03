@@ -131,9 +131,23 @@ pub fn spawn_build_menu(mut commands: Commands) {
 pub fn update_build_menu(
     input_mode: Res<InputMode>,
     player_resources: Res<PlayerResources>,
-    mut menu_root: Query<&mut Visibility, (With<BuildMenuRoot>, Without<PlacementHint>, Without<BuildMenuEntry>)>,
+    mut menu_root: Query<
+        &mut Visibility,
+        (
+            With<BuildMenuRoot>,
+            Without<PlacementHint>,
+            Without<BuildMenuEntry>,
+        ),
+    >,
     mut entries: Query<(&BuildMenuEntry, &mut TextColor), Without<BuildMenuRoot>>,
-    mut hint_q: Query<(&mut Text, &mut Visibility), (With<PlacementHint>, Without<BuildMenuRoot>, Without<BuildMenuEntry>)>,
+    mut hint_q: Query<
+        (&mut Text, &mut Visibility),
+        (
+            With<PlacementHint>,
+            Without<BuildMenuRoot>,
+            Without<BuildMenuEntry>,
+        ),
+    >,
 ) {
     let show_menu = *input_mode == InputMode::BuildMenu;
 

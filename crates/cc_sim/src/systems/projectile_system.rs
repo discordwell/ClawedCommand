@@ -16,7 +16,14 @@ pub struct ProjectileHit {
 pub fn projectile_system(
     mut commands: Commands,
     mut hit_events: MessageWriter<ProjectileHit>,
-    mut projectiles: Query<(Entity, &mut Position, &mut Velocity, &Projectile, &ProjectileTarget, Option<&ProjectileKind>)>,
+    mut projectiles: Query<(
+        Entity,
+        &mut Position,
+        &mut Velocity,
+        &Projectile,
+        &ProjectileTarget,
+        Option<&ProjectileKind>,
+    )>,
     targets: Query<&Position, (Without<Projectile>, Without<Dead>)>,
 ) {
     for (entity, mut pos, mut vel, proj, proj_target, proj_kind) in projectiles.iter_mut() {

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use cc_core::components::{GridCell, Owner, UnitType};
-use cc_core::coords::{GridPos, WorldPos, world_to_screen, TILE_HALF_HEIGHT, TILE_HALF_WIDTH};
+use cc_core::coords::{GridPos, TILE_HALF_HEIGHT, TILE_HALF_WIDTH, WorldPos, world_to_screen};
 use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
 use cc_sim::resources::MapResource;
 
@@ -93,8 +93,7 @@ pub fn init_fog(
     // Only 2 shared materials instead of 4,096 unique ones
     fog.mat_unexplored =
         materials.add(ColorMaterial::from_color(Color::srgba(0.0, 0.0, 0.0, 0.85)));
-    fog.mat_explored =
-        materials.add(ColorMaterial::from_color(Color::srgba(0.0, 0.0, 0.0, 0.45)));
+    fog.mat_explored = materials.add(ColorMaterial::from_color(Color::srgba(0.0, 0.0, 0.0, 0.45)));
 }
 
 /// Spawn fog overlay entities using shared materials.

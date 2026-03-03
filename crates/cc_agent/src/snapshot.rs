@@ -5,8 +5,8 @@ use cc_core::commands::EntityId;
 use cc_core::components::{
     AbilitySlots, AttackMoveTarget, AttackStats, AttackTarget, AttackType, AttackTypeMarker,
     Building, BuildingKind, ChasingTarget, Dead, Gathering, Health, MoveTarget, MovementSpeed,
-    Owner, Path, Position, ProductionQueue, ResearchQueue, ResourceDeposit, ResourceType, UnitKind,
-    UnitType, UnderConstruction,
+    Owner, Path, Position, ProductionQueue, ResearchQueue, ResourceDeposit, ResourceType,
+    UnderConstruction, UnitKind, UnitType,
 };
 use cc_core::coords::{GridPos, WorldPos};
 use cc_core::math::Fixed;
@@ -120,25 +120,59 @@ pub fn build_snapshot(
     map_height: u32,
     player_id: u8,
     player_resources: &PlayerResources,
-    units: &[(Entity, &Position, &Owner, &UnitType, &Health, &MovementSpeed,
-              Option<&AttackStats>, Option<&AttackTypeMarker>,
-              Option<&MoveTarget>, Option<&AttackTarget>, Option<&Path>,
-              Option<&Gathering>, Option<&ChasingTarget>,
-              Option<&AttackMoveTarget>, Option<&Dead>,
-              Option<&StatusEffects>, Option<&AbilitySlots>)],
-    buildings: &[(Entity, &Position, &Owner, &Building, &Health,
-                  Option<&UnderConstruction>, Option<&ProductionQueue>,
-                  Option<&ResearchQueue>)],
+    units: &[(
+        Entity,
+        &Position,
+        &Owner,
+        &UnitType,
+        &Health,
+        &MovementSpeed,
+        Option<&AttackStats>,
+        Option<&AttackTypeMarker>,
+        Option<&MoveTarget>,
+        Option<&AttackTarget>,
+        Option<&Path>,
+        Option<&Gathering>,
+        Option<&ChasingTarget>,
+        Option<&AttackMoveTarget>,
+        Option<&Dead>,
+        Option<&StatusEffects>,
+        Option<&AbilitySlots>,
+    )],
+    buildings: &[(
+        Entity,
+        &Position,
+        &Owner,
+        &Building,
+        &Health,
+        Option<&UnderConstruction>,
+        Option<&ProductionQueue>,
+        Option<&ResearchQueue>,
+    )],
     deposits: &[(Entity, &Position, &ResourceDeposit)],
 ) -> GameStateSnapshot {
     let mut my_units = Vec::new();
     let mut enemy_units = Vec::new();
 
-    for &(entity, pos, owner, unit_type, health, speed,
-          attack_stats, attack_type_marker,
-          move_target, attack_target, path,
-          gathering, chasing, attack_move, dead,
-          status_effects, ability_slots) in units
+    for &(
+        entity,
+        pos,
+        owner,
+        unit_type,
+        health,
+        speed,
+        attack_stats,
+        attack_type_marker,
+        move_target,
+        attack_target,
+        path,
+        gathering,
+        chasing,
+        attack_move,
+        dead,
+        status_effects,
+        ability_slots,
+    ) in units
     {
         let is_moving = move_target.is_some() || path.is_some() || chasing.is_some();
         let is_attacking = attack_target.is_some() || attack_move.is_some();
@@ -170,26 +204,30 @@ pub fn build_snapshot(
 
         let ability_snaps = ability_slots
             .map(|slots| {
-                slots.slots.iter().enumerate().map(|(i, state)| {
-                    AbilitySnapshot {
+                slots
+                    .slots
+                    .iter()
+                    .enumerate()
+                    .map(|(i, state)| AbilitySnapshot {
                         slot: i as u8,
                         id: format!("{:?}", state.id),
                         cooldown_remaining: state.cooldown_remaining,
                         ready: state.cooldown_remaining == 0,
-                    }
-                }).collect()
+                    })
+                    .collect()
             })
             .unwrap_or_else(|| {
                 // Fall back to unit_abilities lookup for units without AbilitySlots component
                 let ids = unit_abilities(unit_type.kind);
-                ids.iter().enumerate().map(|(i, id)| {
-                    AbilitySnapshot {
+                ids.iter()
+                    .enumerate()
+                    .map(|(i, id)| AbilitySnapshot {
                         slot: i as u8,
                         id: format!("{:?}", id),
                         cooldown_remaining: 0,
                         ready: true,
-                    }
-                }).collect()
+                    })
+                    .collect()
             });
 
         let snap = UnitSnapshot {
@@ -225,7 +263,17 @@ pub fn build_snapshot(
     let mut my_buildings = Vec::new();
     let mut enemy_buildings = Vec::new();
 
-    for &(entity, pos, owner, building, health, under_construction, production_queue, research_queue) in buildings {
+    for &(
+        entity,
+        pos,
+        owner,
+        building,
+        health,
+        under_construction,
+        production_queue,
+        research_queue,
+    ) in buildings
+    {
         let (is_constructing, progress) = under_construction
             .map(|uc| (true, uc.progress_f32()))
             .unwrap_or((false, 1.0));
@@ -235,7 +283,12 @@ pub fn build_snapshot(
             .unwrap_or_default();
 
         let rq = research_queue
-            .map(|rq| rq.queue.iter().map(|(upgrade, _)| format!("{}", upgrade)).collect())
+            .map(|rq| {
+                rq.queue
+                    .iter()
+                    .map(|(upgrade, _)| format!("{}", upgrade))
+                    .collect()
+            })
             .unwrap_or_default();
 
         let snap = BuildingSnapshot {

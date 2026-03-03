@@ -1,8 +1,10 @@
-use bevy::prelude::*;
 use bevy::ecs::system::SystemParam;
+use bevy::prelude::*;
 
 use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::{Building, CursorGridPos, Owner, Position, Producer, ResourceDeposit, Selected, UnitType};
+use cc_core::components::{
+    Building, CursorGridPos, Owner, Position, Producer, ResourceDeposit, Selected, UnitType,
+};
 use cc_core::coords::{ScreenPos, screen_to_world};
 use cc_sim::resources::{CommandQueue, MapResource};
 
@@ -37,7 +39,10 @@ pub fn handle_mouse_input(
     camera_q: Single<(&Camera, &GlobalTransform), With<Camera2d>>,
     units: Query<(Entity, &Position, &Owner, Option<&Selected>, &UnitType)>,
     buildings_q: Query<(Entity, &Position, &Owner), With<Building>>,
-    selected_buildings_q: Query<(Entity, &Owner, Option<&Producer>), (With<Building>, With<Selected>)>,
+    selected_buildings_q: Query<
+        (Entity, &Owner, Option<&Producer>),
+        (With<Building>, With<Selected>),
+    >,
     deposits: Query<(Entity, &Position), With<ResourceDeposit>>,
     map_res: Res<MapResource>,
     mut state: InputState,
@@ -45,7 +50,10 @@ pub fn handle_mouse_input(
     restrictions: Option<Res<cc_sim::campaign::mutator_state::ControlRestrictions>>,
 ) {
     // Gate: skip all mouse commands (except camera, handled separately) if restricted
-    if restrictions.as_ref().is_some_and(|r| !r.mouse_keyboard_enabled) {
+    if restrictions
+        .as_ref()
+        .is_some_and(|r| !r.mouse_keyboard_enabled)
+    {
         return;
     }
 

@@ -7,9 +7,7 @@ use cc_core::tuning::CC_IMMUNITY_TICKS;
 
 /// Tick down status effect durations, remove expired, handle CC immunity.
 /// Also converts 5 Annoyed stacks into Tilted CC (T1 fix).
-pub fn status_effect_system(
-    mut query: Query<&mut StatusEffects, Without<Dead>>,
-) {
+pub fn status_effect_system(mut query: Query<&mut StatusEffects, Without<Dead>>) {
     for mut effects in query.iter_mut() {
         let had_cc = effects.has_active_cc();
 

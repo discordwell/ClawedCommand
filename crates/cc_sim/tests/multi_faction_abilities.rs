@@ -147,7 +147,10 @@ fn clawed_rally_the_swarm_creates_aura() {
     run_ticks(&mut world, &mut schedule, 1);
 
     let aura = world.get::<Aura>(marshal);
-    assert!(aura.is_some(), "WarrenMarshal should have Aura after toggle");
+    assert!(
+        aura.is_some(),
+        "WarrenMarshal should have Aura after toggle"
+    );
     let aura = aura.unwrap();
     assert_eq!(aura.aura_type, AuraType::RallyTheSwarm);
     assert!(aura.active);
@@ -371,7 +374,10 @@ fn murder_panoptic_gaze_creates_aura() {
     run_ticks(&mut world, &mut schedule, 1);
 
     let aura = world.get::<Aura>(hootseer);
-    assert!(aura.is_some(), "Hootseer should have Aura after PanopticGaze toggle");
+    assert!(
+        aura.is_some(),
+        "Hootseer should have Aura after PanopticGaze toggle"
+    );
     assert_eq!(aura.unwrap().aura_type, AuraType::PanopticGaze);
 }
 
@@ -437,7 +443,10 @@ fn llama_play_dead_makes_invulnerable() {
     );
 
     let mods = world.get::<StatModifiers>(scrounger).unwrap();
-    assert!(mods.invulnerable, "PlayingDead should grant invulnerability");
+    assert!(
+        mods.invulnerable,
+        "PlayingDead should grant invulnerability"
+    );
     assert!(mods.immobilized, "PlayingDead should immobilize");
 }
 
@@ -639,10 +648,7 @@ fn bug_fix_miasma_trail_gives_damage_buff() {
 #[test]
 fn bug_fix_omen_has_range() {
     let def = cc_core::abilities::ability_def(cc_core::abilities::AbilityId::Omen);
-    assert!(
-        def.range > Fixed::ZERO,
-        "Omen should have non-zero range"
-    );
+    assert!(def.range > Fixed::ZERO, "Omen should have non-zero range");
 }
 
 // ---------------------------------------------------------------------------
@@ -726,7 +732,12 @@ fn seekers_lockjaw_stuns() {
 #[test]
 fn murder_mimic_call_disorients() {
     let (mut world, mut schedule) = make_sim();
-    let scrounger = spawn_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::MurderScrounger);
+    let scrounger = spawn_unit(
+        &mut world,
+        GridPos::new(10, 10),
+        0,
+        UnitKind::MurderScrounger,
+    );
     let enemy = spawn_unit(&mut world, GridPos::new(11, 10), 1, UnitKind::Nuisance);
 
     give_gpu(&mut world, 0, 50);

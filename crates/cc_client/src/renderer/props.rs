@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use cc_core::coords::{GridPos, WorldPos, depth_z, world_to_screen};
-use cc_core::terrain::{TerrainType, ELEVATION_PIXEL_OFFSET};
+use cc_core::terrain::{ELEVATION_PIXEL_OFFSET, TerrainType};
 use cc_sim::resources::MapResource;
 
 /// Marker for prop entities.

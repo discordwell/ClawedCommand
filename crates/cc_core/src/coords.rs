@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::math::{Fixed, FIXED_ZERO, fixed_from_i32, fixed_to_f32};
+use crate::math::{FIXED_ZERO, Fixed, fixed_from_i32, fixed_to_f32};
 
 /// Tile width/height in world units for isometric projection.
 pub const TILE_WIDTH: f32 = 64.0;

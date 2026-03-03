@@ -69,10 +69,7 @@ pub fn spawn_strategic_icon(
 }
 
 /// Reads camera orthographic scale and updates `ZoomTier` with hysteresis.
-pub fn detect_zoom_tier(
-    camera: Single<&Projection, With<Camera2d>>,
-    mut tier: ResMut<ZoomTier>,
-) {
+pub fn detect_zoom_tier(camera: Single<&Projection, With<Camera2d>>, mut tier: ResMut<ZoomTier>) {
     let Projection::Orthographic(ref ortho) = **camera else {
         return;
     };
@@ -103,21 +100,23 @@ pub fn detect_zoom_tier(
 pub fn toggle_lod_visuals(
     tier: Res<ZoomTier>,
     unit_query: Query<&Children, With<UnitMesh>>,
-    mut child_query: Query<(
-        &mut Visibility,
-        Has<StrategicIcon>,
-        Has<HealthBarBg>,
-        Has<HealthBarFg>,
-        Has<SelectionRing>,
-    ), Without<Prop>>,
+    mut child_query: Query<
+        (
+            &mut Visibility,
+            Has<StrategicIcon>,
+            Has<HealthBarBg>,
+            Has<HealthBarFg>,
+            Has<SelectionRing>,
+        ),
+        Without<Prop>,
+    >,
     mut prop_query: Query<&mut Visibility, (With<Prop>, Without<UnitMesh>)>,
 ) {
     let is_strategic = *tier == ZoomTier::Strategic;
 
     for children in unit_query.iter() {
         for child in children.iter() {
-            if let Ok((mut vis, is_icon, is_hb_bg, is_hb_fg, is_ring)) =
-                child_query.get_mut(child)
+            if let Ok((mut vis, is_icon, is_hb_bg, is_hb_fg, is_ring)) = child_query.get_mut(child)
             {
                 if is_icon {
                     *vis = if is_strategic {
@@ -166,7 +165,10 @@ mod tests {
     #[test]
     fn hysteresis_gap_prevents_flicker() {
         let gap = STRATEGIC_THRESHOLD - TACTICAL_THRESHOLD;
-        assert!(gap >= 0.1, "Hysteresis gap {gap} is too small, risk of flicker");
+        assert!(
+            gap >= 0.1,
+            "Hysteresis gap {gap} is too small, risk of flicker"
+        );
     }
 
     #[test]

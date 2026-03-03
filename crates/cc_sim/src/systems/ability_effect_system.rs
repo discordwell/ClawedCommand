@@ -54,9 +54,7 @@ pub fn ability_effect_system(
                     && slot.duration_remaining % POWER_NAP_GPU_INTERVAL == 0
                 {
                     if let Some(owner) = owner {
-                        if let Some(pres) =
-                            player_res.players.get_mut(owner.player_id as usize)
-                        {
+                        if let Some(pres) = player_res.players.get_mut(owner.player_id as usize) {
                             pres.gpu_cores += 1;
                         }
                     }
@@ -77,4 +75,3 @@ pub fn ability_effect_system(
         }
     }
 }
-

@@ -98,7 +98,9 @@ mod wet {
                 result.violations.len()
             );
 
-            assert!(result.passed(), "seed {seed} failed: {:?}",
+            assert!(
+                result.passed(),
+                "seed {seed} failed: {:?}",
                 result.fatal_violations()
             );
         }
@@ -213,15 +215,8 @@ mod wet {
 
         // PNG should start with PNG magic bytes
         let (_, png_data) = &result.minimap_frames[0];
-        assert!(
-            png_data.len() > 8,
-            "PNG data should have content"
-        );
-        assert_eq!(
-            &png_data[1..4],
-            b"PNG",
-            "Should be valid PNG data"
-        );
+        assert!(png_data.len() > 8, "PNG data should have content");
+        assert_eq!(&png_data[1..4], b"PNG", "Should be valid PNG data");
     }
 
     #[test]
@@ -374,7 +369,10 @@ mod wet {
             }
 
             // Combat activity
-            if snap.projectile_count > 0 || snap.melee_attack_count > 0 || snap.ranged_attack_count > 0 {
+            if snap.projectile_count > 0
+                || snap.melee_attack_count > 0
+                || snap.ranged_attack_count > 0
+            {
                 println!(
                     "  [COMBAT: {} melee, {} ranged attacks (cumulative) | {} projectiles in flight]",
                     snap.melee_attack_count, snap.ranged_attack_count, snap.projectile_count
@@ -526,11 +524,9 @@ mod wet {
                     .iter()
                     .any(|b| b.kind == "FishMarket" && !b.is_under_construction)
             });
-            let ever_had_research = snaps.iter().any(|s| {
-                s.players
-                    .iter()
-                    .any(|p| !p.completed_upgrades.is_empty())
-            });
+            let ever_had_research = snaps
+                .iter()
+                .any(|s| s.players.iter().any(|p| !p.completed_upgrades.is_empty()));
             let ever_had_advanced_unit = snaps.iter().any(|s| {
                 s.units
                     .iter()
@@ -539,18 +535,18 @@ mod wet {
             let ever_had_combat = snaps.iter().any(|s| {
                 s.projectile_count > 0 || s.melee_attack_count > 0 || s.ranged_attack_count > 0
             });
-            let ever_had_construction = snaps.iter().any(|s| {
-                s.buildings.iter().any(|b| b.is_under_construction)
-            });
-            let reached_attack_phase = snaps.iter().any(|s| {
-                s.players.iter().any(|p| p.ai_phase == "Attack")
-            });
-            let reached_midgame = snaps.iter().any(|s| {
-                s.players.iter().any(|p| p.ai_phase == "MidGame")
-            });
-            let reached_buildup = snaps.iter().any(|s| {
-                s.players.iter().any(|p| p.ai_phase == "BuildUp")
-            });
+            let ever_had_construction = snaps
+                .iter()
+                .any(|s| s.buildings.iter().any(|b| b.is_under_construction));
+            let reached_attack_phase = snaps
+                .iter()
+                .any(|s| s.players.iter().any(|p| p.ai_phase == "Attack"));
+            let reached_midgame = snaps
+                .iter()
+                .any(|s| s.players.iter().any(|p| p.ai_phase == "MidGame"));
+            let reached_buildup = snaps
+                .iter()
+                .any(|s| s.players.iter().any(|p| p.ai_phase == "BuildUp"));
 
             let milestones = vec![
                 ("FishMarket built", ever_had_fish_market),
@@ -744,7 +740,11 @@ mod wet {
                 ..Default::default()
             };
             let result = run_match(&config);
-            assert!(!result.snapshots.is_empty(), "Should have at least one snapshot for {}", faction);
+            assert!(
+                !result.snapshots.is_empty(),
+                "Should have at least one snapshot for {}",
+                faction
+            );
             let snap = &result.snapshots[0];
             let fmap = faction_map(faction);
 
@@ -753,23 +753,29 @@ mod wet {
 
             // Both players should have the faction's HQ
             for player_id in 0u8..=1 {
-                let has_hq = snap.buildings.iter().any(|b| {
-                    b.owner == player_id && b.kind == expected_hq
-                });
+                let has_hq = snap
+                    .buildings
+                    .iter()
+                    .any(|b| b.owner == player_id && b.kind == expected_hq);
                 assert!(
                     has_hq,
                     "P{} ({}) should have HQ '{}', buildings: {:?}",
-                    player_id, faction, expected_hq,
+                    player_id,
+                    faction,
+                    expected_hq,
                     snap.buildings.iter().map(|b| &b.kind).collect::<Vec<_>>()
                 );
 
-                let has_worker = snap.units.iter().any(|u| {
-                    u.owner == player_id && u.kind == expected_worker
-                });
+                let has_worker = snap
+                    .units
+                    .iter()
+                    .any(|u| u.owner == player_id && u.kind == expected_worker);
                 assert!(
                     has_worker,
                     "P{} ({}) should have worker '{}', units: {:?}",
-                    player_id, faction, expected_worker,
+                    player_id,
+                    faction,
+                    expected_worker,
                     snap.units.iter().map(|u| &u.kind).collect::<Vec<_>>()
                 );
             }
@@ -793,14 +799,15 @@ mod wet {
 
             println!(
                 "{} vs {} (seed {}): {} | ticks: {} | wall: {}ms",
-                a, b, seed,
-                result.outcome, result.final_tick, result.wall_time_ms,
+                a, b, seed, result.outcome, result.final_tick, result.wall_time_ms,
             );
 
             assert!(
                 result.passed(),
                 "{} vs {} (seed {}) should pass. Violations: {:?}",
-                a, b, seed,
+                a,
+                b,
+                seed,
                 result.fatal_violations()
             );
         }
@@ -823,16 +830,20 @@ mod wet {
         let snaps = &result.snapshots;
 
         // At least one snapshot must show cumulative melee or ranged attacks
-        let any_combat = snaps.iter().any(|s| {
-            s.melee_attack_count > 0 || s.ranged_attack_count > 0
-        });
+        let any_combat = snaps
+            .iter()
+            .any(|s| s.melee_attack_count > 0 || s.ranged_attack_count > 0);
         assert!(
             any_combat,
             "Seed 999 should record combat via melee_attack_count or ranged_attack_count"
         );
 
         // Specifically verify melee attacks happened (Nuisances are melee)
-        let max_melee = snaps.iter().map(|s| s.melee_attack_count).max().unwrap_or(0);
+        let max_melee = snaps
+            .iter()
+            .map(|s| s.melee_attack_count)
+            .max()
+            .unwrap_or(0);
         assert!(
             max_melee > 0,
             "Should have recorded melee attacks (Nuisances are melee units), got 0"
@@ -841,7 +852,11 @@ mod wet {
         println!(
             "wet_melee_combat_tracked: max melee={}, max ranged={}",
             max_melee,
-            snaps.iter().map(|s| s.ranged_attack_count).max().unwrap_or(0)
+            snaps
+                .iter()
+                .map(|s| s.ranged_attack_count)
+                .max()
+                .unwrap_or(0)
         );
     }
 
@@ -894,10 +909,21 @@ mod wet {
 
     impl FactionReport {
         fn new(name: &'static str) -> Self {
-            Self { name, wins: 0, losses: 0, draws: 0, total_ticks: 0, games: 0 }
+            Self {
+                name,
+                wins: 0,
+                losses: 0,
+                draws: 0,
+                total_ticks: 0,
+                games: 0,
+            }
         }
         fn avg_ticks(&self) -> u64 {
-            if self.games == 0 { 0 } else { self.total_ticks / self.games as u64 }
+            if self.games == 0 {
+                0
+            } else {
+                self.total_ticks / self.games as u64
+            }
         }
     }
 
@@ -941,13 +967,11 @@ mod wet {
                         MatchOutcome::Victory { winner, .. } => {
                             (*winner == faction_player, *winner != faction_player, false)
                         }
-                        MatchOutcome::Timeout { leading_player, .. } => {
-                            match leading_player {
-                                Some(p) if *p == faction_player => (true, false, false),
-                                Some(_) => (false, true, false),
-                                None => (false, false, true),
-                            }
-                        }
+                        MatchOutcome::Timeout { leading_player, .. } => match leading_player {
+                            Some(p) if *p == faction_player => (true, false, false),
+                            Some(_) => (false, true, false),
+                            None => (false, false, true),
+                        },
                         MatchOutcome::Draw { .. } => (false, false, true),
                         MatchOutcome::Error { .. } => (false, false, true),
                     };
@@ -970,12 +994,20 @@ mod wet {
                     assert!(
                         result.passed(),
                         "{} ({}) vs CatGpt (seed {}) had fatal violations: {:?}",
-                        name, label, seed, result.fatal_violations()
+                        name,
+                        label,
+                        seed,
+                        result.fatal_violations()
                     );
 
                     println!(
                         "  {:18} ({}) vs CatGpt seed {:3}: {:40} ticks: {:5} wall: {}ms",
-                        name, label, seed, format!("{}", result.outcome), result.final_tick, result.wall_time_ms,
+                        name,
+                        label,
+                        seed,
+                        format!("{}", result.outcome),
+                        result.final_tick,
+                        result.wall_time_ms,
                     );
                 }
             }
@@ -985,7 +1017,8 @@ mod wet {
             assert!(
                 timeouts < total_games,
                 "{} vs CatGPT: all {} games timed out — factions can't finish games",
-                name, total_games
+                name,
+                total_games
             );
         }
 
@@ -996,7 +1029,12 @@ mod wet {
         for r in &reports {
             println!(
                 "║ {:20} ║ {:4} ║ {:4} ║ {:4} ║ {:5} ║ {:10} ║",
-                r.name, r.wins, r.losses, r.draws, r.games, r.avg_ticks()
+                r.name,
+                r.wins,
+                r.losses,
+                r.draws,
+                r.games,
+                r.avg_ticks()
             );
         }
         println!("╚══════════════════════╩══════╩══════╩══════╩═══════╩════════════╝");
@@ -1006,7 +1044,8 @@ mod wet {
             assert!(
                 r.wins > 0,
                 "BALANCE FAIL: {} won 0 out of {} games vs CatGPT — faction is unviable",
-                r.name, r.games
+                r.name,
+                r.games
             );
         }
     }

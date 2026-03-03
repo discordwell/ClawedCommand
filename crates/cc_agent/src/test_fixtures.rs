@@ -46,7 +46,10 @@ pub fn make_unit_owned(id: u64, x: i32, y: i32, owner: u8) -> UnitSnapshot {
 }
 
 /// Minimal snapshot with my_units and enemy_units, everything else empty/default.
-pub fn make_snapshot(my_units: Vec<UnitSnapshot>, enemy_units: Vec<UnitSnapshot>) -> GameStateSnapshot {
+pub fn make_snapshot(
+    my_units: Vec<UnitSnapshot>,
+    enemy_units: Vec<UnitSnapshot>,
+) -> GameStateSnapshot {
     GameStateSnapshot {
         tick: 0,
         map_width: 64,

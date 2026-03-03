@@ -6,7 +6,9 @@
 use async_trait::async_trait;
 use wasm_bindgen::prelude::*;
 
-use crate::llm_client::{ChatMessage, LlmClient, LlmError, LlmResponse, ToolDef, parse_openai_response};
+use crate::llm_client::{
+    ChatMessage, LlmClient, LlmError, LlmResponse, ToolDef, parse_openai_response,
+};
 
 // JS bindings to window.ccWebLLM.*
 #[wasm_bindgen]

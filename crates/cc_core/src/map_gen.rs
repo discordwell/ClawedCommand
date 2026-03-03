@@ -204,19 +204,37 @@ fn valley_layout() -> TemplateLayout {
         lanes: vec![
             // Main road: diagonal through center with bridge crossing
             TemplateLane {
-                waypoints: vec![(0.12, 0.12), (0.35, 0.40), (0.50, 0.50), (0.65, 0.60), (0.88, 0.88)],
+                waypoints: vec![
+                    (0.12, 0.12),
+                    (0.35, 0.40),
+                    (0.50, 0.50),
+                    (0.65, 0.60),
+                    (0.88, 0.88),
+                ],
                 width: 0.03,
                 terrain: TerrainType::Road,
             },
             // Flanking dirt path along upper ridge
             TemplateLane {
-                waypoints: vec![(0.12, 0.12), (0.25, 0.10), (0.50, 0.15), (0.75, 0.25), (0.88, 0.88)],
+                waypoints: vec![
+                    (0.12, 0.12),
+                    (0.25, 0.10),
+                    (0.50, 0.15),
+                    (0.75, 0.25),
+                    (0.88, 0.88),
+                ],
                 width: 0.02,
                 terrain: TerrainType::Dirt,
             },
             // Flanking dirt path along lower ridge
             TemplateLane {
-                waypoints: vec![(0.12, 0.12), (0.10, 0.25), (0.15, 0.50), (0.25, 0.75), (0.88, 0.88)],
+                waypoints: vec![
+                    (0.12, 0.12),
+                    (0.10, 0.25),
+                    (0.15, 0.50),
+                    (0.25, 0.75),
+                    (0.88, 0.88),
+                ],
                 width: 0.02,
                 terrain: TerrainType::Dirt,
             },
@@ -315,7 +333,13 @@ fn crossroads_layout() -> TemplateLayout {
         lanes: vec![
             // Main horizontal road
             TemplateLane {
-                waypoints: vec![(0.10, 0.50), (0.35, 0.50), (0.50, 0.50), (0.65, 0.50), (0.90, 0.50)],
+                waypoints: vec![
+                    (0.10, 0.50),
+                    (0.35, 0.50),
+                    (0.50, 0.50),
+                    (0.65, 0.50),
+                    (0.90, 0.50),
+                ],
                 width: 0.03,
                 terrain: TerrainType::Road,
             },
@@ -571,7 +595,8 @@ pub fn generate_map(params: &MapGenParams) -> MapDefinition {
     let mut map = GameMap::new(w, h);
 
     // Step 3: Extract spawn positions from Base zones
-    let spawns = place_spawns_from_layout(&layout, w, h, params.num_players, layout.preferred_symmetry);
+    let spawns =
+        place_spawns_from_layout(&layout, w, h, params.num_players, layout.preferred_symmetry);
 
     // Step 4: Paint zones — fill terrain + elevation from zone definitions
     paint_zones(&mut map, &layout, w, h);
@@ -654,7 +679,11 @@ fn place_spawns_from_layout(
     num_players: u8,
     symmetry: MapSymmetry,
 ) -> Vec<(i32, i32)> {
-    let base_zones: Vec<_> = layout.zones.iter().filter(|z| z.zone_type == ZoneType::Base).collect();
+    let base_zones: Vec<_> = layout
+        .zones
+        .iter()
+        .filter(|z| z.zone_type == ZoneType::Base)
+        .collect();
 
     if base_zones.len() >= num_players as usize {
         // Use base zone centers
@@ -701,8 +730,10 @@ fn place_spawns_from_layout(
                     let cx = w as f32 / 2.0;
                     let cy = h as f32 / 2.0;
                     let r = (w.min(h) as f32 / 2.0) - margin as f32;
-                    let x = (cx + r * angle.cos()).clamp(margin as f32, (w as i32 - margin) as f32) as i32;
-                    let y = (cy + r * angle.sin()).clamp(margin as f32, (h as i32 - margin) as f32) as i32;
+                    let x = (cx + r * angle.cos()).clamp(margin as f32, (w as i32 - margin) as f32)
+                        as i32;
+                    let y = (cy + r * angle.sin()).clamp(margin as f32, (h as i32 - margin) as f32)
+                        as i32;
                     spawns.push((x, y));
                 }
                 spawns
@@ -845,8 +876,12 @@ fn apply_noise_detail(
             // Skip structural tiles: roads, water, rock, ramps, tech ruins
             if matches!(
                 tile.terrain,
-                TerrainType::Road | TerrainType::Water | TerrainType::Rock
-                    | TerrainType::Ramp | TerrainType::TechRuins | TerrainType::Shallows
+                TerrainType::Road
+                    | TerrainType::Water
+                    | TerrainType::Rock
+                    | TerrainType::Ramp
+                    | TerrainType::TechRuins
+                    | TerrainType::Shallows
             ) {
                 continue;
             }
@@ -867,7 +902,9 @@ fn apply_noise_detail(
             let mx = (w - 1 - x) as f64 * 0.08;
             let my = (h - 1 - y) as f64 * 0.08;
             let tn = (terrain_noise.get([nx, ny]) + terrain_noise.get([mx, my])) * 0.5;
-            let wn = (water_noise.get([nx * 0.5, ny * 0.5]) + water_noise.get([mx * 0.5, my * 0.5])) * 0.5;
+            let wn = (water_noise.get([nx * 0.5, ny * 0.5])
+                + water_noise.get([mx * 0.5, my * 0.5]))
+                * 0.5;
 
             let terrain = if tn > (1.0 - params.forest_ratio as f64 * 3.0) && tile.elevation > 0 {
                 TerrainType::Forest
@@ -951,12 +988,10 @@ fn place_ramps_on_lanes(map: &mut GameMap, layout: &TemplateLayout, w: u32, h: u
             let Some(tile) = map.get(pos) else { return };
             let elev = tile.elevation;
 
-            let at_transition = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-                .iter()
-                .any(|&(dx, dy)| {
-                    let np = GridPos::new(px + dx, py + dy);
-                    map.in_bounds(np) && map.elevation_at(np) != elev
-                });
+            let at_transition = [(-1, 0), (1, 0), (0, -1), (0, 1)].iter().any(|&(dx, dy)| {
+                let np = GridPos::new(px + dx, py + dy);
+                map.in_bounds(np) && map.elevation_at(np) != elev
+            });
 
             if at_transition {
                 if let Some(tile) = map.get_mut(pos) {
@@ -1459,7 +1494,12 @@ mod tests {
 
     #[test]
     fn all_template_sizes_generate_valid_maps() {
-        let templates = [MapTemplate::Valley, MapTemplate::Crossroads, MapTemplate::Fortress, MapTemplate::Islands];
+        let templates = [
+            MapTemplate::Valley,
+            MapTemplate::Crossroads,
+            MapTemplate::Fortress,
+            MapTemplate::Islands,
+        ];
         let sizes = [MapSize::Small, MapSize::Medium, MapSize::Large];
 
         for &template in &templates {
@@ -1472,8 +1512,16 @@ mod tests {
                     ..Default::default()
                 };
                 let def = generate_map(&params);
-                assert_eq!(def.width, w, "Width mismatch for {:?}/{:?}", template, map_size);
-                assert_eq!(def.height, h, "Height mismatch for {:?}/{:?}", template, map_size);
+                assert_eq!(
+                    def.width, w,
+                    "Width mismatch for {:?}/{:?}",
+                    template, map_size
+                );
+                assert_eq!(
+                    def.height, h,
+                    "Height mismatch for {:?}/{:?}",
+                    template, map_size
+                );
                 assert!(
                     def.validate().is_ok(),
                     "Validation failed for {:?}/{:?}: {:?}",
@@ -1487,9 +1535,17 @@ mod tests {
                     assert!(
                         TerrainType::from_u8(terrain_u8).is_some(),
                         "Invalid terrain at index {} for {:?}/{:?}",
-                        i, template, map_size
+                        i,
+                        template,
+                        map_size
                     );
-                    assert!(elev <= 2, "Elevation too high at index {} for {:?}/{:?}", i, template, map_size);
+                    assert!(
+                        elev <= 2,
+                        "Elevation too high at index {} for {:?}/{:?}",
+                        i,
+                        template,
+                        map_size
+                    );
                 }
             }
         }
@@ -1547,7 +1603,10 @@ mod tests {
             for dx in -check_r..=check_r {
                 let pos = GridPos::new(cx + dx, cy + dy);
                 if let Some(t) = map.terrain_at(pos) {
-                    if t == TerrainType::Road || t == TerrainType::TechRuins || t == TerrainType::Ramp {
+                    if t == TerrainType::Road
+                        || t == TerrainType::TechRuins
+                        || t == TerrainType::Ramp
+                    {
                         road_count += 1;
                     }
                 }
@@ -1574,7 +1633,9 @@ mod tests {
 
         // Must have at least 1 MonkeyMine
         assert!(
-            def.resources.iter().any(|r| r.kind == ResourceKind::MonkeyMine),
+            def.resources
+                .iter()
+                .any(|r| r.kind == ResourceKind::MonkeyMine),
             "Must have a MonkeyMine"
         );
 
@@ -1583,14 +1644,14 @@ mod tests {
             let nearby = def
                 .resources
                 .iter()
-                .filter(|r| {
-                    (r.pos.0 - sp.pos.0).abs() <= 8 && (r.pos.1 - sp.pos.1).abs() <= 8
-                })
+                .filter(|r| (r.pos.0 - sp.pos.0).abs() <= 8 && (r.pos.1 - sp.pos.1).abs() <= 8)
                 .count();
             assert!(
                 nearby >= 2,
                 "Spawn ({}, {}) should have at least 2 nearby resources, got {}",
-                sp.pos.0, sp.pos.1, nearby
+                sp.pos.0,
+                sp.pos.1,
+                nearby
             );
         }
     }
@@ -1613,7 +1674,12 @@ mod tests {
 
     #[test]
     fn connectivity_all_templates() {
-        let templates = [MapTemplate::Valley, MapTemplate::Crossroads, MapTemplate::Fortress, MapTemplate::Islands];
+        let templates = [
+            MapTemplate::Valley,
+            MapTemplate::Crossroads,
+            MapTemplate::Fortress,
+            MapTemplate::Islands,
+        ];
 
         for &template in &templates {
             let params = MapGenParams {
@@ -1760,9 +1826,18 @@ mod tests {
             }
         }
         // Must have all three elevation levels for flooding mechanic
-        assert!(elev_counts[0] > 100, "Should have elevation 0 tiles (floodable)");
-        assert!(elev_counts[1] > 100, "Should have elevation 1 tiles (islands)");
-        assert!(elev_counts[2] > 50, "Should have elevation 2 tiles (safe bases)");
+        assert!(
+            elev_counts[0] > 100,
+            "Should have elevation 0 tiles (floodable)"
+        );
+        assert!(
+            elev_counts[1] > 100,
+            "Should have elevation 1 tiles (islands)"
+        );
+        assert!(
+            elev_counts[2] > 50,
+            "Should have elevation 2 tiles (safe bases)"
+        );
     }
 
     #[test]

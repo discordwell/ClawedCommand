@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 #[cfg(not(target_arch = "wasm32"))]
-use bevy::render::view::screenshot::{save_to_disk, Screenshot};
+use bevy::render::view::screenshot::{Screenshot, save_to_disk};
 use std::path::PathBuf;
 
 #[cfg(not(target_arch = "wasm32"))]

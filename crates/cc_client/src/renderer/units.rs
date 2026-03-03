@@ -3,9 +3,9 @@ use bevy::prelude::*;
 use crate::renderer::animation::{AnimIndices, AnimState, AnimTimer, PrevAnimState};
 use crate::renderer::hero_sprites::HeroSprites;
 use crate::renderer::tweens::TweenState;
-use crate::setup::{TeamMaterials, UnitMesh, team_color, unit_scale};
 use crate::renderer::unit_gen::{UnitSprites, kind_index};
 use crate::renderer::zoom_lod::{self, ZoomTier};
+use crate::setup::{TeamMaterials, UnitMesh, team_color, unit_scale};
 use cc_core::components::{HeroIdentity, Owner, Position, UnitType};
 use cc_core::coords::{depth_z, world_to_screen};
 use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
@@ -37,7 +37,10 @@ pub fn spawn_unit_visuals(
     hero_sprites: Option<Res<HeroSprites>>,
     tier: Res<ZoomTier>,
     map_res: Res<MapResource>,
-    new_units: Query<(Entity, &UnitType, &Owner, &Position, Option<&HeroIdentity>), Without<UnitMesh>>,
+    new_units: Query<
+        (Entity, &UnitType, &Owner, &Position, Option<&HeroIdentity>),
+        Without<UnitMesh>,
+    >,
 ) {
     for (entity, unit_type, owner, pos, hero_identity) in new_units.iter() {
         let screen = world_to_screen(pos.world);
@@ -85,8 +88,13 @@ pub fn spawn_unit_visuals(
 
         // Spawn strategic zoom icon as child (hidden unless in Strategic tier)
         zoom_lod::spawn_strategic_icon(
-            &mut commands, &mut meshes, &mut materials,
-            entity, scale, tint, &tier,
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+            entity,
+            scale,
+            tint,
+            &tier,
         );
     }
 }

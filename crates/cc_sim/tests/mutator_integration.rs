@@ -16,10 +16,14 @@ use cc_core::unit_stats::base_stats;
 
 use cc_sim::campaign::mutator_state::{ControlRestrictions, FogState, MutatorState};
 use cc_sim::campaign::mutator_systems;
-use cc_sim::campaign::state::{CampaignPhase, CampaignState, MissionFailedEvent, MissionVictoryEvent, TimeLimitWarningEvent};
+use cc_sim::campaign::state::{
+    CampaignPhase, CampaignState, MissionFailedEvent, MissionVictoryEvent, TimeLimitWarningEvent,
+};
 use cc_sim::campaign::triggers::{DialogueEvent, ObjectiveCompleteEvent, TriggerFiredEvent};
 use cc_sim::campaign::wave_spawner::{MissionStarted, WaveTracker};
-use cc_sim::resources::{CommandQueue, ControlGroups, MapResource, PlayerResources, SimClock, SimRng, VoiceOverride};
+use cc_sim::resources::{
+    CommandQueue, ControlGroups, MapResource, PlayerResources, SimClock, SimRng, VoiceOverride,
+};
 use cc_sim::systems::tick_system::tick_system;
 
 // ---------------------------------------------------------------------------
@@ -444,10 +448,7 @@ fn time_limit_fires_mission_failed() {
     run_ticks(&mut world, &mut schedule, 4);
     {
         let events = world.resource::<Messages<MissionFailedEvent>>();
-        assert!(
-            events.is_empty(),
-            "Should not fail before max_ticks"
-        );
+        assert!(events.is_empty(), "Should not fail before max_ticks");
     }
 
     // Run 1 more tick — tick reaches 5, should fail
@@ -477,7 +478,10 @@ fn voice_only_control_blocks_player_input() {
     load_mission_with_mutators(&mut world, mission);
 
     let restrictions = world.resource::<ControlRestrictions>();
-    assert!(!restrictions.mouse_keyboard_enabled, "Mouse/keyboard should be disabled");
+    assert!(
+        !restrictions.mouse_keyboard_enabled,
+        "Mouse/keyboard should be disabled"
+    );
     assert!(restrictions.voice_enabled, "Voice should be enabled");
     assert!(!restrictions.ai_enabled, "AI should be disabled per config");
 }
@@ -491,8 +495,14 @@ fn no_build_mode_blocks_building() {
     load_mission_with_mutators(&mut world, mission);
 
     let restrictions = world.resource::<ControlRestrictions>();
-    assert!(!restrictions.building_enabled, "Building should be disabled");
-    assert!(restrictions.mouse_keyboard_enabled, "Mouse/keyboard should still work");
+    assert!(
+        !restrictions.building_enabled,
+        "Building should be disabled"
+    );
+    assert!(
+        restrictions.mouse_keyboard_enabled,
+        "Mouse/keyboard should still work"
+    );
 }
 
 #[test]
@@ -505,7 +515,10 @@ fn no_ai_control_blocks_ai_commands() {
 
     let restrictions = world.resource::<ControlRestrictions>();
     assert!(!restrictions.ai_enabled, "AI should be disabled");
-    assert!(restrictions.mouse_keyboard_enabled, "Mouse/keyboard should still work");
+    assert!(
+        restrictions.mouse_keyboard_enabled,
+        "Mouse/keyboard should still work"
+    );
     assert!(restrictions.voice_enabled, "Voice should still work");
 }
 
@@ -518,7 +531,10 @@ fn ai_only_control_blocks_input_and_voice() {
     load_mission_with_mutators(&mut world, mission);
 
     let restrictions = world.resource::<ControlRestrictions>();
-    assert!(!restrictions.mouse_keyboard_enabled, "Mouse/keyboard should be disabled");
+    assert!(
+        !restrictions.mouse_keyboard_enabled,
+        "Mouse/keyboard should be disabled"
+    );
     assert!(!restrictions.voice_enabled, "Voice should be disabled");
     assert!(restrictions.ai_enabled, "AI should be enabled");
 }
@@ -642,7 +658,10 @@ fn no_mutators_runs_cleanly() {
     for x in 0..8i32 {
         for y in 0..8i32 {
             let tile = map.get(GridPos::new(x, y)).unwrap();
-            assert_eq!(tile.dynamic_flags, 0, "No flags should be set without mutators");
+            assert_eq!(
+                tile.dynamic_flags, 0,
+                "No flags should be set without mutators"
+            );
         }
     }
 }
@@ -798,7 +817,10 @@ fn toggle_mutator_activates_inactive_mutator() {
     mission.triggers = vec![ScriptedTrigger {
         id: "activate_zone".into(),
         condition: TriggerCondition::AtTick(5),
-        actions: vec![TriggerAction::ToggleMutator { mutator_index: 0, active: true }],
+        actions: vec![TriggerAction::ToggleMutator {
+            mutator_index: 0,
+            active: true,
+        }],
         once: true,
     }];
     load_mission_with_mutators(&mut world, mission);
@@ -814,7 +836,10 @@ fn toggle_mutator_activates_inactive_mutator() {
     // Run 2 more ticks — trigger fires at tick 5, damage zone becomes active
     run_ticks(&mut world, &mut schedule, 2);
     let hp_after = world.get::<Health>(unit).unwrap().current;
-    assert!(hp_after < hp_before, "Should take damage after mutator activated");
+    assert!(
+        hp_after < hp_before,
+        "Should take damage after mutator activated"
+    );
 }
 
 #[test]
@@ -831,7 +856,10 @@ fn toggle_mutator_deactivates_active_mutator() {
     mission.triggers = vec![ScriptedTrigger {
         id: "deactivate_zone".into(),
         condition: TriggerCondition::AtTick(3),
-        actions: vec![TriggerAction::ToggleMutator { mutator_index: 0, active: false }],
+        actions: vec![TriggerAction::ToggleMutator {
+            mutator_index: 0,
+            active: false,
+        }],
         once: true,
     }];
     load_mission_with_mutators(&mut world, mission);
@@ -873,7 +901,10 @@ fn time_limit_warning_fires_at_warning_tick() {
     run_ticks(&mut world, &mut schedule, 4);
     {
         let events = world.resource::<Messages<TimeLimitWarningEvent>>();
-        assert!(events.is_empty(), "Warning should not fire before warning_at");
+        assert!(
+            events.is_empty(),
+            "Warning should not fire before warning_at"
+        );
     }
 
     // Run 1 more tick — tick reaches 5
@@ -960,7 +991,10 @@ fn damage_zone_no_toggle_flag_uses_active_only() {
 
     run_ticks(&mut world, &mut schedule, 1);
     let hp_after = world.get::<Health>(unit).unwrap().current;
-    assert!(hp_after < hp_before, "Active zone without toggle_flag should deal damage");
+    assert!(
+        hp_after < hp_before,
+        "Active zone without toggle_flag should deal damage"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1038,7 +1072,10 @@ fn wind_kills_pushed_off_map() {
     run_ticks(&mut world, &mut schedule, 1);
 
     let hp_after = world.get::<Health>(unit).unwrap().current;
-    assert!(hp_after <= Fixed::from_num(0), "Unit pushed off map should receive lethal damage (hp: {hp_after})");
+    assert!(
+        hp_after <= Fixed::from_num(0),
+        "Unit pushed off map should receive lethal damage (hp: {hp_after})"
+    );
 }
 
 #[test]
@@ -1058,12 +1095,17 @@ fn wind_clears_movement_targets() {
 
     let unit = spawn_unit(&mut world, GridPos::new(5, 5), 0);
     // Add a MoveTarget component
-    world.entity_mut(unit).insert(MoveTarget { target: WorldPos::from_grid(GridPos::new(10, 10)) });
+    world.entity_mut(unit).insert(MoveTarget {
+        target: WorldPos::from_grid(GridPos::new(10, 10)),
+    });
 
     run_ticks(&mut world, &mut schedule, 1);
 
     // MoveTarget should be removed
-    assert!(world.get::<MoveTarget>(unit).is_none(), "Wind should clear MoveTarget");
+    assert!(
+        world.get::<MoveTarget>(unit).is_none(),
+        "Wind should clear MoveTarget"
+    );
 }
 
 #[test]
@@ -1092,7 +1134,10 @@ fn wind_inactive_no_displacement() {
     // but tick 3 cycle=3%10=3 which is NOT < 3, so active ticks are 1 and 2 only = +4
     // Actually: tick 1 → cycle=(1-0)%10=1 <3 → push; tick 2 → 2<3 → push; tick 3 → 3>=3 no
     // So pushed on ticks 1,2 = 2*2=4 → y=5+4=9
-    assert_eq!(y, 9, "Unit should only be displaced during active wind ticks");
+    assert_eq!(
+        y, 9,
+        "Unit should only be displaced during active wind ticks"
+    );
 }
 
 #[test]

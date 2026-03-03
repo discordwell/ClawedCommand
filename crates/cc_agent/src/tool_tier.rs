@@ -367,7 +367,8 @@ impl ToolRegistry {
             name: "harass_economy".into(),
             tier: ToolTier::Tactical,
             category: ToolCategory::Behavior,
-            description: "Attack enemy workers, or attack-move toward buildings if none visible".into(),
+            description: "Attack enemy workers, or attack-move toward buildings if none visible"
+                .into(),
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -625,11 +626,14 @@ pub fn update_tool_tiers(
     }
     // Insert new players who appeared in rack_counts but not in states
     for (&player_id, &count) in &rack_counts {
-        tool_states.states.entry(player_id).or_insert(FactionToolState {
-            player_id,
-            current_tier: ToolTier::from_rack_count(count),
-            server_rack_count: count,
-        });
+        tool_states
+            .states
+            .entry(player_id)
+            .or_insert(FactionToolState {
+                player_id,
+                current_tier: ToolTier::from_rack_count(count),
+                server_rack_count: count,
+            });
     }
 }
 
@@ -735,7 +739,10 @@ mod tests {
         assert_eq!(reg.required_tier("get_units"), Some(ToolTier::Basic));
         assert_eq!(reg.required_tier("focus_fire"), Some(ToolTier::Tactical));
         assert_eq!(reg.required_tier("auto_produce"), Some(ToolTier::Strategic));
-        assert_eq!(reg.required_tier("research_priority"), Some(ToolTier::Advanced));
+        assert_eq!(
+            reg.required_tier("research_priority"),
+            Some(ToolTier::Advanced)
+        );
         assert_eq!(reg.required_tier("nonexistent"), None);
     }
 }

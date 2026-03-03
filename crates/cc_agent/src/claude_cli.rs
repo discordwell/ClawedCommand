@@ -142,7 +142,9 @@ mod tests {
     fn strips_claude_env_vars_for_child_process() {
         // Simulate being inside a Claude Code session
         // SAFETY: Single-threaded test, no concurrent env access
-        unsafe { std::env::set_var("CLAUDE_CODE_TEST_MARKER", "1"); }
+        unsafe {
+            std::env::set_var("CLAUDE_CODE_TEST_MARKER", "1");
+        }
         let vars: Vec<String> = std::env::vars()
             .filter_map(|(k, _)| {
                 if k.starts_with("CLAUDE_") {
@@ -161,6 +163,8 @@ mod tests {
         // doesn't error out due to nesting detection.
         let _result = invoke_claude_cli("echo test", "test");
         // SAFETY: Single-threaded test, no concurrent env access
-        unsafe { std::env::remove_var("CLAUDE_CODE_TEST_MARKER"); }
+        unsafe {
+            std::env::remove_var("CLAUDE_CODE_TEST_MARKER");
+        }
     }
 }

@@ -110,7 +110,19 @@ pub fn capture_snapshot(world: &mut World, tick: u64) -> GameStateSnapshot {
 
     // Units
     let mut units = Vec::new();
-    for (entity, pos, owner, ut, health, dead, move_target, attack_target, gathering, build_order, status_effects) in world
+    for (
+        entity,
+        pos,
+        owner,
+        ut,
+        health,
+        dead,
+        move_target,
+        attack_target,
+        gathering,
+        build_order,
+        status_effects,
+    ) in world
         .query::<(
             Entity,
             &cc_core::components::Position,

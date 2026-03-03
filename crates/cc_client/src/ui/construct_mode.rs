@@ -299,7 +299,11 @@ pub fn update_construct_mode(
                 .take(10)
                 .rev()
                 .map(|msg| {
-                    let prefix = if msg.role == "user" { "You" } else { "Minstral" };
+                    let prefix = if msg.role == "user" {
+                        "You"
+                    } else {
+                        "Minstral"
+                    };
                     let content: String = msg.content.chars().take(100).collect();
                     format!("{}: {}", prefix, content)
                 })

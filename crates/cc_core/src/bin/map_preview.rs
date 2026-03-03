@@ -7,7 +7,7 @@ use std::env;
 use std::fs;
 use std::io::Write;
 
-use cc_core::map_gen::{generate_map, MapGenParams, MapSize, MapTemplate};
+use cc_core::map_gen::{MapGenParams, MapSize, MapTemplate, generate_map};
 use cc_core::terrain::TerrainType;
 
 fn terrain_color(terrain: TerrainType, elevation: u8) -> (u8, u8, u8) {
@@ -44,10 +44,7 @@ fn main() {
         _ => MapTemplate::Islands,
     };
 
-    let seed: u64 = args
-        .get(2)
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(42);
+    let seed: u64 = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(42);
 
     let map_size = match args.get(3).map(|s| s.as_str()) {
         Some("small") => MapSize::Small,
@@ -170,7 +167,14 @@ fn main() {
     file.write_all(&pixels).unwrap();
 
     println!("Map: {} ({}x{}, seed {})", map_def.name, w, h, seed);
-    println!("Spawns: {:?}", map_def.spawn_points.iter().map(|s| s.pos).collect::<Vec<_>>());
+    println!(
+        "Spawns: {:?}",
+        map_def
+            .spawn_points
+            .iter()
+            .map(|s| s.pos)
+            .collect::<Vec<_>>()
+    );
     println!("Resources: {}", map_def.resources.len());
     println!("Camps: {}", map_def.neutral_camps.len());
     println!("Written to: {}", output_path);
@@ -187,7 +191,12 @@ fn main() {
     for t in TerrainType::ALL {
         let c = counts[t as usize];
         if c > 0 {
-            println!("  {:10}: {:4} ({:.1}%)", format!("{:?}", t), c, c as f32 / total * 100.0);
+            println!(
+                "  {:10}: {:4} ({:.1}%)",
+                format!("{:?}", t),
+                c,
+                c as f32 / total * 100.0
+            );
         }
     }
 }

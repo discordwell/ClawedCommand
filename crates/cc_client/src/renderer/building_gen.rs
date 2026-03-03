@@ -355,7 +355,18 @@ fn set_pixel(data: &mut [u8], w: usize, h: usize, x: i32, y: i32, r: u8, g: u8, 
 }
 
 /// Fill a rectangle.
-fn fill_rect(data: &mut [u8], w: usize, h: usize, x0: i32, y0: i32, rw: i32, rh: i32, r: u8, g: u8, b: u8) {
+fn fill_rect(
+    data: &mut [u8],
+    w: usize,
+    h: usize,
+    x0: i32,
+    y0: i32,
+    rw: i32,
+    rh: i32,
+    r: u8,
+    g: u8,
+    b: u8,
+) {
     for py in y0..y0 + rh {
         for px in x0..x0 + rw {
             set_pixel(data, w, h, px, py, r, g, b, 255);
@@ -364,7 +375,17 @@ fn fill_rect(data: &mut [u8], w: usize, h: usize, x0: i32, y0: i32, rw: i32, rh:
 }
 
 /// Fill a circle.
-fn fill_circle(data: &mut [u8], w: usize, h: usize, cx: f32, cy: f32, radius: f32, r: u8, g: u8, b: u8) {
+fn fill_circle(
+    data: &mut [u8],
+    w: usize,
+    h: usize,
+    cx: f32,
+    cy: f32,
+    radius: f32,
+    r: u8,
+    g: u8,
+    b: u8,
+) {
     let r2 = radius * radius;
     for py in 0..h {
         for px in 0..w {
@@ -378,7 +399,13 @@ fn fill_circle(data: &mut [u8], w: usize, h: usize, cx: f32, cy: f32, radius: f3
 }
 
 /// Draw a building shape. Each role gets a distinct silhouette with a glyph.
-fn draw_building_shape(data: &mut [u8], w: usize, h: usize, kind: BuildingKind, role: BuildingRole) {
+fn draw_building_shape(
+    data: &mut [u8],
+    w: usize,
+    h: usize,
+    kind: BuildingKind,
+    role: BuildingRole,
+) {
     let cx = w as i32 / 2;
     let cy = h as i32 / 2;
 
@@ -405,7 +432,18 @@ fn draw_building_shape(data: &mut [u8], w: usize, h: usize, kind: BuildingKind, 
         BuildingRole::Barracks => {
             // Tall rectangle with battlements
             fill_rect(data, w, h, 3, 4, w as i32 - 6, h as i32 - 6, 80, 80, 90);
-            fill_rect(data, w, h, 5, 6, w as i32 - 10, h as i32 - 10, 230, 230, 235);
+            fill_rect(
+                data,
+                w,
+                h,
+                5,
+                6,
+                w as i32 - 10,
+                h as i32 - 10,
+                230,
+                230,
+                235,
+            );
             // Battlements on top
             for i in 0..4 {
                 let bx = 4 + i * 5;
@@ -426,7 +464,18 @@ fn draw_building_shape(data: &mut [u8], w: usize, h: usize, kind: BuildingKind, 
         BuildingRole::SupplyDepot => {
             // Smaller rectangle with stacked boxes look
             fill_rect(data, w, h, 3, 4, w as i32 - 6, h as i32 - 6, 80, 80, 90);
-            fill_rect(data, w, h, 5, 6, w as i32 - 10, h as i32 - 10, 225, 225, 220);
+            fill_rect(
+                data,
+                w,
+                h,
+                5,
+                6,
+                w as i32 - 10,
+                h as i32 - 10,
+                225,
+                225,
+                220,
+            );
             // Horizontal divider
             fill_rect(data, w, h, 5, cy, w as i32 - 10, 1, 180, 180, 175);
             // Small square on top
@@ -435,7 +484,18 @@ fn draw_building_shape(data: &mut [u8], w: usize, h: usize, kind: BuildingKind, 
         BuildingRole::TechBuilding => {
             // Rectangle with antenna/dish on top
             fill_rect(data, w, h, 3, 6, w as i32 - 6, h as i32 - 8, 80, 80, 90);
-            fill_rect(data, w, h, 5, 8, w as i32 - 10, h as i32 - 12, 225, 230, 240);
+            fill_rect(
+                data,
+                w,
+                h,
+                5,
+                8,
+                w as i32 - 10,
+                h as i32 - 12,
+                225,
+                230,
+                240,
+            );
             // Antenna
             fill_rect(data, w, h, cx, 1, 1, 7, 160, 160, 170);
             // Dish (small V)
@@ -449,7 +509,18 @@ fn draw_building_shape(data: &mut [u8], w: usize, h: usize, kind: BuildingKind, 
         BuildingRole::Research => {
             // Rectangle with book/scroll glyph
             fill_rect(data, w, h, 3, 4, w as i32 - 6, h as i32 - 6, 80, 80, 90);
-            fill_rect(data, w, h, 5, 6, w as i32 - 10, h as i32 - 10, 220, 225, 230);
+            fill_rect(
+                data,
+                w,
+                h,
+                5,
+                6,
+                w as i32 - 10,
+                h as i32 - 10,
+                220,
+                225,
+                230,
+            );
             // Scroll/book shape
             fill_rect(data, w, h, cx - 3, cy - 3, 7, 7, 240, 235, 220);
             fill_rect(data, w, h, cx - 2, cy - 2, 5, 5, 255, 250, 240);
@@ -476,11 +547,33 @@ fn draw_building_shape(data: &mut [u8], w: usize, h: usize, kind: BuildingKind, 
         BuildingRole::DefenseTower => {
             // Narrow tall tower with pointed top
             fill_rect(data, w, h, 5, 6, w as i32 - 10, h as i32 - 8, 80, 80, 90);
-            fill_rect(data, w, h, 6, 7, w as i32 - 12, h as i32 - 10, 235, 235, 240);
+            fill_rect(
+                data,
+                w,
+                h,
+                6,
+                7,
+                w as i32 - 12,
+                h as i32 - 10,
+                235,
+                235,
+                240,
+            );
             // Pointed roof
             for dy in 0..6 {
                 let half = 6 - dy;
-                fill_rect(data, w, h, cx - half, 6 - dy, half * 2 + 1, 1, 200, 200, 210);
+                fill_rect(
+                    data,
+                    w,
+                    h,
+                    cx - half,
+                    6 - dy,
+                    half * 2 + 1,
+                    1,
+                    200,
+                    200,
+                    210,
+                );
             }
             // Window slit
             fill_rect(data, w, h, cx, cy - 1, 1, 3, 100, 100, 120);
@@ -498,49 +591,79 @@ fn draw_faction_accent(data: &mut [u8], w: usize, h: usize, kind: BuildingKind) 
 
     match kind {
         // catGPT — small paw print (dot pattern)
-        BuildingKind::TheBox | BuildingKind::CatTree | BuildingKind::FishMarket
-        | BuildingKind::LitterBox | BuildingKind::ServerRack | BuildingKind::ScratchingPost
-        | BuildingKind::CatFlap | BuildingKind::LaserPointer => {
+        BuildingKind::TheBox
+        | BuildingKind::CatTree
+        | BuildingKind::FishMarket
+        | BuildingKind::LitterBox
+        | BuildingKind::ServerRack
+        | BuildingKind::ScratchingPost
+        | BuildingKind::CatFlap
+        | BuildingKind::LaserPointer => {
             set_pixel(data, w, h, ax, ay + 1, 200, 180, 160, 255);
             set_pixel(data, w, h, ax - 1, ay, 200, 180, 160, 255);
             set_pixel(data, w, h, ax + 1, ay, 200, 180, 160, 255);
         }
         // Murder — small feather (diagonal line)
-        BuildingKind::TheParliament | BuildingKind::Rookery | BuildingKind::CarrionCache
-        | BuildingKind::AntennaArray | BuildingKind::Panopticon | BuildingKind::NestBox
-        | BuildingKind::ThornHedge | BuildingKind::Watchtower => {
+        BuildingKind::TheParliament
+        | BuildingKind::Rookery
+        | BuildingKind::CarrionCache
+        | BuildingKind::AntennaArray
+        | BuildingKind::Panopticon
+        | BuildingKind::NestBox
+        | BuildingKind::ThornHedge
+        | BuildingKind::Watchtower => {
             for i in 0..3 {
                 set_pixel(data, w, h, ax - 1 + i, ay - 1 + i, 80, 60, 100, 255);
             }
         }
         // Clawed — tiny whisker lines
-        BuildingKind::TheBurrow | BuildingKind::NestingBox | BuildingKind::SeedVault
-        | BuildingKind::JunkTransmitter | BuildingKind::GnawLab | BuildingKind::WarrenExpansion
-        | BuildingKind::Mousehole | BuildingKind::SqueakTower => {
+        BuildingKind::TheBurrow
+        | BuildingKind::NestingBox
+        | BuildingKind::SeedVault
+        | BuildingKind::JunkTransmitter
+        | BuildingKind::GnawLab
+        | BuildingKind::WarrenExpansion
+        | BuildingKind::Mousehole
+        | BuildingKind::SqueakTower => {
             set_pixel(data, w, h, ax - 1, ay, 160, 140, 120, 255);
             set_pixel(data, w, h, ax + 1, ay, 160, 140, 120, 255);
         }
         // Seekers — small claw mark (two slashes)
-        BuildingKind::TheSett | BuildingKind::WarHollow | BuildingKind::BurrowDepot
-        | BuildingKind::CoreTap | BuildingKind::ClawMarks | BuildingKind::DeepWarren
-        | BuildingKind::BulwarkGate | BuildingKind::SlagThrower => {
+        BuildingKind::TheSett
+        | BuildingKind::WarHollow
+        | BuildingKind::BurrowDepot
+        | BuildingKind::CoreTap
+        | BuildingKind::ClawMarks
+        | BuildingKind::DeepWarren
+        | BuildingKind::BulwarkGate
+        | BuildingKind::SlagThrower => {
             set_pixel(data, w, h, ax - 1, ay - 1, 140, 130, 110, 255);
             set_pixel(data, w, h, ax, ay, 140, 130, 110, 255);
             set_pixel(data, w, h, ax + 1, ay - 1, 140, 130, 110, 255);
         }
         // Croak — small water drop
-        BuildingKind::TheGrotto | BuildingKind::SpawningPools | BuildingKind::LilyMarket
-        | BuildingKind::SunkenServer | BuildingKind::FossilStones | BuildingKind::ReedBed
-        | BuildingKind::TidalGate | BuildingKind::SporeTower => {
+        BuildingKind::TheGrotto
+        | BuildingKind::SpawningPools
+        | BuildingKind::LilyMarket
+        | BuildingKind::SunkenServer
+        | BuildingKind::FossilStones
+        | BuildingKind::ReedBed
+        | BuildingKind::TidalGate
+        | BuildingKind::SporeTower => {
             set_pixel(data, w, h, ax, ay - 1, 100, 180, 200, 255);
             set_pixel(data, w, h, ax - 1, ay, 100, 180, 200, 255);
             set_pixel(data, w, h, ax, ay, 100, 180, 200, 255);
             set_pixel(data, w, h, ax + 1, ay, 100, 180, 200, 255);
         }
         // LLAMA — small gear/bolt (X shape)
-        BuildingKind::TheDumpster | BuildingKind::ScrapHeap | BuildingKind::ChopShop
-        | BuildingKind::JunkServer | BuildingKind::TinkerBench | BuildingKind::TrashPile
-        | BuildingKind::DumpsterRelay | BuildingKind::TetanusTower => {
+        BuildingKind::TheDumpster
+        | BuildingKind::ScrapHeap
+        | BuildingKind::ChopShop
+        | BuildingKind::JunkServer
+        | BuildingKind::TinkerBench
+        | BuildingKind::TrashPile
+        | BuildingKind::DumpsterRelay
+        | BuildingKind::TetanusTower => {
             set_pixel(data, w, h, ax - 1, ay - 1, 180, 160, 100, 255);
             set_pixel(data, w, h, ax + 1, ay - 1, 180, 160, 100, 255);
             set_pixel(data, w, h, ax, ay, 180, 160, 100, 255);
@@ -585,7 +708,10 @@ mod tests {
 
     #[test]
     fn building_slugs_are_unique() {
-        let mut slugs: Vec<&str> = ALL_BUILDING_KINDS.iter().map(|k| building_slug(*k)).collect();
+        let mut slugs: Vec<&str> = ALL_BUILDING_KINDS
+            .iter()
+            .map(|k| building_slug(*k))
+            .collect();
         let len_before = slugs.len();
         slugs.sort();
         slugs.dedup();
@@ -615,11 +741,7 @@ mod tests {
             let img = generate_building_image(kind);
             let data = img.data.as_ref().expect("Image should have data");
             let has_nonzero = data.iter().any(|&b| b != 0);
-            assert!(
-                has_nonzero,
-                "Procedural image for {:?} is all zeros",
-                kind
-            );
+            assert!(has_nonzero, "Procedural image for {:?} is all zeros", kind);
         }
     }
 
@@ -630,7 +752,11 @@ mod tests {
             .copied()
             .filter(|k| building_role(*k) == BuildingRole::Hq)
             .collect();
-        assert_eq!(hqs.len(), 6, "Should have exactly 6 HQ buildings (one per faction)");
+        assert_eq!(
+            hqs.len(),
+            6,
+            "Should have exactly 6 HQ buildings (one per faction)"
+        );
     }
 
     #[test]

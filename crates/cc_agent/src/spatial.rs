@@ -114,11 +114,7 @@ mod tests {
 
     #[test]
     fn units_at_exact_position() {
-        let units = vec![
-            make_unit(1, 5, 5),
-            make_unit(2, 5, 5),
-            make_unit(3, 10, 10),
-        ];
+        let units = vec![make_unit(1, 5, 5), make_unit(2, 5, 5), make_unit(3, 10, 10)];
         let index = SpatialIndex::build(&units);
 
         let at_5_5 = index.units_at(GridPos::new(5, 5));
@@ -151,10 +147,7 @@ mod tests {
 
     #[test]
     fn units_in_radius_zero_only_exact() {
-        let units = vec![
-            make_unit(1, 5, 5),
-            make_unit(2, 6, 5),
-        ];
+        let units = vec![make_unit(1, 5, 5), make_unit(2, 6, 5)];
         let index = SpatialIndex::build(&units);
 
         let exact = index.units_in_radius(GridPos::new(5, 5), 0);
@@ -164,11 +157,7 @@ mod tests {
 
     #[test]
     fn nearest_finds_closest() {
-        let units = vec![
-            make_unit(1, 10, 10),
-            make_unit(2, 5, 5),
-            make_unit(3, 3, 3),
-        ];
+        let units = vec![make_unit(1, 10, 10), make_unit(2, 5, 5), make_unit(3, 3, 3)];
         let index = SpatialIndex::build(&units);
 
         let nearest = index.nearest(GridPos::new(4, 4), 20, &units);
@@ -195,10 +184,7 @@ mod tests {
 
     #[test]
     fn negative_coordinates() {
-        let units = vec![
-            make_unit(1, -3, -5),
-            make_unit(2, -2, -4),
-        ];
+        let units = vec![make_unit(1, -3, -5), make_unit(2, -2, -4)];
         let index = SpatialIndex::build(&units);
 
         let nearby = index.units_in_radius(GridPos::new(-3, -5), 2);

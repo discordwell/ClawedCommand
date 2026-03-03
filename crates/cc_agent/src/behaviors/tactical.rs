@@ -5,8 +5,8 @@ use cc_core::components::{AttackType, UnitKind};
 use cc_core::coords::GridPos;
 use cc_core::math::Fixed;
 
-use crate::script_context::ScriptContext;
 use super::BehaviorResult;
+use crate::script_context::ScriptContext;
 
 /// Smart ability activation: checks that the unit exists, then issues the ability command.
 /// The actual cooldown/GPU cost validation happens in the sim's ability system.
@@ -22,7 +22,7 @@ pub fn use_ability(
             return BehaviorResult {
                 commands_issued: 0,
                 description: "Unit not found for ability".into(),
-            }
+            };
         }
     };
 
@@ -92,7 +92,7 @@ pub fn protect_unit(
             return BehaviorResult {
                 commands_issued: 0,
                 description: "VIP not found".into(),
-            }
+            };
         }
     };
 
@@ -147,7 +147,7 @@ pub fn surround_target(
             return BehaviorResult {
                 commands_issued: 0,
                 description: "Target not found for surround".into(),
-            }
+            };
         }
     };
 
@@ -220,11 +220,9 @@ pub fn attack_move_group(
     // Ranged units move to a position slightly behind the melee
     if !ranged_ids.is_empty() {
         // Calculate centroid of ranged units
-        let (sum_x, sum_y) = ranged_ids
-            .iter()
-            .fold((0i64, 0i64), |(sx, sy), (_, pos)| {
-                (sx + pos.x as i64, sy + pos.y as i64)
-            });
+        let (sum_x, sum_y) = ranged_ids.iter().fold((0i64, 0i64), |(sx, sy), (_, pos)| {
+            (sx + pos.x as i64, sy + pos.y as i64)
+        });
         let centroid_x = (sum_x / ranged_ids.len() as i64) as i32;
         let centroid_y = (sum_y / ranged_ids.len() as i64) as i32;
 
@@ -263,14 +261,11 @@ mod tests {
     use cc_core::math::fixed_from_i32;
     use cc_core::terrain::FactionId;
 
-    use crate::test_fixtures::{make_unit, make_snapshot};
+    use crate::test_fixtures::{make_snapshot, make_unit};
 
     #[test]
     fn use_ability_issues_command() {
-        let snap = make_snapshot(
-            vec![make_unit(1, UnitKind::Yowler, 5, 5, 0)],
-            vec![],
-        );
+        let snap = make_snapshot(vec![make_unit(1, UnitKind::Yowler, 5, 5, 0)], vec![]);
         let map = GameMap::new(64, 64);
         let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
 
@@ -283,10 +278,7 @@ mod tests {
 
     #[test]
     fn use_ability_rejects_invalid_slot() {
-        let snap = make_snapshot(
-            vec![make_unit(1, UnitKind::Yowler, 5, 5, 0)],
-            vec![],
-        );
+        let snap = make_snapshot(vec![make_unit(1, UnitKind::Yowler, 5, 5, 0)], vec![]);
         let map = GameMap::new(64, 64);
         let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
 
@@ -298,10 +290,10 @@ mod tests {
     fn split_squads_categorizes_correctly() {
         let snap = make_snapshot(
             vec![
-                make_unit(1, UnitKind::Chonk, 5, 5, 0),   // melee
+                make_unit(1, UnitKind::Chonk, 5, 5, 0),    // melee
                 make_unit(2, UnitKind::Hisser, 6, 5, 0),   // ranged
                 make_unit(3, UnitKind::Yowler, 7, 5, 0),   // support
-                make_unit(4, UnitKind::Nuisance, 8, 5, 0),  // melee
+                make_unit(4, UnitKind::Nuisance, 8, 5, 0), // melee
             ],
             vec![],
         );
@@ -320,7 +312,7 @@ mod tests {
     fn protect_unit_engages_threats() {
         let snap = make_snapshot(
             vec![
-                make_unit(1, UnitKind::Chonk, 10, 10, 0), // escort
+                make_unit(1, UnitKind::Chonk, 10, 10, 0),  // escort
                 make_unit(2, UnitKind::Yowler, 10, 11, 0), // VIP
             ],
             vec![make_unit(20, UnitKind::Nuisance, 12, 11, 1)], // threat
@@ -328,12 +320,7 @@ mod tests {
         let map = GameMap::new(64, 64);
         let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
 
-        let result = protect_unit(
-            &mut ctx,
-            &[EntityId(1)],
-            EntityId(2),
-            fixed_from_i32(5),
-        );
+        let result = protect_unit(&mut ctx, &[EntityId(1)], EntityId(2), fixed_from_i32(5));
         assert_eq!(result.commands_issued, 1);
         let cmds = ctx.take_commands();
         assert!(matches!(cmds[0], GameCommand::Attack { .. }));
@@ -343,7 +330,7 @@ mod tests {
     fn protect_unit_moves_to_vip_when_no_threats() {
         let snap = make_snapshot(
             vec![
-                make_unit(1, UnitKind::Chonk, 20, 20, 0), // escort far away
+                make_unit(1, UnitKind::Chonk, 20, 20, 0),  // escort far away
                 make_unit(2, UnitKind::Yowler, 10, 10, 0), // VIP
             ],
             vec![], // no enemies
@@ -351,12 +338,7 @@ mod tests {
         let map = GameMap::new(64, 64);
         let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
 
-        let result = protect_unit(
-            &mut ctx,
-            &[EntityId(1)],
-            EntityId(2),
-            fixed_from_i32(5),
-        );
+        let result = protect_unit(&mut ctx, &[EntityId(1)], EntityId(2), fixed_from_i32(5));
         assert_eq!(result.commands_issued, 1);
         let cmds = ctx.take_commands();
         assert!(matches!(cmds[0], GameCommand::Move { .. }));
@@ -394,18 +376,14 @@ mod tests {
         let snap = make_snapshot(
             vec![
                 make_unit(1, UnitKind::Chonk, 5, 5, 0), // melee
-                hisser,                                    // ranged
+                hisser,                                 // ranged
             ],
             vec![],
         );
         let map = GameMap::new(64, 64);
         let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
 
-        let result = attack_move_group(
-            &mut ctx,
-            &[EntityId(1), EntityId(2)],
-            GridPos::new(20, 20),
-        );
+        let result = attack_move_group(&mut ctx, &[EntityId(1), EntityId(2)], GridPos::new(20, 20));
         assert_eq!(result.commands_issued, 2); // one for melee, one for ranged
         let cmds = ctx.take_commands();
         assert_eq!(cmds.len(), 2);

@@ -4,8 +4,8 @@
 //! via a `#[wasm_bindgen]` export. The play.html loading bar uses
 //! this to show real asset loading progress (50%-100% range).
 
-use bevy::prelude::*;
 use bevy::asset::UntypedAssetId;
+use bevy::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -42,10 +42,7 @@ impl LoadingTracker {
 }
 
 /// System that checks asset loading progress each frame.
-fn track_loading_system(
-    asset_server: Res<AssetServer>,
-    mut tracker: ResMut<LoadingTracker>,
-) {
+fn track_loading_system(asset_server: Res<AssetServer>, mut tracker: ResMut<LoadingTracker>) {
     if tracker.complete || tracker.assets.is_empty() {
         return;
     }

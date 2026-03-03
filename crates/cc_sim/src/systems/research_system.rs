@@ -10,13 +10,16 @@ use crate::resources::PlayerResources;
 
 /// Tick research queues on ScratchingPosts. On completion, apply upgrades.
 pub fn research_system(
-    mut buildings: Query<
-        (&Owner, &mut ResearchQueue),
-        (With<Researcher>, Without<Dead>),
-    >,
+    mut buildings: Query<(&Owner, &mut ResearchQueue), (With<Researcher>, Without<Dead>)>,
     mut player_resources: ResMut<PlayerResources>,
     mut units: Query<
-        (&Owner, &UnitType, &mut Health, &mut AttackStats, &mut MovementSpeed),
+        (
+            &Owner,
+            &UnitType,
+            &mut Health,
+            &mut AttackStats,
+            &mut MovementSpeed,
+        ),
         Without<Dead>,
     >,
 ) {
@@ -35,11 +38,7 @@ pub fn research_system(
                 }
 
                 // Apply upgrade bonuses to all existing units of this player
-                apply_upgrade_to_existing_units(
-                    completed_upgrade,
-                    owner.player_id,
-                    &mut units,
-                );
+                apply_upgrade_to_existing_units(completed_upgrade, owner.player_id, &mut units);
             }
         }
     }
@@ -50,7 +49,13 @@ pub fn apply_upgrade_to_existing_units(
     upgrade: UpgradeType,
     player_id: u8,
     units: &mut Query<
-        (&Owner, &UnitType, &mut Health, &mut AttackStats, &mut MovementSpeed),
+        (
+            &Owner,
+            &UnitType,
+            &mut Health,
+            &mut AttackStats,
+            &mut MovementSpeed,
+        ),
         Without<Dead>,
     >,
 ) {
@@ -76,8 +81,7 @@ pub fn apply_upgrade_to_existing_units(
             }
             UpgradeType::NimblePaws => {
                 // +10% speed for all units
-                speed.speed = speed.speed
-                    + speed.speed * Fixed::from_bits((1 << 16) * 10 / 100);
+                speed.speed = speed.speed + speed.speed * Fixed::from_bits((1 << 16) * 10 / 100);
             }
             UpgradeType::SiegeTraining | UpgradeType::MechPrototype => {
                 // These are unlock gates, not stat bonuses
@@ -99,8 +103,7 @@ pub fn apply_upgrade_to_existing_units(
             }
             UpgradeType::QuickPaws => {
                 // +10% speed for all units
-                speed.speed = speed.speed
-                    + speed.speed * Fixed::from_bits((1 << 16) * 10 / 100);
+                speed.speed = speed.speed + speed.speed * Fixed::from_bits((1 << 16) * 10 / 100);
             }
             UpgradeType::AdvancedGnawing | UpgradeType::WarrenProtocol => {
                 // These are unlock gates, not stat bonuses

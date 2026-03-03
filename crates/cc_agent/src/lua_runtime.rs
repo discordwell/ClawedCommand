@@ -6,7 +6,9 @@ use cc_core::coords::GridPos;
 use cc_core::math::Fixed;
 use mlua::prelude::*;
 
-use crate::script_context::{BlackboardValue, EnemyMemoryEntry, ScriptContext, ScriptEvent, UnitState};
+use crate::script_context::{
+    BlackboardValue, EnemyMemoryEntry, ScriptContext, ScriptEvent, UnitState,
+};
 use crate::snapshot::{BuildingSnapshot, ResourceSnapshot, UnitSnapshot};
 use crate::tool_tier::ToolTier;
 
@@ -46,43 +48,39 @@ pub fn execute_script_with_context_tiered(
         // ctx:my_units(kind_filter?)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, filter): (LuaValue, Option<String>)| {
-                    let mut ctx = cell.borrow_mut();
-                    let kind = filter.and_then(|s| s.parse::<UnitKind>().ok());
-                    let units = ctx.my_units(kind);
-                    let tbl = lua.create_table()?;
-                    for (i, unit) in units.iter().enumerate() {
-                        tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
-                    }
-                    Ok(tbl)
-                })
-                ?;
+            let f = scope.create_function(|lua, (_self, filter): (LuaValue, Option<String>)| {
+                let mut ctx = cell.borrow_mut();
+                let kind = filter.and_then(|s| s.parse::<UnitKind>().ok());
+                let units = ctx.my_units(kind);
+                let tbl = lua.create_table()?;
+                for (i, unit) in units.iter().enumerate() {
+                    tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
+                }
+                Ok(tbl)
+            })?;
             ctx_table.set("my_units", f)?;
         }
 
         // ctx:enemy_units()
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, _self: LuaValue| {
-                    let mut ctx = cell.borrow_mut();
-                    let units = ctx.enemy_units();
-                    let tbl = lua.create_table()?;
-                    for (i, unit) in units.iter().enumerate() {
-                        tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
-                    }
-                    Ok(tbl)
-                })
-                ?;
+            let f = scope.create_function(|lua, _self: LuaValue| {
+                let mut ctx = cell.borrow_mut();
+                let units = ctx.enemy_units();
+                let tbl = lua.create_table()?;
+                for (i, unit) in units.iter().enumerate() {
+                    tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
+                }
+                Ok(tbl)
+            })?;
             ctx_table.set("enemy_units", f)?;
         }
 
         // ctx:enemies_in_range(x, y, range)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, x, y, range): (LuaValue, i32, i32, f64)| {
+            let f =
+                scope.create_function(|lua, (_self, x, y, range): (LuaValue, i32, i32, f64)| {
                     let mut ctx = cell.borrow_mut();
                     let fixed_range = Fixed::from_num(range);
                     let units = ctx.enemies_in_range(GridPos::new(x, y), fixed_range);
@@ -91,18 +89,15 @@ pub fn execute_script_with_context_tiered(
                         tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
                     }
                     Ok(tbl)
-                })
-                ?;
-            ctx_table
-                .set("enemies_in_range", f)
-                ?;
+                })?;
+            ctx_table.set("enemies_in_range", f)?;
         }
 
         // ctx:allies_in_range(x, y, range)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, x, y, range): (LuaValue, i32, i32, f64)| {
+            let f =
+                scope.create_function(|lua, (_self, x, y, range): (LuaValue, i32, i32, f64)| {
                     let mut ctx = cell.borrow_mut();
                     let fixed_range = Fixed::from_num(range);
                     let units = ctx.allies_in_range(GridPos::new(x, y), fixed_range);
@@ -111,102 +106,79 @@ pub fn execute_script_with_context_tiered(
                         tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
                     }
                     Ok(tbl)
-                })
-                ?;
-            ctx_table
-                .set("allies_in_range", f)
-                ?;
+                })?;
+            ctx_table.set("allies_in_range", f)?;
         }
 
         // ctx:nearest_enemy(x, y)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, x, y): (LuaValue, i32, i32)| {
-                    let mut ctx = cell.borrow_mut();
-                    match ctx.nearest_enemy(GridPos::new(x, y)) {
-                        Some(unit) => Ok(LuaValue::Table(unit_to_lua_table(lua, unit)?)),
-                        None => Ok(LuaValue::Nil),
-                    }
-                })
-                ?;
-            ctx_table
-                .set("nearest_enemy", f)
-                ?;
+            let f = scope.create_function(|lua, (_self, x, y): (LuaValue, i32, i32)| {
+                let mut ctx = cell.borrow_mut();
+                match ctx.nearest_enemy(GridPos::new(x, y)) {
+                    Some(unit) => Ok(LuaValue::Table(unit_to_lua_table(lua, unit)?)),
+                    None => Ok(LuaValue::Nil),
+                }
+            })?;
+            ctx_table.set("nearest_enemy", f)?;
         }
 
         // ctx:nearest_ally(x, y, kind?)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, x, y, kind): (LuaValue, i32, i32, Option<String>)| {
+            let f = scope.create_function(
+                |lua, (_self, x, y, kind): (LuaValue, i32, i32, Option<String>)| {
                     let mut ctx = cell.borrow_mut();
                     let unit_kind = kind.and_then(|s| s.parse::<UnitKind>().ok());
                     match ctx.nearest_ally(GridPos::new(x, y), unit_kind) {
                         Some(unit) => Ok(LuaValue::Table(unit_to_lua_table(lua, unit)?)),
                         None => Ok(LuaValue::Nil),
                     }
-                })
-                ?;
-            ctx_table
-                .set("nearest_ally", f)
-                ?;
+                },
+            )?;
+            ctx_table.set("nearest_ally", f)?;
         }
 
         // ctx:threats_to(unit_id)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, unit_id): (LuaValue, u64)| {
-                    let mut ctx = cell.borrow_mut();
-                    let unit = ctx
-                        .state
-                        .unit_by_id(EntityId(unit_id))
-                        .cloned();
-                    match unit {
-                        Some(ref u) => {
-                            let threats = ctx.threats_to(u);
-                            let tbl = lua.create_table()?;
-                            for (i, t) in threats.iter().enumerate() {
-                                tbl.set(i + 1, unit_to_lua_table(lua, t)?)?;
-                            }
-                            Ok(tbl)
+            let f = scope.create_function(|lua, (_self, unit_id): (LuaValue, u64)| {
+                let mut ctx = cell.borrow_mut();
+                let unit = ctx.state.unit_by_id(EntityId(unit_id)).cloned();
+                match unit {
+                    Some(ref u) => {
+                        let threats = ctx.threats_to(u);
+                        let tbl = lua.create_table()?;
+                        for (i, t) in threats.iter().enumerate() {
+                            tbl.set(i + 1, unit_to_lua_table(lua, t)?)?;
                         }
-                        None => Ok(lua.create_table()?),
+                        Ok(tbl)
                     }
-                })
-                ?;
-            ctx_table
-                .set("threats_to", f)
-                ?;
+                    None => Ok(lua.create_table()?),
+                }
+            })?;
+            ctx_table.set("threats_to", f)?;
         }
 
         // ctx:targets_for(unit_id)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, unit_id): (LuaValue, u64)| {
-                    let mut ctx = cell.borrow_mut();
-                    let unit = ctx
-                        .state
-                        .unit_by_id(EntityId(unit_id))
-                        .cloned();
-                    match unit {
-                        Some(ref u) => {
-                            let targets = ctx.targets_for(u);
-                            let tbl = lua.create_table()?;
-                            for (i, t) in targets.iter().enumerate() {
-                                tbl.set(i + 1, unit_to_lua_table(lua, t)?)?;
-                            }
-                            Ok(tbl)
+            let f = scope.create_function(|lua, (_self, unit_id): (LuaValue, u64)| {
+                let mut ctx = cell.borrow_mut();
+                let unit = ctx.state.unit_by_id(EntityId(unit_id)).cloned();
+                match unit {
+                    Some(ref u) => {
+                        let targets = ctx.targets_for(u);
+                        let tbl = lua.create_table()?;
+                        for (i, t) in targets.iter().enumerate() {
+                            tbl.set(i + 1, unit_to_lua_table(lua, t)?)?;
                         }
-                        None => Ok(lua.create_table()?),
+                        Ok(tbl)
                     }
-                })
-                ?;
-            ctx_table
-                .set("targets_for", f)
-                ?;
+                    None => Ok(lua.create_table()?),
+                }
+            })?;
+            ctx_table.set("targets_for", f)?;
         }
 
         // -------------------------------------------------------------------
@@ -216,135 +188,127 @@ pub fn execute_script_with_context_tiered(
         // ctx:distance_squared_between(a_id, b_id)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, a_id, b_id): (LuaValue, u64, u64)| {
-                    let mut ctx = cell.borrow_mut();
-                    match ctx.distance_squared_between(EntityId(a_id), EntityId(b_id)) {
-                        Some(d) => Ok(LuaValue::Number(fixed_to_f64(d))),
-                        None => Ok(LuaValue::Nil),
-                    }
-                })?;
+            let f = scope.create_function(|_, (_self, a_id, b_id): (LuaValue, u64, u64)| {
+                let mut ctx = cell.borrow_mut();
+                match ctx.distance_squared_between(EntityId(a_id), EntityId(b_id)) {
+                    Some(d) => Ok(LuaValue::Number(fixed_to_f64(d))),
+                    None => Ok(LuaValue::Nil),
+                }
+            })?;
             ctx_table.set("distance_squared_between", f)?;
         }
 
         // ctx:distance_squared_to_nearest_enemy(unit_id)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, unit_id): (LuaValue, u64)| {
-                    let mut ctx = cell.borrow_mut();
-                    match ctx.distance_squared_to_nearest_enemy(EntityId(unit_id)) {
-                        Some(d) => Ok(LuaValue::Number(fixed_to_f64(d))),
-                        None => Ok(LuaValue::Nil),
-                    }
-                })?;
+            let f = scope.create_function(|_, (_self, unit_id): (LuaValue, u64)| {
+                let mut ctx = cell.borrow_mut();
+                match ctx.distance_squared_to_nearest_enemy(EntityId(unit_id)) {
+                    Some(d) => Ok(LuaValue::Number(fixed_to_f64(d))),
+                    None => Ok(LuaValue::Nil),
+                }
+            })?;
             ctx_table.set("distance_squared_to_nearest_enemy", f)?;
         }
 
         // ctx:idle_units(kind?)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, filter): (LuaValue, Option<String>)| {
-                    let mut ctx = cell.borrow_mut();
-                    let kind = filter.and_then(|s| s.parse::<UnitKind>().ok());
-                    let units = ctx.idle_units(kind);
-                    let tbl = lua.create_table()?;
-                    for (i, unit) in units.iter().enumerate() {
-                        tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
-                    }
-                    Ok(tbl)
-                })?;
+            let f = scope.create_function(|lua, (_self, filter): (LuaValue, Option<String>)| {
+                let mut ctx = cell.borrow_mut();
+                let kind = filter.and_then(|s| s.parse::<UnitKind>().ok());
+                let units = ctx.idle_units(kind);
+                let tbl = lua.create_table()?;
+                for (i, unit) in units.iter().enumerate() {
+                    tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
+                }
+                Ok(tbl)
+            })?;
             ctx_table.set("idle_units", f)?;
         }
 
         // ctx:wounded_units(threshold)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, threshold): (LuaValue, f64)| {
-                    let mut ctx = cell.borrow_mut();
-                    let units = ctx.wounded_units(threshold);
-                    let tbl = lua.create_table()?;
-                    for (i, unit) in units.iter().enumerate() {
-                        tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
-                    }
-                    Ok(tbl)
-                })?;
+            let f = scope.create_function(|lua, (_self, threshold): (LuaValue, f64)| {
+                let mut ctx = cell.borrow_mut();
+                let units = ctx.wounded_units(threshold);
+                let tbl = lua.create_table()?;
+                for (i, unit) in units.iter().enumerate() {
+                    tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
+                }
+                Ok(tbl)
+            })?;
             ctx_table.set("wounded_units", f)?;
         }
 
         // ctx:units_by_state(state_str)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, state_str): (LuaValue, String)| {
-                    let state = match state_str.as_str() {
-                        "Moving" => UnitState::Moving,
-                        "Attacking" => UnitState::Attacking,
-                        "Idle" => UnitState::Idle,
-                        "Gathering" => UnitState::Gathering,
-                        _ => {
-                            return Err(mlua::Error::RuntimeError(
-                                format!("Unknown unit state: {state_str}"),
-                            ))
-                        }
-                    };
-                    let mut ctx = cell.borrow_mut();
-                    let units = ctx.units_by_state(state);
-                    let tbl = lua.create_table()?;
-                    for (i, unit) in units.iter().enumerate() {
-                        tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
+            let f = scope.create_function(|lua, (_self, state_str): (LuaValue, String)| {
+                let state = match state_str.as_str() {
+                    "Moving" => UnitState::Moving,
+                    "Attacking" => UnitState::Attacking,
+                    "Idle" => UnitState::Idle,
+                    "Gathering" => UnitState::Gathering,
+                    _ => {
+                        return Err(mlua::Error::RuntimeError(format!(
+                            "Unknown unit state: {state_str}"
+                        )));
                     }
-                    Ok(tbl)
-                })?;
+                };
+                let mut ctx = cell.borrow_mut();
+                let units = ctx.units_by_state(state);
+                let tbl = lua.create_table()?;
+                for (i, unit) in units.iter().enumerate() {
+                    tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
+                }
+                Ok(tbl)
+            })?;
             ctx_table.set("units_by_state", f)?;
         }
 
         // ctx:count_units(kind?)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, filter): (LuaValue, Option<String>)| {
-                    let mut ctx = cell.borrow_mut();
-                    let kind = filter.and_then(|s| s.parse::<UnitKind>().ok());
-                    Ok(ctx.count_units(kind))
-                })?;
+            let f = scope.create_function(|_, (_self, filter): (LuaValue, Option<String>)| {
+                let mut ctx = cell.borrow_mut();
+                let kind = filter.and_then(|s| s.parse::<UnitKind>().ok());
+                Ok(ctx.count_units(kind))
+            })?;
             ctx_table.set("count_units", f)?;
         }
 
         // ctx:army_supply()
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, _self: LuaValue| {
-                    let mut ctx = cell.borrow_mut();
-                    Ok(ctx.army_supply())
-                })?;
+            let f = scope.create_function(|_, _self: LuaValue| {
+                let mut ctx = cell.borrow_mut();
+                Ok(ctx.army_supply())
+            })?;
             ctx_table.set("army_supply", f)?;
         }
 
         // ctx:enemy_buildings()
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, _self: LuaValue| {
-                    let mut ctx = cell.borrow_mut();
-                    let buildings = ctx.enemy_buildings();
-                    let tbl = lua.create_table()?;
-                    for (i, b) in buildings.iter().enumerate() {
-                        tbl.set(i + 1, building_to_lua_table(lua, b)?)?;
-                    }
-                    Ok(tbl)
-                })?;
+            let f = scope.create_function(|lua, _self: LuaValue| {
+                let mut ctx = cell.borrow_mut();
+                let buildings = ctx.enemy_buildings();
+                let tbl = lua.create_table()?;
+                for (i, b) in buildings.iter().enumerate() {
+                    tbl.set(i + 1, building_to_lua_table(lua, b)?)?;
+                }
+                Ok(tbl)
+            })?;
             ctx_table.set("enemy_buildings", f)?;
         }
 
         // ctx:weakest_enemy_in_range(x, y, range)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, x, y, range): (LuaValue, i32, i32, f64)| {
+            let f =
+                scope.create_function(|lua, (_self, x, y, range): (LuaValue, i32, i32, f64)| {
                     let mut ctx = cell.borrow_mut();
                     let fixed_range = Fixed::from_num(range);
                     match ctx.weakest_enemy_in_range(GridPos::new(x, y), fixed_range) {
@@ -358,8 +322,8 @@ pub fn execute_script_with_context_tiered(
         // ctx:strongest_enemy_in_range(x, y, range)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, x, y, range): (LuaValue, i32, i32, f64)| {
+            let f =
+                scope.create_function(|lua, (_self, x, y, range): (LuaValue, i32, i32, f64)| {
                     let mut ctx = cell.borrow_mut();
                     let fixed_range = Fixed::from_num(range);
                     match ctx.strongest_enemy_in_range(GridPos::new(x, y), fixed_range) {
@@ -373,14 +337,13 @@ pub fn execute_script_with_context_tiered(
         // ctx:hp_pct(unit_id)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, unit_id): (LuaValue, u64)| {
-                    let mut ctx = cell.borrow_mut();
-                    match ctx.hp_pct(EntityId(unit_id)) {
-                        Some(pct) => Ok(LuaValue::Number(pct)),
-                        None => Ok(LuaValue::Nil),
-                    }
-                })?;
+            let f = scope.create_function(|_, (_self, unit_id): (LuaValue, u64)| {
+                let mut ctx = cell.borrow_mut();
+                match ctx.hp_pct(EntityId(unit_id)) {
+                    Some(pct) => Ok(LuaValue::Number(pct)),
+                    None => Ok(LuaValue::Nil),
+                }
+            })?;
             ctx_table.set("hp_pct", f)?;
         }
 
@@ -391,36 +354,25 @@ pub fn execute_script_with_context_tiered(
         // ctx:position_at_range(from_x, from_y, target_x, target_y, desired_range)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(
-                    |_, (_self, fx, fy, tx, ty, range): (LuaValue, i32, i32, i32, i32, i32)| {
-                        let mut ctx = cell.borrow_mut();
-                        match ctx.position_at_range(
-                            GridPos::new(fx, fy),
-                            GridPos::new(tx, ty),
-                            range,
-                        ) {
-                            Some(pos) => Ok((LuaValue::Integer(pos.x), LuaValue::Integer(pos.y))),
-                            None => Ok((LuaValue::Nil, LuaValue::Nil)),
-                        }
-                    },
-                )
-                ?;
-            ctx_table
-                .set("position_at_range", f)
-                ?;
+            let f = scope.create_function(
+                |_, (_self, fx, fy, tx, ty, range): (LuaValue, i32, i32, i32, i32, i32)| {
+                    let mut ctx = cell.borrow_mut();
+                    match ctx.position_at_range(GridPos::new(fx, fy), GridPos::new(tx, ty), range) {
+                        Some(pos) => Ok((LuaValue::Integer(pos.x), LuaValue::Integer(pos.y))),
+                        None => Ok((LuaValue::Nil, LuaValue::Nil)),
+                    }
+                },
+            )?;
+            ctx_table.set("position_at_range", f)?;
         }
 
         // ctx:safe_positions(unit_id, search_radius)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, unit_id, radius): (LuaValue, u64, i32)| {
+            let f =
+                scope.create_function(|lua, (_self, unit_id, radius): (LuaValue, u64, i32)| {
                     let mut ctx = cell.borrow_mut();
-                    let unit = ctx
-                        .state
-                        .unit_by_id(EntityId(unit_id))
-                        .cloned();
+                    let unit = ctx.state.unit_by_id(EntityId(unit_id)).cloned();
                     match unit {
                         Some(ref u) => {
                             let positions = ctx.safe_positions(u, radius);
@@ -435,11 +387,8 @@ pub fn execute_script_with_context_tiered(
                         }
                         None => Ok(lua.create_table()?),
                     }
-                })
-                ?;
-            ctx_table
-                .set("safe_positions", f)
-                ?;
+                })?;
+            ctx_table.set("safe_positions", f)?;
         }
 
         // -------------------------------------------------------------------
@@ -449,111 +398,85 @@ pub fn execute_script_with_context_tiered(
         // ctx:terrain_at(x, y)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, x, y): (LuaValue, i32, i32)| {
-                    let mut ctx = cell.borrow_mut();
-                    match ctx.terrain_at(GridPos::new(x, y)) {
-                        Some(t) => Ok(LuaValue::String(
-                            lua.create_string(t.to_string())?,
-                        )),
-                        None => Ok(LuaValue::Nil),
-                    }
-                })
-                ?;
-            ctx_table
-                .set("terrain_at", f)
-                ?;
+            let f = scope.create_function(|lua, (_self, x, y): (LuaValue, i32, i32)| {
+                let mut ctx = cell.borrow_mut();
+                match ctx.terrain_at(GridPos::new(x, y)) {
+                    Some(t) => Ok(LuaValue::String(lua.create_string(t.to_string())?)),
+                    None => Ok(LuaValue::Nil),
+                }
+            })?;
+            ctx_table.set("terrain_at", f)?;
         }
 
         // ctx:elevation_at(x, y)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, x, y): (LuaValue, i32, i32)| {
-                    let mut ctx = cell.borrow_mut();
-                    Ok(ctx.elevation_at(GridPos::new(x, y)))
-                })
-                ?;
-            ctx_table
-                .set("elevation_at", f)
-                ?;
+            let f = scope.create_function(|_, (_self, x, y): (LuaValue, i32, i32)| {
+                let mut ctx = cell.borrow_mut();
+                Ok(ctx.elevation_at(GridPos::new(x, y)))
+            })?;
+            ctx_table.set("elevation_at", f)?;
         }
 
         // ctx:cover_at(x, y)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, x, y): (LuaValue, i32, i32)| {
-                    let mut ctx = cell.borrow_mut();
-                    let cover = ctx.cover_at(GridPos::new(x, y));
-                    Ok(cover.to_string())
-                })
-                ?;
-            ctx_table
-                .set("cover_at", f)
-                ?;
+            let f = scope.create_function(|_, (_self, x, y): (LuaValue, i32, i32)| {
+                let mut ctx = cell.borrow_mut();
+                let cover = ctx.cover_at(GridPos::new(x, y));
+                Ok(cover.to_string())
+            })?;
+            ctx_table.set("cover_at", f)?;
         }
 
         // ctx:is_passable(x, y)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, x, y): (LuaValue, i32, i32)| {
-                    let mut ctx = cell.borrow_mut();
-                    Ok(ctx.is_passable(GridPos::new(x, y)))
-                })
-                ?;
-            ctx_table
-                .set("is_passable", f)
-                ?;
+            let f = scope.create_function(|_, (_self, x, y): (LuaValue, i32, i32)| {
+                let mut ctx = cell.borrow_mut();
+                Ok(ctx.is_passable(GridPos::new(x, y)))
+            })?;
+            ctx_table.set("is_passable", f)?;
         }
 
         // ctx:movement_cost(x, y) → number (multiplier) or nil if impassable
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, x, y): (LuaValue, i32, i32)| {
-                    let mut ctx = cell.borrow_mut();
-                    match ctx.movement_cost(GridPos::new(x, y)) {
-                        Some(cost) => Ok(LuaValue::Number(fixed_to_f64(cost))),
-                        None => Ok(LuaValue::Nil),
-                    }
-                })
-                ?;
-            ctx_table
-                .set("movement_cost", f)
-                ?;
+            let f = scope.create_function(|_, (_self, x, y): (LuaValue, i32, i32)| {
+                let mut ctx = cell.borrow_mut();
+                match ctx.movement_cost(GridPos::new(x, y)) {
+                    Some(cost) => Ok(LuaValue::Number(fixed_to_f64(cost))),
+                    None => Ok(LuaValue::Nil),
+                }
+            })?;
+            ctx_table.set("movement_cost", f)?;
         }
 
         // ctx:can_reach(from_x, from_y, to_x, to_y)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, fx, fy, tx, ty): (LuaValue, i32, i32, i32, i32)| {
+            let f = scope.create_function(
+                |_, (_self, fx, fy, tx, ty): (LuaValue, i32, i32, i32, i32)| {
                     let mut ctx = cell.borrow_mut();
                     Ok(ctx.can_reach(GridPos::new(fx, fy), GridPos::new(tx, ty)))
-                })
-                ?;
-            ctx_table
-                .set("can_reach", f)
-                ?;
+                },
+            )?;
+            ctx_table.set("can_reach", f)?;
         }
 
         // ctx:path_length(from_x, from_y, to_x, to_y)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, fx, fy, tx, ty): (LuaValue, i32, i32, i32, i32)| {
+            let f = scope.create_function(
+                |_, (_self, fx, fy, tx, ty): (LuaValue, i32, i32, i32, i32)| {
                     let mut ctx = cell.borrow_mut();
                     match ctx.path_length(GridPos::new(fx, fy), GridPos::new(tx, ty)) {
                         Some(len) => Ok(LuaValue::Integer(len as i32)),
                         None => Ok(LuaValue::Nil),
                     }
-                })
-                ?;
-            ctx_table
-                .set("path_length", f)
-                ?;
+                },
+            )?;
+            ctx_table.set("path_length", f)?;
         }
 
         // -------------------------------------------------------------------
@@ -563,60 +486,50 @@ pub fn execute_script_with_context_tiered(
         // ctx:resources()
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, _self: LuaValue| {
-                    let ctx = cell.borrow_mut();
-                    let res = ctx.resources();
-                    let tbl = lua.create_table()?;
-                    tbl.set("food", res.food)?;
-                    tbl.set("gpu_cores", res.gpu_cores)?;
-                    tbl.set("nfts", res.nfts)?;
-                    tbl.set("supply", res.supply)?;
-                    tbl.set("supply_cap", res.supply_cap)?;
-                    Ok(tbl)
-                })
-                ?;
-            ctx_table
-                .set("resources", f)
-                ?;
+            let f = scope.create_function(|lua, _self: LuaValue| {
+                let ctx = cell.borrow_mut();
+                let res = ctx.resources();
+                let tbl = lua.create_table()?;
+                tbl.set("food", res.food)?;
+                tbl.set("gpu_cores", res.gpu_cores)?;
+                tbl.set("nfts", res.nfts)?;
+                tbl.set("supply", res.supply)?;
+                tbl.set("supply_cap", res.supply_cap)?;
+                Ok(tbl)
+            })?;
+            ctx_table.set("resources", f)?;
         }
 
         // ctx:nearest_deposit(x, y, kind?)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, x, y, kind): (LuaValue, i32, i32, Option<String>)| {
+            let f = scope.create_function(
+                |lua, (_self, x, y, kind): (LuaValue, i32, i32, Option<String>)| {
                     let mut ctx = cell.borrow_mut();
                     let res_kind = kind.and_then(|s| s.parse::<ResourceType>().ok());
                     match ctx.nearest_deposit(GridPos::new(x, y), res_kind) {
                         Some(dep) => Ok(LuaValue::Table(deposit_to_lua_table(lua, dep)?)),
                         None => Ok(LuaValue::Nil),
                     }
-                })
-                ?;
-            ctx_table
-                .set("nearest_deposit", f)
-                ?;
+                },
+            )?;
+            ctx_table.set("nearest_deposit", f)?;
         }
 
         // ctx:my_buildings(kind_filter?)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, filter): (LuaValue, Option<String>)| {
-                    let mut ctx = cell.borrow_mut();
-                    let kind = filter.and_then(|s| s.parse::<BuildingKind>().ok());
-                    let buildings = ctx.my_buildings(kind);
-                    let tbl = lua.create_table()?;
-                    for (i, b) in buildings.iter().enumerate() {
-                        tbl.set(i + 1, building_to_lua_table(lua, b)?)?;
-                    }
-                    Ok(tbl)
-                })
-                ?;
-            ctx_table
-                .set("my_buildings", f)
-                ?;
+            let f = scope.create_function(|lua, (_self, filter): (LuaValue, Option<String>)| {
+                let mut ctx = cell.borrow_mut();
+                let kind = filter.and_then(|s| s.parse::<BuildingKind>().ok());
+                let buildings = ctx.my_buildings(kind);
+                let tbl = lua.create_table()?;
+                for (i, b) in buildings.iter().enumerate() {
+                    tbl.set(i + 1, building_to_lua_table(lua, b)?)?;
+                }
+                Ok(tbl)
+            })?;
+            ctx_table.set("my_buildings", f)?;
         }
 
         // -------------------------------------------------------------------
@@ -626,40 +539,32 @@ pub fn execute_script_with_context_tiered(
         // ctx:tick()
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, _self: LuaValue| {
-                    let ctx = cell.borrow();
-                    Ok(ctx.tick())
-                })
-                ?;
+            let f = scope.create_function(|_, _self: LuaValue| {
+                let ctx = cell.borrow();
+                Ok(ctx.tick())
+            })?;
             ctx_table.set("tick", f)?;
         }
 
         // ctx:my_faction()
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, _self: LuaValue| {
-                    let ctx = cell.borrow();
-                    Ok(ctx.my_faction().as_str().to_string())
-                })
-                ?;
+            let f = scope.create_function(|_, _self: LuaValue| {
+                let ctx = cell.borrow();
+                Ok(ctx.my_faction().as_str().to_string())
+            })?;
             ctx_table.set("my_faction", f)?;
         }
 
         // ctx:map_size()
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, _self: LuaValue| {
-                    let ctx = cell.borrow();
-                    let (w, h) = ctx.map_size();
-                    Ok((w, h))
-                })
-                ?;
-            ctx_table
-                .set("map_size", f)
-                ?;
+            let f = scope.create_function(|_, _self: LuaValue| {
+                let ctx = cell.borrow();
+                let (w, h) = ctx.map_size();
+                Ok((w, h))
+            })?;
+            ctx_table.set("map_size", f)?;
         }
 
         // -------------------------------------------------------------------
@@ -669,22 +574,20 @@ pub fn execute_script_with_context_tiered(
         // ctx:is_visible(x, y) → bool
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, x, y): (LuaValue, i32, i32)| {
-                    let ctx = cell.borrow();
-                    Ok(ctx.is_visible(GridPos::new(x, y)))
-                })?;
+            let f = scope.create_function(|_, (_self, x, y): (LuaValue, i32, i32)| {
+                let ctx = cell.borrow();
+                Ok(ctx.is_visible(GridPos::new(x, y)))
+            })?;
             ctx_table.set("is_visible", f)?;
         }
 
         // ctx:fog_state(x, y) → "visible" or "fog"
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, x, y): (LuaValue, i32, i32)| {
-                    let ctx = cell.borrow();
-                    Ok(ctx.fog_state(GridPos::new(x, y)).to_string())
-                })?;
+            let f = scope.create_function(|_, (_self, x, y): (LuaValue, i32, i32)| {
+                let ctx = cell.borrow();
+                Ok(ctx.fog_state(GridPos::new(x, y)).to_string())
+            })?;
             ctx_table.set("fog_state", f)?;
         }
 
@@ -695,30 +598,28 @@ pub fn execute_script_with_context_tiered(
         // ctx:last_seen_enemies() → table of memory entries
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, _self: LuaValue| {
-                    let mut ctx = cell.borrow_mut();
-                    let entries = ctx.last_seen_enemies();
-                    let tbl = lua.create_table()?;
-                    for (i, entry) in entries.iter().enumerate() {
-                        tbl.set(i + 1, enemy_memory_to_lua_table(lua, entry)?)?;
-                    }
-                    Ok(tbl)
-                })?;
+            let f = scope.create_function(|lua, _self: LuaValue| {
+                let mut ctx = cell.borrow_mut();
+                let entries = ctx.last_seen_enemies();
+                let tbl = lua.create_table()?;
+                for (i, entry) in entries.iter().enumerate() {
+                    tbl.set(i + 1, enemy_memory_to_lua_table(lua, entry)?)?;
+                }
+                Ok(tbl)
+            })?;
             ctx_table.set("last_seen_enemies", f)?;
         }
 
         // ctx:last_seen_at(unit_id) → memory entry or nil
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, unit_id): (LuaValue, u64)| {
-                    let mut ctx = cell.borrow_mut();
-                    match ctx.last_seen_at(unit_id) {
-                        Some(entry) => Ok(LuaValue::Table(enemy_memory_to_lua_table(lua, &entry)?)),
-                        None => Ok(LuaValue::Nil),
-                    }
-                })?;
+            let f = scope.create_function(|lua, (_self, unit_id): (LuaValue, u64)| {
+                let mut ctx = cell.borrow_mut();
+                match ctx.last_seen_at(unit_id) {
+                    Some(entry) => Ok(LuaValue::Table(enemy_memory_to_lua_table(lua, &entry)?)),
+                    None => Ok(LuaValue::Nil),
+                }
+            })?;
             ctx_table.set("last_seen_at", f)?;
         }
 
@@ -729,8 +630,8 @@ pub fn execute_script_with_context_tiered(
         // ctx:threat_level(x, y, radius) → number
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, x, y, radius): (LuaValue, i32, i32, i32)| {
+            let f =
+                scope.create_function(|_, (_self, x, y, radius): (LuaValue, i32, i32, i32)| {
                     let mut ctx = cell.borrow_mut();
                     Ok(ctx.threat_level(GridPos::new(x, y), radius))
                 })?;
@@ -740,16 +641,15 @@ pub fn execute_script_with_context_tiered(
         // ctx:army_strength() → {total_hp, total_dps, unit_count}
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, _self: LuaValue| {
-                    let mut ctx = cell.borrow_mut();
-                    let strength = ctx.army_strength();
-                    let tbl = lua.create_table()?;
-                    tbl.set("total_hp", strength.total_hp)?;
-                    tbl.set("total_dps", strength.total_dps)?;
-                    tbl.set("unit_count", strength.unit_count)?;
-                    Ok(tbl)
-                })?;
+            let f = scope.create_function(|lua, _self: LuaValue| {
+                let mut ctx = cell.borrow_mut();
+                let strength = ctx.army_strength();
+                let tbl = lua.create_table()?;
+                tbl.set("total_hp", strength.total_hp)?;
+                tbl.set("total_dps", strength.total_dps)?;
+                tbl.set("unit_count", strength.unit_count)?;
+                Ok(tbl)
+            })?;
             ctx_table.set("army_strength", f)?;
         }
 
@@ -760,8 +660,8 @@ pub fn execute_script_with_context_tiered(
         // ctx:emit_event(name, data_string)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, name, data): (LuaValue, String, String)| {
+            let f =
+                scope.create_function(|_, (_self, name, data): (LuaValue, String, String)| {
                     let mut ctx = cell.borrow_mut();
                     ctx.emit_event(name, data);
                     Ok(())
@@ -772,32 +672,30 @@ pub fn execute_script_with_context_tiered(
         // ctx:poll_events(name) → table of {name, data, tick}
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, name): (LuaValue, String)| {
-                    let mut ctx = cell.borrow_mut();
-                    let events = ctx.poll_events(&name);
-                    let tbl = lua.create_table()?;
-                    for (i, event) in events.iter().enumerate() {
-                        tbl.set(i + 1, script_event_to_lua_table(lua, event)?)?;
-                    }
-                    Ok(tbl)
-                })?;
+            let f = scope.create_function(|lua, (_self, name): (LuaValue, String)| {
+                let mut ctx = cell.borrow_mut();
+                let events = ctx.poll_events(&name);
+                let tbl = lua.create_table()?;
+                for (i, event) in events.iter().enumerate() {
+                    tbl.set(i + 1, script_event_to_lua_table(lua, event)?)?;
+                }
+                Ok(tbl)
+            })?;
             ctx_table.set("poll_events", f)?;
         }
 
         // ctx:drain_events(name) → table of {name, data, tick}
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, name): (LuaValue, String)| {
-                    let mut ctx = cell.borrow_mut();
-                    let events = ctx.drain_events(&name);
-                    let tbl = lua.create_table()?;
-                    for (i, event) in events.iter().enumerate() {
-                        tbl.set(i + 1, script_event_to_lua_table(lua, event)?)?;
-                    }
-                    Ok(tbl)
-                })?;
+            let f = scope.create_function(|lua, (_self, name): (LuaValue, String)| {
+                let mut ctx = cell.borrow_mut();
+                let events = ctx.drain_events(&name);
+                let tbl = lua.create_table()?;
+                for (i, event) in events.iter().enumerate() {
+                    tbl.set(i + 1, script_event_to_lua_table(lua, event)?)?;
+                }
+                Ok(tbl)
+            })?;
             ctx_table.set("drain_events", f)?;
         }
 
@@ -808,34 +706,32 @@ pub fn execute_script_with_context_tiered(
         // ctx:game_phase() → "early", "mid", or "late"
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, _self: LuaValue| {
-                    let ctx = cell.borrow();
-                    Ok(ctx.game_phase().to_string())
-                })?;
+            let f = scope.create_function(|_, _self: LuaValue| {
+                let ctx = cell.borrow();
+                Ok(ctx.game_phase().to_string())
+            })?;
             ctx_table.set("game_phase", f)?;
         }
 
         // ctx:expansion_sites() → table of {deposit_id, resource_type, x, y, remaining, distance_to_base}
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, _self: LuaValue| {
-                    let mut ctx = cell.borrow_mut();
-                    let sites = ctx.expansion_sites();
-                    let tbl = lua.create_table()?;
-                    for (i, site) in sites.iter().enumerate() {
-                        let entry = lua.create_table()?;
-                        entry.set("deposit_id", site.deposit_id)?;
-                        entry.set("resource_type", site.resource_type.clone())?;
-                        entry.set("x", site.x)?;
-                        entry.set("y", site.y)?;
-                        entry.set("remaining", site.remaining)?;
-                        entry.set("distance_to_base", site.distance_to_base)?;
-                        tbl.set(i + 1, entry)?;
-                    }
-                    Ok(tbl)
-                })?;
+            let f = scope.create_function(|lua, _self: LuaValue| {
+                let mut ctx = cell.borrow_mut();
+                let sites = ctx.expansion_sites();
+                let tbl = lua.create_table()?;
+                for (i, site) in sites.iter().enumerate() {
+                    let entry = lua.create_table()?;
+                    entry.set("deposit_id", site.deposit_id)?;
+                    entry.set("resource_type", site.resource_type.clone())?;
+                    entry.set("x", site.x)?;
+                    entry.set("y", site.y)?;
+                    entry.set("remaining", site.remaining)?;
+                    entry.set("distance_to_base", site.distance_to_base)?;
+                    tbl.set(i + 1, entry)?;
+                }
+                Ok(tbl)
+            })?;
             ctx_table.set("expansion_sites", f)?;
         }
 
@@ -843,133 +739,123 @@ pub fn execute_script_with_context_tiered(
         // → {winner, confidence, my_survivors, enemy_survivors}
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(
-                    |lua, (_self, my_ids, enemy_ids): (LuaValue, Vec<u64>, Vec<u64>)| {
-                        let mut ctx = cell.borrow_mut();
-                        let my_eids: Vec<EntityId> = my_ids.into_iter().map(EntityId).collect();
-                        let enemy_eids: Vec<EntityId> =
-                            enemy_ids.into_iter().map(EntityId).collect();
-                        let pred = ctx.predict_engagement(&my_eids, &enemy_eids);
-                        let tbl = lua.create_table()?;
-                        tbl.set("winner", pred.winner)?;
-                        tbl.set("confidence", pred.confidence)?;
-                        tbl.set("my_survivors", pred.my_survivors)?;
-                        tbl.set("enemy_survivors", pred.enemy_survivors)?;
-                        Ok(tbl)
-                    },
-                )?;
+            let f = scope.create_function(
+                |lua, (_self, my_ids, enemy_ids): (LuaValue, Vec<u64>, Vec<u64>)| {
+                    let mut ctx = cell.borrow_mut();
+                    let my_eids: Vec<EntityId> = my_ids.into_iter().map(EntityId).collect();
+                    let enemy_eids: Vec<EntityId> = enemy_ids.into_iter().map(EntityId).collect();
+                    let pred = ctx.predict_engagement(&my_eids, &enemy_eids);
+                    let tbl = lua.create_table()?;
+                    tbl.set("winner", pred.winner)?;
+                    tbl.set("confidence", pred.confidence)?;
+                    tbl.set("my_survivors", pred.my_survivors)?;
+                    tbl.set("enemy_survivors", pred.enemy_survivors)?;
+                    Ok(tbl)
+                },
+            )?;
             ctx_table.set("predict_engagement", f)?;
         }
 
         // ctx:squad_create(name, {id1, id2, ...})
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(
-                    |_, (_self, name, unit_ids): (LuaValue, String, Vec<u64>)| {
-                        let mut ctx = cell.borrow_mut();
-                        ctx.squad_create(name, unit_ids);
-                        Ok(())
-                    },
-                )?;
+            let f = scope.create_function(
+                |_, (_self, name, unit_ids): (LuaValue, String, Vec<u64>)| {
+                    let mut ctx = cell.borrow_mut();
+                    ctx.squad_create(name, unit_ids);
+                    Ok(())
+                },
+            )?;
             ctx_table.set("squad_create", f)?;
         }
 
         // ctx:squad_add(name, {id1, id2})
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(
-                    |_, (_self, name, unit_ids): (LuaValue, String, Vec<u64>)| {
-                        let mut ctx = cell.borrow_mut();
-                        ctx.squad_add(&name, unit_ids);
-                        Ok(())
-                    },
-                )?;
+            let f = scope.create_function(
+                |_, (_self, name, unit_ids): (LuaValue, String, Vec<u64>)| {
+                    let mut ctx = cell.borrow_mut();
+                    ctx.squad_add(&name, unit_ids);
+                    Ok(())
+                },
+            )?;
             ctx_table.set("squad_add", f)?;
         }
 
         // ctx:squad_remove(name, {id1, id2})
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(
-                    |_, (_self, name, unit_ids): (LuaValue, String, Vec<u64>)| {
-                        let mut ctx = cell.borrow_mut();
-                        ctx.squad_remove(&name, &unit_ids);
-                        Ok(())
-                    },
-                )?;
+            let f = scope.create_function(
+                |_, (_self, name, unit_ids): (LuaValue, String, Vec<u64>)| {
+                    let mut ctx = cell.borrow_mut();
+                    ctx.squad_remove(&name, &unit_ids);
+                    Ok(())
+                },
+            )?;
             ctx_table.set("squad_remove", f)?;
         }
 
         // ctx:squad_units(name) → table of unit IDs (auto-prunes dead)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, name): (LuaValue, String)| {
-                    let mut ctx = cell.borrow_mut();
-                    let ids = ctx.squad_units(&name);
-                    let tbl = lua.create_table()?;
-                    for (i, id) in ids.iter().enumerate() {
-                        tbl.set(i + 1, *id)?;
-                    }
-                    Ok(tbl)
-                })?;
+            let f = scope.create_function(|lua, (_self, name): (LuaValue, String)| {
+                let mut ctx = cell.borrow_mut();
+                let ids = ctx.squad_units(&name);
+                let tbl = lua.create_table()?;
+                for (i, id) in ids.iter().enumerate() {
+                    tbl.set(i + 1, *id)?;
+                }
+                Ok(tbl)
+            })?;
             ctx_table.set("squad_units", f)?;
         }
 
         // ctx:squad_centroid(name) → x, y (two return values) or nil, nil
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, name): (LuaValue, String)| {
-                    let mut ctx = cell.borrow_mut();
-                    match ctx.squad_centroid(&name) {
-                        Some((x, y)) => Ok((LuaValue::Integer(x), LuaValue::Integer(y))),
-                        None => Ok((LuaValue::Nil, LuaValue::Nil)),
-                    }
-                })?;
+            let f = scope.create_function(|_, (_self, name): (LuaValue, String)| {
+                let mut ctx = cell.borrow_mut();
+                match ctx.squad_centroid(&name) {
+                    Some((x, y)) => Ok((LuaValue::Integer(x), LuaValue::Integer(y))),
+                    None => Ok((LuaValue::Nil, LuaValue::Nil)),
+                }
+            })?;
             ctx_table.set("squad_centroid", f)?;
         }
 
         // ctx:squad_disband(name)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, name): (LuaValue, String)| {
-                    let mut ctx = cell.borrow_mut();
-                    ctx.squad_disband(&name);
-                    Ok(())
-                })?;
+            let f = scope.create_function(|_, (_self, name): (LuaValue, String)| {
+                let mut ctx = cell.borrow_mut();
+                ctx.squad_disband(&name);
+                Ok(())
+            })?;
             ctx_table.set("squad_disband", f)?;
         }
 
         // ctx:squad_list() → table of squad name strings
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, _self: LuaValue| {
-                    let ctx = cell.borrow();
-                    let names = ctx.squad_list();
-                    let tbl = lua.create_table()?;
-                    for (i, name) in names.iter().enumerate() {
-                        tbl.set(i + 1, name.clone())?;
-                    }
-                    Ok(tbl)
-                })?;
+            let f = scope.create_function(|lua, _self: LuaValue| {
+                let ctx = cell.borrow();
+                let names = ctx.squad_list();
+                let tbl = lua.create_table()?;
+                for (i, name) in names.iter().enumerate() {
+                    tbl.set(i + 1, name.clone())?;
+                }
+                Ok(tbl)
+            })?;
             ctx_table.set("squad_list", f)?;
         }
 
         // ctx:game_score() → number (positive = winning)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, _self: LuaValue| {
-                    let mut ctx = cell.borrow_mut();
-                    Ok(ctx.game_score())
-                })?;
+            let f = scope.create_function(|_, _self: LuaValue| {
+                let mut ctx = cell.borrow_mut();
+                Ok(ctx.game_score())
+            })?;
             ctx_table.set("game_score", f)?;
         }
 
@@ -980,136 +866,125 @@ pub fn execute_script_with_context_tiered(
         // ctx:move_units(unit_ids, x, y)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(move |_, (_self, unit_ids, x, y): (LuaValue, Vec<u64>, i32, i32)| {
+            let f = scope.create_function(
+                move |_, (_self, unit_ids, x, y): (LuaValue, Vec<u64>, i32, i32)| {
                     let mut ctx = cell.borrow_mut();
                     ctx.cmd_move(
                         unit_ids.into_iter().map(EntityId).collect(),
                         GridPos::new(x, y),
                     );
                     Ok(())
-                })
-                ?;
-            ctx_table
-                .set("move_units", f)
-                ?;
+                },
+            )?;
+            ctx_table.set("move_units", f)?;
         }
 
         // ctx:attack_units(unit_ids, target_id)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(move |_, (_self, unit_ids, target_id): (LuaValue, Vec<u64>, u64)| {
+            let f = scope.create_function(
+                move |_, (_self, unit_ids, target_id): (LuaValue, Vec<u64>, u64)| {
                     let mut ctx = cell.borrow_mut();
                     ctx.cmd_attack(
                         unit_ids.into_iter().map(EntityId).collect(),
                         EntityId(target_id),
                     );
                     Ok(())
-                })
-                ?;
-            ctx_table
-                .set("attack_units", f)
-                ?;
+                },
+            )?;
+            ctx_table.set("attack_units", f)?;
         }
 
         // ctx:attack_move(unit_ids, x, y)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(move |_, (_self, unit_ids, x, y): (LuaValue, Vec<u64>, i32, i32)| {
+            let f = scope.create_function(
+                move |_, (_self, unit_ids, x, y): (LuaValue, Vec<u64>, i32, i32)| {
                     let mut ctx = cell.borrow_mut();
                     ctx.cmd_attack_move(
                         unit_ids.into_iter().map(EntityId).collect(),
                         GridPos::new(x, y),
                     );
                     Ok(())
-                })
-                ?;
-            ctx_table
-                .set("attack_move", f)
-                ?;
+                },
+            )?;
+            ctx_table.set("attack_move", f)?;
         }
 
         // ctx:stop(unit_ids)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(move |_, (_self, unit_ids): (LuaValue, Vec<u64>)| {
-                    let mut ctx = cell.borrow_mut();
-                    ctx.cmd_stop(unit_ids.into_iter().map(EntityId).collect());
-                    Ok(())
-                })
-                ?;
+            let f = scope.create_function(move |_, (_self, unit_ids): (LuaValue, Vec<u64>)| {
+                let mut ctx = cell.borrow_mut();
+                ctx.cmd_stop(unit_ids.into_iter().map(EntityId).collect());
+                Ok(())
+            })?;
             ctx_table.set("stop", f)?;
         }
 
         // ctx:hold(unit_ids)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(move |_, (_self, unit_ids): (LuaValue, Vec<u64>)| {
-                    let mut ctx = cell.borrow_mut();
-                    ctx.cmd_hold(unit_ids.into_iter().map(EntityId).collect());
-                    Ok(())
-                })
-                ?;
+            let f = scope.create_function(move |_, (_self, unit_ids): (LuaValue, Vec<u64>)| {
+                let mut ctx = cell.borrow_mut();
+                ctx.cmd_hold(unit_ids.into_iter().map(EntityId).collect());
+                Ok(())
+            })?;
             ctx_table.set("hold", f)?;
         }
 
         // ctx:gather(unit_ids, deposit_id)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(
-                    move |_, (_self, unit_ids, deposit_id): (LuaValue, Vec<u64>, u64)| {
-                        let mut ctx = cell.borrow_mut();
-                        ctx.cmd_gather(
-                            unit_ids.into_iter().map(EntityId).collect(),
-                            EntityId(deposit_id),
-                        );
-                        Ok(())
-                    },
-                )
-                ?;
+            let f = scope.create_function(
+                move |_, (_self, unit_ids, deposit_id): (LuaValue, Vec<u64>, u64)| {
+                    let mut ctx = cell.borrow_mut();
+                    ctx.cmd_gather(
+                        unit_ids.into_iter().map(EntityId).collect(),
+                        EntityId(deposit_id),
+                    );
+                    Ok(())
+                },
+            )?;
             ctx_table.set("gather", f)?;
         }
 
         // ctx:build(builder_id, building_type, x, y)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(
-                    move |_, (_self, builder_id, building_type, x, y): (LuaValue, u64, String, i32, i32)| {
-                        let kind = building_type.parse::<BuildingKind>()
-                            .map_err(|_| mlua::Error::RuntimeError(
-                                format!("Unknown building type: {building_type}"),
-                            ))?;
-                        let mut ctx = cell.borrow_mut();
-                        ctx.cmd_build(EntityId(builder_id), kind, GridPos::new(x, y));
-                        Ok(())
-                    },
-                )
-                ?;
+            let f = scope.create_function(
+                move |_,
+                      (_self, builder_id, building_type, x, y): (
+                    LuaValue,
+                    u64,
+                    String,
+                    i32,
+                    i32,
+                )| {
+                    let kind = building_type.parse::<BuildingKind>().map_err(|_| {
+                        mlua::Error::RuntimeError(format!("Unknown building type: {building_type}"))
+                    })?;
+                    let mut ctx = cell.borrow_mut();
+                    ctx.cmd_build(EntityId(builder_id), kind, GridPos::new(x, y));
+                    Ok(())
+                },
+            )?;
             ctx_table.set("build", f)?;
         }
 
         // ctx:train(building_id, unit_type)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(
-                    move |_, (_self, building_id, unit_type): (LuaValue, u64, String)| {
-                        let kind = unit_type.parse::<UnitKind>()
-                            .map_err(|_| mlua::Error::RuntimeError(
-                                format!("Unknown unit type: {unit_type}"),
-                            ))?;
-                        let mut ctx = cell.borrow_mut();
-                        ctx.cmd_train(EntityId(building_id), kind);
-                        Ok(())
-                    },
-                )
-                ?;
+            let f = scope.create_function(
+                move |_, (_self, building_id, unit_type): (LuaValue, u64, String)| {
+                    let kind = unit_type.parse::<UnitKind>().map_err(|_| {
+                        mlua::Error::RuntimeError(format!("Unknown unit type: {unit_type}"))
+                    })?;
+                    let mut ctx = cell.borrow_mut();
+                    ctx.cmd_train(EntityId(building_id), kind);
+                    Ok(())
+                },
+            )?;
             ctx_table.set("train", f)?;
         }
 
@@ -1126,13 +1001,11 @@ pub fn execute_script_with_context_tiered(
             // ctx.behaviors:assign_idle_workers()
             {
                 let cell = &ctx_cell;
-                let f = scope.create_function(
-                    |_, _self: LuaValue| {
-                        let mut ctx = cell.borrow_mut();
-                        let result = crate::behaviors::assign_idle_workers(&mut ctx);
-                        Ok(result.commands_issued as u32)
-                    },
-                )?;
+                let f = scope.create_function(|_, _self: LuaValue| {
+                    let mut ctx = cell.borrow_mut();
+                    let result = crate::behaviors::assign_idle_workers(&mut ctx);
+                    Ok(result.commands_issued as u32)
+                })?;
                 behaviors_table.set("assign_idle_workers", f)?;
             }
 
@@ -1142,11 +1015,9 @@ pub fn execute_script_with_context_tiered(
                 let f = scope.create_function(
                     |_, (_self, unit_ids, x, y): (LuaValue, Vec<u64>, i32, i32)| {
                         let mut ctx = cell.borrow_mut();
-                        let ids: Vec<EntityId> =
-                            unit_ids.into_iter().map(EntityId).collect();
-                        let result = crate::behaviors::attack_move_group(
-                            &mut ctx, &ids, GridPos::new(x, y),
-                        );
+                        let ids: Vec<EntityId> = unit_ids.into_iter().map(EntityId).collect();
+                        let result =
+                            crate::behaviors::attack_move_group(&mut ctx, &ids, GridPos::new(x, y));
                         Ok(result.commands_issued as u32)
                     },
                 )?;
@@ -1163,9 +1034,8 @@ pub fn execute_script_with_context_tiered(
                             let mut ctx = cell.borrow_mut();
                             let ids: Vec<EntityId> =
                                 attacker_ids.into_iter().map(EntityId).collect();
-                            let result = crate::behaviors::focus_fire(
-                                &mut ctx, &ids, EntityId(target_id),
-                            );
+                            let result =
+                                crate::behaviors::focus_fire(&mut ctx, &ids, EntityId(target_id));
                             Ok(result.commands_issued as u32)
                         },
                     )?;
@@ -1175,62 +1045,65 @@ pub fn execute_script_with_context_tiered(
                 // ctx.behaviors:kite_squad(unit_ids)
                 {
                     let cell = &ctx_cell;
-                    let f = scope.create_function(
-                        |_, (_self, unit_ids): (LuaValue, Vec<u64>)| {
+                    let f =
+                        scope.create_function(|_, (_self, unit_ids): (LuaValue, Vec<u64>)| {
                             let mut ctx = cell.borrow_mut();
-                            let ids: Vec<EntityId> =
-                                unit_ids.into_iter().map(EntityId).collect();
+                            let ids: Vec<EntityId> = unit_ids.into_iter().map(EntityId).collect();
                             let result = crate::behaviors::kite_squad(&mut ctx, &ids);
                             Ok(result.commands_issued as u32)
-                        },
-                    )?;
+                        })?;
                     behaviors_table.set("kite_squad", f)?;
                 }
 
                 // ctx.behaviors:retreat_wounded(threshold)
                 {
                     let cell = &ctx_cell;
-                    let f = scope.create_function(
-                        |_, (_self, threshold): (LuaValue, f64)| {
-                            let mut ctx = cell.borrow_mut();
-                            let result =
-                                crate::behaviors::retreat_wounded(&mut ctx, threshold);
-                            Ok(result.commands_issued as u32)
-                        },
-                    )?;
+                    let f = scope.create_function(|_, (_self, threshold): (LuaValue, f64)| {
+                        let mut ctx = cell.borrow_mut();
+                        let result = crate::behaviors::retreat_wounded(&mut ctx, threshold);
+                        Ok(result.commands_issued as u32)
+                    })?;
                     behaviors_table.set("retreat_wounded", f)?;
                 }
 
                 // ctx.behaviors:defend_area(unit_ids, cx, cy, radius)
                 {
                     let cell = &ctx_cell;
-                    let f = scope.create_function(
-                        |_, (_self, unit_ids, cx, cy, radius): (LuaValue, Vec<u64>, i32, i32, f64)| {
-                            let mut ctx = cell.borrow_mut();
-                            let ids: Vec<EntityId> =
-                                unit_ids.into_iter().map(EntityId).collect();
-                            let result = crate::behaviors::defend_area(
-                                &mut ctx, &ids, GridPos::new(cx, cy), Fixed::from_num(radius),
-                            );
-                            Ok(result.commands_issued as u32)
-                        },
-                    )?;
+                    let f =
+                        scope.create_function(
+                            |_,
+                             (_self, unit_ids, cx, cy, radius): (
+                                LuaValue,
+                                Vec<u64>,
+                                i32,
+                                i32,
+                                f64,
+                            )| {
+                                let mut ctx = cell.borrow_mut();
+                                let ids: Vec<EntityId> =
+                                    unit_ids.into_iter().map(EntityId).collect();
+                                let result = crate::behaviors::defend_area(
+                                    &mut ctx,
+                                    &ids,
+                                    GridPos::new(cx, cy),
+                                    Fixed::from_num(radius),
+                                );
+                                Ok(result.commands_issued as u32)
+                            },
+                        )?;
                     behaviors_table.set("defend_area", f)?;
                 }
 
                 // ctx.behaviors:harass_economy(raider_ids)
                 {
                     let cell = &ctx_cell;
-                    let f = scope.create_function(
-                        |_, (_self, raider_ids): (LuaValue, Vec<u64>)| {
+                    let f =
+                        scope.create_function(|_, (_self, raider_ids): (LuaValue, Vec<u64>)| {
                             let mut ctx = cell.borrow_mut();
-                            let ids: Vec<EntityId> =
-                                raider_ids.into_iter().map(EntityId).collect();
-                            let result =
-                                crate::behaviors::harass_economy(&mut ctx, &ids);
+                            let ids: Vec<EntityId> = raider_ids.into_iter().map(EntityId).collect();
+                            let result = crate::behaviors::harass_economy(&mut ctx, &ids);
                             Ok(result.commands_issued as u32)
-                        },
-                    )?;
+                        })?;
                     behaviors_table.set("harass_economy", f)?;
                 }
 
@@ -1240,16 +1113,16 @@ pub fn execute_script_with_context_tiered(
                     let f = scope.create_function(
                         |_, (_self, scout_id, waypoints): (LuaValue, u64, Vec<LuaTable>)| {
                             let mut ctx = cell.borrow_mut();
-                            let wps: Vec<GridPos> = waypoints.iter()
+                            let wps: Vec<GridPos> = waypoints
+                                .iter()
                                 .filter_map(|wp| {
                                     let x: i32 = wp.get("x").ok()?;
                                     let y: i32 = wp.get("y").ok()?;
                                     Some(GridPos::new(x, y))
                                 })
                                 .collect();
-                            let result = crate::behaviors::scout_pattern(
-                                &mut ctx, EntityId(scout_id), &wps,
-                            );
+                            let result =
+                                crate::behaviors::scout_pattern(&mut ctx, EntityId(scout_id), &wps);
                             Ok(result.commands_issued as u32)
                         },
                     )?;
@@ -1262,10 +1135,11 @@ pub fn execute_script_with_context_tiered(
                     let f = scope.create_function(
                         |_, (_self, unit_ids, range): (LuaValue, Vec<u64>, f64)| {
                             let mut ctx = cell.borrow_mut();
-                            let ids: Vec<EntityId> =
-                                unit_ids.into_iter().map(EntityId).collect();
+                            let ids: Vec<EntityId> = unit_ids.into_iter().map(EntityId).collect();
                             let result = crate::behaviors::focus_weakest(
-                                &mut ctx, &ids, Fixed::from_num(range),
+                                &mut ctx,
+                                &ids,
+                                Fixed::from_num(range),
                             );
                             Ok(result.commands_issued as u32)
                         },
@@ -1277,25 +1151,47 @@ pub fn execute_script_with_context_tiered(
                 {
                     let cell = &ctx_cell;
                     let f = scope.create_function(
-                        |_, (_self, unit_id, slot, target_type, x, y, entity_id): (
-                            LuaValue, u64, u8, String, Option<i32>, Option<i32>, Option<u64>,
+                        |_,
+                         (_self, unit_id, slot, target_type, x, y, entity_id): (
+                            LuaValue,
+                            u64,
+                            u8,
+                            String,
+                            Option<i32>,
+                            Option<i32>,
+                            Option<u64>,
                         )| {
                             let target = match target_type.as_str() {
                                 "self" => AbilityTarget::SelfCast,
                                 "position" => {
-                                    let px = x.ok_or_else(|| mlua::Error::RuntimeError("position requires x".into()))?;
-                                    let py = y.ok_or_else(|| mlua::Error::RuntimeError("position requires y".into()))?;
+                                    let px = x.ok_or_else(|| {
+                                        mlua::Error::RuntimeError("position requires x".into())
+                                    })?;
+                                    let py = y.ok_or_else(|| {
+                                        mlua::Error::RuntimeError("position requires y".into())
+                                    })?;
                                     AbilityTarget::Position(GridPos::new(px, py))
                                 }
                                 "entity" => {
-                                    let eid = entity_id.ok_or_else(|| mlua::Error::RuntimeError("entity requires entity_id".into()))?;
+                                    let eid = entity_id.ok_or_else(|| {
+                                        mlua::Error::RuntimeError(
+                                            "entity requires entity_id".into(),
+                                        )
+                                    })?;
                                     AbilityTarget::Entity(EntityId(eid))
                                 }
-                                _ => return Err(mlua::Error::RuntimeError(format!("Unknown target type: {target_type}"))),
+                                _ => {
+                                    return Err(mlua::Error::RuntimeError(format!(
+                                        "Unknown target type: {target_type}"
+                                    )));
+                                }
                             };
                             let mut ctx = cell.borrow_mut();
                             let result = crate::behaviors::use_ability(
-                                &mut ctx, EntityId(unit_id), slot, target,
+                                &mut ctx,
+                                EntityId(unit_id),
+                                slot,
+                                target,
                             );
                             Ok(result.commands_issued as u32)
                         },
@@ -1306,11 +1202,10 @@ pub fn execute_script_with_context_tiered(
                 // ctx.behaviors:split_squads(unit_ids) → returns {melee={}, ranged={}, support={}}
                 {
                     let cell = &ctx_cell;
-                    let f = scope.create_function(
-                        |lua, (_self, unit_ids): (LuaValue, Vec<u64>)| {
+                    let f =
+                        scope.create_function(|lua, (_self, unit_ids): (LuaValue, Vec<u64>)| {
                             let mut ctx = cell.borrow_mut();
-                            let ids: Vec<EntityId> =
-                                unit_ids.into_iter().map(EntityId).collect();
+                            let ids: Vec<EntityId> = unit_ids.into_iter().map(EntityId).collect();
                             let (melee, ranged, support, _) =
                                 crate::behaviors::split_squads(&mut ctx, &ids);
                             let tbl = lua.create_table()?;
@@ -1318,8 +1213,7 @@ pub fn execute_script_with_context_tiered(
                             tbl.set("ranged", ranged.iter().map(|e| e.0).collect::<Vec<_>>())?;
                             tbl.set("support", support.iter().map(|e| e.0).collect::<Vec<_>>())?;
                             Ok(tbl)
-                        },
-                    )?;
+                        })?;
                     behaviors_table.set("split_squads", f)?;
                 }
 
@@ -1327,13 +1221,21 @@ pub fn execute_script_with_context_tiered(
                 {
                     let cell = &ctx_cell;
                     let f = scope.create_function(
-                        |_, (_self, escort_ids, vip_id, guard_radius): (LuaValue, Vec<u64>, u64, Option<f64>)| {
+                        |_,
+                         (_self, escort_ids, vip_id, guard_radius): (
+                            LuaValue,
+                            Vec<u64>,
+                            u64,
+                            Option<f64>,
+                        )| {
                             let mut ctx = cell.borrow_mut();
-                            let ids: Vec<EntityId> =
-                                escort_ids.into_iter().map(EntityId).collect();
+                            let ids: Vec<EntityId> = escort_ids.into_iter().map(EntityId).collect();
                             let radius = Fixed::from_num(guard_radius.unwrap_or(5.0));
                             let result = crate::behaviors::protect_unit(
-                                &mut ctx, &ids, EntityId(vip_id), radius,
+                                &mut ctx,
+                                &ids,
+                                EntityId(vip_id),
+                                radius,
                             );
                             Ok(result.commands_issued as u32)
                         },
@@ -1345,13 +1247,21 @@ pub fn execute_script_with_context_tiered(
                 {
                     let cell = &ctx_cell;
                     let f = scope.create_function(
-                        |_, (_self, unit_ids, target_id, ring_radius): (LuaValue, Vec<u64>, u64, Option<f64>)| {
+                        |_,
+                         (_self, unit_ids, target_id, ring_radius): (
+                            LuaValue,
+                            Vec<u64>,
+                            u64,
+                            Option<f64>,
+                        )| {
                             let mut ctx = cell.borrow_mut();
-                            let ids: Vec<EntityId> =
-                                unit_ids.into_iter().map(EntityId).collect();
+                            let ids: Vec<EntityId> = unit_ids.into_iter().map(EntityId).collect();
                             let radius = Fixed::from_num(ring_radius.unwrap_or(3.0));
                             let result = crate::behaviors::surround_target(
-                                &mut ctx, &ids, EntityId(target_id), radius,
+                                &mut ctx,
+                                &ids,
+                                EntityId(target_id),
+                                radius,
                             );
                             Ok(result.commands_issued as u32)
                         },
@@ -1368,13 +1278,13 @@ pub fn execute_script_with_context_tiered(
                     let f = scope.create_function(
                         |_, (_self, building_id, unit_type): (LuaValue, u64, String)| {
                             let kind = unit_type.parse::<UnitKind>().map_err(|_| {
-                                mlua::Error::RuntimeError(format!(
-                                    "Unknown unit type: {unit_type}"
-                                ))
+                                mlua::Error::RuntimeError(format!("Unknown unit type: {unit_type}"))
                             })?;
                             let mut ctx = cell.borrow_mut();
                             let result = crate::behaviors::auto_produce(
-                                &mut ctx, EntityId(building_id), kind,
+                                &mut ctx,
+                                EntityId(building_id),
+                                kind,
                             );
                             Ok(result.commands_issued as u32)
                         },
@@ -1385,30 +1295,24 @@ pub fn execute_script_with_context_tiered(
                 // ctx.behaviors:balanced_production(building_id)
                 {
                     let cell = &ctx_cell;
-                    let f = scope.create_function(
-                        |_, (_self, building_id): (LuaValue, u64)| {
-                            let mut ctx = cell.borrow_mut();
-                            let result = crate::behaviors::balanced_production(
-                                &mut ctx, EntityId(building_id),
-                            );
-                            Ok(result.commands_issued as u32)
-                        },
-                    )?;
+                    let f = scope.create_function(|_, (_self, building_id): (LuaValue, u64)| {
+                        let mut ctx = cell.borrow_mut();
+                        let result =
+                            crate::behaviors::balanced_production(&mut ctx, EntityId(building_id));
+                        Ok(result.commands_issued as u32)
+                    })?;
                     behaviors_table.set("balanced_production", f)?;
                 }
 
                 // ctx.behaviors:expand_economy(builder_id)
                 {
                     let cell = &ctx_cell;
-                    let f = scope.create_function(
-                        |_, (_self, builder_id): (LuaValue, u64)| {
-                            let mut ctx = cell.borrow_mut();
-                            let result = crate::behaviors::expand_economy(
-                                &mut ctx, EntityId(builder_id),
-                            );
-                            Ok(result.commands_issued as u32)
-                        },
-                    )?;
+                    let f = scope.create_function(|_, (_self, builder_id): (LuaValue, u64)| {
+                        let mut ctx = cell.borrow_mut();
+                        let result =
+                            crate::behaviors::expand_economy(&mut ctx, EntityId(builder_id));
+                        Ok(result.commands_issued as u32)
+                    })?;
                     behaviors_table.set("expand_economy", f)?;
                 }
 
@@ -1418,10 +1322,11 @@ pub fn execute_script_with_context_tiered(
                     let f = scope.create_function(
                         |_, (_self, unit_ids, x, y): (LuaValue, Vec<u64>, i32, i32)| {
                             let mut ctx = cell.borrow_mut();
-                            let ids: Vec<EntityId> =
-                                unit_ids.into_iter().map(EntityId).collect();
+                            let ids: Vec<EntityId> = unit_ids.into_iter().map(EntityId).collect();
                             let result = crate::behaviors::coordinate_assault(
-                                &mut ctx, &ids, GridPos::new(x, y),
+                                &mut ctx,
+                                &ids,
+                                GridPos::new(x, y),
                             );
                             Ok(result.commands_issued as u32)
                         },
@@ -1435,32 +1340,40 @@ pub fn execute_script_with_context_tiered(
                 // ctx.behaviors:research_priority(building_id)
                 {
                     let cell = &ctx_cell;
-                    let f = scope.create_function(
-                        |_, (_self, building_id): (LuaValue, u64)| {
-                            let mut ctx = cell.borrow_mut();
-                            let result = crate::behaviors::research_priority(
-                                &mut ctx, EntityId(building_id),
-                            );
-                            Ok(result.commands_issued as u32)
-                        },
-                    )?;
+                    let f = scope.create_function(|_, (_self, building_id): (LuaValue, u64)| {
+                        let mut ctx = cell.borrow_mut();
+                        let result =
+                            crate::behaviors::research_priority(&mut ctx, EntityId(building_id));
+                        Ok(result.commands_issued as u32)
+                    })?;
                     behaviors_table.set("research_priority", f)?;
                 }
 
                 // ctx.behaviors:adaptive_defense(unit_ids, cx, cy, radius)
                 {
                     let cell = &ctx_cell;
-                    let f = scope.create_function(
-                        |_, (_self, unit_ids, cx, cy, radius): (LuaValue, Vec<u64>, i32, i32, f64)| {
-                            let mut ctx = cell.borrow_mut();
-                            let ids: Vec<EntityId> =
-                                unit_ids.into_iter().map(EntityId).collect();
-                            let result = crate::behaviors::adaptive_defense(
-                                &mut ctx, &ids, GridPos::new(cx, cy), Fixed::from_num(radius),
-                            );
-                            Ok(result.commands_issued as u32)
-                        },
-                    )?;
+                    let f =
+                        scope.create_function(
+                            |_,
+                             (_self, unit_ids, cx, cy, radius): (
+                                LuaValue,
+                                Vec<u64>,
+                                i32,
+                                i32,
+                                f64,
+                            )| {
+                                let mut ctx = cell.borrow_mut();
+                                let ids: Vec<EntityId> =
+                                    unit_ids.into_iter().map(EntityId).collect();
+                                let result = crate::behaviors::adaptive_defense(
+                                    &mut ctx,
+                                    &ids,
+                                    GridPos::new(cx, cy),
+                                    Fixed::from_num(radius),
+                                );
+                                Ok(result.commands_issued as u32)
+                            },
+                        )?;
                     behaviors_table.set("adaptive_defense", f)?;
                 }
             }
@@ -1475,166 +1388,147 @@ pub fn execute_script_with_context_tiered(
         // ctx:ability(unit_id, slot, target_type, x?, y?, entity_id?)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(
-                    move |_,
-                          (_self, unit_id, slot, target_type, x, y, entity_id): (
-                        LuaValue,
-                        u64,
-                        u8,
-                        String,
-                        Option<i32>,
-                        Option<i32>,
-                        Option<u64>,
-                    )| {
-                        let target = match target_type.as_str() {
-                            "self" => AbilityTarget::SelfCast,
-                            "position" => {
-                                let px = x.ok_or_else(|| {
-                                    mlua::Error::RuntimeError(
-                                        "position target requires x".into(),
-                                    )
-                                })?;
-                                let py = y.ok_or_else(|| {
-                                    mlua::Error::RuntimeError(
-                                        "position target requires y".into(),
-                                    )
-                                })?;
-                                AbilityTarget::Position(GridPos::new(px, py))
-                            }
-                            "entity" => {
-                                let eid = entity_id.ok_or_else(|| {
-                                    mlua::Error::RuntimeError(
-                                        "entity target requires entity_id".into(),
-                                    )
-                                })?;
-                                AbilityTarget::Entity(EntityId(eid))
-                            }
-                            _ => {
-                                return Err(mlua::Error::RuntimeError(
-                                    format!("Unknown target type: {target_type}"),
-                                ))
-                            }
-                        };
-                        let mut ctx = cell.borrow_mut();
-                        ctx.cmd_ability(EntityId(unit_id), slot, target);
-                        Ok(())
-                    },
-                )?;
+            let f = scope.create_function(
+                move |_,
+                      (_self, unit_id, slot, target_type, x, y, entity_id): (
+                    LuaValue,
+                    u64,
+                    u8,
+                    String,
+                    Option<i32>,
+                    Option<i32>,
+                    Option<u64>,
+                )| {
+                    let target = match target_type.as_str() {
+                        "self" => AbilityTarget::SelfCast,
+                        "position" => {
+                            let px = x.ok_or_else(|| {
+                                mlua::Error::RuntimeError("position target requires x".into())
+                            })?;
+                            let py = y.ok_or_else(|| {
+                                mlua::Error::RuntimeError("position target requires y".into())
+                            })?;
+                            AbilityTarget::Position(GridPos::new(px, py))
+                        }
+                        "entity" => {
+                            let eid = entity_id.ok_or_else(|| {
+                                mlua::Error::RuntimeError("entity target requires entity_id".into())
+                            })?;
+                            AbilityTarget::Entity(EntityId(eid))
+                        }
+                        _ => {
+                            return Err(mlua::Error::RuntimeError(format!(
+                                "Unknown target type: {target_type}"
+                            )));
+                        }
+                    };
+                    let mut ctx = cell.borrow_mut();
+                    ctx.cmd_ability(EntityId(unit_id), slot, target);
+                    Ok(())
+                },
+            )?;
             ctx_table.set("ability", f)?;
         }
 
         // ctx:research(building_id, upgrade_type)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(
-                    move |_, (_self, building_id, upgrade_str): (LuaValue, u64, String)| {
-                        let upgrade = upgrade_str.parse::<UpgradeType>().map_err(|_| {
-                            mlua::Error::RuntimeError(format!(
-                                "Unknown upgrade type: {upgrade_str}"
-                            ))
-                        })?;
-                        let mut ctx = cell.borrow_mut();
-                        ctx.cmd_research(EntityId(building_id), upgrade);
-                        Ok(())
-                    },
-                )?;
+            let f = scope.create_function(
+                move |_, (_self, building_id, upgrade_str): (LuaValue, u64, String)| {
+                    let upgrade = upgrade_str.parse::<UpgradeType>().map_err(|_| {
+                        mlua::Error::RuntimeError(format!("Unknown upgrade type: {upgrade_str}"))
+                    })?;
+                    let mut ctx = cell.borrow_mut();
+                    ctx.cmd_research(EntityId(building_id), upgrade);
+                    Ok(())
+                },
+            )?;
             ctx_table.set("research", f)?;
         }
 
         // ctx:cancel_queue(building_id)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(move |_, (_self, building_id): (LuaValue, u64)| {
-                    let mut ctx = cell.borrow_mut();
-                    ctx.cmd_cancel_queue(EntityId(building_id));
-                    Ok(())
-                })?;
+            let f = scope.create_function(move |_, (_self, building_id): (LuaValue, u64)| {
+                let mut ctx = cell.borrow_mut();
+                ctx.cmd_cancel_queue(EntityId(building_id));
+                Ok(())
+            })?;
             ctx_table.set("cancel_queue", f)?;
         }
 
         // ctx:cancel_research(building_id)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(move |_, (_self, building_id): (LuaValue, u64)| {
-                    let mut ctx = cell.borrow_mut();
-                    ctx.cmd_cancel_research(EntityId(building_id));
-                    Ok(())
-                })?;
+            let f = scope.create_function(move |_, (_self, building_id): (LuaValue, u64)| {
+                let mut ctx = cell.borrow_mut();
+                ctx.cmd_cancel_research(EntityId(building_id));
+                Ok(())
+            })?;
             ctx_table.set("cancel_research", f)?;
         }
 
         // ctx:set_control_group(group, unit_ids)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(
-                    move |_, (_self, group, unit_ids): (LuaValue, u8, Vec<u64>)| {
-                        let mut ctx = cell.borrow_mut();
-                        ctx.cmd_set_control_group(
-                            group,
-                            unit_ids.into_iter().map(EntityId).collect(),
-                        );
-                        Ok(())
-                    },
-                )?;
+            let f = scope.create_function(
+                move |_, (_self, group, unit_ids): (LuaValue, u8, Vec<u64>)| {
+                    let mut ctx = cell.borrow_mut();
+                    ctx.cmd_set_control_group(group, unit_ids.into_iter().map(EntityId).collect());
+                    Ok(())
+                },
+            )?;
             ctx_table.set("set_control_group", f)?;
         }
 
         // ctx:rally(building_id, x, y)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(
-                    move |_, (_self, building_id, x, y): (LuaValue, u64, i32, i32)| {
-                        let mut ctx = cell.borrow_mut();
-                        ctx.cmd_rally(EntityId(building_id), GridPos::new(x, y));
-                        Ok(())
-                    },
-                )?;
+            let f = scope.create_function(
+                move |_, (_self, building_id, x, y): (LuaValue, u64, i32, i32)| {
+                    let mut ctx = cell.borrow_mut();
+                    ctx.cmd_rally(EntityId(building_id), GridPos::new(x, y));
+                    Ok(())
+                },
+            )?;
             ctx_table.set("rally", f)?;
         }
 
         // ctx:get_resources()
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, _self: LuaValue| {
-                    let ctx = cell.borrow();
-                    let res = ctx.resources();
-                    let tbl = lua.create_table()?;
-                    tbl.set("food", res.food as f64)?;
-                    tbl.set("gpu_cores", res.gpu_cores as f64)?;
-                    tbl.set("nfts", res.nfts as f64)?;
-                    tbl.set("supply", res.supply as f64)?;
-                    tbl.set("supply_cap", res.supply_cap as f64)?;
-                    Ok(tbl)
-                })?;
+            let f = scope.create_function(|lua, _self: LuaValue| {
+                let ctx = cell.borrow();
+                let res = ctx.resources();
+                let tbl = lua.create_table()?;
+                tbl.set("food", res.food as f64)?;
+                tbl.set("gpu_cores", res.gpu_cores as f64)?;
+                tbl.set("nfts", res.nfts as f64)?;
+                tbl.set("supply", res.supply as f64)?;
+                tbl.set("supply_cap", res.supply_cap as f64)?;
+                Ok(tbl)
+            })?;
             ctx_table.set("get_resources", f)?;
         }
 
         // ctx:resource_deposits()
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, _self: LuaValue| {
-                    let mut ctx = cell.borrow_mut();
-                    let deposits = ctx.resource_deposits();
-                    let tbl = lua.create_table()?;
-                    for (i, dep) in deposits.iter().enumerate() {
-                        let d = lua.create_table()?;
-                        d.set("id", dep.id.0)?;
-                        d.set("x", dep.pos.x)?;
-                        d.set("y", dep.pos.y)?;
-                        d.set("remaining", dep.remaining as f64)?;
-                        d.set("kind", dep.resource_type.to_string())?;
-                        tbl.set(i + 1, d)?;
-                    }
-                    Ok(tbl)
-                })?;
+            let f = scope.create_function(|lua, _self: LuaValue| {
+                let mut ctx = cell.borrow_mut();
+                let deposits = ctx.resource_deposits();
+                let tbl = lua.create_table()?;
+                for (i, dep) in deposits.iter().enumerate() {
+                    let d = lua.create_table()?;
+                    d.set("id", dep.id.0)?;
+                    d.set("x", dep.pos.x)?;
+                    d.set("y", dep.pos.y)?;
+                    d.set("remaining", dep.remaining as f64)?;
+                    d.set("kind", dep.resource_type.to_string())?;
+                    tbl.set(i + 1, d)?;
+                }
+                Ok(tbl)
+            })?;
             ctx_table.set("resource_deposits", f)?;
         }
 
@@ -1645,30 +1539,37 @@ pub fn execute_script_with_context_tiered(
         // ctx:blackboard_get(key)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, (_self, key): (LuaValue, String)| {
-                    let ctx = cell.borrow();
-                    match ctx.blackboard_get(&key) {
-                        Some(BlackboardValue::String(s)) => Ok(LuaValue::String(lua.create_string(s)?)),
-                        Some(BlackboardValue::Number(n)) => Ok(LuaValue::Number(*n)),
-                        Some(BlackboardValue::Bool(b)) => Ok(LuaValue::Boolean(*b)),
-                        None => Ok(LuaValue::Nil),
-                    }
-                })?;
+            let f = scope.create_function(|lua, (_self, key): (LuaValue, String)| {
+                let ctx = cell.borrow();
+                match ctx.blackboard_get(&key) {
+                    Some(BlackboardValue::String(s)) => Ok(LuaValue::String(lua.create_string(s)?)),
+                    Some(BlackboardValue::Number(n)) => Ok(LuaValue::Number(*n)),
+                    Some(BlackboardValue::Bool(b)) => Ok(LuaValue::Boolean(*b)),
+                    None => Ok(LuaValue::Nil),
+                }
+            })?;
             ctx_table.set("blackboard_get", f)?;
         }
 
         // ctx:blackboard_set(key, value)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, key, value): (LuaValue, String, LuaValue)| {
+            let f =
+                scope.create_function(|_, (_self, key, value): (LuaValue, String, LuaValue)| {
                     let mut ctx = cell.borrow_mut();
                     match value {
-                        LuaValue::Nil => { ctx.blackboard_remove(&key); }
-                        LuaValue::Boolean(b) => { ctx.blackboard_set(key, BlackboardValue::Bool(b)); }
-                        LuaValue::Integer(n) => { ctx.blackboard_set(key, BlackboardValue::Number(n as f64)); }
-                        LuaValue::Number(n) => { ctx.blackboard_set(key, BlackboardValue::Number(n)); }
+                        LuaValue::Nil => {
+                            ctx.blackboard_remove(&key);
+                        }
+                        LuaValue::Boolean(b) => {
+                            ctx.blackboard_set(key, BlackboardValue::Bool(b));
+                        }
+                        LuaValue::Integer(n) => {
+                            ctx.blackboard_set(key, BlackboardValue::Number(n as f64));
+                        }
+                        LuaValue::Number(n) => {
+                            ctx.blackboard_set(key, BlackboardValue::Number(n));
+                        }
                         LuaValue::String(s) => {
                             let s = s.to_str().map(|s| s.to_owned()).unwrap_or_default();
                             ctx.blackboard_set(key, BlackboardValue::String(s));
@@ -1683,16 +1584,15 @@ pub fn execute_script_with_context_tiered(
         // ctx:blackboard_keys()
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, _self: LuaValue| {
-                    let ctx = cell.borrow();
-                    let keys = ctx.blackboard_keys();
-                    let tbl = lua.create_table()?;
-                    for (i, key) in keys.iter().enumerate() {
-                        tbl.set(i + 1, key.as_str())?;
-                    }
-                    Ok(tbl)
-                })?;
+            let f = scope.create_function(|lua, _self: LuaValue| {
+                let ctx = cell.borrow();
+                let keys = ctx.blackboard_keys();
+                let tbl = lua.create_table()?;
+                for (i, key) in keys.iter().enumerate() {
+                    tbl.set(i + 1, key.as_str())?;
+                }
+                Ok(tbl)
+            })?;
             ctx_table.set("blackboard_keys", f)?;
         }
 
@@ -1703,11 +1603,10 @@ pub fn execute_script_with_context_tiered(
         // ctx:remaining_budget()
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, _self: LuaValue| {
-                    let ctx = cell.borrow();
-                    Ok(ctx.remaining_budget())
-                })?;
+            let f = scope.create_function(|_, _self: LuaValue| {
+                let ctx = cell.borrow();
+                Ok(ctx.remaining_budget())
+            })?;
             ctx_table.set("remaining_budget", f)?;
         }
 
@@ -1718,108 +1617,100 @@ pub fn execute_script_with_context_tiered(
         // ctx:income_rate()
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, _self: LuaValue| {
-                    let mut ctx = cell.borrow_mut();
-                    let income = ctx.income_rate();
-                    let tbl = lua.create_table()?;
-                    tbl.set("food_per_tick", income.food_per_tick)?;
-                    tbl.set("gpu_per_tick", income.gpu_per_tick)?;
-                    Ok(tbl)
-                })?;
+            let f = scope.create_function(|lua, _self: LuaValue| {
+                let mut ctx = cell.borrow_mut();
+                let income = ctx.income_rate();
+                let tbl = lua.create_table()?;
+                tbl.set("food_per_tick", income.food_per_tick)?;
+                tbl.set("gpu_per_tick", income.gpu_per_tick)?;
+                Ok(tbl)
+            })?;
             ctx_table.set("income_rate", f)?;
         }
 
         // ctx:can_afford(kind_str) — tries UnitKind first, then BuildingKind
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, kind_str): (LuaValue, String)| {
-                    let ctx = cell.borrow();
-                    if let Ok(unit_kind) = kind_str.parse::<UnitKind>() {
-                        Ok(ctx.can_afford_unit(unit_kind))
-                    } else if let Ok(building_kind) = kind_str.parse::<BuildingKind>() {
-                        Ok(ctx.can_afford_building(building_kind))
-                    } else {
-                        Ok(false) // Unknown kind
-                    }
-                })?;
+            let f = scope.create_function(|_, (_self, kind_str): (LuaValue, String)| {
+                let ctx = cell.borrow();
+                if let Ok(unit_kind) = kind_str.parse::<UnitKind>() {
+                    Ok(ctx.can_afford_unit(unit_kind))
+                } else if let Ok(building_kind) = kind_str.parse::<BuildingKind>() {
+                    Ok(ctx.can_afford_building(building_kind))
+                } else {
+                    Ok(false) // Unknown kind
+                }
+            })?;
             ctx_table.set("can_afford", f)?;
         }
 
         // ctx:time_until_afford(kind_str)
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|_, (_self, kind_str): (LuaValue, String)| {
-                    let mut ctx = cell.borrow_mut();
-                    let result = if let Ok(unit_kind) = kind_str.parse::<UnitKind>() {
-                        ctx.time_until_afford_unit(unit_kind)
-                    } else if let Ok(building_kind) = kind_str.parse::<BuildingKind>() {
-                        ctx.time_until_afford_building(building_kind)
-                    } else {
-                        None
-                    };
-                    match result {
-                        Some(ticks) => Ok(LuaValue::Number(ticks as f64)),
-                        None => Ok(LuaValue::Nil),
-                    }
-                })?;
+            let f = scope.create_function(|_, (_self, kind_str): (LuaValue, String)| {
+                let mut ctx = cell.borrow_mut();
+                let result = if let Ok(unit_kind) = kind_str.parse::<UnitKind>() {
+                    ctx.time_until_afford_unit(unit_kind)
+                } else if let Ok(building_kind) = kind_str.parse::<BuildingKind>() {
+                    ctx.time_until_afford_building(building_kind)
+                } else {
+                    None
+                };
+                match result {
+                    Some(ticks) => Ok(LuaValue::Number(ticks as f64)),
+                    None => Ok(LuaValue::Nil),
+                }
+            })?;
             ctx_table.set("time_until_afford", f)?;
         }
 
         // ctx:army_composition()
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, _self: LuaValue| {
-                    let mut ctx = cell.borrow_mut();
-                    let comp = ctx.army_composition();
-                    let tbl = lua.create_table()?;
-                    for (kind, count) in &comp {
-                        tbl.set(kind.as_str(), *count)?;
-                    }
-                    Ok(tbl)
-                })?;
+            let f = scope.create_function(|lua, _self: LuaValue| {
+                let mut ctx = cell.borrow_mut();
+                let comp = ctx.army_composition();
+                let tbl = lua.create_table()?;
+                for (kind, count) in &comp {
+                    tbl.set(kind.as_str(), *count)?;
+                }
+                Ok(tbl)
+            })?;
             ctx_table.set("army_composition", f)?;
         }
 
         // ctx:enemy_composition()
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, _self: LuaValue| {
-                    let mut ctx = cell.borrow_mut();
-                    let comp = ctx.enemy_composition();
-                    let tbl = lua.create_table()?;
-                    for (kind, count) in &comp {
-                        tbl.set(kind.as_str(), *count)?;
-                    }
-                    Ok(tbl)
-                })?;
+            let f = scope.create_function(|lua, _self: LuaValue| {
+                let mut ctx = cell.borrow_mut();
+                let comp = ctx.enemy_composition();
+                let tbl = lua.create_table()?;
+                for (kind, count) in &comp {
+                    tbl.set(kind.as_str(), *count)?;
+                }
+                Ok(tbl)
+            })?;
             ctx_table.set("enemy_composition", f)?;
         }
 
         // ctx:worker_saturation()
         {
             let cell = &ctx_cell;
-            let f = scope
-                .create_function(|lua, _self: LuaValue| {
-                    let mut ctx = cell.borrow_mut();
-                    let sat = ctx.worker_saturation();
-                    let tbl = lua.create_table()?;
-                    tbl.set("total", sat.total)?;
-                    tbl.set("gathering", sat.gathering)?;
-                    tbl.set("idle", sat.idle)?;
-                    Ok(tbl)
-                })?;
+            let f = scope.create_function(|lua, _self: LuaValue| {
+                let mut ctx = cell.borrow_mut();
+                let sat = ctx.worker_saturation();
+                let tbl = lua.create_table()?;
+                tbl.set("total", sat.total)?;
+                tbl.set("gathering", sat.gathering)?;
+                tbl.set("idle", sat.idle)?;
+                Ok(tbl)
+            })?;
             ctx_table.set("worker_saturation", f)?;
         }
 
         // Set ctx as global
-        lua.globals()
-            .set("ctx", ctx_table)
-            ?;
+        lua.globals().set("ctx", ctx_table)?;
 
         // Remove os/debug libraries before sandboxing
         lua.globals().set("os", LuaValue::Nil)?;
@@ -1842,9 +1733,7 @@ pub fn execute_script_with_context_tiered(
         });
 
         // Execute script
-        lua.load(source)
-            .exec()
-            ?;
+        lua.load(source).exec()?;
 
         Ok(())
     });
@@ -1859,10 +1748,10 @@ pub fn execute_script_with_context_tiered(
 /// Execute a Lua script in a sandboxed environment (command-only, no queries).
 /// Thin wrapper around `execute_script_with_context` with an empty game state.
 pub fn execute_script(source: &str, player_id: u8) -> Result<Vec<GameCommand>, LuaScriptError> {
+    use crate::snapshot::GameStateSnapshot;
     use cc_core::map::GameMap;
     use cc_core::terrain::FactionId;
     use cc_sim::resources::PlayerResourceState;
-    use crate::snapshot::GameStateSnapshot;
 
     let empty_snap = GameStateSnapshot {
         tick: 0,
@@ -1933,10 +1822,7 @@ fn unit_to_lua_table(lua: &Lua, unit: &UnitSnapshot) -> LuaResult<LuaTable> {
     Ok(tbl)
 }
 
-fn building_to_lua_table(
-    lua: &Lua,
-    building: &BuildingSnapshot,
-) -> LuaResult<LuaTable> {
+fn building_to_lua_table(lua: &Lua, building: &BuildingSnapshot) -> LuaResult<LuaTable> {
     let tbl = lua.create_table()?;
     tbl.set("id", building.id.0)?;
     tbl.set("kind", building.kind.to_string())?;
@@ -1957,10 +1843,7 @@ fn building_to_lua_table(
     Ok(tbl)
 }
 
-fn deposit_to_lua_table(
-    lua: &Lua,
-    deposit: &ResourceSnapshot,
-) -> LuaResult<LuaTable> {
+fn deposit_to_lua_table(lua: &Lua, deposit: &ResourceSnapshot) -> LuaResult<LuaTable> {
     let tbl = lua.create_table()?;
     tbl.set("id", deposit.id.0)?;
     tbl.set("kind", deposit.resource_type.to_string())?;
@@ -2095,14 +1978,12 @@ mod tests {
             ],
             my_buildings: vec![],
             enemy_buildings: vec![],
-            resource_deposits: vec![
-                crate::snapshot::ResourceSnapshot {
-                    id: EntityId(100),
-                    resource_type: ResourceType::Food,
-                    pos: GridPos::new(3, 3),
-                    remaining: 200,
-                },
-            ],
+            resource_deposits: vec![crate::snapshot::ResourceSnapshot {
+                id: EntityId(100),
+                resource_type: ResourceType::Food,
+                pos: GridPos::new(3, 3),
+                remaining: 200,
+            }],
             my_resources: PlayerResourceState::default(),
         }
     }
@@ -2337,9 +2218,7 @@ mod tests {
         let map = GameMap::new(64, 64);
         let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
 
-        let script = include_str!(
-            "../../../training/agent/baselines_clean/formation_orient.lua"
-        );
+        let script = include_str!("../../../training/agent/baselines_clean/formation_orient.lua");
         let cmds = execute_script_with_context(script, &mut ctx).unwrap();
 
         // Should produce commands: 1 for tank (front), 2 for melee (mid), 2 for ranged (back)
@@ -2357,7 +2236,8 @@ mod tests {
                 assert!(
                     target.x > 10 && target.y > 10,
                     "Tank should move toward enemy, got ({}, {})",
-                    target.x, target.y
+                    target.x,
+                    target.y
                 );
             }
             other => panic!("Expected AttackMove for tank, got {:?}", other),
@@ -2370,7 +2250,8 @@ mod tests {
                     assert!(
                         target.x < 10 || target.y < 10,
                         "Ranged should stay behind centroid, got ({}, {})",
-                        target.x, target.y
+                        target.x,
+                        target.y
                     );
                 }
                 other => panic!("Expected Move for ranged, got {:?}", other),
@@ -2480,14 +2361,12 @@ mod tests {
             enemy_units: vec![],
             my_buildings: vec![],
             enemy_buildings: vec![],
-            resource_deposits: vec![
-                crate::snapshot::ResourceSnapshot {
-                    id: EntityId(100),
-                    resource_type: ResourceType::Food,
-                    pos: GridPos::new(3, 4),
-                    remaining: 200,
-                },
-            ],
+            resource_deposits: vec![crate::snapshot::ResourceSnapshot {
+                id: EntityId(100),
+                resource_type: ResourceType::Food,
+                pos: GridPos::new(3, 4),
+                remaining: 200,
+            }],
             my_resources: PlayerResourceState::default(),
         };
         let map = GameMap::new(64, 64);
@@ -2540,14 +2419,12 @@ mod tests {
             enemy_units: vec![],
             my_buildings: vec![],
             enemy_buildings: vec![],
-            resource_deposits: vec![
-                crate::snapshot::ResourceSnapshot {
-                    id: EntityId(100),
-                    resource_type: ResourceType::Food,
-                    pos: GridPos::new(3, 4),
-                    remaining: 200,
-                },
-            ],
+            resource_deposits: vec![crate::snapshot::ResourceSnapshot {
+                id: EntityId(100),
+                resource_type: ResourceType::Food,
+                pos: GridPos::new(3, 4),
+                remaining: 200,
+            }],
             my_resources: PlayerResourceState::default(),
         };
         let map = GameMap::new(64, 64);
@@ -2730,8 +2607,8 @@ mod tests {
         let snap = make_test_snapshot();
         let map = GameMap::new(64, 64);
         let mut memory = HashMap::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_enemy_memory(&mut memory);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_enemy_memory(&mut memory);
         ctx.update_enemy_memory();
 
         let script = r#"
@@ -2760,8 +2637,8 @@ mod tests {
         let snap = make_test_snapshot(); // enemies: id=10 at (7,5), id=11 at (50,50)
         let map = GameMap::new(64, 64);
         let mut memory = HashMap::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_enemy_memory(&mut memory);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_enemy_memory(&mut memory);
         ctx.update_enemy_memory();
 
         let script = r#"
@@ -2790,8 +2667,8 @@ mod tests {
         let snap = make_test_snapshot();
         let map = GameMap::new(64, 64);
         let mut event_bus = Vec::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_events(&mut event_bus);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_events(&mut event_bus);
 
         let script = r#"
             -- Emit events
@@ -2826,8 +2703,8 @@ mod tests {
         let snap = make_test_snapshot();
         let map = GameMap::new(64, 64);
         let mut event_bus = Vec::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_events(&mut event_bus);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_events(&mut event_bus);
 
         let script = r#"
             ctx:emit_event("attack", "go")
@@ -2900,14 +2777,12 @@ mod tests {
                 research_queue: vec![],
             }],
             enemy_buildings: vec![],
-            resource_deposits: vec![
-                ResourceSnapshot {
-                    id: EntityId(200),
-                    resource_type: ResourceType::Food,
-                    pos: GridPos::new(40, 40),
-                    remaining: 200,
-                },
-            ],
+            resource_deposits: vec![ResourceSnapshot {
+                id: EntityId(200),
+                resource_type: ResourceType::Food,
+                pos: GridPos::new(40, 40),
+                remaining: 200,
+            }],
             my_resources: PlayerResourceState::default(),
         };
         let map = GameMap::new(64, 64);
@@ -2962,8 +2837,8 @@ mod tests {
         let snap = make_test_snapshot();
         let map = GameMap::new(64, 64);
         let mut squads = std::collections::HashMap::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_squads(&mut squads);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_squads(&mut squads);
 
         let script = r#"
             ctx:squad_create("alpha", {1, 2})
@@ -2980,8 +2855,8 @@ mod tests {
         let snap = make_test_snapshot();
         let map = GameMap::new(64, 64);
         let mut squads = std::collections::HashMap::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_squads(&mut squads);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_squads(&mut squads);
 
         // Units 1 at (5,5) and 2 at (10,10). Centroid = (7, 7)
         let script = r#"
@@ -3002,8 +2877,8 @@ mod tests {
         let snap = make_test_snapshot();
         let map = GameMap::new(64, 64);
         let mut squads = std::collections::HashMap::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_squads(&mut squads);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_squads(&mut squads);
 
         let script = r#"
             ctx:squad_create("alpha", {1, 2})
@@ -3021,8 +2896,8 @@ mod tests {
         let snap = make_test_snapshot();
         let map = GameMap::new(64, 64);
         let mut squads = std::collections::HashMap::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_squads(&mut squads);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_squads(&mut squads);
 
         let script = r#"
             ctx:squad_create("alpha", {1})
@@ -3040,8 +2915,8 @@ mod tests {
         let snap = make_test_snapshot();
         let map = GameMap::new(64, 64);
         let mut squads = std::collections::HashMap::new();
-        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
-            .with_squads(&mut squads);
+        let mut ctx =
+            ScriptContext::new(&snap, &map, 0, FactionId::CatGPT).with_squads(&mut squads);
 
         let script = r#"
             ctx:squad_create("alpha", {1})

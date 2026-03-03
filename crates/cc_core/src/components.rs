@@ -145,7 +145,14 @@ pub enum BuildingKind {
     /// Defensive tower (Clawed) — auto-attacks enemies in range.
     SqueakTower,
     // --- Seekers of the Deep (Badgers) ---
-    TheSett, WarHollow, BurrowDepot, CoreTap, ClawMarks, DeepWarren, BulwarkGate, SlagThrower,
+    TheSett,
+    WarHollow,
+    BurrowDepot,
+    CoreTap,
+    ClawMarks,
+    DeepWarren,
+    BulwarkGate,
+    SlagThrower,
     // --- Croak (Axolotls) ---
     /// HQ (Croak) — pre-built, produces Ponderer.
     TheGrotto,
@@ -164,14 +171,14 @@ pub enum BuildingKind {
     /// Defense Tower (Croak) — applies Waterlogged, DoT.
     SporeTower,
     // --- LLAMA (Raccoons) ---
-    TheDumpster,     // HQ (LLAMA) — pre-built, produces Scrounger
-    ScrapHeap,       // Resource Depot (LLAMA) — food/scrap storage
-    ChopShop,        // Barracks (LLAMA) — trains Bandit, Wrecker, HeapTitan, GreaseMonkey
-    JunkServer,      // Tech Building (LLAMA) — produces GlitchRat, PatchPossum
-    TinkerBench,     // Research (LLAMA) — produces DeadDropUnit, DumpsterDiver, JunkyardKing
-    TrashPile,       // Supply Depot (LLAMA) — increases supply cap
-    DumpsterRelay,   // Comms Tower (LLAMA) — reduces leak chance, +3 vision
-    TetanusTower,    // Defense Tower (LLAMA) — shoots rusty nails, applies Corroded
+    TheDumpster,   // HQ (LLAMA) — pre-built, produces Scrounger
+    ScrapHeap,     // Resource Depot (LLAMA) — food/scrap storage
+    ChopShop,      // Barracks (LLAMA) — trains Bandit, Wrecker, HeapTitan, GreaseMonkey
+    JunkServer,    // Tech Building (LLAMA) — produces GlitchRat, PatchPossum
+    TinkerBench,   // Research (LLAMA) — produces DeadDropUnit, DumpsterDiver, JunkyardKing
+    TrashPile,     // Supply Depot (LLAMA) — increases supply cap
+    DumpsterRelay, // Comms Tower (LLAMA) — reduces leak chance, +3 vision
+    TetanusTower,  // Defense Tower (LLAMA) — shoots rusty nails, applies Corroded
 }
 
 impl BuildingKind {
@@ -378,17 +385,26 @@ pub enum UnitKind {
     MechCommander, // Hero/Heavy (Cat in Mech) — late-game, commands nearby units
     // --- The Murder (Corvids) ---
     MurderScrounger, // Worker (Crow) — gathers food, builds, scavenges
-    Sentinel,      // Ranged Scout (Crow) — long-range glass cannon
-    Rookclaw,      // Melee Dive Striker (Crow) — fast, bursty, fragile
-    Magpike,       // Disruptor/Thief (Magpie) — steals resources, disrupts
-    Magpyre,       // Saboteur (Magpie) — signal jamming, decoys, rewiring
-    Jaycaller,     // Support/Buffer (Jay) — rally cry, alarm call
-    Jayflicker,    // Illusion Specialist (Jay) — phantom flock, mirror position
-    Dusktalon,     // Stealth Assassin (Owl) — ground-based stealth, high burst
-    Hootseer,      // Area Denial/Debuffer (Owl) — panoptic gaze, dread aura
-    CorvusRex,     // Hero/Heavy (Augmented Crow) — corvid network, all-seeing lie
+    Sentinel,        // Ranged Scout (Crow) — long-range glass cannon
+    Rookclaw,        // Melee Dive Striker (Crow) — fast, bursty, fragile
+    Magpike,         // Disruptor/Thief (Magpie) — steals resources, disrupts
+    Magpyre,         // Saboteur (Magpie) — signal jamming, decoys, rewiring
+    Jaycaller,       // Support/Buffer (Jay) — rally cry, alarm call
+    Jayflicker,      // Illusion Specialist (Jay) — phantom flock, mirror position
+    Dusktalon,       // Stealth Assassin (Owl) — ground-based stealth, high burst
+    Hootseer,        // Area Denial/Debuffer (Owl) — panoptic gaze, dread aura
+    CorvusRex,       // Hero/Heavy (Augmented Crow) — corvid network, all-seeing lie
     // --- Seekers of the Deep (Badgers) ---
-    Delver, Ironhide, Cragback, Warden, Sapjaw, Wardenmother, SeekerTunneler, Embermaw, Dustclaw, Gutripper,
+    Delver,
+    Ironhide,
+    Cragback,
+    Warden,
+    Sapjaw,
+    Wardenmother,
+    SeekerTunneler,
+    Embermaw,
+    Dustclaw,
+    Gutripper,
     // --- The Clawed (Mice) ---
     Nibblet,       // Worker (Mouse) — gathers food, builds
     Swarmer,       // Light Infantry (Mouse) — cheap, fast attack speed, swarm in numbers
@@ -401,27 +417,27 @@ pub enum UnitKind {
     Plaguetail,    // Area Denial (Mouse) — contagion cloud on death
     WarrenMarshal, // Hero/Commander (Mouse) — rally the swarm aura, whiskernet relay
     // --- Croak (Axolotls) ---
-    Ponderer,       // Worker (Croak) — gathers via ambient gathering on water
-    Regeneron,      // Light Skirmisher (Croak) — Limb Economy, self-regen
-    Broodmother,    // Healer/Support (Croak) — spawns Spawnlings, burst heals
-    Gulper,         // Heavy Bruiser (Croak) — Devour mechanic, massive regen
-    Eftsaber,       // Assassin/Flanker (Croak) — poison, Waterway stealth
-    Croaker,        // Ranged Artillery (Croak) — Bog Mortar, terrain creation
-    Leapfrog,       // Mobile Harasser (Croak) — Hop chains on water
-    Shellwarden,    // Tank/Defender (Croak) — Hunker, Ancient Moss aura
-    Bogwhisper,     // Support/Caster (Croak) — Mire Curse, Prophecy
-    MurkCommander,  // Hero/Heavy (Croak) — Grok Protocol, Murk Uplink
+    Ponderer,      // Worker (Croak) — gathers via ambient gathering on water
+    Regeneron,     // Light Skirmisher (Croak) — Limb Economy, self-regen
+    Broodmother,   // Healer/Support (Croak) — spawns Spawnlings, burst heals
+    Gulper,        // Heavy Bruiser (Croak) — Devour mechanic, massive regen
+    Eftsaber,      // Assassin/Flanker (Croak) — poison, Waterway stealth
+    Croaker,       // Ranged Artillery (Croak) — Bog Mortar, terrain creation
+    Leapfrog,      // Mobile Harasser (Croak) — Hop chains on water
+    Shellwarden,   // Tank/Defender (Croak) — Hunker, Ancient Moss aura
+    Bogwhisper,    // Support/Caster (Croak) — Mire Curse, Prophecy
+    MurkCommander, // Hero/Heavy (Croak) — Grok Protocol, Murk Uplink
     // --- LLAMA (Raccoons) ---
-    Scrounger,      // Worker (Raccoon) — gathers, scavenges, builds
-    Bandit,         // Light Harasser (Raccoon) — sticky fingers, jury rig
-    HeapTitan,      // Heavy Tank (Raccoon) — scrap armor, wreck ball
-    GlitchRat,      // Saboteur (Raccoon) — cable gnaw, signal scramble
-    PatchPossum,    // Support/Healer (Possum) — duct tape fix, feign death
-    GreaseMonkey,   // Ranged (Raccoon) — junk launcher, salvage turret
-    DeadDropUnit,   // Stealth Scout (Raccoon) — eavesdrop, trash heap ambush
-    Wrecker,        // Anti-Structure (Raccoon) — disassemble, pry bar
-    DumpsterDiver,  // Area Denial (Raccoon) — treasure trash, refuse shield
-    JunkyardKing,   // Hero/Heavy (Raccoon) — open source uplink, overclock cascade
+    Scrounger,     // Worker (Raccoon) — gathers, scavenges, builds
+    Bandit,        // Light Harasser (Raccoon) — sticky fingers, jury rig
+    HeapTitan,     // Heavy Tank (Raccoon) — scrap armor, wreck ball
+    GlitchRat,     // Saboteur (Raccoon) — cable gnaw, signal scramble
+    PatchPossum,   // Support/Healer (Possum) — duct tape fix, feign death
+    GreaseMonkey,  // Ranged (Raccoon) — junk launcher, salvage turret
+    DeadDropUnit,  // Stealth Scout (Raccoon) — eavesdrop, trash heap ambush
+    Wrecker,       // Anti-Structure (Raccoon) — disassemble, pry bar
+    DumpsterDiver, // Area Denial (Raccoon) — treasure trash, refuse shield
+    JunkyardKing,  // Hero/Heavy (Raccoon) — open source uplink, overclock cascade
 }
 
 impl UnitKind {
@@ -599,8 +615,8 @@ impl std::str::FromStr for AttackType {
 pub struct AttackStats {
     pub damage: Fixed,
     pub range: Fixed,
-    pub attack_speed: u32,        // ticks between attacks
-    pub cooldown_remaining: u32,  // ticks until next attack
+    pub attack_speed: u32,       // ticks between attacks
+    pub cooldown_remaining: u32, // ticks until next attack
 }
 
 /// Marker: which attack type this unit uses.
@@ -665,8 +681,12 @@ impl ProjectileKind {
         match kind {
             UnitKind::Hisser => ProjectileKind::Spit,
             UnitKind::Yowler | UnitKind::Jaycaller => ProjectileKind::SonicWave,
-            UnitKind::MechCommander | UnitKind::CorvusRex | UnitKind::MurkCommander
-            | UnitKind::Wardenmother | UnitKind::JunkyardKing | UnitKind::WarrenMarshal => ProjectileKind::MechShot,
+            UnitKind::MechCommander
+            | UnitKind::CorvusRex
+            | UnitKind::MurkCommander
+            | UnitKind::Wardenmother
+            | UnitKind::JunkyardKing
+            | UnitKind::WarrenMarshal => ProjectileKind::MechShot,
             UnitKind::Catnapper | UnitKind::Cragback => ProjectileKind::Explosive,
             _ => ProjectileKind::Generic,
         }
@@ -875,7 +895,10 @@ pub enum AuraType {
     TacticalUplink,
     GeppityUplink,
     // Seekers of the Deep (Badgers)
-    VigilanceAura, DeepseekUplinkAura, FortressProtocolAura, FrenzyAura,
+    VigilanceAura,
+    DeepseekUplinkAura,
+    FortressProtocolAura,
+    FrenzyAura,
     // The Clawed (Mice)
     RallyTheSwarm,
     WhiskernetRelay,
@@ -990,7 +1013,9 @@ pub struct FeignDeathTracker {
 
 impl Default for FeignDeathTracker {
     fn default() -> Self {
-        Self { last_triggered_tick: 0 }
+        Self {
+            last_triggered_tick: 0,
+        }
     }
 }
 
@@ -1017,7 +1042,10 @@ pub struct FrankensteinTracker {
 
 impl Default for FrankensteinTracker {
     fn default() -> Self {
-        Self { active_count: 0, max: 3 }
+        Self {
+            active_count: 0,
+            max: 3,
+        }
     }
 }
 
@@ -1056,7 +1084,11 @@ pub enum UpgradeType {
     /// Unlocks Dusktalon training at AntennaArray.
     AssassinTraining,
     // --- Seekers of the Deep (Badgers) ---
-    SharperFangs, ReinforcedHide, SteadyStance, SiegeEngineering, ExosuitPrototype,
+    SharperFangs,
+    ReinforcedHide,
+    SteadyStance,
+    SiegeEngineering,
+    ExosuitPrototype,
     // --- The Clawed (Mice) ---
     /// +2 damage for all Clawed combat units.
     SharperTeeth,
@@ -1212,7 +1244,6 @@ pub struct WaveMember {
     pub wave_id: String,
 }
 
-
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
@@ -1309,8 +1340,18 @@ pub struct UniqueBuildingLimit;
 // ---------------------------------------------------------------------------
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
-pub struct StationaryTimer { pub ticks_stationary: u32, pub dug_in: bool }
-impl Default for StationaryTimer { fn default() -> Self { Self { ticks_stationary: 0, dug_in: false } } }
+pub struct StationaryTimer {
+    pub ticks_stationary: u32,
+    pub dug_in: bool,
+}
+impl Default for StationaryTimer {
+    fn default() -> Self {
+        Self {
+            ticks_stationary: 0,
+            dug_in: false,
+        }
+    }
+}
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
 pub struct HeavyUnit;
@@ -1319,11 +1360,23 @@ pub struct HeavyUnit;
 pub struct Entrenched;
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
-pub struct FrenzyStacks { pub current_stacks: u32, pub frozen_until_tick: u64 }
-impl Default for FrenzyStacks { fn default() -> Self { Self { current_stacks: 0, frozen_until_tick: 0 } } }
+pub struct FrenzyStacks {
+    pub current_stacks: u32,
+    pub frozen_until_tick: u64,
+}
+impl Default for FrenzyStacks {
+    fn default() -> Self {
+        Self {
+            current_stacks: 0,
+            frozen_until_tick: 0,
+        }
+    }
+}
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
-pub struct BloodgreedTracker { pub lifesteal_fraction: Fixed }
+pub struct BloodgreedTracker {
+    pub lifesteal_fraction: Fixed,
+}
 
 // ---------------------------------------------------------------------------
 // Croak faction components
@@ -1414,7 +1467,11 @@ mod tests {
 
     #[test]
     fn resource_type_display_from_str_round_trip() {
-        for rt in [ResourceType::Food, ResourceType::GpuCores, ResourceType::Nft] {
+        for rt in [
+            ResourceType::Food,
+            ResourceType::GpuCores,
+            ResourceType::Nft,
+        ] {
             let s = rt.to_string();
             let parsed: ResourceType = s.parse().unwrap();
             assert_eq!(parsed, rt);
@@ -1425,25 +1482,50 @@ mod tests {
     #[test]
     fn building_kind_display_from_str_round_trip() {
         for kind in [
-            BuildingKind::TheBox, BuildingKind::CatTree, BuildingKind::FishMarket,
-            BuildingKind::LitterBox, BuildingKind::ServerRack, BuildingKind::ScratchingPost,
-            BuildingKind::CatFlap, BuildingKind::LaserPointer,
+            BuildingKind::TheBox,
+            BuildingKind::CatTree,
+            BuildingKind::FishMarket,
+            BuildingKind::LitterBox,
+            BuildingKind::ServerRack,
+            BuildingKind::ScratchingPost,
+            BuildingKind::CatFlap,
+            BuildingKind::LaserPointer,
             // The Clawed (Mice)
-            BuildingKind::TheBurrow, BuildingKind::NestingBox, BuildingKind::SeedVault,
-            BuildingKind::JunkTransmitter, BuildingKind::GnawLab, BuildingKind::WarrenExpansion,
-            BuildingKind::Mousehole, BuildingKind::SqueakTower,
+            BuildingKind::TheBurrow,
+            BuildingKind::NestingBox,
+            BuildingKind::SeedVault,
+            BuildingKind::JunkTransmitter,
+            BuildingKind::GnawLab,
+            BuildingKind::WarrenExpansion,
+            BuildingKind::Mousehole,
+            BuildingKind::SqueakTower,
             // Seekers of the Deep (Badgers)
-            BuildingKind::TheSett, BuildingKind::WarHollow, BuildingKind::BurrowDepot,
-            BuildingKind::CoreTap, BuildingKind::ClawMarks, BuildingKind::DeepWarren,
-            BuildingKind::BulwarkGate, BuildingKind::SlagThrower,
+            BuildingKind::TheSett,
+            BuildingKind::WarHollow,
+            BuildingKind::BurrowDepot,
+            BuildingKind::CoreTap,
+            BuildingKind::ClawMarks,
+            BuildingKind::DeepWarren,
+            BuildingKind::BulwarkGate,
+            BuildingKind::SlagThrower,
             // Croak (Axolotls)
-            BuildingKind::TheGrotto, BuildingKind::SpawningPools, BuildingKind::LilyMarket,
-            BuildingKind::SunkenServer, BuildingKind::FossilStones, BuildingKind::ReedBed,
-            BuildingKind::TidalGate, BuildingKind::SporeTower,
+            BuildingKind::TheGrotto,
+            BuildingKind::SpawningPools,
+            BuildingKind::LilyMarket,
+            BuildingKind::SunkenServer,
+            BuildingKind::FossilStones,
+            BuildingKind::ReedBed,
+            BuildingKind::TidalGate,
+            BuildingKind::SporeTower,
             // LLAMA (Raccoons)
-            BuildingKind::TheDumpster, BuildingKind::ScrapHeap, BuildingKind::ChopShop,
-            BuildingKind::JunkServer, BuildingKind::TinkerBench, BuildingKind::TrashPile,
-            BuildingKind::DumpsterRelay, BuildingKind::TetanusTower,
+            BuildingKind::TheDumpster,
+            BuildingKind::ScrapHeap,
+            BuildingKind::ChopShop,
+            BuildingKind::JunkServer,
+            BuildingKind::TinkerBench,
+            BuildingKind::TrashPile,
+            BuildingKind::DumpsterRelay,
+            BuildingKind::TetanusTower,
         ] {
             let s = kind.to_string();
             let parsed: BuildingKind = s.parse().unwrap();
@@ -1455,29 +1537,71 @@ mod tests {
     #[test]
     fn unit_kind_display_from_str_round_trip() {
         for kind in [
-            UnitKind::Pawdler, UnitKind::Nuisance, UnitKind::Chonk, UnitKind::FlyingFox,
-            UnitKind::Hisser, UnitKind::Yowler, UnitKind::Mouser, UnitKind::Catnapper,
-            UnitKind::FerretSapper, UnitKind::MechCommander,
+            UnitKind::Pawdler,
+            UnitKind::Nuisance,
+            UnitKind::Chonk,
+            UnitKind::FlyingFox,
+            UnitKind::Hisser,
+            UnitKind::Yowler,
+            UnitKind::Mouser,
+            UnitKind::Catnapper,
+            UnitKind::FerretSapper,
+            UnitKind::MechCommander,
             // The Murder (Corvids)
-            UnitKind::MurderScrounger, UnitKind::Sentinel, UnitKind::Rookclaw, UnitKind::Magpike,
-            UnitKind::Magpyre, UnitKind::Jaycaller, UnitKind::Jayflicker, UnitKind::Dusktalon,
-            UnitKind::Hootseer, UnitKind::CorvusRex,
+            UnitKind::MurderScrounger,
+            UnitKind::Sentinel,
+            UnitKind::Rookclaw,
+            UnitKind::Magpike,
+            UnitKind::Magpyre,
+            UnitKind::Jaycaller,
+            UnitKind::Jayflicker,
+            UnitKind::Dusktalon,
+            UnitKind::Hootseer,
+            UnitKind::CorvusRex,
             // Seekers of the Deep (Badgers)
-            UnitKind::Delver, UnitKind::Ironhide, UnitKind::Cragback, UnitKind::Warden,
-            UnitKind::Sapjaw, UnitKind::Wardenmother, UnitKind::SeekerTunneler, UnitKind::Embermaw,
-            UnitKind::Dustclaw, UnitKind::Gutripper,
+            UnitKind::Delver,
+            UnitKind::Ironhide,
+            UnitKind::Cragback,
+            UnitKind::Warden,
+            UnitKind::Sapjaw,
+            UnitKind::Wardenmother,
+            UnitKind::SeekerTunneler,
+            UnitKind::Embermaw,
+            UnitKind::Dustclaw,
+            UnitKind::Gutripper,
             // The Clawed (Mice)
-            UnitKind::Nibblet, UnitKind::Swarmer, UnitKind::Gnawer, UnitKind::Shrieker,
-            UnitKind::Tunneler, UnitKind::Sparks, UnitKind::Quillback, UnitKind::Whiskerwitch,
-            UnitKind::Plaguetail, UnitKind::WarrenMarshal,
+            UnitKind::Nibblet,
+            UnitKind::Swarmer,
+            UnitKind::Gnawer,
+            UnitKind::Shrieker,
+            UnitKind::Tunneler,
+            UnitKind::Sparks,
+            UnitKind::Quillback,
+            UnitKind::Whiskerwitch,
+            UnitKind::Plaguetail,
+            UnitKind::WarrenMarshal,
             // Croak (Axolotls)
-            UnitKind::Ponderer, UnitKind::Regeneron, UnitKind::Broodmother, UnitKind::Gulper,
-            UnitKind::Eftsaber, UnitKind::Croaker, UnitKind::Leapfrog, UnitKind::Shellwarden,
-            UnitKind::Bogwhisper, UnitKind::MurkCommander,
+            UnitKind::Ponderer,
+            UnitKind::Regeneron,
+            UnitKind::Broodmother,
+            UnitKind::Gulper,
+            UnitKind::Eftsaber,
+            UnitKind::Croaker,
+            UnitKind::Leapfrog,
+            UnitKind::Shellwarden,
+            UnitKind::Bogwhisper,
+            UnitKind::MurkCommander,
             // LLAMA (Raccoons)
-            UnitKind::Scrounger, UnitKind::Bandit, UnitKind::HeapTitan, UnitKind::GlitchRat,
-            UnitKind::PatchPossum, UnitKind::GreaseMonkey, UnitKind::DeadDropUnit,
-            UnitKind::Wrecker, UnitKind::DumpsterDiver, UnitKind::JunkyardKing,
+            UnitKind::Scrounger,
+            UnitKind::Bandit,
+            UnitKind::HeapTitan,
+            UnitKind::GlitchRat,
+            UnitKind::PatchPossum,
+            UnitKind::GreaseMonkey,
+            UnitKind::DeadDropUnit,
+            UnitKind::Wrecker,
+            UnitKind::DumpsterDiver,
+            UnitKind::JunkyardKing,
         ] {
             let s = kind.to_string();
             let parsed: UnitKind = s.parse().unwrap();
@@ -1512,8 +1636,13 @@ mod tests {
     #[test]
     fn faction_as_str_round_trip() {
         let factions = [
-            Faction::Neutral, Faction::CatGpt, Faction::TheClawed,
-            Faction::SeekersOfTheDeep, Faction::TheMurder, Faction::Llama, Faction::Croak,
+            Faction::Neutral,
+            Faction::CatGpt,
+            Faction::TheClawed,
+            Faction::SeekersOfTheDeep,
+            Faction::TheMurder,
+            Faction::Llama,
+            Faction::Croak,
         ];
         for f in factions {
             let s = f.as_str();
@@ -1542,7 +1671,9 @@ mod tests {
 
     #[test]
     fn wave_member_stores_wave_id() {
-        let wm = WaveMember { wave_id: "wave_1".into() };
+        let wm = WaveMember {
+            wave_id: "wave_1".into(),
+        };
         assert_eq!(wm.wave_id, "wave_1");
     }
 
@@ -1562,8 +1693,10 @@ mod tests {
     #[test]
     fn upgrade_type_clawed_round_trip() {
         for ut in [
-            UpgradeType::SharperTeeth, UpgradeType::ThickerHide,
-            UpgradeType::QuickPaws, UpgradeType::AdvancedGnawing,
+            UpgradeType::SharperTeeth,
+            UpgradeType::ThickerHide,
+            UpgradeType::QuickPaws,
+            UpgradeType::AdvancedGnawing,
             UpgradeType::WarrenProtocol,
         ] {
             let s = ut.to_string();
@@ -1575,8 +1708,10 @@ mod tests {
     #[test]
     fn upgrade_type_seekers_round_trip() {
         for ut in [
-            UpgradeType::SharperFangs, UpgradeType::ReinforcedHide,
-            UpgradeType::SteadyStance, UpgradeType::SiegeEngineering,
+            UpgradeType::SharperFangs,
+            UpgradeType::ReinforcedHide,
+            UpgradeType::SteadyStance,
+            UpgradeType::SiegeEngineering,
             UpgradeType::ExosuitPrototype,
         ] {
             let s = ut.to_string();
@@ -1656,38 +1791,71 @@ mod tests {
 
     #[test]
     fn projectile_kind_from_unit_kind_hisser_is_spit() {
-        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::Hisser), ProjectileKind::Spit);
+        assert_eq!(
+            ProjectileKind::from_unit_kind(UnitKind::Hisser),
+            ProjectileKind::Spit
+        );
     }
 
     #[test]
     fn projectile_kind_from_unit_kind_yowler_is_sonic() {
-        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::Yowler), ProjectileKind::SonicWave);
+        assert_eq!(
+            ProjectileKind::from_unit_kind(UnitKind::Yowler),
+            ProjectileKind::SonicWave
+        );
     }
 
     #[test]
     fn projectile_kind_from_unit_kind_mech_is_mechshot() {
-        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::MechCommander), ProjectileKind::MechShot);
+        assert_eq!(
+            ProjectileKind::from_unit_kind(UnitKind::MechCommander),
+            ProjectileKind::MechShot
+        );
     }
 
     #[test]
     fn projectile_kind_from_unit_kind_catnapper_is_explosive() {
-        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::Catnapper), ProjectileKind::Explosive);
+        assert_eq!(
+            ProjectileKind::from_unit_kind(UnitKind::Catnapper),
+            ProjectileKind::Explosive
+        );
     }
 
     #[test]
     fn projectile_kind_from_unit_kind_generic_fallback() {
-        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::FlyingFox), ProjectileKind::Generic);
-        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::Pawdler), ProjectileKind::Generic);
+        assert_eq!(
+            ProjectileKind::from_unit_kind(UnitKind::FlyingFox),
+            ProjectileKind::Generic
+        );
+        assert_eq!(
+            ProjectileKind::from_unit_kind(UnitKind::Pawdler),
+            ProjectileKind::Generic
+        );
     }
 
     #[test]
     fn projectile_kind_from_hero_units() {
         // All hero units should get MechShot
-        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::CorvusRex), ProjectileKind::MechShot);
-        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::MurkCommander), ProjectileKind::MechShot);
-        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::Wardenmother), ProjectileKind::MechShot);
-        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::JunkyardKing), ProjectileKind::MechShot);
-        assert_eq!(ProjectileKind::from_unit_kind(UnitKind::WarrenMarshal), ProjectileKind::MechShot);
+        assert_eq!(
+            ProjectileKind::from_unit_kind(UnitKind::CorvusRex),
+            ProjectileKind::MechShot
+        );
+        assert_eq!(
+            ProjectileKind::from_unit_kind(UnitKind::MurkCommander),
+            ProjectileKind::MechShot
+        );
+        assert_eq!(
+            ProjectileKind::from_unit_kind(UnitKind::Wardenmother),
+            ProjectileKind::MechShot
+        );
+        assert_eq!(
+            ProjectileKind::from_unit_kind(UnitKind::JunkyardKing),
+            ProjectileKind::MechShot
+        );
+        assert_eq!(
+            ProjectileKind::from_unit_kind(UnitKind::WarrenMarshal),
+            ProjectileKind::MechShot
+        );
     }
 
     #[test]
@@ -1696,4 +1864,3 @@ mod tests {
         assert_ne!(ProjectileKind::Spit, ProjectileKind::LaserBeam);
     }
 }
-

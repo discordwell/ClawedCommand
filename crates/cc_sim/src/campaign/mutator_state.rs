@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use cc_core::components::UnitKind;
-use cc_core::math::{Fixed, FIXED_ONE};
+use cc_core::math::{FIXED_ONE, Fixed};
 
 /// Runtime state for active mutators during a mission.
 #[derive(Resource, Default)]

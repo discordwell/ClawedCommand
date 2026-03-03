@@ -1,5 +1,5 @@
-use bevy::prelude::*;
 use bevy::image::Image;
+use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat, TextureUsages};
 
 use crate::setup::UnitMesh;
@@ -349,7 +349,11 @@ mod tests {
         for t in &variants {
             colors.insert(minimap_terrain_color(*t));
         }
-        assert_eq!(colors.len(), variants.len(), "each terrain should have a unique color");
+        assert_eq!(
+            colors.len(),
+            variants.len(),
+            "each terrain should have a unique color"
+        );
     }
 
     #[test]

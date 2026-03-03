@@ -181,10 +181,7 @@ impl InvariantChecker {
 
         for (entity, attacker_player, target_bits) in &attackers {
             let target_entity = Entity::from_bits(*target_bits);
-            if let Ok((target_owner,)) = world
-                .query::<(&Owner,)>()
-                .get(world, target_entity)
-            {
+            if let Ok((target_owner,)) = world.query::<(&Owner,)>().get(world, target_entity) {
                 if *attacker_player == target_owner.player_id {
                     self.violations.push(InvariantViolation {
                         tick,
@@ -209,10 +206,7 @@ impl InvariantChecker {
                 tick,
                 severity: Severity::Error,
                 kind: "DeadAttacking".into(),
-                message: format!(
-                    "Entity {:?} is Dead but still has an AttackTarget",
-                    entity
-                ),
+                message: format!("Entity {:?} is Dead but still has an AttackTarget", entity),
             });
         }
     }
@@ -232,10 +226,7 @@ impl InvariantChecker {
             .retain(|bits, _| current_bits.contains(bits));
 
         for (bits, kind) in &current_uc {
-            let first_seen = *self
-                .construction_first_seen
-                .entry(*bits)
-                .or_insert(tick);
+            let first_seen = *self.construction_first_seen.entry(*bits).or_insert(tick);
 
             if tick - first_seen > 500 {
                 self.violations.push(InvariantViolation {
@@ -296,7 +287,9 @@ struct SimpleHasher {
 
 impl SimpleHasher {
     fn new() -> Self {
-        Self { state: 0xcbf29ce484222325 }
+        Self {
+            state: 0xcbf29ce484222325,
+        }
     }
 
     fn add(&mut self, val: u64) {

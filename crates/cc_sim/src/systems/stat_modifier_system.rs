@@ -1,14 +1,12 @@
 use bevy::prelude::*;
 
 use cc_core::components::{Dead, StatModifiers};
-use cc_core::math::{Fixed, FIXED_ONE};
+use cc_core::math::{FIXED_ONE, Fixed};
 use cc_core::status_effects::{StatusEffectId, StatusEffects};
 
 /// Recompute StatModifiers from StatusEffects every tick.
 /// Clean slate each tick — no stale state.
-pub fn stat_modifier_system(
-    mut query: Query<(&StatusEffects, &mut StatModifiers), Without<Dead>>,
-) {
+pub fn stat_modifier_system(mut query: Query<(&StatusEffects, &mut StatModifiers), Without<Dead>>) {
     for (effects, mut modifiers) in query.iter_mut() {
         // Reset to defaults
         *modifiers = StatModifiers::default();
@@ -21,8 +19,7 @@ pub fn stat_modifier_system(
             match instance.effect {
                 StatusEffectId::Zoomies => {
                     // +100% speed, invulnerable, can't attack
-                    modifiers.speed_multiplier =
-                        modifiers.speed_multiplier * Fixed::from_num(2);
+                    modifiers.speed_multiplier = modifiers.speed_multiplier * Fixed::from_num(2);
                     modifiers.invulnerable = true;
                     modifiers.cannot_attack = true;
                 }
@@ -58,26 +55,24 @@ pub fn stat_modifier_system(
                 }
                 StatusEffectId::Annoyed => {
                     // -5% damage per stack (stacking debuff from Nuisance)
-                    let reduction_per_stack =
-                        Fixed::from_bits((1 << 16) * 5 / 100); // 0.05
-                    let total_reduction = reduction_per_stack
-                        * Fixed::from_num(instance.stacks as i32);
+                    let reduction_per_stack = Fixed::from_bits((1 << 16) * 5 / 100); // 0.05
+                    let total_reduction =
+                        reduction_per_stack * Fixed::from_num(instance.stacks as i32);
                     let mult = (FIXED_ONE - total_reduction).max(Fixed::from_bits((1 << 16) / 2)); // floor at 0.5
                     modifiers.damage_multiplier = modifiers.damage_multiplier * mult;
                 }
                 StatusEffectId::Corroded => {
                     // -10% damage reduction per stack (takes more damage)
-                    let increase_per_stack =
-                        Fixed::from_bits((1 << 16) * 10 / 100); // 0.10
-                    let total_increase = increase_per_stack
-                        * Fixed::from_num(instance.stacks as i32);
+                    let increase_per_stack = Fixed::from_bits((1 << 16) * 10 / 100); // 0.10
+                    let total_increase =
+                        increase_per_stack * Fixed::from_num(instance.stacks as i32);
                     let mult = FIXED_ONE + total_increase; // > 1.0 means takes more damage
                     modifiers.damage_reduction = modifiers.damage_reduction * mult;
                 }
                 StatusEffectId::Disoriented => {
                     // -50% speed (CC)
-                    modifiers.speed_multiplier = modifiers.speed_multiplier
-                        * Fixed::from_bits(32768); // 0.5
+                    modifiers.speed_multiplier =
+                        modifiers.speed_multiplier * Fixed::from_bits(32768); // 0.5
                 }
                 StatusEffectId::Drowsed => {
                     // Immobile + silenced (CC)

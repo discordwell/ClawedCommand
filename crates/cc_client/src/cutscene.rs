@@ -88,26 +88,68 @@ fn build_scene_1() -> MissionDefinition {
 
     // Buildings: Seekers (P3) west, Murder (P1) east
     let buildings = vec![
-        BuildingSpawn { kind: BuildingKind::TheSett, position: GridPos::new(6, 15), player_id: 3, pre_built: true },
-        BuildingSpawn { kind: BuildingKind::BulwarkGate, position: GridPos::new(6, 11), player_id: 3, pre_built: true },
-        BuildingSpawn { kind: BuildingKind::TheParliament, position: GridPos::new(34, 15), player_id: 1, pre_built: true },
-        BuildingSpawn { kind: BuildingKind::Watchtower, position: GridPos::new(34, 11), player_id: 1, pre_built: true },
+        BuildingSpawn {
+            kind: BuildingKind::TheSett,
+            position: GridPos::new(6, 15),
+            player_id: 3,
+            pre_built: true,
+        },
+        BuildingSpawn {
+            kind: BuildingKind::BulwarkGate,
+            position: GridPos::new(6, 11),
+            player_id: 3,
+            pre_built: true,
+        },
+        BuildingSpawn {
+            kind: BuildingKind::TheParliament,
+            position: GridPos::new(34, 15),
+            player_id: 1,
+            pre_built: true,
+        },
+        BuildingSpawn {
+            kind: BuildingKind::Watchtower,
+            position: GridPos::new(34, 11),
+            player_id: 1,
+            pre_built: true,
+        },
     ];
 
     // Ensure building tiles are passable
     for b in &buildings {
-        set_tile(&mut tiles, &mut elevation, b.position.x, b.position.y, TerrainType::Grass, 1);
+        set_tile(
+            &mut tiles,
+            &mut elevation,
+            b.position.x,
+            b.position.y,
+            TerrainType::Grass,
+            1,
+        );
     }
 
     // Hero units as UnitSpawns (for correct player_id / team color)
     let units = vec![
-        UnitSpawn { kind: UnitKind::Wardenmother, position: GridPos::new(18, 15), player_id: 3 },
-        UnitSpawn { kind: UnitKind::CorvusRex, position: GridPos::new(22, 15), player_id: 1 },
+        UnitSpawn {
+            kind: UnitKind::Wardenmother,
+            position: GridPos::new(18, 15),
+            player_id: 3,
+        },
+        UnitSpawn {
+            kind: UnitKind::CorvusRex,
+            position: GridPos::new(22, 15),
+            player_id: 1,
+        },
     ];
 
     // Ensure hero tiles are passable
     for u in &units {
-        set_tile(&mut tiles, &mut elevation, u.position.x, u.position.y, TerrainType::Grass, 1);
+        set_tile(
+            &mut tiles,
+            &mut elevation,
+            u.position.x,
+            u.position.y,
+            TerrainType::Grass,
+            1,
+        );
     }
 
     let dialogue = vec![
@@ -172,7 +214,16 @@ fn build_scene_1() -> MissionDefinition {
         make_dialogue_trigger("scene1_close", 240, vec![6, 7]),
     ];
 
-    build_mission("cutscene_1", "Mountain Pass", tiles, elevation, buildings, units, dialogue, triggers)
+    build_mission(
+        "cutscene_1",
+        "Mountain Pass",
+        tiles,
+        elevation,
+        buildings,
+        units,
+        dialogue,
+        triggers,
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -211,8 +262,22 @@ fn build_scene_2() -> MissionDefinition {
             set_tile(&mut tiles, &mut elevation, x, y, TerrainType::Dirt, 1);
         }
     }
-    set_tile(&mut tiles, &mut elevation, 18, 12, TerrainType::TechRuins, 1);
-    set_tile(&mut tiles, &mut elevation, 22, 18, TerrainType::TechRuins, 1);
+    set_tile(
+        &mut tiles,
+        &mut elevation,
+        18,
+        12,
+        TerrainType::TechRuins,
+        1,
+    );
+    set_tile(
+        &mut tiles,
+        &mut elevation,
+        22,
+        18,
+        TerrainType::TechRuins,
+        1,
+    );
 
     // Stream at x=20 with shallows crossing
     for y in 3..27 {
@@ -224,24 +289,71 @@ fn build_scene_2() -> MissionDefinition {
 
     // Buildings: catGPT (P0) west, Clawed (P2) east
     let buildings = vec![
-        BuildingSpawn { kind: BuildingKind::TheBox, position: GridPos::new(6, 15), player_id: 0, pre_built: true },
-        BuildingSpawn { kind: BuildingKind::ServerRack, position: GridPos::new(6, 11), player_id: 0, pre_built: true },
-        BuildingSpawn { kind: BuildingKind::CatTree, position: GridPos::new(10, 15), player_id: 0, pre_built: true },
-        BuildingSpawn { kind: BuildingKind::TheBurrow, position: GridPos::new(34, 15), player_id: 2, pre_built: true },
-        BuildingSpawn { kind: BuildingKind::NestingBox, position: GridPos::new(34, 11), player_id: 2, pre_built: true },
+        BuildingSpawn {
+            kind: BuildingKind::TheBox,
+            position: GridPos::new(6, 15),
+            player_id: 0,
+            pre_built: true,
+        },
+        BuildingSpawn {
+            kind: BuildingKind::ServerRack,
+            position: GridPos::new(6, 11),
+            player_id: 0,
+            pre_built: true,
+        },
+        BuildingSpawn {
+            kind: BuildingKind::CatTree,
+            position: GridPos::new(10, 15),
+            player_id: 0,
+            pre_built: true,
+        },
+        BuildingSpawn {
+            kind: BuildingKind::TheBurrow,
+            position: GridPos::new(34, 15),
+            player_id: 2,
+            pre_built: true,
+        },
+        BuildingSpawn {
+            kind: BuildingKind::NestingBox,
+            position: GridPos::new(34, 11),
+            player_id: 2,
+            pre_built: true,
+        },
     ];
 
     for b in &buildings {
-        set_tile(&mut tiles, &mut elevation, b.position.x, b.position.y, TerrainType::Grass, 1);
+        set_tile(
+            &mut tiles,
+            &mut elevation,
+            b.position.x,
+            b.position.y,
+            TerrainType::Grass,
+            1,
+        );
     }
 
     let units = vec![
-        UnitSpawn { kind: UnitKind::MechCommander, position: GridPos::new(18, 15), player_id: 0 },
-        UnitSpawn { kind: UnitKind::WarrenMarshal, position: GridPos::new(22, 15), player_id: 2 },
+        UnitSpawn {
+            kind: UnitKind::MechCommander,
+            position: GridPos::new(18, 15),
+            player_id: 0,
+        },
+        UnitSpawn {
+            kind: UnitKind::WarrenMarshal,
+            position: GridPos::new(22, 15),
+            player_id: 2,
+        },
     ];
 
     for u in &units {
-        set_tile(&mut tiles, &mut elevation, u.position.x, u.position.y, TerrainType::Grass, 1);
+        set_tile(
+            &mut tiles,
+            &mut elevation,
+            u.position.x,
+            u.position.y,
+            TerrainType::Grass,
+            1,
+        );
     }
 
     let dialogue = vec![
@@ -261,7 +373,9 @@ fn build_scene_2() -> MissionDefinition {
         // Exchange 2 (tick 80): AI frustrations
         DialogueLine {
             speaker: "Commander Felix Nine".into(),
-            text: "Geppity says yes to everything. That is not loyalty. That is a personality defect.".into(),
+            text:
+                "Geppity says yes to everything. That is not loyalty. That is a personality defect."
+                    .into(),
             voice_style: VoiceStyle::Normal,
             portrait: "portrait_felix_nine".into(),
         },
@@ -274,7 +388,9 @@ fn build_scene_2() -> MissionDefinition {
         // Exchange 3 (tick 160): Grudging respect
         DialogueLine {
             speaker: "Marshal Thimble".into(),
-            text: "We are not invaders. We are survivors with good intelligence and short memories.".into(),
+            text:
+                "We are not invaders. We are survivors with good intelligence and short memories."
+                    .into(),
             voice_style: VoiceStyle::Normal,
             portrait: "portrait_thimble".into(),
         },
@@ -306,7 +422,16 @@ fn build_scene_2() -> MissionDefinition {
         make_dialogue_trigger("scene2_close", 240, vec![6, 7]),
     ];
 
-    build_mission("cutscene_2", "Border Front", tiles, elevation, buildings, units, dialogue, triggers)
+    build_mission(
+        "cutscene_2",
+        "Border Front",
+        tiles,
+        elevation,
+        buildings,
+        units,
+        dialogue,
+        triggers,
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -327,7 +452,14 @@ fn build_scene_3() -> MissionDefinition {
     }
     set_tile(&mut tiles, &mut elevation, 4, 10, TerrainType::Sand, 1);
     set_tile(&mut tiles, &mut elevation, 8, 18, TerrainType::Sand, 1);
-    set_tile(&mut tiles, &mut elevation, 10, 12, TerrainType::TechRuins, 1);
+    set_tile(
+        &mut tiles,
+        &mut elevation,
+        10,
+        12,
+        TerrainType::TechRuins,
+        1,
+    );
 
     // Croak swamp (east): water/shallows
     for y in 5..25 {
@@ -352,27 +484,76 @@ fn build_scene_3() -> MissionDefinition {
             }
         }
     }
-    set_tile(&mut tiles, &mut elevation, 20, 15, TerrainType::TechRuins, 1);
+    set_tile(
+        &mut tiles,
+        &mut elevation,
+        20,
+        15,
+        TerrainType::TechRuins,
+        1,
+    );
 
     // Buildings: LLAMA (P5) west, Croak (P4) east
     let buildings = vec![
-        BuildingSpawn { kind: BuildingKind::TheDumpster, position: GridPos::new(6, 15), player_id: 5, pre_built: true },
-        BuildingSpawn { kind: BuildingKind::ScrapHeap, position: GridPos::new(6, 11), player_id: 5, pre_built: true },
-        BuildingSpawn { kind: BuildingKind::TheGrotto, position: GridPos::new(34, 15), player_id: 4, pre_built: true },
-        BuildingSpawn { kind: BuildingKind::SpawningPools, position: GridPos::new(34, 11), player_id: 4, pre_built: true },
+        BuildingSpawn {
+            kind: BuildingKind::TheDumpster,
+            position: GridPos::new(6, 15),
+            player_id: 5,
+            pre_built: true,
+        },
+        BuildingSpawn {
+            kind: BuildingKind::ScrapHeap,
+            position: GridPos::new(6, 11),
+            player_id: 5,
+            pre_built: true,
+        },
+        BuildingSpawn {
+            kind: BuildingKind::TheGrotto,
+            position: GridPos::new(34, 15),
+            player_id: 4,
+            pre_built: true,
+        },
+        BuildingSpawn {
+            kind: BuildingKind::SpawningPools,
+            position: GridPos::new(34, 11),
+            player_id: 4,
+            pre_built: true,
+        },
     ];
 
     for b in &buildings {
-        set_tile(&mut tiles, &mut elevation, b.position.x, b.position.y, TerrainType::Grass, 1);
+        set_tile(
+            &mut tiles,
+            &mut elevation,
+            b.position.x,
+            b.position.y,
+            TerrainType::Grass,
+            1,
+        );
     }
 
     let units = vec![
-        UnitSpawn { kind: UnitKind::JunkyardKing, position: GridPos::new(18, 15), player_id: 5 },
-        UnitSpawn { kind: UnitKind::MurkCommander, position: GridPos::new(22, 15), player_id: 4 },
+        UnitSpawn {
+            kind: UnitKind::JunkyardKing,
+            position: GridPos::new(18, 15),
+            player_id: 5,
+        },
+        UnitSpawn {
+            kind: UnitKind::MurkCommander,
+            position: GridPos::new(22, 15),
+            player_id: 4,
+        },
     ];
 
     for u in &units {
-        set_tile(&mut tiles, &mut elevation, u.position.x, u.position.y, TerrainType::Grass, 1);
+        set_tile(
+            &mut tiles,
+            &mut elevation,
+            u.position.x,
+            u.position.y,
+            TerrainType::Grass,
+            1,
+        );
     }
 
     let dialogue = vec![
@@ -437,7 +618,16 @@ fn build_scene_3() -> MissionDefinition {
         make_dialogue_trigger("scene3_close", 240, vec![6, 7]),
     ];
 
-    build_mission("cutscene_3", "Swamp Junkyard", tiles, elevation, buildings, units, dialogue, triggers)
+    build_mission(
+        "cutscene_3",
+        "Swamp Junkyard",
+        tiles,
+        elevation,
+        buildings,
+        units,
+        dialogue,
+        triggers,
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -572,7 +762,11 @@ mod tests {
         for s in 1..=3 {
             let m = validate_scene(s);
             let speakers: HashSet<&str> = m.dialogue.iter().map(|d| d.speaker.as_str()).collect();
-            assert_eq!(speakers.len(), 2, "Scene {s} should have exactly 2 speakers, got {speakers:?}");
+            assert_eq!(
+                speakers.len(),
+                2,
+                "Scene {s} should have exactly 2 speakers, got {speakers:?}"
+            );
         }
     }
 
@@ -581,7 +775,10 @@ mod tests {
         for s in 1..=3 {
             let m = validate_scene(s);
             for (i, line) in m.dialogue.iter().enumerate() {
-                assert!(!line.portrait.is_empty(), "Scene {s} line {i} missing portrait");
+                assert!(
+                    !line.portrait.is_empty(),
+                    "Scene {s} line {i} missing portrait"
+                );
             }
         }
     }
@@ -599,7 +796,10 @@ mod tests {
                 assert!(
                     terrain.base_passable(),
                     "Scene {s}: building {:?} at ({},{}) on impassable {:?}",
-                    b.kind, b.position.x, b.position.y, terrain
+                    b.kind,
+                    b.position.x,
+                    b.position.y,
+                    terrain
                 );
             }
         }
@@ -618,7 +818,10 @@ mod tests {
                 assert!(
                     terrain.base_passable(),
                     "Scene {s}: unit {:?} at ({},{}) on impassable {:?}",
-                    u.kind, u.position.x, u.position.y, terrain
+                    u.kind,
+                    u.position.x,
+                    u.position.y,
+                    terrain
                 );
             }
         }
