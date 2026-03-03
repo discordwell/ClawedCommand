@@ -2,15 +2,14 @@
 ///
 /// Architecture:
 ///   1. **OS audio thread** (cpal): mic → ring buffer (lock-free SPSC)
-///   2. **Inference thread**: ring buffer → VAD → mel → classifier → channel
+///   2. **Inference thread**: ring buffer → accumulate while PTT held → Whisper on release → channel
 ///   3. **Bevy main thread**: channel → VoiceCommandEvent
 ///
 /// The inference thread runs in a tight loop:
-///   - Check `is_listening` (PTT flag)
-///   - Read 512 samples from ring buffer
-///   - Run Silero VAD; if speech > threshold, accumulate
-///   - At 16000 samples (1s), compute mel and classify
-///   - Send result over crossbeam channel
+///   - PTT not held → drain ring buffer, sleep
+///   - PTT just pressed → clear accumulator, start accumulating
+///   - PTT held → read samples from ring buffer into accumulator
+///   - PTT released → run Whisper on accumulated audio, send text result
 #[cfg(feature = "voice")]
 use crossbeam_channel::{Receiver, Sender};
 #[cfg(feature = "voice")]
@@ -26,16 +25,12 @@ use std::sync::{
 use crate::events::VoiceCommandEvent;
 use crate::events::VoiceStateChanged;
 use crate::{VoiceConfig, VoiceState};
-#[cfg(feature = "voice")]
-use crate::classifier::ClassifyResult;
-#[cfg(feature = "voice")]
-use crate::mel::MelConfig;
 
-/// Resource holding the channel receiver for classified voice results.
+/// Resource holding the channel receiver for transcribed voice text.
 #[cfg(feature = "voice")]
 #[derive(Resource)]
-pub struct VoiceResultReceiver {
-    pub rx: Receiver<ClassifyResult>,
+pub struct VoiceTranscriptReceiver {
+    pub rx: Receiver<String>,
 }
 
 /// Shared atomic flag: true when PTT is held down and we should listen.
@@ -44,34 +39,18 @@ pub struct ListeningFlag {
     pub flag: Arc<AtomicBool>,
 }
 
-/// Startup system: loads models, starts audio capture, spawns inference thread.
+/// Startup system: loads Whisper model, starts audio capture, spawns inference thread.
 #[cfg(feature = "voice")]
 pub fn startup_voice_pipeline(mut commands: Commands, config: Res<VoiceConfig>) {
     log::info!("Initializing voice pipeline...");
 
-    // Load models
-    let vad_path = &config.vad_model_path;
-    let classifier_path = &config.classifier_model_path;
-    let labels_path = &config.labels_path;
+    let whisper_path = &config.whisper_model_path;
 
-    let vad = match crate::vad::VadProcessor::new(vad_path) {
-        Ok(v) => v,
+    let transcriber = match crate::transcriber::WhisperTranscriber::new(whisper_path) {
+        Ok(t) => t,
         Err(e) => {
-            log::error!("Failed to load VAD model from '{vad_path}': {e}");
-            log::warn!("Voice pipeline disabled — VAD model not found");
-            commands.insert_resource(VoiceState { enabled: false });
-            return;
-        }
-    };
-
-    let classifier = match crate::classifier::KeywordClassifier::new(classifier_path, labels_path)
-    {
-        Ok(c) => c,
-        Err(e) => {
-            log::error!(
-                "Failed to load classifier from '{classifier_path}' / '{labels_path}': {e}"
-            );
-            log::warn!("Voice pipeline disabled — classifier model not found");
+            log::error!("Failed to load Whisper model from '{whisper_path}': {e}");
+            log::warn!("Voice pipeline disabled — Whisper model not found");
             commands.insert_resource(VoiceState { enabled: false });
             return;
         }
@@ -89,24 +68,23 @@ pub fn startup_voice_pipeline(mut commands: Commands, config: Res<VoiceConfig>) 
     };
 
     // Channel for inference → Bevy
-    let (tx, rx) = crossbeam_channel::bounded::<ClassifyResult>(16);
+    let (tx, rx) = crossbeam_channel::bounded::<String>(16);
 
     // PTT flag
     let listening = Arc::new(AtomicBool::new(false));
     let listening_clone = listening.clone();
-    let confidence_threshold = config.confidence_threshold;
 
     // Spawn inference thread
     std::thread::Builder::new()
         .name("voice-inference".into())
         .spawn(move || {
-            inference_loop(consumer, vad, classifier, tx, listening_clone, confidence_threshold);
+            inference_loop(consumer, transcriber, tx, listening_clone);
         })
         .expect("failed to spawn voice inference thread");
 
-    log::info!("Voice pipeline ready (PTT: V key)");
+    log::info!("Voice pipeline ready (PTT: V key, Whisper tiny.en)");
 
-    commands.insert_resource(VoiceResultReceiver { rx });
+    commands.insert_resource(VoiceTranscriptReceiver { rx });
     commands.insert_resource(ListeningFlag { flag: listening });
     commands.insert_resource(VoiceState { enabled: true });
 }
@@ -118,179 +96,105 @@ pub fn startup_voice_pipeline(mut commands: Commands) {
     commands.insert_resource(VoiceState { enabled: false });
 }
 
-/// Pad/crop accumulated audio to target length, compute mel, classify, and send result.
-///
-/// Handles short utterances by zero-padding to `target_samples`.
-#[cfg(feature = "voice")]
-fn classify_and_send(
-    accumulator: &[f32],
-    target_samples: usize,
-    mel_config: &MelConfig,
-    classifier: &mut crate::classifier::KeywordClassifier,
-    confidence_threshold: f32,
-    tx: &Sender<ClassifyResult>,
-) {
-    // Pad or center-crop to exactly target_samples
-    let audio: Vec<f32> = if accumulator.len() > target_samples {
-        let start = (accumulator.len() - target_samples) / 2;
-        accumulator[start..start + target_samples].to_vec()
-    } else if accumulator.len() < target_samples {
-        // Zero-pad short utterances (centered)
-        let mut padded = vec![0.0f32; target_samples];
-        let offset = (target_samples - accumulator.len()) / 2;
-        padded[offset..offset + accumulator.len()].copy_from_slice(accumulator);
-        padded
-    } else {
-        accumulator.to_vec()
-    };
-
-    let mel = mel_config.compute(&audio);
-    match classifier.classify(&mel) {
-        Ok(result) => {
-            if result.confidence >= confidence_threshold
-                && result.label != "unknown"
-                && result.label != "silence"
-            {
-                log::debug!(
-                    "Classified: '{}' ({:.2}%)",
-                    result.label,
-                    result.confidence * 100.0
-                );
-                let _ = tx.send(result);
-            }
-        }
-        Err(e) => {
-            log::error!("Classifier error: {e}");
-        }
-    }
-}
-
 /// The inference thread's main loop.
+///
+/// Accumulates audio while PTT is held, then transcribes on release.
 #[cfg(feature = "voice")]
 fn inference_loop(
     mut consumer: ringbuf::HeapCons<f32>,
-    mut vad: crate::vad::VadProcessor,
-    mut classifier: crate::classifier::KeywordClassifier,
-    tx: Sender<ClassifyResult>,
+    transcriber: crate::transcriber::WhisperTranscriber,
+    tx: Sender<String>,
     is_listening: Arc<AtomicBool>,
-    confidence_threshold: f32,
 ) {
-    let mel_config = MelConfig::default_config();
-    let target_samples: usize = 16000; // 1 second
-    let mut accumulator: Vec<f32> = Vec::with_capacity(target_samples);
-    let mut speech_active = false;
-    let mut chunk_buf = [0.0f32; crate::vad::VAD_CHUNK_SAMPLES];
-    // Track partial reads across iterations to avoid dropping samples
-    let mut chunk_offset: usize = 0;
-    // Minimum samples for classification (half a second) — shorter utterances are padded
-    let min_speech_samples: usize = target_samples / 2;
+    let mut accumulator: Vec<f32> = Vec::with_capacity(48000); // up to 3s at 16kHz
+    let mut was_listening = false;
+    // Minimum samples for transcription (0.3 seconds) — shorter clips are noise
+    let min_samples: usize = 4800;
+    // Maximum samples (5 seconds) — truncate to avoid long Whisper runs
+    let max_samples: usize = 80000;
 
     loop {
-        // If not listening (PTT not held), sleep briefly and drain buffer
-        if !is_listening.load(Ordering::Relaxed) {
-            if speech_active {
-                // PTT released mid-speech — reset
-                accumulator.clear();
-                speech_active = false;
-                vad.reset();
-            }
-            chunk_offset = 0;
-            // Drain any buffered audio to keep ring buffer fresh
-            while consumer.try_pop().is_some() {}
-            std::thread::sleep(std::time::Duration::from_millis(20));
-            continue;
-        }
+        let currently_listening = is_listening.load(Ordering::Relaxed);
 
-        // Try to read a VAD-sized chunk (512 samples), continuing from partial reads
-        while chunk_offset < crate::vad::VAD_CHUNK_SAMPLES {
-            match consumer.try_pop() {
-                Some(sample) => {
-                    chunk_buf[chunk_offset] = sample;
-                    chunk_offset += 1;
+        if currently_listening {
+            if !was_listening {
+                // PTT just pressed → clear accumulator
+                accumulator.clear();
+                log::debug!("PTT pressed — accumulating audio");
+            }
+
+            // Read all available samples from ring buffer into accumulator
+            let mut count = 0;
+            while let Some(sample) = consumer.try_pop() {
+                if accumulator.len() < max_samples {
+                    accumulator.push(sample);
                 }
-                None => break,
+                count += 1;
             }
-        }
 
-        if chunk_offset < crate::vad::VAD_CHUNK_SAMPLES {
-            // Not enough samples yet — wait a bit (partial read preserved for next iteration)
-            std::thread::sleep(std::time::Duration::from_millis(5));
-            continue;
-        }
-
-        // Full chunk ready — reset offset for next chunk
-        chunk_offset = 0;
-
-        // Run VAD
-        let speech_prob = match vad.process(&chunk_buf) {
-            Ok(p) => p,
-            Err(e) => {
-                log::error!("VAD error: {e}");
-                std::thread::sleep(std::time::Duration::from_millis(10));
-                continue;
+            if count > 0 {
+                log::trace!("Accumulated {count} samples (total: {})", accumulator.len());
             }
-        };
 
-        if speech_prob > crate::vad::DEFAULT_SPEECH_THRESHOLD {
-            if !speech_active {
-                speech_active = true;
-                accumulator.clear();
+            was_listening = true;
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        } else if was_listening {
+            // PTT just released → transcribe accumulated audio
+            was_listening = false;
+
+            // Drain any remaining samples that arrived between last read and release
+            while let Some(sample) = consumer.try_pop() {
+                if accumulator.len() < max_samples {
+                    accumulator.push(sample);
+                }
             }
-            accumulator.extend_from_slice(&chunk_buf);
-        } else if speech_active {
-            // Speech ended — add trailing audio then classify immediately
-            accumulator.extend_from_slice(&chunk_buf);
 
-            // Classify if we have enough audio (at least half a second)
-            if accumulator.len() >= min_speech_samples {
-                classify_and_send(
-                    &accumulator, target_samples, &mel_config,
-                    &mut classifier, confidence_threshold, &tx,
+            if accumulator.len() >= min_samples {
+                let duration_ms = accumulator.len() * 1000 / 16000;
+                log::info!(
+                    "PTT released — transcribing {duration_ms}ms of audio ({} samples)",
+                    accumulator.len()
+                );
+
+                match transcriber.transcribe(&accumulator) {
+                    Ok(text) => {
+                        if !text.is_empty() {
+                            log::info!("Whisper transcription: \"{text}\"");
+                            let _ = tx.send(text);
+                        } else {
+                            log::debug!("Whisper returned empty transcription — silence?");
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("Whisper transcription error: {e}");
+                    }
+                }
+            } else {
+                log::debug!(
+                    "PTT released — too short ({} samples < {min_samples}), skipping",
+                    accumulator.len()
                 );
             }
 
             accumulator.clear();
-            speech_active = false;
-            vad.reset();
-            continue;
-        }
-
-        // When we have enough audio during ongoing speech, classify
-        if speech_active && accumulator.len() >= target_samples {
-            classify_and_send(
-                &accumulator, target_samples, &mel_config,
-                &mut classifier, confidence_threshold, &tx,
-            );
-
-            // Reset for next utterance
-            accumulator.clear();
-            speech_active = false;
-            vad.reset();
-        }
-
-        // Safety limit: if accumulator grows too large without classification, reset
-        if accumulator.len() > target_samples * 3 {
-            log::warn!("Voice accumulator overflow — resetting");
-            accumulator.clear();
-            speech_active = false;
-            vad.reset();
+        } else {
+            // Not listening — drain ring buffer to keep it fresh
+            while consumer.try_pop().is_some() {}
+            std::thread::sleep(std::time::Duration::from_millis(20));
         }
     }
 }
 
-/// Bevy system: polls the voice result channel and emits VoiceCommandEvents.
+/// Bevy system: polls the voice transcript channel and emits VoiceCommandEvents.
 #[cfg(feature = "voice")]
 pub fn poll_voice_results(
-    receiver: Option<Res<VoiceResultReceiver>>,
+    receiver: Option<Res<VoiceTranscriptReceiver>>,
     mut voice_events: MessageWriter<VoiceCommandEvent>,
 ) {
     let Some(receiver) = receiver else { return };
-    // Drain all pending results
-    while let Ok(result) = receiver.rx.try_recv() {
-        voice_events.write(VoiceCommandEvent {
-            keyword: result.label,
-            confidence: result.confidence,
-        });
+    // Drain all pending transcriptions
+    while let Ok(text) = receiver.rx.try_recv() {
+        voice_events.write(VoiceCommandEvent { text });
     }
 }
 

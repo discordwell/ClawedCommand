@@ -1,10 +1,10 @@
-/// Maps recognized voice keywords to GameCommands.
+/// Maps voice transcriptions to GameCommands.
 ///
-/// Voice grammar: `[agent_command] [unit_selector]* [conjunction]*`
+/// Voice grammar: `[unit_selector]* [agent_command] [direction]?`
 ///
-/// Each keyword is recognized independently in a 1-second window.
-/// The intent system accumulates keywords into a pending command,
-/// then flushes when an agent command arrives with a prior target context.
+/// Whisper produces full text on PTT release (e.g. "all attack", "hisser stop",
+/// "move north"). The intent system parses all words in one tick — no cross-tick
+/// accumulation needed.
 ///
 /// Default target: all of the player's on-screen units (not just selected).
 use bevy::ecs::world::EntityWorldMut;
@@ -244,6 +244,80 @@ pub fn classify_keyword(keyword: &str) -> KeywordRole {
             KeywordRole::Unrecognized
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Full-text voice command parsing
+// ---------------------------------------------------------------------------
+
+/// Parsed result of a full voice transcription.
+#[derive(Debug, Clone, Default)]
+pub struct ParsedVoiceCommand {
+    pub action: Option<AgentAction>,
+    pub selector: Option<SelectorKind>,
+    pub unit_filter: Option<UnitKind>,
+    pub direction: Option<DirectionKind>,
+    pub building: Option<BuildingKind>,
+}
+
+/// Parse a full transcription text into a structured voice command.
+///
+/// Normalizes the text (lowercase, strips punctuation), splits into words,
+/// and classifies each word. Collects the first occurrence of each role type.
+pub fn parse_voice_text(text: &str) -> ParsedVoiceCommand {
+    let mut result = ParsedVoiceCommand::default();
+
+    // Normalize: strip non-alphanumeric (keep spaces), ensure lowercase.
+    // Whisper already returns lowercase, but normalize defensively.
+    let normalized: String = text
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() || c.is_whitespace() {
+                c.to_ascii_lowercase()
+            } else {
+                ' '
+            }
+        })
+        .collect();
+
+    for word in normalized.split_whitespace() {
+        let role = classify_keyword(word);
+        match role {
+            KeywordRole::Agent(action) => {
+                if result.action.is_none() {
+                    result.action = Some(action);
+                }
+            }
+            KeywordRole::UnitName(kind) => {
+                if result.unit_filter.is_none() {
+                    result.unit_filter = Some(kind);
+                }
+            }
+            KeywordRole::Selector(sel) => {
+                if result.selector.is_none() {
+                    result.selector = Some(sel);
+                }
+            }
+            KeywordRole::Direction(dir) => {
+                if result.direction.is_none() {
+                    result.direction = Some(dir);
+                }
+            }
+            KeywordRole::Building(bk) => {
+                if result.building.is_none() {
+                    result.building = Some(bk);
+                }
+            }
+            // Meta Cancel resets everything parsed so far
+            KeywordRole::Meta(MetaAction::Cancel) => {
+                result = ParsedVoiceCommand::default();
+            }
+            // Conjunctions, group numbers, other meta, ignored, unrecognized — skip
+            _ => {}
+        }
+    }
+
+    result
 }
 
 // ---------------------------------------------------------------------------
@@ -493,8 +567,8 @@ pub fn apply_voice_buff_to_entities(
 
 /// Bevy system: consumes VoiceCommandEvents and pushes GameCommands.
 ///
+/// Parses full transcription text in one tick — no cross-tick accumulation.
 /// Default target: all of the player's on-screen units (not just selected).
-/// If a unit name keyword was recently spoken, filters to that unit type.
 pub fn voice_intent_system(
     mut commands: Commands,
     mut voice_events: MessageReader<VoiceCommandEvent>,
@@ -509,10 +583,6 @@ pub fn voice_intent_system(
     mut cmd_queue: ResMut<cc_sim::resources::CommandQueue>,
     mut voice_override: ResMut<cc_sim::resources::VoiceOverride>,
     status_query: Query<Option<&StatusEffects>, Without<Dead>>,
-    mut pending_filter: Local<Option<UnitKind>>,
-    mut pending_selector: Local<Option<SelectorKind>>,
-    mut pending_direction: Local<Option<DirectionKind>>,
-    mut pending_building: Local<Option<BuildingKind>>,
     restrictions: Option<Res<cc_sim::campaign::mutator_state::ControlRestrictions>>,
 ) {
     // Gate: skip voice commands if voice is disabled by mission mutator
@@ -521,262 +591,225 @@ pub fn voice_intent_system(
     }
 
     for event in voice_events.read() {
-        log::info!(
-            "Voice: '{}' (confidence: {:.2})",
-            event.keyword,
-            event.confidence
-        );
+        log::info!("Voice text: \"{}\"", event.text);
 
-        let role = classify_keyword(&event.keyword);
+        let parsed = parse_voice_text(&event.text);
 
-        match role {
-            KeywordRole::Agent(action) => {
-                // Resolve target unit IDs based on pending filter/selector
-                // Filter to player's own living units only
-                let own_units = || {
-                    all_units.iter().filter(|(_, _, _, owner)| owner.player_id == 0)
-                };
+        let Some(action) = parsed.action else {
+            log::debug!("No action keyword found in transcription — ignoring");
+            continue;
+        };
 
-                let (entities, unit_ids): (Vec<Entity>, Vec<EntityId>) = match *pending_selector {
-                    Some(SelectorKind::Selected) => {
-                        selected_units.iter().map(|e| (e, EntityId(e.to_bits()))).unzip()
-                    }
-                    Some(SelectorKind::Workers) => {
+        // Resolve target unit IDs based on parsed selector/filter
+        // Filter to player's own living units only
+        let own_units = || {
+            all_units.iter().filter(|(_, _, _, owner)| owner.player_id == 0)
+        };
+
+        let (entities, unit_ids): (Vec<Entity>, Vec<EntityId>) = match parsed.selector {
+            Some(SelectorKind::Selected) => {
+                selected_units.iter().map(|e| (e, EntityId(e.to_bits()))).unzip()
+            }
+            Some(SelectorKind::Workers) => {
+                own_units()
+                    .filter(|(_, ut, _, _)| ut.kind == UnitKind::Pawdler)
+                    .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
+                    .unzip()
+            }
+            Some(SelectorKind::Army) => {
+                own_units()
+                    .filter(|(_, ut, _, _)| ut.kind != UnitKind::Pawdler)
+                    .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
+                    .unzip()
+            }
+            Some(SelectorKind::Nearby) => {
+                // Filter to own units within 10 tiles (Chebyshev) of cursor
+                if let Some(cursor) = cursor_grid.pos {
+                    own_units()
+                        .filter(|(_, _, pos, _)| {
+                            let gp = pos.world.to_grid();
+                            let dx = (gp.x - cursor.x).abs();
+                            let dy = (gp.y - cursor.y).abs();
+                            dx.max(dy) <= 10
+                        })
+                        .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
+                        .unzip()
+                } else {
+                    // No cursor position — fall back to all own units
+                    own_units()
+                        .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
+                        .unzip()
+                }
+            }
+            _ => {
+                // Default: filter by unit kind if specified, else all own units
+                match parsed.unit_filter {
+                    Some(kind) => {
                         own_units()
-                            .filter(|(_, ut, _, _)| ut.kind == UnitKind::Pawdler)
+                            .filter(|(_, ut, _, _)| ut.kind == kind)
                             .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
                             .unzip()
                     }
-                    Some(SelectorKind::Army) => {
+                    None => {
                         own_units()
-                            .filter(|(_, ut, _, _)| ut.kind != UnitKind::Pawdler)
                             .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
                             .unzip()
-                    }
-                    Some(SelectorKind::Nearby) => {
-                        // Filter to own units within 10 tiles (Chebyshev) of cursor
-                        if let Some(cursor) = cursor_grid.pos {
-                            own_units()
-                                .filter(|(_, _, pos, _)| {
-                                    let gp = pos.world.to_grid();
-                                    let dx = (gp.x - cursor.x).abs();
-                                    let dy = (gp.y - cursor.y).abs();
-                                    dx.max(dy) <= 10
-                                })
-                                .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
-                                .unzip()
-                        } else {
-                            // No cursor position — fall back to all own units
-                            own_units()
-                                .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
-                                .unzip()
-                        }
-                    }
-                    _ => {
-                        // Default: filter by unit kind if specified, else all own units
-                        match *pending_filter {
-                            Some(kind) => {
-                                own_units()
-                                    .filter(|(_, ut, _, _)| ut.kind == kind)
-                                    .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
-                                    .unzip()
-                            }
-                            None => {
-                                own_units()
-                                    .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
-                                    .unzip()
-                            }
-                        }
-                    }
-                };
-
-                // Compute enemy centroid for position-targeted commands
-                let enemy_centroid = compute_enemy_centroid(&all_units);
-                let mw = map_res.map.width;
-                let mh = map_res.map.height;
-
-                let cmd = match action {
-                    // Attack/Siege → attack-move toward enemy centroid
-                    AgentAction::Attack | AgentAction::Siege => {
-                        resolve_voice_attack(&unit_ids, &all_units, &map_res)
-                    }
-                    // Retreat → move to base
-                    AgentAction::Retreat => {
-                        resolve_voice_retreat(&unit_ids, &player_buildings)
-                    }
-                    // Charge → attack-move toward direction or enemy centroid
-                    AgentAction::Charge => {
-                        let target = resolve_move_target(
-                            *pending_direction,
-                            enemy_centroid,
-                            mw,
-                            mh,
-                        );
-                        if !unit_ids.is_empty() {
-                            Some(GameCommand::AttackMove {
-                                unit_ids: unit_ids.clone(),
-                                target,
-                            })
-                        } else {
-                            None
-                        }
-                    }
-                    // Flank → move perpendicular to enemy direction
-                    AgentAction::Flank => {
-                        resolve_voice_flank(
-                            &unit_ids,
-                            *pending_direction,
-                            enemy_centroid,
-                            mw,
-                            mh,
-                        )
-                    }
-                    // Move/Patrol/Scout → move in direction or toward enemy
-                    AgentAction::Move | AgentAction::Patrol | AgentAction::Scout => {
-                        resolve_voice_move(
-                            &unit_ids,
-                            *pending_direction,
-                            enemy_centroid,
-                            mw,
-                            mh,
-                        )
-                    }
-                    // Rally → set rally point on first owned building
-                    AgentAction::Rally => {
-                        let target = resolve_move_target(
-                            *pending_direction,
-                            cursor_grid.pos,
-                            mw,
-                            mh,
-                        );
-                        // Find first owned building
-                        let mut rally_cmd = None;
-                        for (entity, _, owner, _) in player_buildings.iter() {
-                            if owner.player_id == 0 {
-                                rally_cmd = Some(GameCommand::SetRallyPoint {
-                                    building: EntityId(entity.to_bits()),
-                                    target,
-                                });
-                                break;
-                            }
-                        }
-                        rally_cmd
-                    }
-                    // Build → find nearest worker + build site
-                    AgentAction::Build => {
-                        if let Some(voice_bk) = *pending_building {
-                            // Infer faction from player's HQ building
-                            let player_faction = player_buildings
-                                .iter()
-                                .find(|(_, _, owner, b)| {
-                                    owner.player_id == 0 && b.kind.is_hq()
-                                })
-                                .map(|(_, _, _, b)| infer_faction_from_hq(b.kind))
-                                .unwrap_or(Faction::CatGpt);
-
-                            let fmap = faction_map(player_faction);
-                            let game_bk =
-                                voice_building_to_game_building(voice_bk, &fmap);
-
-                            let center = cursor_grid.pos.unwrap_or(GridPos::new(
-                                mw as i32 / 2,
-                                mh as i32 / 2,
-                            ));
-
-                            // Collect all building positions (all players)
-                            let occupied: Vec<GridPos> = player_buildings
-                                .iter()
-                                .map(|(_, pos, _, _)| pos.world.to_grid())
-                                .collect();
-
-                            // Find a valid build site
-                            let build_pos = find_voice_build_position(
-                                center,
-                                &map_res.map,
-                                &occupied,
-                                20,
-                            );
-
-                            // Find nearest own worker (any faction's worker type)
-                            let builder = own_units()
-                                .filter(|(_, ut, _, _)| ut.kind.is_worker())
-                                .min_by_key(|(_, _, pos, _)| {
-                                    let gp = pos.world.to_grid();
-                                    (gp.x - center.x).abs() + (gp.y - center.y).abs()
-                                })
-                                .map(|(e, _, _, _)| EntityId(e.to_bits()));
-
-                            match (builder, build_pos) {
-                                (Some(b), Some(bp)) => Some(GameCommand::Build {
-                                    builder: b,
-                                    building_kind: game_bk,
-                                    position: bp,
-                                }),
-                                _ => {
-                                    log::debug!(
-                                        "Voice build: no builder or build site found"
-                                    );
-                                    None
-                                }
-                            }
-                        } else {
-                            log::debug!(
-                                "Voice 'build' without a building keyword — ignoring"
-                            );
-                            None
-                        }
-                    }
-                    // Everything else (stop, hold, defend, guard, etc.)
-                    _ => resolve_agent_command(action, &unit_ids),
-                };
-
-                if let Some(c) = cmd {
-                    cmd_queue.push_sourced(Some(0), cc_core::commands::CommandSource::VoiceCommand, c);
-
-                    // Suppress script/AI commands for these units while
-                    // the voice command is active.
-                    voice_override.set(&unit_ids);
-
-                    // Apply golden speed buff for combat commands
-                    if matches!(action, AgentAction::Attack | AgentAction::Charge | AgentAction::Siege) {
-                        apply_voice_buff_to_entities(&mut commands, &entities, &status_query);
                     }
                 }
-
-                // Clear all pending state after command execution
-                *pending_filter = None;
-                *pending_selector = None;
-                *pending_direction = None;
-                *pending_building = None;
             }
+        };
 
-            KeywordRole::UnitName(kind) => {
-                *pending_filter = Some(kind);
-                *pending_selector = None;
+        // Compute enemy centroid for position-targeted commands
+        let enemy_centroid = compute_enemy_centroid(&all_units);
+        let mw = map_res.map.width;
+        let mh = map_res.map.height;
+
+        let cmd = match action {
+            // Attack/Siege → attack-move toward enemy centroid
+            AgentAction::Attack | AgentAction::Siege => {
+                resolve_voice_attack(&unit_ids, &all_units, &map_res)
             }
-
-            KeywordRole::Selector(sel) => {
-                *pending_selector = Some(sel);
-                *pending_filter = None;
+            // Retreat → move to base
+            AgentAction::Retreat => {
+                resolve_voice_retreat(&unit_ids, &player_buildings)
             }
-
-            KeywordRole::Direction(dir) => {
-                *pending_direction = Some(dir);
+            // Charge → attack-move toward direction or enemy centroid
+            AgentAction::Charge => {
+                let target = resolve_move_target(
+                    parsed.direction,
+                    enemy_centroid,
+                    mw,
+                    mh,
+                );
+                if !unit_ids.is_empty() {
+                    Some(GameCommand::AttackMove {
+                        unit_ids: unit_ids.clone(),
+                        target,
+                    })
+                } else {
+                    None
+                }
             }
-
-            KeywordRole::Building(bk) => {
-                *pending_building = Some(bk);
+            // Flank → move perpendicular to enemy direction
+            AgentAction::Flank => {
+                resolve_voice_flank(
+                    &unit_ids,
+                    parsed.direction,
+                    enemy_centroid,
+                    mw,
+                    mh,
+                )
             }
-
-            KeywordRole::Meta(MetaAction::Cancel) => {
-                *pending_filter = None;
-                *pending_selector = None;
-                *pending_direction = None;
-                *pending_building = None;
+            // Move/Patrol/Scout → move in direction or toward enemy
+            AgentAction::Move | AgentAction::Patrol | AgentAction::Scout => {
+                resolve_voice_move(
+                    &unit_ids,
+                    parsed.direction,
+                    enemy_centroid,
+                    mw,
+                    mh,
+                )
             }
+            // Rally → set rally point on first owned building
+            AgentAction::Rally => {
+                let target = resolve_move_target(
+                    parsed.direction,
+                    cursor_grid.pos,
+                    mw,
+                    mh,
+                );
+                // Find first owned building
+                let mut rally_cmd = None;
+                for (entity, _, owner, _) in player_buildings.iter() {
+                    if owner.player_id == 0 {
+                        rally_cmd = Some(GameCommand::SetRallyPoint {
+                            building: EntityId(entity.to_bits()),
+                            target,
+                        });
+                        break;
+                    }
+                }
+                rally_cmd
+            }
+            // Build → find nearest worker + build site
+            AgentAction::Build => {
+                if let Some(voice_bk) = parsed.building {
+                    // Infer faction from player's HQ building
+                    let player_faction = player_buildings
+                        .iter()
+                        .find(|(_, _, owner, b)| {
+                            owner.player_id == 0 && b.kind.is_hq()
+                        })
+                        .map(|(_, _, _, b)| infer_faction_from_hq(b.kind))
+                        .unwrap_or(Faction::CatGpt);
 
-            // Conjunctions, group numbers, other meta — accumulated for future use
-            _ => {}
+                    let fmap = faction_map(player_faction);
+                    let game_bk =
+                        voice_building_to_game_building(voice_bk, &fmap);
+
+                    let center = cursor_grid.pos.unwrap_or(GridPos::new(
+                        mw as i32 / 2,
+                        mh as i32 / 2,
+                    ));
+
+                    // Collect all building positions (all players)
+                    let occupied: Vec<GridPos> = player_buildings
+                        .iter()
+                        .map(|(_, pos, _, _)| pos.world.to_grid())
+                        .collect();
+
+                    // Find a valid build site
+                    let build_pos = find_voice_build_position(
+                        center,
+                        &map_res.map,
+                        &occupied,
+                        20,
+                    );
+
+                    // Find nearest own worker (any faction's worker type)
+                    let builder = own_units()
+                        .filter(|(_, ut, _, _)| ut.kind.is_worker())
+                        .min_by_key(|(_, _, pos, _)| {
+                            let gp = pos.world.to_grid();
+                            (gp.x - center.x).abs() + (gp.y - center.y).abs()
+                        })
+                        .map(|(e, _, _, _)| EntityId(e.to_bits()));
+
+                    match (builder, build_pos) {
+                        (Some(b), Some(bp)) => Some(GameCommand::Build {
+                            builder: b,
+                            building_kind: game_bk,
+                            position: bp,
+                        }),
+                        _ => {
+                            log::debug!(
+                                "Voice build: no builder or build site found"
+                            );
+                            None
+                        }
+                    }
+                } else {
+                    log::debug!(
+                        "Voice 'build' without a building keyword — ignoring"
+                    );
+                    None
+                }
+            }
+            // Everything else (stop, hold, defend, guard, etc.)
+            _ => resolve_agent_command(action, &unit_ids),
+        };
+
+        if let Some(c) = cmd {
+            cmd_queue.push_sourced(Some(0), cc_core::commands::CommandSource::VoiceCommand, c);
+
+            // Suppress script/AI commands for these units while
+            // the voice command is active.
+            voice_override.set(&unit_ids);
+
+            // Apply golden speed buff for combat commands
+            if matches!(action, AgentAction::Attack | AgentAction::Charge | AgentAction::Siege) {
+                apply_voice_buff_to_entities(&mut commands, &entities, &status_query);
+            }
         }
     }
 }
@@ -1207,5 +1240,82 @@ mod tests {
         // Both should have StatModifiers
         assert!(world.get::<StatModifiers>(e1).is_some(), "e1 should have StatModifiers");
         assert!(world.get::<StatModifiers>(e2).is_some(), "e2 should have StatModifiers");
+    }
+
+    // parse_voice_text tests
+
+    #[test]
+    fn test_parse_simple_command() {
+        let parsed = parse_voice_text("attack");
+        assert_eq!(parsed.action, Some(AgentAction::Attack));
+        assert_eq!(parsed.selector, None);
+        assert_eq!(parsed.unit_filter, None);
+        assert_eq!(parsed.direction, None);
+    }
+
+    #[test]
+    fn test_parse_selector_and_command() {
+        let parsed = parse_voice_text("all attack");
+        assert_eq!(parsed.action, Some(AgentAction::Attack));
+        assert_eq!(parsed.selector, Some(SelectorKind::All));
+    }
+
+    #[test]
+    fn test_parse_unit_filter_and_command() {
+        let parsed = parse_voice_text("hisser stop");
+        assert_eq!(parsed.action, Some(AgentAction::Stop));
+        assert_eq!(parsed.unit_filter, Some(UnitKind::Hisser));
+    }
+
+    #[test]
+    fn test_parse_direction_command() {
+        let parsed = parse_voice_text("move north");
+        assert_eq!(parsed.action, Some(AgentAction::Move));
+        assert_eq!(parsed.direction, Some(DirectionKind::North));
+    }
+
+    #[test]
+    fn test_parse_building_build() {
+        let parsed = parse_voice_text("tower build");
+        assert_eq!(parsed.action, Some(AgentAction::Build));
+        assert_eq!(parsed.building, Some(BuildingKind::Tower));
+    }
+
+    #[test]
+    fn test_parse_strips_punctuation() {
+        let parsed = parse_voice_text("All attack!");
+        assert_eq!(parsed.action, Some(AgentAction::Attack));
+        assert_eq!(parsed.selector, Some(SelectorKind::All));
+    }
+
+    #[test]
+    fn test_parse_no_action() {
+        let parsed = parse_voice_text("hisser north");
+        assert_eq!(parsed.action, None);
+        assert_eq!(parsed.unit_filter, Some(UnitKind::Hisser));
+        assert_eq!(parsed.direction, Some(DirectionKind::North));
+    }
+
+    #[test]
+    fn test_parse_whisper_noise_ignored() {
+        // Whisper sometimes adds filler words
+        let parsed = parse_voice_text("um attack the enemy");
+        assert_eq!(parsed.action, Some(AgentAction::Attack));
+    }
+
+    #[test]
+    fn test_parse_complex_command() {
+        let parsed = parse_voice_text("army move south");
+        assert_eq!(parsed.action, Some(AgentAction::Move));
+        assert_eq!(parsed.selector, Some(SelectorKind::Army));
+        assert_eq!(parsed.direction, Some(DirectionKind::South));
+    }
+
+    #[test]
+    fn test_parse_cancel_resets() {
+        let parsed = parse_voice_text("hisser cancel stop");
+        // Cancel clears hisser, then stop is parsed fresh
+        assert_eq!(parsed.action, Some(AgentAction::Stop));
+        assert_eq!(parsed.unit_filter, None);
     }
 }

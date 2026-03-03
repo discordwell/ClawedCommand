@@ -12,6 +12,9 @@ dist/
 .venv/
 training/voice/tts_data/
 
+# Whisper GGML models (too large for git)
+assets/voice/*.bin
+
 # Training outputs (large model weights — keep configs and logs)
 training/outputs/**/adapter_model.*
 training/outputs/**/optimizer.*

@@ -2,6 +2,9 @@
 //!
 //! These tests run `voice_intent_system` against a headless Bevy World with
 //! spawned entities, injected voice events, and verify the resulting GameCommands.
+//!
+//! Voice events now carry full transcription text (e.g. "all attack", "hisser stop")
+//! instead of individual keywords. Each event is parsed in one tick.
 
 use bevy::prelude::*;
 
@@ -18,10 +21,10 @@ use cc_voice::intent::voice_intent_system;
 // Test helpers
 // ---------------------------------------------------------------------------
 
-/// Minimal resource to queue voice keywords for injection.
+/// Minimal resource to queue voice text for injection.
 #[derive(Resource, Default)]
 struct VoiceInjectionQueue {
-    keywords: Vec<(String, f32)>,
+    texts: Vec<String>,
 }
 
 /// System that drains VoiceInjectionQueue into VoiceCommandEvent messages.
@@ -29,11 +32,8 @@ fn inject_voice_events(
     mut queue: ResMut<VoiceInjectionQueue>,
     mut writer: MessageWriter<VoiceCommandEvent>,
 ) {
-    for (keyword, confidence) in queue.keywords.drain(..) {
-        writer.write(VoiceCommandEvent {
-            keyword,
-            confidence,
-        });
+    for text in queue.texts.drain(..) {
+        writer.write(VoiceCommandEvent { text });
     }
 }
 
@@ -105,18 +105,12 @@ fn spawn_building(
         .id()
 }
 
-fn say(world: &mut World, keyword: &str) {
+/// Say a full transcription phrase (e.g. "all attack", "hisser stop").
+fn say(world: &mut World, text: &str) {
     world
         .resource_mut::<VoiceInjectionQueue>()
-        .keywords
-        .push((keyword.into(), 0.95));
-}
-
-fn say_many(world: &mut World, keywords: &[&str]) {
-    let mut queue = world.resource_mut::<VoiceInjectionQueue>();
-    for kw in keywords {
-        queue.keywords.push(((*kw).into(), 0.95));
-    }
+        .texts
+        .push(text.into());
 }
 
 fn drain_commands(world: &mut World) -> Vec<GameCommand> {
@@ -181,7 +175,7 @@ fn voice_defend_maps_to_hold_position() {
 }
 
 // ---------------------------------------------------------------------------
-// Tests: Unit filter
+// Tests: Unit filter (full text — "hisser stop" in one event)
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -192,7 +186,7 @@ fn voice_unit_filter_then_stop() {
     spawn_owned_unit(&mut world, GridPos::new(7, 7), 0, UnitKind::Hisser);
 
     // "hisser stop" — should only stop hissers (2 units), not the chonk
-    say_many(&mut world, &["hisser", "stop"]);
+    say(&mut world, "hisser stop");
     tick(&mut world, &mut schedule);
 
     let cmds = drain_commands(&mut world);
@@ -217,7 +211,7 @@ fn voice_army_selector_excludes_workers() {
     spawn_owned_unit(&mut world, GridPos::new(7, 7), 0, UnitKind::Chonk);
     spawn_owned_unit(&mut world, GridPos::new(8, 8), 0, UnitKind::Hisser);
 
-    say_many(&mut world, &["army", "stop"]);
+    say(&mut world, "army stop");
     tick(&mut world, &mut schedule);
 
     let cmds = drain_commands(&mut world);
@@ -237,7 +231,7 @@ fn voice_workers_selector_includes_only_workers() {
     spawn_owned_unit(&mut world, GridPos::new(6, 6), 0, UnitKind::Chonk);
     spawn_owned_unit(&mut world, GridPos::new(7, 7), 0, UnitKind::Hisser);
 
-    say_many(&mut world, &["workers", "stop"]);
+    say(&mut world, "workers stop");
     tick(&mut world, &mut schedule);
 
     let cmds = drain_commands(&mut world);
@@ -266,7 +260,7 @@ fn voice_nearby_filters_by_cursor_distance() {
 
     world.resource_mut::<CursorGridPos>().pos = Some(GridPos::new(10, 10));
 
-    say_many(&mut world, &["nearby", "stop"]);
+    say(&mut world, "nearby stop");
     tick(&mut world, &mut schedule);
 
     let cmds = drain_commands(&mut world);
@@ -290,7 +284,7 @@ fn voice_nearby_without_cursor_falls_back_to_all() {
     spawn_owned_unit(&mut world, GridPos::new(25, 25), 0, UnitKind::Hisser);
 
     // No cursor position set (default is None)
-    say_many(&mut world, &["nearby", "stop"]);
+    say(&mut world, "nearby stop");
     tick(&mut world, &mut schedule);
 
     let cmds = drain_commands(&mut world);
@@ -314,7 +308,7 @@ fn voice_nearby_boundary_distance_10_included() {
 
     world.resource_mut::<CursorGridPos>().pos = Some(GridPos::new(10, 10));
 
-    say_many(&mut world, &["nearby", "stop"]);
+    say(&mut world, "nearby stop");
     tick(&mut world, &mut schedule);
 
     let cmds = drain_commands(&mut world);
@@ -440,7 +434,7 @@ fn voice_retreat_targets_non_catgpt_hq() {
 }
 
 // ---------------------------------------------------------------------------
-// Tests: Move with direction
+// Tests: Move with direction (full text)
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -448,8 +442,8 @@ fn voice_north_move_offsets_from_map_center() {
     let (mut world, mut schedule) = make_voice_sim(GameMap::new(64, 64));
     spawn_owned_unit(&mut world, GridPos::new(30, 30), 0, UnitKind::Chonk);
 
-    // "north move" → center(32,32) + (-15,-15) = (17,17)
-    say_many(&mut world, &["north", "move"]);
+    // "move north" → center(32,32) + (-15,-15) = (17,17)
+    say(&mut world, "move north");
     tick(&mut world, &mut schedule);
 
     let cmds = drain_commands(&mut world);
@@ -467,7 +461,7 @@ fn voice_south_move_offsets_from_map_center() {
     let (mut world, mut schedule) = make_voice_sim(GameMap::new(64, 64));
     spawn_owned_unit(&mut world, GridPos::new(30, 30), 0, UnitKind::Chonk);
 
-    say_many(&mut world, &["south", "move"]);
+    say(&mut world, "move south");
     tick(&mut world, &mut schedule);
 
     let cmds = drain_commands(&mut world);
@@ -487,7 +481,7 @@ fn voice_west_move_offsets_from_map_center() {
     spawn_owned_unit(&mut world, GridPos::new(30, 30), 0, UnitKind::Chonk);
 
     // center(32,32) + (-15, +15) = (17, 47)
-    say_many(&mut world, &["west", "move"]);
+    say(&mut world, "move west");
     tick(&mut world, &mut schedule);
 
     let cmds = drain_commands(&mut world);
@@ -542,7 +536,7 @@ fn voice_charge_issues_attack_move() {
 }
 
 // ---------------------------------------------------------------------------
-// Tests: Build command
+// Tests: Build command (full text — "tower build" in one event)
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -555,7 +549,7 @@ fn voice_build_tower_finds_worker_and_site() {
 
     world.resource_mut::<CursorGridPos>().pos = Some(GridPos::new(10, 10));
 
-    say_many(&mut world, &["tower", "build"]);
+    say(&mut world, "tower build");
     tick(&mut world, &mut schedule);
 
     let cmds = drain_commands(&mut world);
@@ -602,7 +596,7 @@ fn voice_build_uses_faction_buildings() {
 
     world.resource_mut::<CursorGridPos>().pos = Some(GridPos::new(10, 10));
 
-    say_many(&mut world, &["barracks", "build"]);
+    say(&mut world, "barracks build");
     tick(&mut world, &mut schedule);
 
     let cmds = drain_commands(&mut world);
@@ -628,7 +622,7 @@ fn voice_build_selects_nearest_worker() {
 
     world.resource_mut::<CursorGridPos>().pos = Some(GridPos::new(10, 10));
 
-    say_many(&mut world, &["tower", "build"]);
+    say(&mut world, "tower build");
     tick(&mut world, &mut schedule);
 
     let cmds = drain_commands(&mut world);
@@ -647,7 +641,7 @@ fn voice_build_selects_nearest_worker() {
 }
 
 // ---------------------------------------------------------------------------
-// Tests: Cancel clears pending state
+// Tests: Cancel clears pending state (within one utterance)
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -658,7 +652,7 @@ fn voice_cancel_clears_pending_state() {
 
     // "hisser cancel stop" — cancel should clear the hisser filter,
     // so stop targets all units
-    say_many(&mut world, &["hisser", "cancel", "stop"]);
+    say(&mut world, "hisser cancel stop");
     tick(&mut world, &mut schedule);
 
     let cmds = drain_commands(&mut world);
@@ -672,90 +666,68 @@ fn voice_cancel_clears_pending_state() {
 }
 
 // ---------------------------------------------------------------------------
-// Tests: Multi-tick keyword accumulation
+// Tests: Full text phrases (Whisper-style output)
 // ---------------------------------------------------------------------------
 
 #[test]
-fn voice_keywords_accumulate_across_ticks() {
+fn voice_all_attack_in_one_phrase() {
     let (mut world, mut schedule) = make_voice_sim(GameMap::new(64, 64));
-    spawn_owned_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Chonk);
-    spawn_owned_unit(&mut world, GridPos::new(6, 6), 0, UnitKind::Hisser);
+    spawn_owned_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Hisser);
+    spawn_owned_unit(&mut world, GridPos::new(50, 50), 1, UnitKind::Chonk);
 
-    // Tick 1: say "hisser" (sets filter)
-    say(&mut world, "hisser");
-    tick(&mut world, &mut schedule);
-    assert!(drain_commands(&mut world).is_empty(), "filter alone produces no command");
-
-    // Tick 2: say "stop" (executes with pending filter)
-    say(&mut world, "stop");
+    say(&mut world, "all attack");
     tick(&mut world, &mut schedule);
 
     let cmds = drain_commands(&mut world);
     assert_eq!(cmds.len(), 1);
-    match &cmds[0] {
-        GameCommand::Stop { unit_ids } => {
-            assert_eq!(unit_ids.len(), 1, "hisser filter should persist across ticks");
-        }
-        other => panic!("expected Stop, got: {other:?}"),
-    }
+    assert!(matches!(&cmds[0], GameCommand::AttackMove { .. }));
 }
 
 #[test]
-fn voice_direction_persists_across_ticks() {
+fn voice_army_move_south_in_one_phrase() {
     let (mut world, mut schedule) = make_voice_sim(GameMap::new(64, 64));
-    spawn_owned_unit(&mut world, GridPos::new(30, 30), 0, UnitKind::Chonk);
+    spawn_owned_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Pawdler);
+    spawn_owned_unit(&mut world, GridPos::new(6, 6), 0, UnitKind::Chonk);
 
-    // Tick 1: say "east"
-    say(&mut world, "east");
-    tick(&mut world, &mut schedule);
-    assert!(drain_commands(&mut world).is_empty());
-
-    // Tick 2: say "move"
-    say(&mut world, "move");
+    say(&mut world, "army move south");
     tick(&mut world, &mut schedule);
 
     let cmds = drain_commands(&mut world);
     assert_eq!(cmds.len(), 1);
     match &cmds[0] {
-        GameCommand::Move { target, .. } => {
-            // east on 64x64: center(32,32) + (15,-15) = (47,17)
-            assert_eq!(*target, GridPos::new(47, 17));
+        GameCommand::Move { unit_ids, target } => {
+            assert_eq!(unit_ids.len(), 1, "army excludes workers (pawdler)");
+            assert_eq!(*target, GridPos::new(47, 47));
         }
         other => panic!("expected Move, got: {other:?}"),
     }
 }
 
-// ---------------------------------------------------------------------------
-// Tests: Pending state clears after command execution
-// ---------------------------------------------------------------------------
-
 #[test]
-fn voice_pending_filter_clears_after_command() {
+fn voice_no_action_keyword_produces_nothing() {
     let (mut world, mut schedule) = make_voice_sim(GameMap::new(32, 32));
     spawn_owned_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Chonk);
-    spawn_owned_unit(&mut world, GridPos::new(6, 6), 0, UnitKind::Hisser);
 
-    // "hisser stop" → targets only hissers
-    say_many(&mut world, &["hisser", "stop"]);
+    // No action keyword in the text
+    say(&mut world, "hisser north");
     tick(&mut world, &mut schedule);
+
+    let cmds = drain_commands(&mut world);
+    assert!(cmds.is_empty(), "no action keyword → no command");
+}
+
+#[test]
+fn voice_whisper_filler_words_ignored() {
+    let (mut world, mut schedule) = make_voice_sim(GameMap::new(32, 32));
+    spawn_owned_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Chonk);
+
+    // Whisper might add filler — unrecognized words should be skipped
+    say(&mut world, "um uh stop please");
+    tick(&mut world, &mut schedule);
+
     let cmds = drain_commands(&mut world);
     assert_eq!(cmds.len(), 1);
-    match &cmds[0] {
-        GameCommand::Stop { unit_ids } => assert_eq!(unit_ids.len(), 1),
-        _ => panic!("expected Stop"),
-    }
-
-    // Next "stop" without filter → targets all units
-    say(&mut world, "stop");
-    tick(&mut world, &mut schedule);
-    let cmds = drain_commands(&mut world);
-    assert_eq!(cmds.len(), 1);
-    match &cmds[0] {
-        GameCommand::Stop { unit_ids } => {
-            assert_eq!(unit_ids.len(), 2, "filter should be cleared after first command");
-        }
-        _ => panic!("expected Stop"),
-    }
+    assert!(matches!(&cmds[0], GameCommand::Stop { .. }));
 }
 
 // ---------------------------------------------------------------------------
@@ -793,4 +765,38 @@ fn voice_commands_tagged_with_player_0() {
         Some(0),
         "voice commands should be tagged with player_id 0"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Tests: Multiple commands in separate events
+// ---------------------------------------------------------------------------
+
+#[test]
+fn voice_consecutive_commands_are_independent() {
+    let (mut world, mut schedule) = make_voice_sim(GameMap::new(32, 32));
+    spawn_owned_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Chonk);
+    spawn_owned_unit(&mut world, GridPos::new(6, 6), 0, UnitKind::Hisser);
+
+    // First command: filter to hissers
+    say(&mut world, "hisser stop");
+    tick(&mut world, &mut schedule);
+    let cmds = drain_commands(&mut world);
+    assert_eq!(cmds.len(), 1);
+    match &cmds[0] {
+        GameCommand::Stop { unit_ids } => assert_eq!(unit_ids.len(), 1),
+        _ => panic!("expected Stop"),
+    }
+
+    // Second command: no filter — targets all units
+    // (no cross-tick accumulation anymore)
+    say(&mut world, "stop");
+    tick(&mut world, &mut schedule);
+    let cmds = drain_commands(&mut world);
+    assert_eq!(cmds.len(), 1);
+    match &cmds[0] {
+        GameCommand::Stop { unit_ids } => {
+            assert_eq!(unit_ids.len(), 2, "second command should target all units");
+        }
+        _ => panic!("expected Stop"),
+    }
 }
