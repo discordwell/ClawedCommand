@@ -298,6 +298,10 @@ def download_and_process(slug: str) -> bool:
         out_path = OUT_DIR / f"{slug}_idle.png"
         canvas.save(str(out_path))
         print(f"    {cropped.width}x{cropped.height} -> 128x128")
+    else:
+        print(f"    Empty image (no bounding box)")
+        dl_path.unlink()
+        return False
 
     dl_path.unlink()
     return True
