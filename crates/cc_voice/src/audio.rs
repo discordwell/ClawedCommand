@@ -9,13 +9,13 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 #[cfg(feature = "voice")]
 use ringbuf::{
-    traits::{Producer, Split},
     HeapRb,
+    traits::{Producer, Split},
 };
 #[cfg(feature = "voice")]
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc,
+    atomic::{AtomicBool, Ordering},
 };
 
 /// Capacity of the ring buffer in samples (2 seconds at 16kHz).
@@ -27,10 +27,8 @@ const RING_BUFFER_CAPACITY: usize = 32000;
 /// Returns a consumer for reading samples and an `is_active` flag.
 /// The cpal Stream is kept alive by a dedicated thread (avoiding Send/Sync issues).
 #[cfg(feature = "voice")]
-pub fn start_capture() -> Result<
-    (ringbuf::HeapCons<f32>, Arc<AtomicBool>),
-    Box<dyn std::error::Error>,
-> {
+pub fn start_capture()
+-> Result<(ringbuf::HeapCons<f32>, Arc<AtomicBool>), Box<dyn std::error::Error>> {
     let host = cpal::default_host();
     let device = host
         .default_input_device()
@@ -38,11 +36,23 @@ pub fn start_capture() -> Result<
 
     log::info!("Audio input device: {:?}", device.name());
 
+    // Use the device's default config, then resample to 16kHz mono.
+    // Most devices (e.g. MacBook mic) only support 48kHz natively.
+    let default_config = device.default_input_config()?;
+    let native_rate = default_config.sample_rate().0;
+    let native_channels = default_config.channels() as usize;
+
     let config = cpal::StreamConfig {
-        channels: 1,
-        sample_rate: cpal::SampleRate(16000),
+        channels: native_channels as u16,
+        sample_rate: cpal::SampleRate(native_rate),
         buffer_size: cpal::BufferSize::Default,
     };
+
+    log::info!(
+        "Audio capture: {}Hz {}ch → resample to 16kHz mono",
+        native_rate,
+        native_channels,
+    );
 
     let rb = HeapRb::<f32>::new(RING_BUFFER_CAPACITY);
     let (mut producer, consumer) = rb.split();
@@ -50,15 +60,46 @@ pub fn start_capture() -> Result<
     let is_active = Arc::new(AtomicBool::new(true));
     let is_active_clone = is_active.clone();
 
-    // Keep the stream alive on a dedicated thread (cpal::Stream is !Send on some platforms)
+    // Resampling state: average consecutive native-rate mono samples to produce
+    // 16kHz output. This acts as a low-pass anti-aliasing filter (box filter)
+    // rather than simple decimation which creates aliasing artifacts.
+    let ratio = native_rate as f64 / 16000.0;
+    let mut accum = 0.0f32;
+    let mut accum_count = 0u32;
+    let mut frac_pos = 0.0f64;
+
     let stream = device.build_input_stream(
         &config,
         move |data: &[f32], _: &cpal::InputCallbackInfo| {
             if !is_active_clone.load(Ordering::Relaxed) {
                 return;
             }
-            for &sample in data {
-                let _ = producer.try_push(sample);
+            // Downmix to mono frame-by-frame, then average-and-decimate to 16kHz.
+            // For 48kHz→16kHz (ratio=3), this averages every 3 mono samples into 1,
+            // which low-pass filters the signal before decimation.
+            let mut i = 0;
+            while i + native_channels <= data.len() {
+                // Downmix this frame to mono
+                let mut sum = 0.0f32;
+                for ch in 0..native_channels {
+                    sum += data[i + ch];
+                }
+                let mono = sum / native_channels as f32;
+                i += native_channels;
+
+                // Accumulate for averaging
+                accum += mono;
+                accum_count += 1;
+                frac_pos += 1.0;
+
+                // Emit a 16kHz sample when we've accumulated enough native samples
+                if frac_pos >= ratio {
+                    let sample = accum / accum_count as f32;
+                    let _ = producer.try_push(sample);
+                    accum = 0.0;
+                    accum_count = 0;
+                    frac_pos -= ratio;
+                }
             }
         },
         move |err| {

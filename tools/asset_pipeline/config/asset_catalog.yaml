@@ -1440,6 +1440,761 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/mech_commander_attack.png
+  # --- The Clawed (Mice) --- idle sprites ---
+  nibblet_idle:
+    template: unit_static
+    status: game_ready
+    params:
+      name: Nibblet
+      pose: standing with tiny gathering basket, twitchy and alert
+      description: Mouse worker unit. Tiny, nervous, fast. Carries an oversized seed basket.
+        Always looking over its shoulder.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Worker unit. Should look small and industrious. Twitchy ears.
+    output:
+      type: single
+      game_path: assets/sprites/units/nibblet_idle.png
+  swarmer_idle:
+    template: unit_static
+    status: game_ready
+    params:
+      name: Swarmer
+      pose: hunched and ready, teeth bared
+      description: Tiny expendable mouse infantry. Barely armed, relies on numbers.
+        Sharp teeth, scruffy fur, improvised weapon.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Light infantry. Smallest unit sprite. Should look disposable but fierce in groups.
+    output:
+      type: single
+      game_path: assets/sprites/units/swarmer_idle.png
+  gnawer_idle:
+    template: unit_static
+    status: game_ready
+    params:
+      name: Gnawer
+      pose: crouched near a wall, teeth glowing
+      description: Anti-structure mouse specialist. Oversized incisors that can chew through
+        anything. Wears reinforced jaw brace.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Anti-structure unit. Emphasis on massive teeth. Jaw brace visible.
+    output:
+      type: single
+      game_path: assets/sprites/units/gnawer_idle.png
+  shrieker_idle:
+    template: unit_static
+    status: game_ready
+    params:
+      name: Shrieker
+      pose: standing on hind legs, mouth open mid-shriek
+      description: Mouse ranged harasser. Emits piercing sonic shrieks that damage at range.
+        Oversized ears, wide open mouth, visible sound waves.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Ranged harasser. Emphasis on open mouth and sound waves.
+    output:
+      type: single
+      game_path: assets/sprites/units/shrieker_idle.png
+  tunneler_idle:
+    template: unit_static
+    status: game_ready
+    params:
+      name: Tunneler
+      pose: half-emerged from ground, dirt flying
+      description: Mouse transport/utility unit. Digs tunnels for rapid troop movement.
+        Wears mining helmet, claws caked in dirt, emerging from a hole.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Transport utility. Half-in-ground visual. Mining helmet and dirty claws.
+    output:
+      type: single
+      game_path: assets/sprites/units/tunneler_idle.png
+  sparks_idle:
+    template: unit_static
+    status: game_ready
+    params:
+      name: Sparks
+      pose: holding sparking device, slightly singed fur
+      description: Mouse saboteur with improvised electrical weapons. Singed whiskers,
+        wild eyes, carrying a crackling device made from scavenged electronics.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Saboteur. Electricity visual effects. Singed and slightly manic.
+    output:
+      type: single
+      game_path: assets/sprites/units/sparks_idle.png
+  quillback_idle:
+    template: unit_static
+    status: game_ready
+    params:
+      name: Quillback
+      pose: hunched defensively, quills raised
+      description: Heavy mouse defender. Hedgehog-mouse hybrid with raised defensive
+        quills. Thick-set, armored with natural spines. Immovable stance.
+      width: 148
+      height: 148
+      direction: south-east
+      extra_notes: Heavy defender. Larger sprite. Quill silhouette is key visual.
+    output:
+      type: single
+      game_path: assets/sprites/units/quillback_idle.png
+  whiskerwitch_idle:
+    template: unit_static
+    status: game_ready
+    params:
+      name: Whiskerwitch
+      pose: floating slightly, paws glowing with energy
+      description: Mouse caster/support unit. Mystical elder mouse with glowing whiskers
+        and floating herbs. Casts buffs and debuffs. Tiny spectacles.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Caster support. Mystical visual. Glowing whiskers and floating herbs.
+    output:
+      type: single
+      game_path: assets/sprites/units/whiskerwitch_idle.png
+  plaguetail_idle:
+    template: unit_static
+    status: game_ready
+    params:
+      name: Plaguetail
+      pose: crouched, tail dripping with green toxin
+      description: Mouse area denial unit. Sickly green-tinged fur, toxic dripping tail.
+        Leaves poison trails that damage enemies over time.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Area denial. Green toxic visual on tail. Sickly but dangerous.
+    output:
+      type: single
+      game_path: assets/sprites/units/plaguetail_idle.png
+  warren_marshal_idle:
+    template: unit_static
+    status: game_ready
+    params:
+      name: Warren Marshal
+      pose: standing tall with command staff, cape flowing
+      description: Mouse hero commander. Largest mouse unit, wearing scavenged armor and
+        a flowing cape. Carries a command staff topped with a glowing acorn.
+      width: 192
+      height: 192
+      direction: south-east
+      extra_notes: Hero unit. Largest mouse. Imposing for a mouse. Command aura visible.
+    output:
+      type: single
+      game_path: assets/sprites/units/warren_marshal_idle.png
+  # --- The Murder (Corvids) --- idle sprites ---
+  murder_scrounger_idle:
+    template: unit_static
+    status: game_ready
+    params:
+      name: Murder Scrounger
+      pose: hopping on ground, picking at shiny objects
+      description: Corvid worker unit. Scruffy crow collecting shiny objects. Carries a
+        satchel overflowing with trinkets. Beady eyes scanning for loot.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Worker unit. Ground-based crow. Shiny object obsession visible.
+    output:
+      type: single
+      game_path: assets/sprites/units/murder_scrounger_idle.png
+  sentinel_idle:
+    template: unit_static
+    status: game_ready
+    params:
+      name: Sentinel
+      pose: perched alert, scanning with one eye
+      description: Corvid ranged scout. Tall, thin bird perched on a vantage point.
+        One eye zoomed in like a telescope. Long-range spotter.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Ranged scout. Tall and thin silhouette. Telescope eye visual.
+    output:
+      type: single
+      game_path: assets/sprites/units/sentinel_idle.png
+  rookclaw_idle:
+    template: unit_static
+    status: game_ready
+    params:
+      name: Rookclaw
+      pose: wings half-spread, talons forward, diving stance
+      description: Corvid melee dive striker. Large rook with razor talons, wings spread
+        for a dive attack. Aggressive, fast, hits hard.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Melee dive striker. Wings spread silhouette. Emphasis on talons.
+    output:
+      type: single
+      game_path: assets/sprites/units/rookclaw_idle.png
+  magpike_idle:
+    template: unit_static
+    status: game_ready
+    params:
+      name: Magpike
+      pose: hovering with stolen tech device, mischievous look
+      description: Corvid disruptor/thief. Magpie with stolen technology strapped to its
+        body. Disrupts enemy abilities and steals resources.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Disruptor. Stolen tech visible on body. Mischievous expression.
+    output:
+      type: single
+      game_path: assets/sprites/units/magpike_idle.png
+  magpyre_idle:
+    template: unit_static
+    status: game_ready
+    params:
+      name: Magpyre
+      pose: wings glowing with fire energy, intense stare
+      description: Corvid saboteur. Dark magpie wreathed in stolen fire energy.
+        Burns enemy structures. Pyromaniac tendencies.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Saboteur. Fire/energy glow on wings. Dark plumage with orange accents.
+    output:
+      type: single
+      game_path: assets/sprites/units/magpyre_idle.png
+  jaycaller_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Jaycaller
+      pose: chest puffed, beak open, commanding stance
+      description: Corvid support/buffer. Blue jay with commanding presence. Rallies
+        nearby allies with piercing calls. Buff aura visible.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Support buffer. Blue jay coloring. Sound/buff aura radiating outward.
+    output:
+      type: single
+      game_path: assets/sprites/units/jaycaller_idle.png
+  jayflicker_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Jayflicker
+      pose: semi-transparent, flickering between visible and invisible
+      description: Corvid illusion specialist. Shimmering jay that phases in and out
+        of visibility. Creates decoy copies. Zodiac symbol on chest.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Illusion unit. Semi-transparent visual. Flickering/phasing effect.
+    output:
+      type: single
+      game_path: assets/sprites/units/jayflicker_idle.png
+  dusktalon_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Dusktalon
+      pose: emerging from shadows, talons gleaming
+      description: Corvid stealth assassin. Jet-black bird emerging from shadow. Talons
+        dripping with venom. Silent killer, highest single-target damage.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Stealth assassin. Dark silhouette. Shadow visual effect. Venomous talons.
+    output:
+      type: single
+      game_path: assets/sprites/units/dusktalon_idle.png
+  hootseer_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Hootseer
+      pose: perched with eyes glowing, mystical runes floating
+      description: Corvid area denial/debuffer. Great horned owl with glowing eyes and
+        floating zodiac runes. Debuffs enemies in area. Astrology-themed.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Area debuffer. Owl silhouette. Glowing eyes and floating zodiac runes.
+    output:
+      type: single
+      game_path: assets/sprites/units/hootseer_idle.png
+  corvus_rex_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Corvus Rex
+      pose: perched on throne of bones, crown of stars
+      description: Corvid hero unit. Massive raven king with crown of constellation
+        stars. Commands all corvids. Gemineye's avatar on the battlefield.
+      width: 192
+      height: 192
+      direction: south-east
+      extra_notes: Hero unit. Largest corvid. Crown of stars. Imposing raven king silhouette.
+    output:
+      type: single
+      game_path: assets/sprites/units/corvus_rex_idle.png
+  # --- Seekers of the Deep (Badgers) --- idle sprites ---
+  delver_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Delver
+      pose: standing with pickaxe and lantern, sturdy
+      description: Badger worker unit. Stocky badger miner with pickaxe and lantern.
+        Sturdy leather apron, dirt-stained paws.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Worker unit. Stocky and sturdy. Mining gear visible.
+    output:
+      type: single
+      game_path: assets/sprites/units/delver_idle.png
+  ironhide_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Ironhide
+      pose: standing firm with massive shield, immovable
+      description: Badger heavy infantry. Enormous badger in layered stone and iron armor.
+        Carries a tower shield almost as big as itself. Immovable.
+      width: 148
+      height: 148
+      direction: south-east
+      extra_notes: Heavy infantry. Larger sprite. Massive shield silhouette. Tank unit.
+    output:
+      type: single
+      game_path: assets/sprites/units/ironhide_idle.png
+  cragback_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Cragback
+      pose: hunched with boulder cannon on back, stone-plated
+      description: Badger siege tank. Massive armored badger with a boulder-launching
+        cannon strapped to its back. Stone plates fused to its hide.
+      width: 148
+      height: 148
+      direction: south-east
+      extra_notes: Siege tank. Larger sprite. Boulder cannon is key visual. Stone armor plating.
+    output:
+      type: single
+      game_path: assets/sprites/units/cragback_idle.png
+  warden_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Warden
+      pose: standing guard with halberd, vigilant expression
+      description: Badger defensive support. Armored badger guard with halberd and
+        glowing defensive ward. Protects nearby allies.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Defensive support. Halberd and shield ward visual. Protective stance.
+    output:
+      type: single
+      game_path: assets/sprites/units/warden_idle.png
+  sapjaw_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Sapjaw
+      pose: jaw open showing reinforced teeth, aggressive
+      description: Badger anti-armor specialist. Powerful jaws reinforced with metal.
+        Can bite through any armor. Aggressive, muscular build.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Anti-armor melee. Metal-reinforced jaw is key visual. Muscular build.
+    output:
+      type: single
+      game_path: assets/sprites/units/sapjaw_idle.png
+  wardenmother_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Wardenmother
+      pose: standing with ancestral war-hammer, regal and ancient
+      description: Badger hero unit. Ancient matriarch badger in ceremonial stone armor.
+        Carries an ancestral war-hammer. Deepseek's avatar.
+      width: 192
+      height: 192
+      direction: south-east
+      extra_notes: Hero unit. Regal ancient matriarch. Largest badger. Stone armor and war-hammer.
+    output:
+      type: single
+      game_path: assets/sprites/units/wardenmother_idle.png
+  seeker_tunneler_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Seeker Tunneler
+      pose: digging stance, claws extended, wearing goggles
+      description: Badger tunneling utility. Specialized digging badger with reinforced
+        claws and mining goggles. Creates underground passages.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Tunneling utility. Goggles and reinforced claws. Dirt-spraying visual.
+    output:
+      type: single
+      game_path: assets/sprites/units/seeker_tunneler_idle.png
+  embermaw_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Embermaw
+      pose: mouth glowing with ember fire, smoke rising
+      description: Badger ranged fire unit. Badger with a furnace-like mouth that spits
+        molten rock. Ember glow from within. Smoke wisps from nostrils.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Ranged fire unit. Glowing mouth is key visual. Smoke and ember effects.
+    output:
+      type: single
+      game_path: assets/sprites/units/embermaw_idle.png
+  dustclaw_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Dustclaw
+      pose: low stance, claws out, ready to dash
+      description: Badger fast melee unit. Lean, agile badger built for speed. Dust
+        cloud at feet. Fastest badger unit.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Fast melee. Lean build (unusual for badger). Speed lines/dust cloud.
+    output:
+      type: single
+      game_path: assets/sprites/units/dustclaw_idle.png
+  gutripper_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Gutripper
+      pose: standing with blood-stained claws, menacing
+      description: Badger heavy melee bruiser. Scarred, battle-hardened badger with
+        massive claws. Pure aggression. Covered in battle marks.
+      width: 148
+      height: 148
+      direction: south-east
+      extra_notes: Heavy melee. Larger sprite. Scarred and battle-hardened. Menacing claws.
+    output:
+      type: single
+      game_path: assets/sprites/units/gutripper_idle.png
+  # --- Croak (Axolotls) --- idle sprites ---
+  ponderer_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Ponderer
+      pose: standing with collection net, contemplative expression
+      description: Axolotl worker unit. Cute axolotl with external gills, carrying a
+        collection net. Philosophical expression. Slowly blinks.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Worker unit. Cute axolotl with visible gills. Collection net. Teal/purple palette.
+    output:
+      type: single
+      game_path: assets/sprites/units/ponderer_idle.png
+  regeneron_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Regeneron
+      pose: mid-regeneration, one limb glowing
+      description: Axolotl light skirmisher. Fast axolotl with visible regeneration —
+        one limb partially translucent and regrowing. Hard to kill permanently.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Light skirmisher. Regeneration visual on limb. Translucent glow effect.
+    output:
+      type: single
+      game_path: assets/sprites/units/regeneron_idle.png
+  broodmother_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Broodmother
+      pose: surrounded by small spawn, nurturing stance
+      description: Axolotl healer/support. Large maternal axolotl surrounded by tiny
+        spawn. Heals allies by sharing regenerative enzymes. Bioluminescent glow.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Healer support. Surrounded by tiny spawn. Bioluminescent healing aura.
+    output:
+      type: single
+      game_path: assets/sprites/units/broodmother_idle.png
+  gulper_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Gulper
+      pose: wide mouth open, massive and round
+      description: Axolotl heavy bruiser. Enormous bullfrog-axolotl hybrid with a mouth
+        that can swallow units whole. Round, heavy, devastating melee.
+      width: 148
+      height: 148
+      direction: south-east
+      extra_notes: Heavy bruiser. Larger sprite. Enormous mouth is key visual. Round and heavy.
+    output:
+      type: single
+      game_path: assets/sprites/units/gulper_idle.png
+  eftsaber_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Eftsaber
+      pose: dual-wielding bone blades, crouched to strike
+      description: Axolotl assassin/flanker. Sleek newt-like axolotl with dual bone
+        blades. Fast, deadly, strikes from flanks. Red belly warning coloration.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Assassin flanker. Dual bone blades. Sleek build. Red belly warning colors.
+    output:
+      type: single
+      game_path: assets/sprites/units/eftsaber_idle.png
+  croaker_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Croaker
+      pose: throat sac inflated, preparing to launch projectile
+      description: Axolotl ranged artillery. Squat axolotl with inflated vocal sac that
+        launches toxic globs at long range. Teal and purple coloring.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Ranged artillery. Inflated throat sac is key visual. Long-range unit.
+    output:
+      type: single
+      game_path: assets/sprites/units/croaker_idle.png
+  leapfrog_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Leapfrog
+      pose: crouched ready to leap, powerful hind legs
+      description: Axolotl mobile harasser. Frog-axolotl hybrid with oversized hind legs.
+        Leaps over obstacles and enemies. Hit-and-run specialist.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Mobile harasser. Oversized hind legs. Crouched leap-ready pose.
+    output:
+      type: single
+      game_path: assets/sprites/units/leapfrog_idle.png
+  shellwarden_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Shellwarden
+      pose: retracted into shell, only eyes and legs visible
+      description: Axolotl tank/defender. Turtle-axolotl hybrid with massive shell.
+        Can retract fully for near-invulnerability. Slowest but toughest Croak unit.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Tank defender. Shell is key visual. Near-invulnerable when retracted.
+    output:
+      type: single
+      game_path: assets/sprites/units/shellwarden_idle.png
+  bogwhisper_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Bogwhisper
+      pose: floating in mist, eyes glowing, tendrils of fog
+      description: Axolotl support/caster. Ethereal axolotl wreathed in swamp mist.
+        Casts debuffs and area effects. Whispers carry on the fog.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Support caster. Misty/ethereal visual. Glowing eyes in fog. Spooky.
+    output:
+      type: single
+      game_path: assets/sprites/units/bogwhisper_idle.png
+  murk_commander_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Murk Commander
+      pose: standing in shallow water, trident raised, bioluminescent crown
+      description: Axolotl hero unit. Massive axolotl king with bioluminescent crown
+        and coral trident. Grok's avatar. Commands through HP differential calculus.
+      width: 192
+      height: 192
+      direction: south-east
+      extra_notes: Hero unit. Largest axolotl. Bioluminescent crown and coral trident. Regal.
+    output:
+      type: single
+      game_path: assets/sprites/units/murk_commander_idle.png
+  # --- LLAMA (Raccoons) --- idle sprites ---
+  scrounger_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Scrounger
+      pose: rummaging through trash, holding a shiny find
+      description: Raccoon worker unit. Scruffy raccoon with bandit mask, rummaging
+        through garbage. Carries a burlap sack. Finds value in everything.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Worker unit. Classic raccoon bandit mask. Burlap sack and trash rummaging.
+    output:
+      type: single
+      game_path: assets/sprites/units/scrounger_idle.png
+  bandit_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Bandit
+      pose: crouched with makeshift weapon, sneaky expression
+      description: Raccoon light harasser. Quick raccoon with improvised shiv made from
+        a sharpened can lid. Fast, cheap, annoying. Classic trash bandit.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Light harasser. Improvised can-lid weapon. Sneaky and fast.
+    output:
+      type: single
+      game_path: assets/sprites/units/bandit_idle.png
+  heap_titan_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Heap Titan
+      pose: standing in scrap armor, massive and slow
+      description: Raccoon heavy tank. Enormous raccoon wearing armor made entirely of
+        scrap metal, car doors, and road signs. Slow but nearly indestructible.
+      width: 148
+      height: 148
+      direction: south-east
+      extra_notes: Heavy tank. Larger sprite. Scrap armor silhouette. Road sign shoulder pads.
+    output:
+      type: single
+      game_path: assets/sprites/units/heap_titan_idle.png
+  glitch_rat_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Glitch Rat
+      pose: twitching with sparking electronics, glitchy visual
+      description: Raccoon saboteur. Tiny, hyperactive raccoon wired into stolen
+        electronics. Moves erratically. Disrupts enemy tech. Sparking and glitchy.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Saboteur. Smallest raccoon. Sparking electronics. Glitch visual effect.
+    output:
+      type: single
+      game_path: assets/sprites/units/glitch_rat_idle.png
+  patch_possum_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Patch Possum
+      pose: standing with medkit made of duct tape and bandages
+      description: Raccoon support/healer. Possum ally with a first-aid kit cobbled from
+        duct tape and stolen bandages. Plays dead when threatened.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Support healer. Possum (not raccoon). Duct-tape medkit. Can play dead.
+    output:
+      type: single
+      game_path: assets/sprites/units/patch_possum_idle.png
+  grease_monkey_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Grease Monkey
+      pose: holding wrench-launcher, oil-stained
+      description: Raccoon ranged unit. Grease-covered raccoon mechanic with a wrench
+        that doubles as a projectile launcher. Oil-stained overalls.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Ranged unit. Wrench-launcher weapon. Oil stains and mechanic aesthetic.
+    output:
+      type: single
+      game_path: assets/sprites/units/grease_monkey_idle.png
+  dead_drop_unit_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Dead Drop
+      pose: pressed against wall, nearly invisible, holding intel
+      description: Raccoon stealth scout. Dark-furred raccoon specialist in espionage.
+        Carries stolen documents. Nearly invisible when still.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Stealth scout. Dark fur. Pressed-against-wall visual. Intel documents.
+    output:
+      type: single
+      game_path: assets/sprites/units/dead_drop_unit_idle.png
+  wrecker_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Wrecker
+      pose: swinging wrecking ball made from a bowling ball on chain
+      description: Raccoon anti-structure unit. Beefy raccoon swinging a makeshift
+        wrecking ball — bowling ball on a chain. Demolishes buildings.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Anti-structure. Bowling ball wrecking weapon. Beefy raccoon build.
+    output:
+      type: single
+      game_path: assets/sprites/units/wrecker_idle.png
+  dumpster_diver_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Dumpster Diver
+      pose: emerging from dumpster with chemical vials
+      description: Raccoon area denial. Raccoon that weaponizes dumpster chemicals.
+        Throws toxic waste grenades. Wears a gas mask and rubber gloves.
+      width: 128
+      height: 128
+      direction: south-east
+      extra_notes: Area denial. Gas mask and rubber gloves. Chemical vials. Toxic green accents.
+    output:
+      type: single
+      game_path: assets/sprites/units/dumpster_diver_idle.png
+  junkyard_king_idle:
+    template: unit_static
+    status: planned
+    params:
+      name: Junkyard King
+      pose: seated on throne of trash, crown of bent forks
+      description: Raccoon hero unit. Massive raccoon king on a throne of compressed
+        garbage. Crown of bent forks and bottlecaps. Llhama's avatar. Rules the junkyard.
+      width: 192
+      height: 192
+      direction: south-east
+      extra_notes: Hero unit. Largest raccoon. Trash throne. Fork crown. Regal junkyard monarch.
+    output:
+      type: single
+      game_path: assets/sprites/units/junkyard_king_idle.png
 projectiles:
   spit:
     template: unit_static

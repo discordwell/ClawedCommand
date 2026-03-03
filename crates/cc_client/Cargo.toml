@@ -11,7 +11,7 @@ wasm-agent = ["dep:cc_agent"]
 [dependencies]
 cc_core = { path = "../cc_core", features = ["bevy"] }
 cc_sim = { path = "../cc_sim" }
-cc_voice = { path = "../cc_voice", optional = true, default-features = false }
+cc_voice = { path = "../cc_voice", optional = true }
 cc_agent = { path = "../cc_agent", optional = true }
 bevy = { workspace = true }
 ron = { workspace = true }
