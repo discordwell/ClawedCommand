@@ -8,6 +8,7 @@ fn main() {
     use cc_agent::arena::*;
     use cc_sim::ai::fsm::{AiDifficulty, AiPersonalityProfile, BotConfig};
     use cc_sim::harness::MatchOutcome;
+    use cc_sim::harness::snapshot::capture_snapshot;
     use std::path::PathBuf;
 
     #[derive(Parser, Debug)]
@@ -29,6 +30,14 @@ fn main() {
         #[arg(long)]
         p1_scripts: Option<PathBuf>,
 
+        /// Inline Lua source for player 0 (alternative to --p0-scripts)
+        #[arg(long)]
+        p0_inline: Option<String>,
+
+        /// Inline Lua source for player 1 (alternative to --p1-scripts)
+        #[arg(long)]
+        p1_inline: Option<String>,
+
         /// AI personality profile for player 0
         #[arg(long, default_value = "balanced")]
         p0_profile: String,
@@ -48,6 +57,10 @@ fn main() {
         /// Map dimensions (WxH)
         #[arg(long, default_value = "64x64")]
         map_size: String,
+
+        /// Dump GameStateSnapshot as JSON every N ticks (0 = disabled)
+        #[arg(long, default_value_t = 0)]
+        snapshot_interval: u64,
     }
 
     fn parse_profile(name: &str) -> AiPersonalityProfile {
@@ -84,8 +97,28 @@ fn main() {
     let map_size = parse_map_size(&args.map_size);
 
     let shared = args.shared_scripts.map(|p| vec![ScriptSource::File(p)]);
-    let p0_scripts = args.p0_scripts.map(|p| vec![ScriptSource::File(p)]).or(shared.clone());
-    let p1_scripts = args.p1_scripts.map(|p| vec![ScriptSource::File(p)]).or(shared);
+
+    let p0_scripts = if let Some(src) = args.p0_inline {
+        Some(vec![ScriptSource::Inline {
+            name: "p0_inline".into(),
+            source: src,
+        }])
+    } else {
+        args.p0_scripts
+            .map(|p| vec![ScriptSource::File(p)])
+            .or(shared.clone())
+    };
+
+    let p1_scripts = if let Some(src) = args.p1_inline {
+        Some(vec![ScriptSource::Inline {
+            name: "p1_inline".into(),
+            source: src,
+        }])
+    } else {
+        args.p1_scripts
+            .map(|p| vec![ScriptSource::File(p)])
+            .or(shared)
+    };
 
     println!("=== Arena Match Runner ===");
     println!("Seeds: {:?}", seeds);
@@ -112,6 +145,7 @@ fn main() {
             seed,
             map_size,
             max_ticks: args.max_ticks,
+            snapshot_interval: args.snapshot_interval,
             output_path: args
                 .output
                 .as_ref()
@@ -164,6 +198,28 @@ fn main() {
             if let Ok(json) = serde_json::to_string_pretty(&report) {
                 let _ = std::fs::write(path, &json);
                 println!("  Report: {}", path.display());
+            }
+        }
+
+        // Save snapshots if captured
+        if !result.snapshots.is_empty() {
+            if let Some(ref output_dir) = args.output {
+                let snap_dir = output_dir.join("snapshots");
+                let _ = std::fs::create_dir_all(&snap_dir);
+                for snap in &result.snapshots {
+                    let snap_path = snap_dir.join(format!(
+                        "seed{seed}_tick{}.json",
+                        snap.tick
+                    ));
+                    if let Ok(json) = serde_json::to_string_pretty(&snap) {
+                        let _ = std::fs::write(&snap_path, &json);
+                    }
+                }
+                println!(
+                    "  Snapshots: {} captured → {}",
+                    result.snapshots.len(),
+                    snap_dir.display()
+                );
             }
         }
 

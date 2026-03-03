@@ -1,0 +1,1902 @@
+{
+  "metadata": {
+    "source": "training/arena/tracker.json + gen_*/player_*/",
+    "total_generations": 46,
+    "total_scripts_found": 45,
+    "total_lua_lines": 7697,
+    "best_generation": "P1_gen63",
+    "best_win_rate": 0.95
+  },
+  "proven_patterns": [
+    {
+      "name": "centroid_closest_focus_fire",
+      "description": "All attacking units target the closest enemy to the attacker centroid. Concentrates damage, kills enemies one at a time.",
+      "win_rate": 0.95,
+      "first_proven_gen": "P1_gen34",
+      "best_gen": "P1_gen63",
+      "budget_cost": "~3 per invocation (my_units + enemy_units + attack_units)",
+      "code_pattern": "-- Compute attacker centroid\nlocal cx, cy = 0, 0\nfor _, u in ipairs(attackers) do cx = cx + u.x; cy = cy + u.y end\ncx = cx / #attackers; cy = cy / #attackers\n-- Find closest enemy to centroid\nlocal best_target, best_dist = nil, 12*12\nfor _, e in ipairs(enemies) do\n    local d = (e.x-cx)^2 + (e.y-cy)^2\n    if d < best_dist then best_dist = d; best_target = e end\nend\n-- All attackers focus same target\nif best_target then ctx:attack_units(attacker_ids, best_target.id) end",
+      "why_it_works": "Kills immediate threats faster than chasing distant low-HP units. Prevents army from scattering damage across multiple targets.",
+      "evidence": [
+        "Gen 34: Switched from weakest to closest → 14→16 P1 wins (80% win rate)",
+        "Gen 23: Per-unit targeting = 0% win rate (CATASTROPHIC)",
+        "Gen 54: DPS-weighted targeting = 50/50 (broke focus fire)",
+        "Gen 56: Kill-secure targeting = 50/50 (chasing wounded)"
+      ]
+    },
+    {
+      "name": "timed_push",
+      "description": "After tick 4000, disable retreat and kiting. Force all-in aggression to convert late-game stalemates into decisive victories.",
+      "win_rate": 0.95,
+      "first_proven_gen": "P1_gen60",
+      "best_gen": "P1_gen63",
+      "budget_cost": "~1 (tick query is free, just changes behavior flags)",
+      "code_pattern": "local late_game = ctx:tick() >= 4000\n-- In late game: disable retreat, disable kiting, force push\nif late_game then\n    -- Skip retreat logic\n    -- Skip kiting logic\n    -- Force attack_move to enemy buildings\nend",
+      "why_it_works": "Prevents endless stalemates by forcing decisive engagement in final third. The biggest single improvement since closest-focus (16→18 P1 wins).",
+      "evidence": [
+        "Gen 60: Timed push → 18 P1 wins, 0 P0 wins, 2 timeouts",
+        "Gen 35: Push too early (tick 3000) → lost units, regression",
+        "Gen 63: Combined with formation → 19/20 wins (95%)"
+      ]
+    },
+    {
+      "name": "inline_formation",
+      "description": "Before combat engagement, position tanks 3 tiles forward toward enemy and ranged units 2 tiles back. Only for idle units, does not interrupt combat.",
+      "win_rate": 0.85,
+      "first_proven_gen": "P1_gen53",
+      "best_gen": "P1_gen63",
+      "budget_cost": "~3 (enemy scan + per-unit moves)",
+      "code_pattern": "-- Only when enemies visible, not outnumbered, not late game\nif enemies and #enemies > 0 and not outnumbered and not late_game then\n    -- Find direction to nearest enemy cluster\n    local nx, ny = (normalized direction to nearest enemy)\n    -- Idle tanks: advance 3 tiles toward enemy\n    for _, t in ipairs(idle_tanks) do\n        ctx:attack_move({t.id}, army_cx + nx*3, army_cy + ny*3)\n    end\n    -- Idle ranged: position 2 tiles behind centroid\n    for _, r in ipairs(idle_ranged) do\n        ctx:move_units({r.id}, army_cx - nx*2, army_cy - ny*2)\n    end\nend",
+      "why_it_works": "Better pre-combat positioning means tanks absorb damage while ranged deal it safely. Works because it only moves idle units, not fighting ones.",
+      "evidence": [
+        "Gen 53: Inline formation → 17/20 wins, 0 timeouts",
+        "Gen 52: Separate formation script → no impact (command conflicts)",
+        "Gen 63: Formation + timed push = 19/20 wins (best ever)"
+      ]
+    },
+    {
+      "name": "conditional_kiting",
+      "description": "Ranged units kite (move away from closest enemy) only when outnumbered. Preserves ranged units without causing stalemates.",
+      "win_rate": 0.75,
+      "first_proven_gen": "P1_gen26",
+      "best_gen": "P1_gen34",
+      "budget_cost": "~2 per ranged unit (distance checks + move)",
+      "code_pattern": "if outnumbered and #ranged_attackers > 0 then\n    for _, r in ipairs(ranged_attackers) do\n        -- Find closest enemy to this ranged unit\n        local closest_dist, closest_ex, closest_ey = 999999, 0, 0\n        for _, e in ipairs(enemies) do\n            local d = (e.x-r.x)^2 + (e.y-r.y)^2\n            if d < closest_dist then ... end\n        end\n        if closest_dist < 5 then\n            -- Flee in opposite direction\n            ctx:move_units({r.id}, r.x - (closest_ex-r.x), r.y - (closest_ey-r.y))\n        end\n    end\nend",
+      "why_it_works": "Outnumber condition prevents stalemates from excessive kiting. Sqrt(5) ≈ 2.2 tile kite distance is optimal.",
+      "evidence": [
+        "Gen 26: Conditional kite = 75% effective dominance",
+        "Gen 25: No kiting = regression to 45%",
+        "Gen 27: HP-threshold kite (<20%) = worse, less kiting lets P0 convert",
+        "Gen 58: Centroid-bias kite = worse, blending directions reduces effectiveness"
+      ]
+    },
+    {
+      "name": "wounded_retreat",
+      "description": "Units below 30% HP retreat toward rally point when outnumbered. Preserves damaged units for later fights.",
+      "win_rate": 0.7,
+      "first_proven_gen": "P1_gen21",
+      "best_gen": "P1_gen34",
+      "budget_cost": "~2 (HP check + move command)",
+      "code_pattern": "local retreat_ids = {}\nfor _, u in ipairs(combat_units) do\n    local hp_pct = u.hp / math.max(u.hp_max, 1)\n    if hp_pct < 0.30 and u.attacking and outnumbered then\n        table.insert(retreat_ids, u.id)\n    end\nend\nif #retreat_ids > 0 then\n    ctx:move_units(retreat_ids, rally_x, rally_y)\nend",
+      "why_it_works": "Preserves army for attrition advantage. Only retreats when outnumbered to avoid pulling units from winning fights.",
+      "evidence": [
+        "Gen 21: First combat micro with retreat = 50% win rate (from 0%)",
+        "Gen 33: 20% threshold = marginal improvement over 30%",
+        "Gen 40: Tighter retreat neutral with closest-focus"
+      ]
+    },
+    {
+      "name": "production_building_targeting",
+      "description": "When pushing, target production buildings (CatTree, ServerRack) first, then HQ. Starves enemy reinforcements.",
+      "win_rate": 0.85,
+      "first_proven_gen": "P1_gen30",
+      "best_gen": "P1_gen34",
+      "budget_cost": "~1 (enemy_buildings query + attack_move)",
+      "code_pattern": "local enemy_buildings = ctx:enemy_buildings()\n-- Priority: production > HQ > nearest\nlocal prod_target, hq, nearest = nil, nil, nil\nfor _, b in ipairs(enemy_buildings) do\n    if b.kind == 'CatTree' or b.kind == 'ServerRack' then\n        prod_target = closest_of(b, army_centroid)\n    elseif b.kind == 'TheBox' then hq = b\n    end\n    nearest = closest_of(b, army_centroid)\nend\nlocal target = prod_target or hq or nearest\nctx:attack_move(all_combat_ids, target.x, target.y)",
+      "why_it_works": "Destroying production buildings prevents reinforcements, converting timeouts (P1-leading) to decisive wins.",
+      "evidence": [
+        "Gen 30: Prod targeting → 14 decisive wins (from ~6 previously)",
+        "Gen 21: HQ-only targeting → only 5 decisive wins"
+      ]
+    },
+    {
+      "name": "push_on_advantage",
+      "description": "Push toward enemy buildings when no enemies visible and army >= 2, or when army advantage >= 3.",
+      "win_rate": 0.8,
+      "first_proven_gen": "P1_gen26",
+      "best_gen": "P1_gen34",
+      "budget_cost": "~1 (enemy count check + attack_move)",
+      "code_pattern": "local should_push = (enemy_count == 0 and my_combat_count >= 2)\n    or (my_combat_count >= enemy_count + 3)\n    or late_game\nif should_push then ... end",
+      "why_it_works": "Converts army advantage into map control. >= 3 threshold avoids pushing into marginal fights.",
+      "evidence": [
+        "Gen 32: Push at ANY advantage → slightly worse (marginal fights lost)",
+        "Gen 37: Push at >= 2 → marginally worse",
+        "Gen 34: Push at >= 3 → optimal sweet spot"
+      ]
+    }
+  ],
+  "anti_patterns": [
+    {
+      "name": "per_unit_targeting",
+      "description": "Each unit independently targets the weakest enemy in its range. Scatters damage across multiple enemies — none die quickly.",
+      "win_rate": 0.0,
+      "gen": "23",
+      "severity": "catastrophic",
+      "why_it_fails": "Without concentrated fire, no enemy dies fast enough. Army takes full return damage while slowly whittling multiple targets.",
+      "what_to_do_instead": "All attackers target the SAME enemy (closest to centroid)."
+    },
+    {
+      "name": "army_splitting_harassment",
+      "description": "Detach units from main army to harass enemy workers. Weakens the main force fatally in decisive combat.",
+      "win_rate": 0.0,
+      "gen": "P1_gen29",
+      "severity": "catastrophic",
+      "why_it_fails": "One fewer unit in the main army flips fights from close wins to losses. The harasser rarely kills enough workers to compensate.",
+      "what_to_do_instead": "Keep army concentrated. Never split for harassment."
+    },
+    {
+      "name": "ability_combat_interference",
+      "description": "Running ability activation scripts alongside combat micro scripts. Ability commands override attack commands.",
+      "win_rate": 0.0,
+      "gen": "22",
+      "severity": "catastrophic",
+      "why_it_fails": "ctx:ability() commands issued after ctx:attack_units() override them. Units try to cast instead of attacking.",
+      "what_to_do_instead": "Never combine ability and combat scripts. Use one or the other."
+    },
+    {
+      "name": "dps_weighted_targeting",
+      "description": "Target enemies by damage/HP ratio instead of proximity. Breaks focus fire pattern.",
+      "win_rate": 0.5,
+      "gen": "P1_gen54",
+      "severity": "major",
+      "why_it_fails": "High-DPS enemies are often scattered. Army splits to chase high-priority targets across the map.",
+      "what_to_do_instead": "Always target closest to centroid. Proximity > priority."
+    },
+    {
+      "name": "kill_secure_targeting",
+      "description": "Target enemies with lowest absolute HP to 'secure kills'. Army chases wounded enemies instead of fighting threats.",
+      "win_rate": 0.5,
+      "gen": "P1_gen56",
+      "severity": "major",
+      "why_it_fails": "Wounded enemies retreat. Army chases them away from the real fight, leaving remaining enemies to deal free damage.",
+      "what_to_do_instead": "Target closest. Wounded enemies near the centroid will die naturally."
+    },
+    {
+      "name": "weakest_enemy_targeting",
+      "description": "Target the weakest enemy (lowest HP%) regardless of position. Stalls army by chasing distant wounded units.",
+      "win_rate": 0.1,
+      "gen": "P1_gen51",
+      "severity": "catastrophic",
+      "why_it_fails": "Army pivots toward distant wounded enemies, breaking formation and exposing flanks to healthy enemies.",
+      "what_to_do_instead": "Target closest to centroid. Position-based targeting always wins."
+    },
+    {
+      "name": "split_role_targeting",
+      "description": "Melee targets closest, ranged targets weakest. Breaks unified focus fire by splitting targets between roles.",
+      "win_rate": 0.7,
+      "gen": "P1_gen55",
+      "severity": "moderate",
+      "why_it_fails": "Two different targets mean damage is split. Neither dies as fast as when the whole army focuses one enemy.",
+      "what_to_do_instead": "ALL units target the same enemy, regardless of role."
+    },
+    {
+      "name": "hp_kite_with_timed_push",
+      "description": "HP-threshold kiting (kite when own HP < 70%) combined with timed push. Kiting pulls ranged units back when they should commit.",
+      "win_rate": 0.8,
+      "gen": "P1_gen62",
+      "severity": "moderate",
+      "why_it_fails": "In late game, the timed push demands all-in commitment. HP-based kiting overrides the push, causing ranged units to retreat.",
+      "what_to_do_instead": "Disable ALL retreat/kite logic during timed push (after tick 4000)."
+    },
+    {
+      "name": "centroid_bias_kiting",
+      "description": "Kite direction blended between flee (away from enemy) and toward army center. Reduces kite effectiveness.",
+      "win_rate": 0.7,
+      "gen": "P1_gen58",
+      "severity": "moderate",
+      "why_it_fails": "Blending flee direction with army center means units don't move far enough from enemies. Results in more timeouts.",
+      "what_to_do_instead": "Kite directly away from closest enemy. Don't blend directions."
+    },
+    {
+      "name": "separate_formation_script",
+      "description": "Formation positioning as a shared/separate script rather than inline. No measurable impact due to command conflicts.",
+      "win_rate": 0.8,
+      "gen": "P1_gen52",
+      "severity": "minor",
+      "why_it_fails": "Separate scripts can issue conflicting commands for the same units. Formation commands get overridden by combat script commands.",
+      "what_to_do_instead": "Inline formation logic into the combat micro script."
+    },
+    {
+      "name": "three_feature_combo",
+      "description": "Combining more than 2 tactical features (e.g., timed push + HP kite + formation). Features interfere with each other.",
+      "win_rate": 0.7,
+      "gen": "P1_gen64",
+      "severity": "moderate",
+      "why_it_fails": "More features = more potential for conflicting commands. HP kite fights timed push. Less is more.",
+      "what_to_do_instead": "Maximum 2 complementary features per script. Test combinations carefully."
+    }
+  ],
+  "strategic_rules": [
+    {
+      "rule": "ALWAYS use centroid-closest focus fire",
+      "priority": 1,
+      "context": "combat",
+      "detail": "All attackers target the closest enemy to the attacker centroid. Never target weakest, highest-DPS, or lowest-HP."
+    },
+    {
+      "rule": "NEVER split army for harassment",
+      "priority": 2,
+      "context": "combat",
+      "detail": "Concentrated force always wins. Detaching raiders weakens the main army fatally."
+    },
+    {
+      "rule": "NEVER combine ability and combat scripts",
+      "priority": 3,
+      "context": "script_design",
+      "detail": "ctx:ability() commands override ctx:attack_units() commands. Choose one command type per script."
+    },
+    {
+      "rule": "Kite ONLY when outnumbered",
+      "priority": 4,
+      "context": "combat",
+      "detail": "Ranged units kite when my_count < enemy_count. Unconditional kiting causes stalemates."
+    },
+    {
+      "rule": "Disable retreat/kiting after tick 4000",
+      "priority": 5,
+      "context": "combat",
+      "detail": "Late-game requires all-in commitment. Retreating or kiting in the final third prevents decisive outcomes."
+    },
+    {
+      "rule": "Target production buildings before HQ",
+      "priority": 6,
+      "context": "pushing",
+      "detail": "Destroying CatTree/ServerRack starves reinforcements. Going straight for TheBox lets enemy rebuild army."
+    },
+    {
+      "rule": "Push threshold is >= 3 army advantage",
+      "priority": 7,
+      "context": "pushing",
+      "detail": "Pushing at >= 2 or any advantage leads to marginal fights. >= 3 is the optimal sweet spot."
+    },
+    {
+      "rule": "Maximum 2 complementary features per script",
+      "priority": 8,
+      "context": "script_design",
+      "detail": "Formation + timed push = best combo. Adding a third feature (like HP kite) causes interference. Less is more."
+    },
+    {
+      "rule": "ALL units target the SAME enemy",
+      "priority": 9,
+      "context": "combat",
+      "detail": "Split-role targeting (melee closest, ranged weakest) breaks unified focus fire. Group focus always wins."
+    },
+    {
+      "rule": "Formation must be inline, not a separate script",
+      "priority": 10,
+      "context": "script_design",
+      "detail": "Separate formation scripts have no impact due to command conflicts. Integrate formation into the combat micro script."
+    }
+  ],
+  "evolution_tree": {
+    "description": "How arena strategies evolved from baseline to 95% win rate",
+    "stages": [
+      {
+        "stage": "Baseline",
+        "gens": [
+          "0",
+          "baseline_v2"
+        ],
+        "win_rate": "80% P0 (map advantage)",
+        "key_insight": "FSM vs FSM: P0 dominates due to map-gen asymmetry"
+      },
+      {
+        "stage": "First scripts (failed)",
+        "gens": [
+          "1-9"
+        ],
+        "win_rate": "0-20% P0",
+        "key_insight": "Combat scripts override FSM commands, causing worse behavior"
+      },
+      {
+        "stage": "Production breakthrough",
+        "gens": [
+          "12"
+        ],
+        "win_rate": "53% P0",
+        "key_insight": "Smart production fill was the first helpful script"
+      },
+      {
+        "stage": "Combat micro v1",
+        "gens": [
+          "21",
+          "P1_gen21"
+        ],
+        "win_rate": "50% P0 / 45% P1",
+        "key_insight": "Group focus fire + retreat wounded = scripts help underdog"
+      },
+      {
+        "stage": "Catastrophic failures",
+        "gens": [
+          "22",
+          "23",
+          "P1_gen29"
+        ],
+        "win_rate": "0%",
+        "key_insight": "Abilities interfere, per-unit targeting scatters, army splitting kills"
+      },
+      {
+        "stage": "Refinement",
+        "gens": [
+          "P1_gen24",
+          "P1_gen26",
+          "P1_gen30"
+        ],
+        "win_rate": "75-85% P1",
+        "key_insight": "Conditional kiting, production building targeting, push on advantage"
+      },
+      {
+        "stage": "Closest-focus breakthrough",
+        "gens": [
+          "P1_gen34"
+        ],
+        "win_rate": "80% P1 (90% effective)",
+        "key_insight": "Closest enemy to centroid > weakest enemy. Biggest targeting improvement."
+      },
+      {
+        "stage": "Targeting experiments (all failed)",
+        "gens": [
+          "P1_gen54",
+          "P1_gen55",
+          "P1_gen56",
+          "P1_gen57"
+        ],
+        "win_rate": "50-75% P1",
+        "key_insight": "DPS-weighted, split-role, kill-secure, threat-count all worse than closest"
+      },
+      {
+        "stage": "Timed push breakthrough",
+        "gens": [
+          "P1_gen60"
+        ],
+        "win_rate": "90% P1 (100% effective)",
+        "key_insight": "Force aggression after tick 4000. Converts all stalemates."
+      },
+      {
+        "stage": "Champion: push + formation",
+        "gens": [
+          "P1_gen63"
+        ],
+        "win_rate": "95% P1",
+        "key_insight": "Timed push + inline formation = best combo. 19/20 wins."
+      },
+      {
+        "stage": "Over-combination (failed)",
+        "gens": [
+          "P1_gen62",
+          "P1_gen64"
+        ],
+        "win_rate": "70-80% P1",
+        "key_insight": "Adding HP kite to push hurts. Less is more: 2 features optimal."
+      }
+    ]
+  },
+  "generation_details": [
+    {
+      "id": "0",
+      "classification": "baseline",
+      "scripted_player": null,
+      "win_info": {
+        "p0_wins": 0,
+        "p1_wins": 9,
+        "timeouts": 1,
+        "draws": 0,
+        "total_matches": 10,
+        "scripted_player": null,
+        "scripted_win_rate": null,
+        "effective_dominance": null
+      },
+      "scripts": [],
+      "notes": "Baseline FSM vs FSM. P1 dominates (93% P1+TO rate). Code state includes directional defense_pos fix and multi-faction FSM."
+    },
+    {
+      "id": "1-9",
+      "classification": "anti_pattern",
+      "scripted_player": 0,
+      "win_info": {
+        "p0_wins": 0,
+        "p1_wins": 0,
+        "timeouts": 0,
+        "draws": 0,
+        "total_matches": 0,
+        "scripted_player": 0,
+        "scripted_win_rate": "0.0 - 0.2",
+        "effective_dominance": null
+      },
+      "scripts": [],
+      "notes": "Gens 1-9 all failed. Combat scripts override FSM (catastrophic). Economy scripts steal building budget. Production scripts with >= 100 food thresholds never trigger (food peaks at ~95 during idle windows)."
+    },
+    {
+      "id": "10",
+      "classification": "anti_pattern",
+      "scripted_player": 0,
+      "win_info": {
+        "p0_wins": 0,
+        "p1_wins": 0,
+        "timeouts": 0,
+        "draws": 0,
+        "total_matches": 0,
+        "scripted_player": 0,
+        "scripted_win_rate": 0.2,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "nuisance_fill",
+          "player": 0,
+          "line_count": 44,
+          "features": []
+        }
+      ],
+      "notes": "First script to trigger (80 food threshold). Net neutral."
+    },
+    {
+      "id": "12",
+      "classification": "neutral",
+      "scripted_player": 0,
+      "win_info": {
+        "p0_wins": 8,
+        "p1_wins": 7,
+        "timeouts": 0,
+        "draws": 0,
+        "total_matches": 15,
+        "scripted_player": 0,
+        "scripted_win_rate": 0.5333333333333333,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "smart_fill",
+          "player": 0,
+          "line_count": 60,
+          "features": [
+            "inline_formation"
+          ]
+        }
+      ],
+      "notes": "BREAKTHROUGH. Smart production fill. 7% -> 53% P0 win rate. Now obsolete — FSM does own production fill."
+    },
+    {
+      "id": "16-17",
+      "classification": "baseline",
+      "scripted_player": null,
+      "win_info": {
+        "p0_wins": 0,
+        "p1_wins": 0,
+        "timeouts": 0,
+        "draws": 0,
+        "total_matches": 0,
+        "scripted_player": null,
+        "scripted_win_rate": null,
+        "effective_dominance": null
+      },
+      "scripts": [],
+      "notes": "FSM SYMMETRY FIX v1: directional defense_pos, map-center fallbacks, mirrored forward_pos, pre-seeded enemy_spawn."
+    },
+    {
+      "id": "18b",
+      "classification": "anti_pattern",
+      "scripted_player": 0,
+      "win_info": {
+        "p0_wins": 2,
+        "p1_wins": 0,
+        "timeouts": 8,
+        "draws": 0,
+        "total_matches": 10,
+        "scripted_player": 0,
+        "scripted_win_rate": 0.2,
+        "effective_dominance": 0.8
+      },
+      "scripts": [],
+      "notes": "Abilities breakthrough (LoafMode/Zoomies/DissonantScreech). P0 effectively dominates 8/10 seeds."
+    },
+    {
+      "id": "21",
+      "classification": "neutral",
+      "scripted_player": 0,
+      "win_info": {
+        "p0_wins": 5,
+        "p1_wins": 1,
+        "timeouts": 4,
+        "draws": 0,
+        "total_matches": 10,
+        "scripted_player": 0,
+        "scripted_win_rate": 0.5,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 0,
+          "line_count": 116,
+          "features": [
+            "centroid_focus_fire",
+            "wounded_retreat",
+            "building_push",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "NEW BEST (old code). Pure combat micro: group focus fire + retreat wounded + push when clear. 0% -> 50% P0 win rate."
+    },
+    {
+      "id": "22",
+      "classification": "anti_pattern",
+      "scripted_player": 0,
+      "win_info": {
+        "p0_wins": 0,
+        "p1_wins": 9,
+        "timeouts": 1,
+        "draws": 0,
+        "total_matches": 10,
+        "scripted_player": 0,
+        "scripted_win_rate": 0.0,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "activate_abilities",
+          "player": 0,
+          "line_count": 58,
+          "features": [
+            "wounded_retreat",
+            "ability_usage"
+          ]
+        },
+        {
+          "name": "combat_micro",
+          "player": 0,
+          "line_count": 116,
+          "features": [
+            "centroid_focus_fire",
+            "wounded_retreat",
+            "building_push",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "CATASTROPHIC. Ability commands interfere with focus fire. DO NOT combine ability and combat scripts."
+    },
+    {
+      "id": "23",
+      "classification": "anti_pattern",
+      "scripted_player": 0,
+      "win_info": {
+        "p0_wins": 0,
+        "p1_wins": 8,
+        "timeouts": 2,
+        "draws": 0,
+        "total_matches": 10,
+        "scripted_player": 0,
+        "scripted_win_rate": 0.0,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 0,
+          "line_count": 84,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "wounded_retreat",
+            "building_push",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "CATASTROPHIC. Per-unit focus scatters damage. Group centroid focus is always better."
+    },
+    {
+      "id": "symmetry_fix_v2",
+      "classification": "baseline",
+      "scripted_player": null,
+      "win_info": {
+        "p0_wins": 0,
+        "p1_wins": 0,
+        "timeouts": 0,
+        "draws": 0,
+        "total_matches": 0,
+        "scripted_player": null,
+        "scripted_win_rate": null,
+        "effective_dominance": null
+      },
+      "scripts": [],
+      "notes": "Worker spawn offset mirrored toward map center (was always +x, putting P0 workers closer to resources). Reduced P0 advantage from 90% to 80%. Remaining asymmetry is map-gen level (even-sized grid off-by-one in rotational symmetry)."
+    },
+    {
+      "id": "baseline_v2",
+      "classification": "baseline",
+      "scripted_player": null,
+      "win_info": {
+        "p0_wins": 16,
+        "p1_wins": 3,
+        "timeouts": 1,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": null,
+        "scripted_win_rate": null,
+        "effective_dominance": null
+      },
+      "scripts": [],
+      "notes": "Post-worker-spawn-fix FSM-only baseline (20 seeds). P0 still wins 80% due to map-gen asymmetry. P0 attacks first on most seeds."
+    },
+    {
+      "id": "P1_gen21",
+      "classification": "weak",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 7,
+        "p1_wins": 6,
+        "timeouts": 7,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.3,
+        "effective_dominance": 0.45
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 0,
+          "line_count": 116,
+          "features": [
+            "centroid_focus_fire",
+            "wounded_retreat",
+            "building_push",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Gen 21 combat_micro given to P1 (disadvantaged side). P1 goes from 15% to 45% effective. Scripts genuinely help the underdog."
+    },
+    {
+      "id": "P1_gen24",
+      "classification": "weak",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 3,
+        "p1_wins": 6,
+        "timeouts": 11,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.3,
+        "effective_dominance": 0.75
+      },
+      "scripts": [
+        {
+          "name": "activate_abilities",
+          "player": 0,
+          "line_count": 98,
+          "features": [
+            "wounded_retreat",
+            "ability_usage"
+          ]
+        },
+        {
+          "name": "priority_focus",
+          "player": 0,
+          "line_count": 93,
+          "features": [
+            "centroid_focus_fire",
+            "worker_management"
+          ]
+        },
+        {
+          "name": "push_buildings",
+          "player": 0,
+          "line_count": 70,
+          "features": [
+            "closest_targeting",
+            "building_push",
+            "timed_push",
+            "worker_management"
+          ]
+        },
+        {
+          "name": "smart_retreat",
+          "player": 0,
+          "line_count": 46,
+          "features": [
+            "wounded_retreat",
+            "worker_management"
+          ]
+        },
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 163,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Kiting for ranged units + HQ targeting + building rally point + 30% retreat threshold. Kiting preserves army but causes many timeouts."
+    },
+    {
+      "id": "P1_gen25",
+      "classification": "weak",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 7,
+        "p1_wins": 6,
+        "timeouts": 7,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.3,
+        "effective_dominance": 0.45
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 133,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "wounded_retreat",
+            "building_push",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "REGRESSION. Removed kiting, added aggressive push. Without kiting, P0 kills ranged units and wins more. Kiting is essential."
+    },
+    {
+      "id": "P1_gen26",
+      "classification": "weak",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 3,
+        "p1_wins": 8,
+        "timeouts": 9,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.4,
+        "effective_dominance": 0.75
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 163,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Conditional kite (only when outnumbered) + aggressive push (when >=3 advantage). Best balance of preservation and aggression."
+    },
+    {
+      "id": "P1_gen27",
+      "classification": "weak",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 8,
+        "p1_wins": 8,
+        "timeouts": 4,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.4,
+        "effective_dominance": 0.4
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 178,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "REGRESSION. Kite only at <20% HP. Less kiting = P0 converts more timeouts to wins. Broader kiting is better."
+    },
+    {
+      "id": "P1_gen28",
+      "classification": "weak",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 3,
+        "p1_wins": 8,
+        "timeouts": 9,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.4,
+        "effective_dominance": 0.7
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 194,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Slight regression from Gen 26. Base defense recall pulls units out of combat, losing advantage on some seeds."
+    },
+    {
+      "id": "P1_gen29",
+      "classification": "anti_pattern",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 12,
+        "p1_wins": 0,
+        "timeouts": 8,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.0,
+        "effective_dominance": 0.0
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 215,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "timed_push",
+            "worker_management",
+            "army_splitting"
+          ]
+        }
+      ],
+      "notes": "CATASTROPHIC. Worker harassment splits army — one Nuisance detached weakens main force fatally. Never split army for harassment."
+    },
+    {
+      "id": "shared_gen26",
+      "classification": "baseline",
+      "scripted_player": null,
+      "win_info": {
+        "p0_wins": 10,
+        "p1_wins": 2,
+        "timeouts": 8,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": null,
+        "scripted_win_rate": null,
+        "effective_dominance": null
+      },
+      "scripts": [],
+      "notes": "Shared Gen 26 scripts (both players). P0 effective 90%. Combat micro amplifies positional advantage when both sides have it. Scripts benefit the underdog most."
+    },
+    {
+      "id": "P1_gen30",
+      "classification": "neutral",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 2,
+        "p1_wins": 14,
+        "timeouts": 4,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.7,
+        "effective_dominance": 0.85
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 181,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "MAJOR IMPROVEMENT. Production building targeting (barracks/tech first, then HQ). Converts P1-leading timeouts to decisive wins by starving enemy reinforcements. 8→14 decisive P1 wins."
+    },
+    {
+      "id": "P1_gen31",
+      "classification": "neutral",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 2,
+        "p1_wins": 14,
+        "timeouts": 4,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.7,
+        "effective_dominance": 0.85
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 210,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Gen 30 + commit mode (>=5 advantage, no retreat). Identical results — commit mode never triggers because armies rarely differ by 5+."
+    },
+    {
+      "id": "P1_gen32",
+      "classification": "neutral",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 2,
+        "p1_wins": 13,
+        "timeouts": 5,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.65,
+        "effective_dominance": 0.85
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 180,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Push at ANY army advantage instead of >=3. Slightly worse — pushing into marginal fights loses some seeds."
+    },
+    {
+      "id": "P1_gen33",
+      "classification": "neutral",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 2,
+        "p1_wins": 14,
+        "timeouts": 4,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.7,
+        "effective_dominance": 0.85
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 179,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Tighter retreat threshold (20% HP vs 30%). Same decisive wins, some are faster (~200 ticks). Marginal improvement."
+    },
+    {
+      "id": "P1_gen34",
+      "classification": "proven",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 2,
+        "p1_wins": 16,
+        "timeouts": 2,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.8,
+        "effective_dominance": 0.9
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 190,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "NEW BEST. Closest-enemy focus fire (instead of weakest). Kills immediate threats faster, prevents army from chasing distant low-HP units. 14→16 decisive P1 wins. Only seeds 9,11 (P0 wins) and 2,4 (timeouts) remain."
+    },
+    {
+      "id": "P1_gen35",
+      "classification": "neutral",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 1,
+        "p1_wins": 13,
+        "timeouts": 6,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.65,
+        "effective_dominance": 0.85
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 202,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Time-based aggression (push harder after tick 3000/4500). Late-game commit didn't convert timeouts — disabling kiting/retreat too early loses units."
+    },
+    {
+      "id": "P1_gen36",
+      "classification": "neutral",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 2,
+        "p1_wins": 14,
+        "timeouts": 4,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.7,
+        "effective_dominance": 0.85
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 176,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Wider kite range (3 tiles instead of 2.2). Neutral — same results as Gen 30. Extra kite distance doesn't help."
+    },
+    {
+      "id": "P1_gen37",
+      "classification": "neutral",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 1,
+        "p1_wins": 14,
+        "timeouts": 5,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.7,
+        "effective_dominance": 0.9
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 177,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Push at >=2 advantage (vs >=3). Same decisive wins but fewer P0 wins (1 vs 2). Middle ground between >=3 and any advantage."
+    },
+    {
+      "id": "P1_gen38",
+      "classification": "proven",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 3,
+        "p1_wins": 16,
+        "timeouts": 1,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.8,
+        "effective_dominance": 0.85
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 205,
+          "features": [
+            "centroid_focus_fire",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Gen 34 closest-focus + late-game aggro. Same 16 P1 wins but 3 P0 wins (1 more than Gen 34). Late aggro converts a timeout but also loses a game."
+    },
+    {
+      "id": "P1_gen39",
+      "classification": "neutral",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 2,
+        "p1_wins": 15,
+        "timeouts": 3,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.75,
+        "effective_dominance": 0.85
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 188,
+          "features": [
+            "centroid_focus_fire",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Gen 34 + push >=2. One fewer win (seed 19 becomes timeout). Lower push threshold pushes into marginal fights."
+    },
+    {
+      "id": "P1_gen40",
+      "classification": "proven",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 2,
+        "p1_wins": 16,
+        "timeouts": 2,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.8,
+        "effective_dominance": 0.9
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 187,
+          "features": [
+            "centroid_focus_fire",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Gen 34 + 20% retreat. Identical to Gen 34 results. Tighter retreat is neutral with closest-focus."
+    },
+    {
+      "id": "P1_gen49",
+      "classification": "neutral",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 3,
+        "p1_wins": 15,
+        "timeouts": 2,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.75,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 223,
+          "features": [
+            "centroid_focus_fire",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management",
+            "pathfinding_awareness"
+          ]
+        }
+      ],
+      "notes": "Gen 42 + push at +1 advantage. Worse than Gen 34 (15 vs 16 wins). Aggressive push into marginal fights loses seeds."
+    },
+    {
+      "id": "P1_gen50",
+      "classification": "proven",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 3,
+        "p1_wins": 17,
+        "timeouts": 0,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.85,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 234,
+          "features": [
+            "centroid_focus_fire",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management",
+            "pathfinding_awareness"
+          ]
+        }
+      ],
+      "notes": "Per-unit threat kiting. 17 decisive wins, 0 timeouts (converted seeds 2,4,9). But 3 P0 wins (lost seed 15). Net: more decisive but lower effective dominance (85% vs 90%)."
+    },
+    {
+      "id": "P1_gen51",
+      "classification": "anti_pattern",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 16,
+        "p1_wins": 2,
+        "timeouts": 2,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.1,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 245,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management",
+            "pathfinding_awareness"
+          ]
+        }
+      ],
+      "notes": "CATASTROPHIC. Hybrid weakest-near targeting confirmed terrible. Chasing wounded stalls army. Closest-to-centroid targeting is CRITICAL."
+    },
+    {
+      "id": "P1_gen52",
+      "classification": "proven",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 1,
+        "p1_wins": 16,
+        "timeouts": 3,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.8,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 190,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        },
+        {
+          "name": "formation_orient",
+          "player": null,
+          "line_count": 148,
+          "features": [
+            "centroid_focus_fire",
+            "inline_formation",
+            "worker_management",
+            "terrain_awareness",
+            "pathfinding_awareness"
+          ]
+        }
+      ],
+      "notes": "Gen 34 + formation_orient as shared script. Neutral — formation as separate script has no measurable impact."
+    },
+    {
+      "id": "P1_gen53",
+      "classification": "proven",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 3,
+        "p1_wins": 17,
+        "timeouts": 0,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.85,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 244,
+          "features": [
+            "centroid_focus_fire",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "inline_formation",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Gen 34 + inline formation (tanks forward, ranged back). 17 wins, 0 timeouts. Converted seeds 2,3,4 from timeouts. Better than separate formation script."
+    },
+    {
+      "id": "P1_gen54",
+      "classification": "neutral",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 10,
+        "p1_wins": 10,
+        "timeouts": 0,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.5,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 204,
+          "features": [
+            "centroid_focus_fire",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "CATASTROPHIC. DPS-weighted targeting (damage/hp ratio). 50/50 result — targeting high-DPS units instead of closest scatters damage and loses focus fire advantage."
+    },
+    {
+      "id": "P1_gen55",
+      "classification": "neutral",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 2,
+        "p1_wins": 14,
+        "timeouts": 4,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.7,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 224,
+          "features": [
+            "centroid_focus_fire",
+            "weakest_targeting",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management",
+            "army_splitting"
+          ]
+        }
+      ],
+      "notes": "Melee focus closest, ranged focus weakest. Worse — splitting targets between roles breaks unified focus fire."
+    },
+    {
+      "id": "P1_gen56",
+      "classification": "neutral",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 10,
+        "p1_wins": 10,
+        "timeouts": 0,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.5,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 203,
+          "features": [
+            "centroid_focus_fire",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "CATASTROPHIC. Kill-secure targeting (lowest absolute HP). 50/50 — targeting wounded enemies anywhere in range causes army to chase, same failure mode as weakest targeting."
+    },
+    {
+      "id": "P1_gen57",
+      "classification": "neutral",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 3,
+        "p1_wins": 15,
+        "timeouts": 2,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.75,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 234,
+          "features": [
+            "centroid_focus_fire",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Threat-count targeting (most-threatening enemy). Slightly worse — high-threat enemy often equals closest anyway, extra budget cost of threats_to not worth it."
+    },
+    {
+      "id": "P1_gen58",
+      "classification": "neutral",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 2,
+        "p1_wins": 14,
+        "timeouts": 4,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.7,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 214,
+          "features": [
+            "centroid_focus_fire",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Centroid-bias kiting (70% flee + 30% toward army center). Worse — blending flee direction reduces kite effectiveness, more timeouts."
+    },
+    {
+      "id": "P1_gen59",
+      "classification": "proven",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 1,
+        "p1_wins": 17,
+        "timeouts": 2,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.85,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 199,
+          "features": [
+            "centroid_focus_fire",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "HP-threshold kite (ranged kite when own HP < 70%). 17 wins, only 1 P0 win. Good individual improvement — protects injured ranged units."
+    },
+    {
+      "id": "P1_gen60",
+      "classification": "proven",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 0,
+        "p1_wins": 18,
+        "timeouts": 2,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.9,
+        "effective_dominance": 1.0
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 192,
+          "features": [
+            "centroid_focus_fire",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "MAJOR IMPROVEMENT. Timed push at tick 4000 (force aggression in final third). 18 decisive P1 wins, ZERO P0 wins. Disables retreat and kiting in late game, forces all-in push. Only seeds 11,14 timeout."
+    },
+    {
+      "id": "P1_gen61",
+      "classification": "proven",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 0,
+        "p1_wins": 16,
+        "timeouts": 4,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.8,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 232,
+          "features": [
+            "centroid_focus_fire",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Staged push (melee vanguard, ranged wait for engagement). Same decisive wins as Gen 34 but 0 P0 wins. More timeouts — ranged waiting delays pushes."
+    },
+    {
+      "id": "P1_gen62",
+      "classification": "proven",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 2,
+        "p1_wins": 16,
+        "timeouts": 2,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.8,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 200,
+          "features": [
+            "centroid_focus_fire",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Gen 060 + Gen 059 (timed push + HP kite). REGRESSION — HP kite conflicts with timed push. Kiting pulls ranged units back when they should commit in late game."
+    },
+    {
+      "id": "P1_gen63",
+      "classification": "proven",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 1,
+        "p1_wins": 19,
+        "timeouts": 0,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.95,
+        "effective_dominance": 0.95
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 242,
+          "features": [
+            "centroid_focus_fire",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "inline_formation",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "NEW ALL-TIME BEST. Gen 060 + Gen 053 (timed push + inline formation). 19/20 P1 wins, 0 timeouts, only seed 8 lost. Formation gives better pre-combat positioning, timed push converts all close games. Won seeds 9,11 (previously structural P0 wins)."
+    },
+    {
+      "id": "P1_gen64",
+      "classification": "neutral",
+      "scripted_player": 1,
+      "win_info": {
+        "p0_wins": 1,
+        "p1_wins": 14,
+        "timeouts": 5,
+        "draws": 0,
+        "total_matches": 20,
+        "scripted_player": 1,
+        "scripted_win_rate": 0.7,
+        "effective_dominance": null
+      },
+      "scripts": [
+        {
+          "name": "combat_micro",
+          "player": 1,
+          "line_count": 247,
+          "features": [
+            "centroid_focus_fire",
+            "closest_targeting",
+            "kiting",
+            "conditional_kiting",
+            "wounded_retreat",
+            "building_push",
+            "production_building_targeting",
+            "timed_push",
+            "inline_formation",
+            "worker_management"
+          ]
+        }
+      ],
+      "notes": "Gen 060 + Gen 059 + Gen 053 (all three). REGRESSION — HP kite again conflicts with timed push, causing 5 timeouts. Less is more: formation + timed push without extra kiting is optimal."
+    }
+  ],
+  "key_insights": [
+    "CLOSEST-ENEMY focus fire (target nearest to centroid, not weakest) is the best targeting — kills immediate threats, prevents chasing distant low-HP units.",
+    "Production building targeting (barracks/tech first) during push is a major improvement — starves enemy reinforcements.",
+    "GROUP focus fire (centroid-based, all units target same enemy) is the single most impactful script behavior.",
+    "Retreat wounded units (<30% HP) when outnumbered preserves army for attrition advantage.",
+    "Push to enemy buildings when clear or >=3 advantage converts timeouts to wins.",
+    "Conditional kite (only when outnumbered) for ranged units is essential — preserves army without causing stalemates.",
+    "Push threshold sweet spot is >=3. Lower (>=2 or any) pushes into marginal fights. Higher never triggers.",
+    "Timed push at tick 4000 is the BIGGEST single improvement since closest-focus (16→18 P1 wins). Disabling retreat and kiting in late game forces decisive outcomes.",
+    "Inline formation (tanks forward, ranged back for idle units) converts close games. Works because it doesn't interrupt combat, only repositions idle units.",
+    "Formation + timed push is the BEST combination (19/20 P1 wins). Formation gives better pre-combat positioning, timed push forces decisive outcomes.",
+    "HP-threshold kiting (ranged kite when own HP < 70%) is good solo but CONFLICTS with timed push — kiting in late game prevents the all-in commit.",
+    "DPS-weighted targeting (damage/hp ratio) and kill-secure targeting (lowest absolute HP) are both CATASTROPHIC (50/50). Any non-closest targeting breaks focus fire.",
+    "Split-role targeting (melee closest, ranged weakest) breaks unified focus fire. All units must target the same enemy.",
+    "Centroid-bias kiting (blending flee direction toward army center) reduces kite effectiveness and adds timeouts.",
+    "Separate formation script (formation_orient as shared) has no impact. Inline formation integrated into combat_micro is effective because it avoids command conflicts.",
+    "Wider kite range (3 tiles vs 2.2) is neutral. Default sqrt(5) kite distance is fine.",
+    "Tighter retreat (20% vs 30%) is neutral. No meaningful difference.",
+    "smart_fill is counterproductive on current FSM (FSM does own production fill).",
+    "Ability commands interfere with attack commands — DO NOT combine ability and combat scripts.",
+    "Per-unit focus fire scatters damage. Group focus fire concentrates it. Always prefer group.",
+    "Never split army for worker harassment — concentrated force always wins.",
+    "Base defense recall hurts — units stop fighting and lose combat advantage.",
+    "Scripts benefit the UNDERDOG most: P1 goes from 15% to 95% with combat micro (Gen 63).",
+    "Shared scripts amplify positional advantage — the stronger side benefits more from symmetric scripts.",
+    "Worker spawn offset was a major asymmetry source (fixed). Remaining asymmetry is map-gen level.",
+    "Map has ~80% P0 baseline advantage after all fixes — caused by even-grid rotational symmetry off-by-one.",
+    "Previously 'structural' P0 seeds (9, 11) were conquered by Gen 63. Only seed 8 remains as P0 win. Timeouts eliminated.",
+    "Less is more in script combinations — adding HP kite to timed push hurts. The best combo is exactly 2 features: formation + timed push."
+  ]
+}

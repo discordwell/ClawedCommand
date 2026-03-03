@@ -6,7 +6,7 @@
 
 model:
   name: "mistralai/Devstral-Small-2-24B-Instruct-2512"
-  max_seq_len: 4096
+  max_seq_len: 8192                # v2: longer scripts + think blocks
   load_in_4bit: true              # QLoRA — fits L40S 48GB comfortably
   dtype: "bfloat16"
 
@@ -24,11 +24,11 @@ lora:
     - down_proj
 
 training:
-  output_dir: "./outputs/devstral_24b_qlora_cc_v1"
+  output_dir: "./outputs/devstral_24b_qlora_cc_v2"
   learning_rate: 2.0e-4
   num_epochs: 3
-  per_device_batch_size: 4        # 24B QLoRA fits batch 4 on 48GB
-  gradient_accumulation_steps: 8   # Effective batch size = 32
+  per_device_batch_size: 2          # v2: reduced for 8192 seq_len
+  gradient_accumulation_steps: 16   # Effective batch size = 32
   warmup_ratio: 0.1
   weight_decay: 0.01
   optimizer: "adamw_8bit"
@@ -41,8 +41,8 @@ training:
   max_grad_norm: 1.0
 
 data:
-  train_file: "../data/cc_train_mistral.jsonl"
-  eval_file: "../data/cc_eval_mistral.jsonl"
+  train_file: "../data/cc_v2_sft_train.jsonl"
+  eval_file: "../data/cc_v2_sft_eval.jsonl"
   chat_template: "mistral"        # Use Mistral's native chat template
 
 inference:
@@ -52,4 +52,4 @@ inference:
     enable_auto_tool_choice: true
   quantization: "awq"
   gpu_memory_utilization: 0.9
-  max_model_len: 4096
+  max_model_len: 8192

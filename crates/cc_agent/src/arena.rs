@@ -21,6 +21,7 @@ use cc_sim::ai::fsm::{AiDifficulty, AiPersonalityProfile, AiPhase, AiState, AiTi
 pub use cc_sim::ai::fsm::BotConfig;
 use cc_sim::ai::MultiAiState;
 use cc_sim::harness::invariants::{InvariantChecker, InvariantViolation, Severity};
+use cc_sim::harness::snapshot::capture_snapshot;
 use cc_sim::harness::{
     MatchOutcome, count_living_entities, determine_leader, headless_despawn_system,
     spawn_combat_unit, spawn_starting_entities,
@@ -81,6 +82,8 @@ pub struct ArenaConfig {
     /// Extra combat units to spawn at match start: (player_id, UnitKind, count).
     /// Spawned near each player's HQ after normal starting entities.
     pub extra_spawns: Vec<(u8, UnitKind, u32)>,
+    /// If > 0, dump GameStateSnapshot JSON every N ticks to output_path/snapshots/.
+    pub snapshot_interval: u64,
 }
 
 impl Default for ArenaConfig {
@@ -107,6 +110,7 @@ impl Default for ArenaConfig {
             scripts: [None, None],
             script_budget: 500,
             extra_spawns: Vec::new(),
+            snapshot_interval: 0,
         }
     }
 }
@@ -166,6 +170,8 @@ pub struct ArenaResult {
     pub stats: ArenaStats,
     pub scripts_loaded: [Vec<String>; 2],
     pub violations: Vec<InvariantViolation>,
+    /// Snapshots captured during the match (if snapshot_interval > 0).
+    pub snapshots: Vec<cc_sim::harness::snapshot::GameStateSnapshot>,
 }
 
 impl ArenaResult {
@@ -602,6 +608,7 @@ pub fn run_arena_match(config: &ArenaConfig) -> ArenaResult {
     let (mut world, mut schedule) = make_arena_sim(game_map, config, &map_def, all_registrations);
 
     let mut checker = InvariantChecker::new(map_width, map_height);
+    let mut snapshots = Vec::new();
 
     let mut outcome = MatchOutcome::Timeout {
         tick: config.max_ticks,
@@ -633,6 +640,12 @@ pub fn run_arena_match(config: &ArenaConfig) -> ArenaResult {
 
         if tick_after % 10 == 0 {
             update_arena_stats(&mut world);
+        }
+
+        // Capture snapshots at the configured interval
+        if config.snapshot_interval > 0 && tick_after % config.snapshot_interval == 0 {
+            let snap = capture_snapshot(&mut world, tick_after);
+            snapshots.push(snap);
         }
 
         if tick_after % 50 == 0 {
@@ -693,6 +706,7 @@ pub fn run_arena_match(config: &ArenaConfig) -> ArenaResult {
         stats,
         scripts_loaded,
         violations: checker.violations,
+        snapshots,
     }
 }
 

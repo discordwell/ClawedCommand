@@ -1,0 +1,654 @@
+{
+  "metadata": {
+    "description": "Scenario templates for generating expert SFT training data",
+    "total_scenarios": 36,
+    "target_examples": "1500-2000 (scenarios × prompt_variants × game_state_variants)"
+  },
+  "categories": {
+    "combat_micro": {
+      "target_count": 400,
+      "scenarios": [
+        {
+          "id": "cm_outnumbered",
+          "name": "Outnumbered combat",
+          "description": "Player has fewer combat units than enemy. Must use focus fire + kiting to win.",
+          "game_state_template": {
+            "tick_range": [1000, 3500],
+            "my_units_range": [3, 8],
+            "enemy_units_range": [6, 12],
+            "resources": {"food": [50, 200], "gpu_cores": [0, 50]},
+            "buildings_present": true
+          },
+          "expected_behaviors": ["centroid_closest_focus_fire", "conditional_kiting", "wounded_retreat"],
+          "anti_patterns_to_avoid": ["per_unit_targeting", "army_splitting", "weakest_targeting"],
+          "prompt_variants": [
+            "We're outnumbered. Handle combat.",
+            "They have more units than us. What should we do?",
+            "Enemy army is bigger. Manage the fight.",
+            "Outnumbered, keep my army alive and fight smart.",
+            "Handle this combat — we're at a numbers disadvantage."
+          ]
+        },
+        {
+          "id": "cm_equal",
+          "name": "Equal strength combat",
+          "description": "Even armies. Focus fire is the difference-maker.",
+          "game_state_template": {
+            "tick_range": [1500, 4000],
+            "my_units_range": [6, 10],
+            "enemy_units_range": [6, 10],
+            "resources": {"food": [100, 300], "gpu_cores": [10, 80]},
+            "buildings_present": true
+          },
+          "expected_behaviors": ["centroid_closest_focus_fire", "inline_formation"],
+          "anti_patterns_to_avoid": ["per_unit_targeting", "split_role_targeting"],
+          "prompt_variants": [
+            "Armies are about even. Win the fight.",
+            "Equal forces — make every attack count.",
+            "We're matched up. Handle the engagement.",
+            "Even battle. Micromanage combat to get the edge."
+          ]
+        },
+        {
+          "id": "cm_advantage",
+          "name": "Army advantage combat",
+          "description": "Player has significant army advantage. Should push aggressively.",
+          "game_state_template": {
+            "tick_range": [2000, 5000],
+            "my_units_range": [10, 15],
+            "enemy_units_range": [3, 7],
+            "resources": {"food": [200, 500], "gpu_cores": [30, 100]},
+            "buildings_present": true
+          },
+          "expected_behaviors": ["centroid_closest_focus_fire", "push_on_advantage", "production_building_targeting"],
+          "anti_patterns_to_avoid": ["army_splitting"],
+          "prompt_variants": [
+            "We have a big army advantage. Push and destroy them.",
+            "We outnumber them. Time to push.",
+            "Crush them — we have the numbers.",
+            "Big army lead. Attack their base."
+          ]
+        },
+        {
+          "id": "cm_retreat",
+          "name": "Tactical retreat scenario",
+          "description": "Army badly damaged, need to retreat and preserve remaining forces.",
+          "game_state_template": {
+            "tick_range": [2000, 4500],
+            "my_units_range": [2, 5],
+            "enemy_units_range": [8, 14],
+            "resources": {"food": [50, 150], "gpu_cores": [0, 30]},
+            "buildings_present": true,
+            "my_units_wounded": true
+          },
+          "expected_behaviors": ["wounded_retreat"],
+          "anti_patterns_to_avoid": ["army_splitting", "pushing_when_weak"],
+          "prompt_variants": [
+            "We're getting destroyed. Pull back everyone.",
+            "Retreat! Save whatever we can.",
+            "Army's shattered, fall back to base.",
+            "We're losing badly. Get surviving units to safety."
+          ]
+        },
+        {
+          "id": "cm_late_game",
+          "name": "Late game all-in",
+          "description": "Past tick 4000, must commit to all-in push regardless of army state.",
+          "game_state_template": {
+            "tick_range": [4000, 5500],
+            "my_units_range": [5, 12],
+            "enemy_units_range": [5, 12],
+            "resources": {"food": [0, 100], "gpu_cores": [0, 50]},
+            "buildings_present": true
+          },
+          "expected_behaviors": ["centroid_closest_focus_fire", "timed_push", "production_building_targeting"],
+          "anti_patterns_to_avoid": ["conditional_kiting", "wounded_retreat", "hp_kite_with_push"],
+          "prompt_variants": [
+            "It's late game. Go all in.",
+            "Time's running out. Push everything.",
+            "End it now — full commit.",
+            "Late game, force a decisive fight."
+          ]
+        },
+        {
+          "id": "cm_mixed_comp",
+          "name": "Mixed composition micro",
+          "description": "Army has tanks and ranged. Formation + focus fire.",
+          "game_state_template": {
+            "tick_range": [1500, 3500],
+            "my_unit_types": {"Chonk": [2, 4], "Hisser": [3, 5], "Nuisance": [1, 2]},
+            "enemy_units_range": [6, 10],
+            "resources": {"food": [100, 300], "gpu_cores": [20, 60]},
+            "buildings_present": true
+          },
+          "expected_behaviors": ["unit_classification", "inline_formation", "centroid_closest_focus_fire"],
+          "anti_patterns_to_avoid": ["split_role_targeting"],
+          "prompt_variants": [
+            "I have tanks and ranged. Set up formation and fight.",
+            "Mixed army — position tanks forward, ranged behind.",
+            "Use my Chonks as a frontline for the Hissers.",
+            "Arrange my army properly and engage."
+          ]
+        }
+      ]
+    },
+    "economy": {
+      "target_count": 200,
+      "scenarios": [
+        {
+          "id": "eco_early_gather",
+          "name": "Early game worker assignment",
+          "description": "Start of game, need to send workers to gather food.",
+          "game_state_template": {
+            "tick_range": [0, 500],
+            "my_units_range": [3, 5],
+            "enemy_units_range": [0, 0],
+            "resources": {"food": [50, 100], "gpu_cores": [0, 0]},
+            "buildings_present": true,
+            "has_deposits": true
+          },
+          "expected_behaviors": ["worker_management"],
+          "prompt_variants": [
+            "Send idle workers to gather food.",
+            "Get my Pawdlers working on the nearest food.",
+            "Start gathering — assign workers to resources.",
+            "Economy setup: workers to fish ponds."
+          ]
+        },
+        {
+          "id": "eco_expansion",
+          "name": "Economic expansion",
+          "description": "Need to build more economy buildings and expand resource gathering.",
+          "game_state_template": {
+            "tick_range": [500, 2000],
+            "my_units_range": [5, 8],
+            "enemy_units_range": [0, 3],
+            "resources": {"food": [200, 400], "gpu_cores": [0, 20]},
+            "buildings_present": true,
+            "has_deposits": true
+          },
+          "expected_behaviors": ["worker_management", "building_placement"],
+          "prompt_variants": [
+            "Build a FishMarket near the food deposits.",
+            "Expand our economy — more gathering buildings.",
+            "We need more income. Build economy infrastructure.",
+            "Set up a second gathering location."
+          ]
+        },
+        {
+          "id": "eco_worker_defense",
+          "name": "Worker safety under threat",
+          "description": "Enemy raiders spotted near workers. Need to pull workers to safety.",
+          "game_state_template": {
+            "tick_range": [1000, 3000],
+            "my_units_range": [4, 8],
+            "enemy_units_range": [1, 3],
+            "resources": {"food": [100, 250], "gpu_cores": [10, 40]},
+            "buildings_present": true
+          },
+          "expected_behaviors": ["worker_protection"],
+          "prompt_variants": [
+            "Enemy units near our workers! Pull them back.",
+            "Protect the Pawdlers — enemies incoming.",
+            "Get workers to safety, there's a raid.",
+            "Worker defense: enemies spotted near gathering area."
+          ]
+        },
+        {
+          "id": "eco_gpu_priority",
+          "name": "GPU core gathering priority",
+          "description": "Need GPU cores for tech. Redirect some workers to GPU deposits.",
+          "game_state_template": {
+            "tick_range": [1000, 3000],
+            "my_units_range": [6, 10],
+            "enemy_units_range": [0, 0],
+            "resources": {"food": [300, 500], "gpu_cores": [0, 20]},
+            "buildings_present": true,
+            "has_deposits": true
+          },
+          "expected_behaviors": ["worker_management"],
+          "prompt_variants": [
+            "We need GPU cores. Send some workers to tech ruins.",
+            "Redirect workers to gather GPU cores.",
+            "Priority shift: food is fine, get GPU cores now.",
+            "Need tech resources — assign gatherers to GPU deposits."
+          ]
+        }
+      ]
+    },
+    "build_orders": {
+      "target_count": 200,
+      "scenarios": [
+        {
+          "id": "bo_early_production",
+          "name": "Early production building",
+          "description": "Build first CatTree to start army production.",
+          "game_state_template": {
+            "tick_range": [100, 600],
+            "my_units_range": [3, 5],
+            "enemy_units_range": [0, 0],
+            "resources": {"food": [150, 250], "gpu_cores": [0, 0]},
+            "buildings_present": true
+          },
+          "expected_behaviors": ["building_placement"],
+          "prompt_variants": [
+            "Build a CatTree near our base.",
+            "Start army production — we need a barracks.",
+            "Get a CatTree up ASAP.",
+            "Build production: CatTree near TheBox."
+          ]
+        },
+        {
+          "id": "bo_supply",
+          "name": "Supply building",
+          "description": "Supply capped, need to build LitterBox.",
+          "game_state_template": {
+            "tick_range": [500, 2000],
+            "my_units_range": [8, 12],
+            "enemy_units_range": [0, 5],
+            "resources": {"food": [100, 300], "gpu_cores": [0, 30], "supply_near_cap": true},
+            "buildings_present": true
+          },
+          "expected_behaviors": ["building_placement"],
+          "prompt_variants": [
+            "We're supply capped. Build a LitterBox.",
+            "Need more supply — can't train units.",
+            "Supply blocked. Get a LitterBox built.",
+            "Population cap reached, expand supply."
+          ]
+        },
+        {
+          "id": "bo_tech",
+          "name": "Tech building",
+          "description": "Build ServerRack for AI upgrades and advanced capabilities.",
+          "game_state_template": {
+            "tick_range": [800, 2500],
+            "my_units_range": [6, 10],
+            "enemy_units_range": [0, 3],
+            "resources": {"food": [200, 400], "gpu_cores": [30, 80]},
+            "buildings_present": true
+          },
+          "expected_behaviors": ["building_placement"],
+          "prompt_variants": [
+            "Build a ServerRack for tech upgrades.",
+            "Time to tech up — get a ServerRack.",
+            "We need AI capabilities. Build tech building.",
+            "Invest in ServerRack for advanced units."
+          ]
+        },
+        {
+          "id": "bo_defensive",
+          "name": "Defensive buildings",
+          "description": "Build CatFlap walls or LaserPointer turrets for base defense.",
+          "game_state_template": {
+            "tick_range": [1000, 3000],
+            "my_units_range": [5, 10],
+            "enemy_units_range": [3, 8],
+            "resources": {"food": [150, 350], "gpu_cores": [10, 50]},
+            "buildings_present": true
+          },
+          "expected_behaviors": ["building_placement"],
+          "prompt_variants": [
+            "Fortify the base — build some walls and turrets.",
+            "Set up defenses. CatFlap and LaserPointer.",
+            "Enemy might attack soon. Build defensive structures.",
+            "Secure the perimeter with defensive buildings."
+          ]
+        }
+      ]
+    },
+    "unit_composition": {
+      "target_count": 150,
+      "scenarios": [
+        {
+          "id": "uc_balanced_army",
+          "name": "Build balanced army",
+          "description": "Train a mix of tanks and ranged from production buildings.",
+          "game_state_template": {
+            "tick_range": [500, 2000],
+            "my_units_range": [3, 6],
+            "enemy_units_range": [0, 5],
+            "resources": {"food": [200, 400], "gpu_cores": [10, 50]},
+            "buildings_present": true,
+            "has_production": true
+          },
+          "expected_behaviors": ["unit_production"],
+          "prompt_variants": [
+            "Build a balanced army — tanks and ranged.",
+            "Train some Chonks and Hissers.",
+            "We need frontline and damage. Mix it up.",
+            "Produce an army that can fight well."
+          ]
+        },
+        {
+          "id": "uc_counter_comp",
+          "name": "Counter enemy composition",
+          "description": "Enemy has specific composition, train counter units.",
+          "game_state_template": {
+            "tick_range": [1500, 3000],
+            "my_units_range": [5, 8],
+            "enemy_unit_types": {"Chonk": [4, 6]},
+            "resources": {"food": [200, 400], "gpu_cores": [20, 60]},
+            "buildings_present": true,
+            "has_production": true
+          },
+          "expected_behaviors": ["unit_production"],
+          "prompt_variants": [
+            "They're going heavy tanks. What should we train?",
+            "Enemy is all Chonks. Counter them.",
+            "Need to counter their tank-heavy army.",
+            "They're massing Chonks. Build the right response."
+          ]
+        },
+        {
+          "id": "uc_emergency_production",
+          "name": "Emergency army rebuild",
+          "description": "Lost most of army, need to rapidly rebuild.",
+          "game_state_template": {
+            "tick_range": [2000, 4000],
+            "my_units_range": [1, 3],
+            "enemy_units_range": [5, 10],
+            "resources": {"food": [100, 300], "gpu_cores": [0, 40]},
+            "buildings_present": true,
+            "has_production": true
+          },
+          "expected_behaviors": ["unit_production"],
+          "prompt_variants": [
+            "Army destroyed. Rebuild fast!",
+            "Emergency — produce units from all buildings.",
+            "We lost everything. Spam units NOW.",
+            "Rapid rebuild — train from every production building."
+          ]
+        }
+      ]
+    },
+    "terrain_interaction": {
+      "target_count": 150,
+      "scenarios": [
+        {
+          "id": "ti_cover_usage",
+          "name": "Use terrain cover",
+          "description": "Position ranged units in cover (Forest/Rock) for damage reduction.",
+          "game_state_template": {
+            "tick_range": [1000, 3000],
+            "my_units_range": [4, 8],
+            "enemy_units_range": [4, 8],
+            "terrain_features": ["Forest", "Rock"],
+            "resources": {"food": [100, 300], "gpu_cores": [10, 50]}
+          },
+          "expected_behaviors": ["terrain_awareness", "cover_positioning"],
+          "prompt_variants": [
+            "Move ranged units into the forest for cover.",
+            "Use terrain — get our Hissers behind cover.",
+            "Position army using terrain advantage.",
+            "Find cover for our units before engaging."
+          ]
+        },
+        {
+          "id": "ti_elevation",
+          "name": "Elevation advantage",
+          "description": "Use high ground for +15% damage per elevation level.",
+          "game_state_template": {
+            "tick_range": [1000, 3000],
+            "my_units_range": [5, 10],
+            "enemy_units_range": [5, 10],
+            "terrain_features": ["Ramp", "elevated"],
+            "resources": {"food": [100, 300], "gpu_cores": [10, 50]}
+          },
+          "expected_behaviors": ["terrain_awareness", "elevation_positioning"],
+          "prompt_variants": [
+            "Take the high ground before engaging.",
+            "Move to elevated terrain for damage bonus.",
+            "Use elevation advantage — get uphill.",
+            "Position on the ramp for combat advantage."
+          ]
+        },
+        {
+          "id": "ti_pathfinding",
+          "name": "Navigate around obstacles",
+          "description": "Route army around impassable terrain or through favorable terrain.",
+          "game_state_template": {
+            "tick_range": [1000, 4000],
+            "my_units_range": [5, 12],
+            "enemy_units_range": [3, 8],
+            "terrain_features": ["Water", "Rock"],
+            "resources": {"food": [100, 300], "gpu_cores": [10, 50]}
+          },
+          "expected_behaviors": ["pathfinding_awareness"],
+          "prompt_variants": [
+            "Route the army around the water.",
+            "Find a path to the enemy avoiding rough terrain.",
+            "Navigate around obstacles to reach their base.",
+            "Check if we can reach the enemy position and find the best path."
+          ]
+        }
+      ]
+    },
+    "multi_behavior_composition": {
+      "target_count": 200,
+      "scenarios": [
+        {
+          "id": "mb_full_combat",
+          "name": "Complete combat micro",
+          "description": "Full combat script: classification + focus fire + formation + kiting + push.",
+          "game_state_template": {
+            "tick_range": [1500, 5000],
+            "my_units_range": [5, 15],
+            "enemy_units_range": [5, 15],
+            "resources": {"food": [50, 400], "gpu_cores": [0, 80]},
+            "buildings_present": true
+          },
+          "expected_behaviors": ["unit_classification", "centroid_closest_focus_fire", "inline_formation", "conditional_kiting", "timed_push_building_targeting"],
+          "anti_patterns_to_avoid": ["per_unit_targeting", "army_splitting", "three_feature_combo"],
+          "prompt_variants": [
+            "Write me a complete combat micro script.",
+            "Full tactical AI — handle all combat situations.",
+            "Combat controller: focus fire, kite, push, the works.",
+            "Write the best combat micro you can.",
+            "Complete combat management — adapt to the situation."
+          ]
+        },
+        {
+          "id": "mb_econ_plus_defense",
+          "name": "Economy with defensive posture",
+          "description": "Manage economy while maintaining defensive readiness.",
+          "game_state_template": {
+            "tick_range": [500, 2500],
+            "my_units_range": [6, 10],
+            "enemy_units_range": [0, 5],
+            "resources": {"food": [100, 300], "gpu_cores": [10, 40]},
+            "buildings_present": true,
+            "has_deposits": true
+          },
+          "expected_behaviors": ["worker_management", "defend_area"],
+          "prompt_variants": [
+            "Keep gathering but be ready to defend.",
+            "Economy mode with defense — workers gather, army guards.",
+            "Balance economy and defense posture.",
+            "Gather resources but keep combat units on guard."
+          ]
+        },
+        {
+          "id": "mb_scout_then_attack",
+          "name": "Scout then commit",
+          "description": "Scout enemy position, then decide whether to attack or defend.",
+          "game_state_template": {
+            "tick_range": [800, 2500],
+            "my_units_range": [5, 10],
+            "enemy_units_range": [0, 3],
+            "resources": {"food": [150, 350], "gpu_cores": [10, 40]},
+            "buildings_present": true
+          },
+          "expected_behaviors": ["scouting", "decision_making"],
+          "prompt_variants": [
+            "Scout the enemy then decide if we attack.",
+            "Send a Nuisance to scout, then plan our move.",
+            "Recon first, then commit based on what we find.",
+            "We need intel. Scout then attack if favorable."
+          ]
+        },
+        {
+          "id": "mb_produce_and_push",
+          "name": "Production + aggressive push",
+          "description": "Keep producing units while pushing with existing army.",
+          "game_state_template": {
+            "tick_range": [2000, 4500],
+            "my_units_range": [8, 15],
+            "enemy_units_range": [5, 10],
+            "resources": {"food": [200, 500], "gpu_cores": [20, 80]},
+            "buildings_present": true,
+            "has_production": true
+          },
+          "expected_behaviors": ["unit_production", "centroid_closest_focus_fire", "push_on_advantage"],
+          "prompt_variants": [
+            "Attack with what we have and keep training more units.",
+            "Push the enemy while producing reinforcements.",
+            "Two-track: army attacks, buildings produce.",
+            "Keep the pressure on and train more troops."
+          ]
+        }
+      ]
+    },
+    "strategic_decisions": {
+      "target_count": 100,
+      "scenarios": [
+        {
+          "id": "sd_push_vs_defend",
+          "name": "Push or defend decision",
+          "description": "Decide whether to push forward or defend based on game state.",
+          "game_state_template": {
+            "tick_range": [2000, 4000],
+            "my_units_range": [6, 12],
+            "enemy_units_range": [4, 10],
+            "resources": {"food": [100, 300], "gpu_cores": [10, 50]},
+            "buildings_present": true
+          },
+          "expected_behaviors": ["decision_making"],
+          "prompt_variants": [
+            "Should we attack or defend? Assess the situation.",
+            "Decide: push forward or turtle up.",
+            "Evaluate if it's time to attack or hold.",
+            "Strategic assessment — attack or wait?"
+          ]
+        },
+        {
+          "id": "sd_building_priority",
+          "name": "Building priority decision",
+          "description": "Decide what to build next based on current needs.",
+          "game_state_template": {
+            "tick_range": [500, 3000],
+            "my_units_range": [4, 10],
+            "enemy_units_range": [0, 5],
+            "resources": {"food": [200, 400], "gpu_cores": [10, 60]},
+            "buildings_present": true
+          },
+          "expected_behaviors": ["decision_making", "building_placement"],
+          "prompt_variants": [
+            "What should we build next?",
+            "Prioritize our next building — what do we need most?",
+            "Assess our needs and decide what to construct.",
+            "Next build order step — what's the priority?"
+          ]
+        },
+        {
+          "id": "sd_target_priority",
+          "name": "Target priority in push",
+          "description": "Which enemy building to target first during a push.",
+          "game_state_template": {
+            "tick_range": [2500, 5000],
+            "my_units_range": [8, 15],
+            "enemy_units_range": [0, 5],
+            "resources": {"food": [50, 200], "gpu_cores": [0, 30]},
+            "buildings_present": true,
+            "enemy_buildings_present": true
+          },
+          "expected_behaviors": ["production_building_targeting"],
+          "prompt_variants": [
+            "We're at their base. What do we destroy first?",
+            "Target priority: which building to attack?",
+            "We broke through. Hit production or HQ first?",
+            "In their base — what's the target priority?"
+          ]
+        }
+      ]
+    },
+    "edge_cases_refusals": {
+      "target_count": 100,
+      "scenarios": [
+        {
+          "id": "ec_no_units",
+          "name": "No combat units",
+          "description": "Player asks for combat but has only workers.",
+          "game_state_template": {
+            "tick_range": [100, 2000],
+            "my_units_range": [1, 5],
+            "my_units_all_workers": true,
+            "enemy_units_range": [0, 5],
+            "resources": {"food": [50, 200], "gpu_cores": [0, 20]}
+          },
+          "expected_behaviors": ["early_return", "worker_protection"],
+          "prompt_variants": [
+            "Attack the enemy!",
+            "Send everything to fight.",
+            "Charge! Attack with all units."
+          ]
+        },
+        {
+          "id": "ec_dont_split",
+          "name": "Refuse army splitting request",
+          "description": "Player asks to split army — script should push back politely.",
+          "game_state_template": {
+            "tick_range": [1500, 4000],
+            "my_units_range": [6, 12],
+            "enemy_units_range": [6, 12],
+            "resources": {"food": [100, 300], "gpu_cores": [10, 50]}
+          },
+          "expected_behaviors": ["refusal_with_explanation"],
+          "anti_patterns_to_avoid": ["army_splitting"],
+          "prompt_variants": [
+            "Split the army and harass their workers.",
+            "Send half the army to raid, keep half defending.",
+            "Detach a squad to go after their economy.",
+            "I want to harass — send a few units behind enemy lines."
+          ]
+        },
+        {
+          "id": "ec_no_resources",
+          "name": "No resources available",
+          "description": "Player asks to build/train but has insufficient resources.",
+          "game_state_template": {
+            "tick_range": [500, 3000],
+            "my_units_range": [3, 8],
+            "enemy_units_range": [0, 5],
+            "resources": {"food": [0, 30], "gpu_cores": [0, 0]},
+            "buildings_present": true
+          },
+          "expected_behaviors": ["resource_check", "early_return"],
+          "prompt_variants": [
+            "Train more units!",
+            "Build a CatTree.",
+            "Expand — build more buildings."
+          ]
+        },
+        {
+          "id": "ec_simple_task",
+          "name": "Simple one-liner tasks",
+          "description": "Tasks that should be very concise scripts.",
+          "game_state_template": {
+            "tick_range": [0, 5000],
+            "my_units_range": [1, 15],
+            "enemy_units_range": [0, 15],
+            "resources": {"food": [0, 500], "gpu_cores": [0, 100]}
+          },
+          "expected_behaviors": ["concise_implementation"],
+          "prompt_variants": [
+            "Stop all units.",
+            "How many units do I have?",
+            "Set rally point for my CatTree.",
+            "Hold position with all combat units."
+          ]
+        }
+      ]
+    }
+  }
+}

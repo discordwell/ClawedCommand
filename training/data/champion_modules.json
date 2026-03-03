@@ -1,0 +1,198 @@
+{
+  "metadata": {
+    "champion_script": "training/arena/gen_063/player_1/combat_micro.lua",
+    "champion_win_rate": 0.95,
+    "champion_gen": "P1_gen63",
+    "total_modules": 5
+  },
+  "modules": [
+    {
+      "name": "unit_classification",
+      "description": "Classify own units into combat roles: tanks, ranged, workers. Separate attackers from idle units for different behaviors.",
+      "validated_by": [
+        "P1_gen21",
+        "P1_gen34",
+        "P1_gen63"
+      ],
+      "win_rate_context": "Foundation module — used in every winning script since Gen 21",
+      "budget_cost": 1,
+      "budget_notes": "One ctx:my_units() call. All classification is local table iteration.",
+      "when_to_use": "Always. Every combat script needs to know its army composition.",
+      "when_to_avoid": "Never skip this — without it you can't make informed decisions.",
+      "dependencies": [],
+      "code": "local my_units = ctx:my_units()\nif not my_units then return end\n\nlocal combat_units = {}\nlocal attackers = {}\nlocal ranged_attackers = {}\nlocal all_combat_ids = {}\nlocal idle_tanks = {}\nlocal idle_ranged = {}\nfor _, u in ipairs(my_units) do\n    local is_worker = (u.kind == \"Pawdler\" or u.kind == \"Scrounger\"\n        or u.kind == \"Delver\" or u.kind == \"Ponderer\")\n    if not is_worker then\n        table.insert(combat_units, u)\n        table.insert(all_combat_ids, u.id)\n        if u.attacking then\n            table.insert(attackers, u)\n            if u.kind == \"Hisser\" or u.kind == \"Yowler\"\n                or u.kind == \"FlyingFox\" or u.kind == \"Catnapper\" then\n                table.insert(ranged_attackers, u)\n            end\n        else\n            if u.kind == \"Chonk\" or u.kind == \"MechCommander\" then\n                table.insert(idle_tanks, u)\n            elseif u.kind == \"Hisser\" or u.kind == \"Yowler\"\n                or u.kind == \"FlyingFox\" or u.kind == \"Catnapper\" then\n                table.insert(idle_ranged, u)\n            end\n        end\n    end\nend\n\nlocal my_combat_count = #combat_units\nif my_combat_count == 0 then return end",
+      "outputs": [
+        "combat_units — all non-worker units",
+        "attackers — combat units currently attacking",
+        "ranged_attackers — ranged units currently attacking",
+        "all_combat_ids — flat table of combat unit IDs (for mass commands)",
+        "idle_tanks — idle Chonk/MechCommander units",
+        "idle_ranged — idle Hisser/Yowler/FlyingFox/Catnapper units",
+        "my_combat_count — total combat units"
+      ]
+    },
+    {
+      "name": "centroid_closest_focus_fire",
+      "description": "All attacking units focus fire on the enemy closest to the attacker centroid. The single most impactful tactical behavior.",
+      "validated_by": [
+        "P1_gen21",
+        "P1_gen34",
+        "P1_gen63"
+      ],
+      "win_rate_context": "0% → 50% win rate (Gen 21). Closest > weakest: 70% → 80% (Gen 34).",
+      "budget_cost": 1,
+      "budget_notes": "Uses already-queried my_units and enemy_units. Only issues attack command.",
+      "when_to_use": "Always when 2+ attackers are engaged. This is the #1 behavior.",
+      "when_to_avoid": "Never. EVERY combat script should include this.",
+      "dependencies": [
+        "unit_classification"
+      ],
+      "code": "if #attackers >= 2 and enemies and #enemies > 0 then\n    local cx, cy = 0, 0\n    for _, u in ipairs(attackers) do\n        cx = cx + u.x\n        cy = cy + u.y\n    end\n    cx = cx / #attackers\n    cy = cy / #attackers\n\n    local best_target = nil\n    local best_dist = 12 * 12\n    for _, e in ipairs(enemies) do\n        local dx = e.x - cx\n        local dy = e.y - cy\n        local d = dx * dx + dy * dy\n        if d < best_dist then\n            best_dist = d\n            best_target = e\n        end\n    end\n\n    if best_target then\n        local ids = {}\n        for _, u in ipairs(attackers) do\n            table.insert(ids, u.id)\n        end\n        ctx:attack_units(ids, best_target.id)\n    end\nend",
+      "critical_notes": [
+        "MUST use centroid of attackers, not individual unit positions",
+        "MUST target closest, not weakest or highest-DPS",
+        "12-tile max range prevents targeting distant enemies",
+        "ALL attackers target SAME enemy — never split targets"
+      ]
+    },
+    {
+      "name": "conditional_kiting",
+      "description": "Ranged attackers kite away from closest enemy when outnumbered. Preserves ranged units without causing stalemates.",
+      "validated_by": [
+        "P1_gen26",
+        "P1_gen34",
+        "P1_gen63"
+      ],
+      "win_rate_context": "45% → 75% effective dominance (Gen 26). Essential for ranged survival.",
+      "budget_cost": 0,
+      "budget_notes": "Uses already-queried data. Only move commands (free).",
+      "when_to_use": "When outnumbered and ranged units are actively engaged.",
+      "when_to_avoid": "In late game (after tick 4000) — kiting conflicts with all-in push.",
+      "dependencies": [
+        "unit_classification"
+      ],
+      "code": "if not late_game and outnumbered and enemies and #ranged_attackers > 0 then\n    for _, r in ipairs(ranged_attackers) do\n        local closest_dist = 999999\n        local closest_ex, closest_ey = 0, 0\n        for _, e in ipairs(enemies) do\n            local dx = e.x - r.x\n            local dy = e.y - r.y\n            local d = dx * dx + dy * dy\n            if d < closest_dist then\n                closest_dist = d\n                closest_ex = e.x\n                closest_ey = e.y\n            end\n        end\n        if closest_dist < 5 then\n            local flee_x = r.x - (closest_ex - r.x)\n            local flee_y = r.y - (closest_ey - r.y)\n            flee_x = math.max(0, math.min(map_w - 1, flee_x))\n            flee_y = math.max(0, math.min(map_h - 1, flee_y))\n            ctx:move_units({r.id}, flee_x, flee_y)\n        end\n    end\nend",
+      "critical_notes": [
+        "MUST be conditional on outnumbered — unconditional kiting causes stalemates",
+        "MUST be disabled after tick 4000 (timed push takes priority)",
+        "Kite distance sqrt(5) ≈ 2.2 tiles — wider is not better",
+        "Flee direction = directly away from closest enemy (no blending)"
+      ]
+    },
+    {
+      "name": "inline_formation",
+      "description": "Pre-combat positioning: idle tanks advance 3 tiles toward enemy, idle ranged pull 2 tiles behind centroid.",
+      "validated_by": [
+        "P1_gen53",
+        "P1_gen63"
+      ],
+      "win_rate_context": "80% → 85% (Gen 53). Combined with push: 90% → 95% (Gen 63).",
+      "budget_cost": 0,
+      "budget_notes": "Uses already-queried data. Only move/attack_move commands (free).",
+      "when_to_use": "When enemies visible, not outnumbered, distance 4-15 tiles, pre-combat.",
+      "when_to_avoid": "When outnumbered (retreat instead), in late game (push instead), or enemies too close (<4 tiles, already in combat).",
+      "dependencies": [
+        "unit_classification"
+      ],
+      "code": "if enemies and #enemies > 0 and not outnumbered and not late_game then\n    local nearest_ex, nearest_ey = 0, 0\n    local nearest_d2 = 999999\n    for _, e in ipairs(enemies) do\n        local dx = e.x - army_cx\n        local dy = e.y - army_cy\n        local d2 = dx * dx + dy * dy\n        if d2 < nearest_d2 then\n            nearest_d2 = d2\n            nearest_ex = e.x\n            nearest_ey = e.y\n        end\n    end\n\n    local dx = nearest_ex - army_cx\n    local dy = nearest_ey - army_cy\n    local dist = math.sqrt(dx * dx + dy * dy)\n\n    if dist >= 4 and dist <= 15 then\n        local nx = dx / dist\n        local ny = dy / dist\n\n        for _, t in ipairs(idle_tanks) do\n            local tx = math.floor(army_cx + nx * 3)\n            local ty = math.floor(army_cy + ny * 3)\n            tx = math.max(0, math.min(map_w - 1, tx))\n            ty = math.max(0, math.min(map_h - 1, ty))\n            ctx:attack_move({t.id}, tx, ty)\n        end\n\n        for _, r in ipairs(idle_ranged) do\n            local rx = math.floor(army_cx - nx * 2)\n            local ry = math.floor(army_cy - ny * 2)\n            rx = math.max(0, math.min(map_w - 1, rx))\n            ry = math.max(0, math.min(map_h - 1, ry))\n            ctx:move_units({r.id}, rx, ry)\n        end\n    end\nend",
+      "critical_notes": [
+        "MUST be inline in combat_micro script, NOT a separate script",
+        "Only move IDLE units — never interrupt units already fighting",
+        "Distance 4-15 check prevents unnecessary moves (too close = in combat, too far = irrelevant)",
+        "Tanks use attack_move (engage enemies on the way), ranged use move_units (stay safe)"
+      ]
+    },
+    {
+      "name": "timed_push_building_targeting",
+      "description": "Push toward enemy buildings when advantage/late-game. Target production buildings first, then HQ, then nearest.",
+      "validated_by": [
+        "P1_gen30",
+        "P1_gen34",
+        "P1_gen60",
+        "P1_gen63"
+      ],
+      "win_rate_context": "Prod targeting: +20% (Gen 30). Timed push: +15% (Gen 60). Combined: 95% (Gen 63).",
+      "budget_cost": 1,
+      "budget_notes": "One ctx:enemy_buildings() call. Attack commands are free.",
+      "when_to_use": "When no enemies visible (clear path), strong advantage (>=3), or late game (tick >= 4000).",
+      "when_to_avoid": "When outnumbered and enemies present — fight first, push second.",
+      "dependencies": [
+        "unit_classification"
+      ],
+      "code": "local should_push = (enemy_count == 0 and my_combat_count >= 2)\n    or strong_advantage\n    or late_game\n\nif should_push then\n    local enemy_buildings = ctx:enemy_buildings()\n    if enemy_buildings and #enemy_buildings > 0 then\n        local prod_target = nil\n        local prod_dist = 999999\n        local hq = nil\n        local nearest = nil\n        local nearest_dist = 999999\n\n        for _, b in ipairs(enemy_buildings) do\n            local dx = b.x - army_cx\n            local dy = b.y - army_cy\n            local d = dx * dx + dy * dy\n\n            -- Production buildings (all factions)\n            if b.kind == \"CatTree\" or b.kind == \"ServerRack\"\n                or b.kind == \"ScrapHeap\" or b.kind == \"JunkServer\"\n                or b.kind == \"SpawningPools\" or b.kind == \"SunkenServer\"\n                or b.kind == \"MoleHill\" or b.kind == \"DeepServer\"\n                or b.kind == \"RookeryNest\" or b.kind == \"DataCrypt\"\n                or b.kind == \"ChopShop\" or b.kind == \"TinkerBench\" then\n                if d < prod_dist then\n                    prod_dist = d\n                    prod_target = b\n                end\n            end\n\n            -- HQ buildings (all factions)\n            if b.kind == \"TheBox\" or b.kind == \"TheDumpster\"\n                or b.kind == \"TheGrotto\" or b.kind == \"TheBurrow\"\n                or b.kind == \"TheNest\" or b.kind == \"TheMound\" then\n                hq = b\n            end\n\n            if d < nearest_dist then\n                nearest_dist = d\n                nearest = b\n            end\n        end\n\n        local target = prod_target or hq or nearest\n        if target then\n            ctx:attack_move(all_combat_ids, target.x, target.y)\n        end\n    end\nend",
+      "critical_notes": [
+        "Priority: production buildings > HQ > nearest building",
+        "Use attack_move (not move_units) to engage enemies on the way",
+        "Late game (tick >= 4000) forces push regardless of army advantage",
+        "All combat units push together — never split the push force"
+      ]
+    }
+  ],
+  "composition_guide": {
+    "recommended_composition": {
+      "description": "The proven order for combining modules in a combat_micro script",
+      "order": [
+        "unit_classification",
+        "wounded_retreat (skip if late_game)",
+        "centroid_closest_focus_fire",
+        "inline_formation (skip if outnumbered or late_game)",
+        "conditional_kiting (skip if late_game)",
+        "timed_push_building_targeting"
+      ],
+      "why_this_order": "Retreat first (save units) → focus fire (maximize damage) → formation (position idle) → kite (protect ranged) → push (convert advantage). Later modules can override earlier ones for the same unit."
+    },
+    "proven_combinations": [
+      {
+        "modules": [
+          "centroid_closest_focus_fire",
+          "timed_push_building_targeting",
+          "inline_formation"
+        ],
+        "win_rate": 0.95,
+        "gen": "P1_gen63",
+        "note": "Best ever. Formation + push are complementary."
+      },
+      {
+        "modules": [
+          "centroid_closest_focus_fire",
+          "timed_push_building_targeting"
+        ],
+        "win_rate": 0.9,
+        "gen": "P1_gen60",
+        "note": "Timed push alone is very strong."
+      },
+      {
+        "modules": [
+          "centroid_closest_focus_fire",
+          "conditional_kiting",
+          "production_building_targeting"
+        ],
+        "win_rate": 0.8,
+        "gen": "P1_gen34",
+        "note": "Solid without timed push."
+      }
+    ],
+    "forbidden_combinations": [
+      {
+        "modules": [
+          "conditional_kiting",
+          "timed_push_building_targeting",
+          "hp_threshold_kiting"
+        ],
+        "win_rate": 0.7,
+        "gen": "P1_gen64",
+        "note": "HP kite conflicts with timed push. Don't add a third kiting mechanism."
+      },
+      {
+        "modules": [
+          "centroid_closest_focus_fire",
+          "ability_activation"
+        ],
+        "win_rate": 0.0,
+        "gen": "22",
+        "note": "Ability commands override attack commands. Never combine."
+      }
+    ]
+  },
+  "champion_source": "-- @name: combat_micro_timed_push_formation\n-- @events: on_tick\n-- @interval: 3\n\n-- Gen 63: Gen 060 (timed push) + Gen 053 (inline formation).\n-- Combines timed push with formation positioning (tanks forward, ranged back).\n-- Formation only active pre-combat when not outnumbered.\n\nlocal my_units = ctx:my_units()\nif not my_units then return end\n\nlocal map_w, map_h = ctx:map_size()\nlocal current_tick = ctx:tick()\n\n-- Classify units\nlocal combat_units = {}\nlocal attackers = {}\nlocal ranged_attackers = {}\nlocal all_combat_ids = {}\nlocal idle_tanks = {}\nlocal idle_ranged = {}\nfor _, u in ipairs(my_units) do\n    local is_worker = (u.kind == \"Pawdler\" or u.kind == \"Scrounger\"\n        or u.kind == \"Delver\" or u.kind == \"Ponderer\")\n    if not is_worker then\n        table.insert(combat_units, u)\n        table.insert(all_combat_ids, u.id)\n        if u.attacking then\n            table.insert(attackers, u)\n            if u.kind == \"Hisser\" or u.kind == \"Yowler\"\n                or u.kind == \"FlyingFox\" or u.kind == \"Catnapper\" then\n                table.insert(ranged_attackers, u)\n            end\n        else\n            if u.kind == \"Chonk\" or u.kind == \"MechCommander\" then\n                table.insert(idle_tanks, u)\n            elseif u.kind == \"Hisser\" or u.kind == \"Yowler\"\n                or u.kind == \"FlyingFox\" or u.kind == \"Catnapper\" then\n                table.insert(idle_ranged, u)\n            end\n        end\n    end\nend\n\nlocal my_combat_count = #combat_units\nif my_combat_count == 0 then return end\n\n-- Army centroid\nlocal army_cx, army_cy = 0, 0\nfor _, u in ipairs(combat_units) do\n    army_cx = army_cx + u.x\n    army_cy = army_cy + u.y\nend\narmy_cx = army_cx / my_combat_count\narmy_cy = army_cy / my_combat_count\n\n-- Rally point\nlocal my_buildings = ctx:my_buildings()\nlocal rally_x, rally_y = army_cx, army_cy\nif my_buildings and #my_buildings > 0 then\n    local best_dist = 999999\n    for _, b in ipairs(my_buildings) do\n        local dx = b.x - army_cx\n        local dy = b.y - army_cy\n        local d = dx * dx + dy * dy\n        if d < best_dist then\n            best_dist = d\n            rally_x = b.x\n            rally_y = b.y\n        end\n    end\nend\n\n-- Enemies\nlocal enemies = ctx:enemy_units()\nlocal enemy_count = 0\nif enemies then enemy_count = #enemies end\n\nlocal outnumbered = my_combat_count < enemy_count\nlocal strong_advantage = my_combat_count >= enemy_count + 3\nlocal late_game = current_tick >= 4000\n\n-- === RETREAT (disabled in late game) ===\nif not late_game then\n    local retreat_ids = {}\n    for _, u in ipairs(combat_units) do\n        local hp_pct = u.hp / math.max(u.hp_max, 1)\n        if hp_pct < 0.30 and u.attacking and outnumbered then\n            table.insert(retreat_ids, u.id)\n        end\n    end\n    if #retreat_ids > 0 then\n        ctx:move_units(retreat_ids, math.floor(rally_x), math.floor(rally_y))\n    end\nend\n\n-- === FOCUS FIRE: closest enemy to centroid ===\nif #attackers >= 2 and enemies and #enemies > 0 then\n    local cx, cy = 0, 0\n    for _, u in ipairs(attackers) do\n        cx = cx + u.x\n        cy = cy + u.y\n    end\n    cx = cx / #attackers\n    cy = cy / #attackers\n\n    local best_target = nil\n    local best_dist = 12 * 12\n    for _, e in ipairs(enemies) do\n        local dx = e.x - cx\n        local dy = e.y - cy\n        local d = dx * dx + dy * dy\n        if d < best_dist then\n            best_dist = d\n            best_target = e\n        end\n    end\n\n    if best_target then\n        local ids = {}\n        for _, u in ipairs(attackers) do\n            table.insert(ids, u.id)\n        end\n        ctx:attack_units(ids, best_target.id)\n    end\nend\n\n-- === INLINE FORMATION (from Gen 053) ===\nif enemies and #enemies > 0 and not outnumbered and not late_game then\n    local nearest_ex, nearest_ey = 0, 0\n    local nearest_d2 = 999999\n    for _, e in ipairs(enemies) do\n        local dx = e.x - army_cx\n        local dy = e.y - army_cy\n        local d2 = dx * dx + dy * dy\n        if d2 < nearest_d2 then\n            nearest_d2 = d2\n            nearest_ex = e.x\n            nearest_ey = e.y\n        end\n    end\n\n    local dx = nearest_ex - army_cx\n    local dy = nearest_ey - army_cy\n    local dist = math.sqrt(dx * dx + dy * dy)\n\n    if dist >= 4 and dist <= 15 then\n        local nx = dx / dist\n        local ny = dy / dist\n\n        for _, t in ipairs(idle_tanks) do\n            local tx = math.floor(army_cx + nx * 3)\n            local ty = math.floor(army_cy + ny * 3)\n            tx = math.max(0, math.min(map_w - 1, tx))\n            ty = math.max(0, math.min(map_h - 1, ty))\n            ctx:attack_move({t.id}, tx, ty)\n        end\n\n        for _, r in ipairs(idle_ranged) do\n            local rx = math.floor(army_cx - nx * 2)\n            local ry = math.floor(army_cy - ny * 2)\n            rx = math.max(0, math.min(map_w - 1, rx))\n            ry = math.max(0, math.min(map_h - 1, ry))\n            ctx:move_units({r.id}, rx, ry)\n        end\n    end\nend\n\n-- === KITE when outnumbered (disabled in late game) ===\nif not late_game and outnumbered and enemies and #ranged_attackers > 0 then\n    for _, r in ipairs(ranged_attackers) do\n        local closest_dist = 999999\n        local closest_ex, closest_ey = 0, 0\n        for _, e in ipairs(enemies) do\n            local dx = e.x - r.x\n            local dy = e.y - r.y\n            local d = dx * dx + dy * dy\n            if d < closest_dist then\n                closest_dist = d\n                closest_ex = e.x\n                closest_ey = e.y\n            end\n        end\n        if closest_dist < 5 then\n            local flee_x = r.x - (closest_ex - r.x)\n            local flee_y = r.y - (closest_ey - r.y)\n            flee_x = math.max(0, math.min(map_w - 1, flee_x))\n            flee_y = math.max(0, math.min(map_h - 1, flee_y))\n            ctx:move_units({r.id}, flee_x, flee_y)\n        end\n    end\nend\n\n-- === PUSH (forced after tick 4000) ===\nlocal should_push = (enemy_count == 0 and my_combat_count >= 2)\n    or strong_advantage\n    or late_game\n\nif should_push then\n    local enemy_buildings = ctx:enemy_buildings()\n    if enemy_buildings and #enemy_buildings > 0 then\n        local prod_target = nil\n        local prod_dist = 999999\n        local hq = nil\n        local nearest = nil\n        local nearest_dist = 999999\n\n        for _, b in ipairs(enemy_buildings) do\n            local dx = b.x - army_cx\n            local dy = b.y - army_cy\n            local d = dx * dx + dy * dy\n\n            if b.kind == \"CatTree\" or b.kind == \"ServerRack\"\n                or b.kind == \"ScrapHeap\" or b.kind == \"JunkServer\"\n                or b.kind == \"SpawningPools\" or b.kind == \"SunkenServer\"\n                or b.kind == \"MoleHill\" or b.kind == \"DeepServer\"\n                or b.kind == \"RookeryNest\" or b.kind == \"DataCrypt\"\n                or b.kind == \"ChopShop\" or b.kind == \"TinkerBench\" then\n                if d < prod_dist then\n                    prod_dist = d\n                    prod_target = b\n                end\n            end\n\n            if b.kind == \"TheBox\" or b.kind == \"TheDumpster\"\n                or b.kind == \"TheGrotto\" or b.kind == \"TheBurrow\"\n                or b.kind == \"TheNest\" or b.kind == \"TheMound\" then\n                hq = b\n            end\n\n            if d < nearest_dist then\n                nearest_dist = d\n                nearest = b\n            end\n        end\n\n        local target = prod_target or hq or nearest\n        if target then\n            ctx:attack_move(all_combat_ids, target.x, target.y)\n        end\n    end\nend\n"
+}

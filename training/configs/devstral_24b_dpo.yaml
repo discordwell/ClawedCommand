@@ -1,0 +1,58 @@
+# Devstral Small 2 (24B) DPO fine-tuning config
+# Hardware: 1x L40S 48GB (Brev)
+# Framework: TRL DPOTrainer
+# Starts from SFT checkpoint (devstral_24b_qlora_cc_v2)
+# Cost: ~$4 for 1 epoch (~2 hrs on L40S at $1.72/hr)
+
+model:
+  name: "./outputs/devstral_24b_qlora_cc_v2"   # SFT checkpoint
+  max_seq_len: 8192
+  load_in_4bit: true
+  dtype: "bfloat16"
+
+# Reference model loaded automatically from same base
+ref_model:
+  name: "mistralai/Devstral-Small-2-24B-Instruct-2512"
+  load_in_4bit: true
+
+lora:
+  rank: 32
+  alpha: 64
+  dropout: 0.0
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+dpo:
+  beta: 0.1                       # KL penalty coefficient
+  loss_type: "sigmoid"             # Standard DPO loss
+  label_smoothing: 0.0
+  max_prompt_length: 2048
+  max_length: 8192
+
+training:
+  output_dir: "./outputs/devstral_24b_dpo_cc_v2"
+  learning_rate: 5.0e-5            # Lower LR for DPO (fine-tuning already-tuned model)
+  num_epochs: 1                    # Single epoch to avoid overfitting
+  per_device_batch_size: 1         # DPO needs chosen+rejected, so 2x memory
+  gradient_accumulation_steps: 16  # Effective batch size = 16
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  optimizer: "adamw_8bit"
+  lr_scheduler_type: "cosine"
+  bf16: true
+  seed: 42
+  logging_steps: 10
+  eval_steps: 50
+  save_steps: 100
+  max_grad_norm: 1.0
+  gradient_checkpointing: true     # Essential for memory
+
+data:
+  train_file: "../data/cc_v2_dpo_train.jsonl"
+  eval_file: "../data/cc_v2_dpo_eval.jsonl"
