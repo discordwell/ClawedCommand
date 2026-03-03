@@ -119,6 +119,7 @@ async fn run_agent_loop(config: LlmConfig, channels: AgentChannels) {
     let AgentChannels {
         request_rx,
         response_tx,
+        token_tx: _token_tx,
     } = channels;
 
     loop {
@@ -150,7 +151,7 @@ async fn process_request(client: &dyn LlmClient, request: &AgentRequest) -> Agen
                 });
             }
         }
-        AgentSource::GameLoop | AgentSource::QuickCommand => {
+        AgentSource::GameLoop | AgentSource::QuickCommand | AgentSource::Prompt => {
             messages.push(ChatMessage {
                 role: "system".to_string(),
                 content: GAME_LOOP_SYSTEM_PROMPT.to_string(),

@@ -9,7 +9,7 @@ use bevy::input::ButtonState;
 
 use cc_agent::agent_bridge::{AgentBridge, AgentRequest, AgentSource};
 use cc_agent::construct_mode::{ConstructModeState, ScriptLibrary, ScriptTestResult};
-use cc_agent::runner::ScriptRegistry;
+use cc_agent::script_registry::ScriptRegistry;
 use cc_agent::tool_tier::ToolTier;
 use cc_sim::resources::GameState;
 

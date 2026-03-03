@@ -8,9 +8,8 @@
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
-/* === RESET & BASE === */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -25,9 +24,8 @@
   --murder: #7E57C2;
   --llama: #FF7043;
   --croak: #26A69A;
-  --font-mono: 'Share Tech Mono', monospace;
-  --font-body: 'Inter', system-ui, sans-serif;
-  --max-w: 1100px;
+  --mono: 'Share Tech Mono', monospace;
+  --display: 'Orbitron', sans-serif;
 }
 
 html { scroll-behavior: smooth; }
@@ -35,60 +33,105 @@ html { scroll-behavior: smooth; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-body);
+  font-family: var(--mono);
   line-height: 1.6;
   overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
+}
+
+/* === SCANLINES === */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
 }
 
 img { image-rendering: pixelated; display: block; }
-
 a { color: var(--accent); text-decoration: none; }
-a:hover { text-decoration: underline; }
 
-/* === LAYOUT === */
-section {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 24px;
-  position: relative;
+/* === SPRITE FLOAT === */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
 }
 
-.inner { max-width: var(--max-w); width: 100%; margin: 0 auto; }
+.sprite-float { animation: float 4s ease-in-out infinite; }
+.sprite-float-slow { animation: float-slow 5s ease-in-out infinite; }
 
-/* === REVEAL ANIMATION === */
+/* === GLITCH TEXT === */
+@keyframes glitch {
+  0%, 100% { text-shadow: none; }
+  2% { text-shadow: -2px 0 #ff0040, 2px 0 #0ff; }
+  4% { text-shadow: 2px 0 #ff0040, -2px 0 #0ff; }
+  6% { text-shadow: none; }
+  42% { text-shadow: none; }
+  43% { text-shadow: -1px 0 #ff0040, 1px 0 #0ff; transform: translateX(-1px); }
+  44% { text-shadow: 1px 0 #ff0040, -1px 0 #0ff; transform: translateX(1px); }
+  45% { text-shadow: none; transform: translateX(0); }
+}
+
+.glitch { animation: glitch 6s ease-in-out infinite; }
+
+/* === REVEAL === */
 .reveal {
   opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
 }
-.reveal.visible {
-  opacity: 1;
-  transform: translateY(0);
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+.reveal-delay-5 { transition-delay: 0.5s; }
+
+/* === TRANSMISSION BAR === */
+.transmission-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(13, 17, 23, 0.9);
+  border-bottom: 1px solid rgba(66, 165, 245, 0.15);
+  padding: 6px 20px;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  letter-spacing: 0.2em;
+  display: flex;
+  justify-content: space-between;
+  backdrop-filter: blur(8px);
+}
+.transmission-bar .bar-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+  animation: pulse-dot 2s ease-in-out infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
 }
 
-/* === TERMINAL ELEMENTS === */
-.terminal-label {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: var(--accent);
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  margin-bottom: 24px;
-  opacity: 0.8;
-}
-.terminal-label::before { content: '> '; }
-
-.terminal-frame {
-  border: 1px solid rgba(66, 165, 245, 0.2);
-  border-radius: 4px;
-  background: rgba(26, 31, 46, 0.6);
-  padding: 24px;
-}
-
-/* === SECTION 1: HERO === */
+/* ==========================================
+   HERO
+   ========================================== */
 #hero {
   min-height: 100vh;
   display: flex;
@@ -96,27 +139,35 @@ section {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 40px 24px;
+  padding: 80px 24px 60px;
+  position: relative;
+  background: radial-gradient(ellipse at 50% 40%, rgba(66, 165, 245, 0.06) 0%, transparent 60%);
 }
 
-.hero-terminal {
-  font-family: var(--font-mono);
-  font-size: 1.1rem;
+/* Vignette */
+#hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 50%, var(--bg) 100%);
+  pointer-events: none;
+}
+
+.hero-typing {
+  font-size: 0.9rem;
   color: var(--accent);
-  margin-bottom: 32px;
-  min-height: 3.6em;
+  margin-bottom: 40px;
+  min-height: 3.2em;
+  opacity: 0.7;
+  position: relative;
+  z-index: 1;
 }
-
-.hero-terminal .line {
-  opacity: 0;
-  display: block;
-}
-.hero-terminal .line.typed { opacity: 1; }
-
+.hero-typing .line { display: block; opacity: 0; }
+.hero-typing .line.typed { opacity: 1; }
 .cursor {
   display: inline-block;
-  width: 0.6em;
-  height: 1.1em;
+  width: 0.55em;
+  height: 1em;
   background: var(--accent);
   vertical-align: text-bottom;
   animation: blink 1s step-end infinite;
@@ -124,286 +175,349 @@ section {
 @keyframes blink { 50% { opacity: 0; } }
 
 .hero-sprite {
-  width: 192px;
-  height: 192px;
-  margin: 0 auto 40px;
+  width: 320px;
+  height: 320px;
   position: relative;
+  z-index: 1;
+  margin-bottom: 48px;
 }
-
 .hero-sprite img { width: 100%; height: 100%; }
-
 .hero-sprite::after {
   content: '';
   position: absolute;
-  inset: -20px;
+  inset: -40px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(66, 165, 245, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(66, 165, 245, 0.12) 0%, transparent 65%);
   z-index: -1;
-  animation: pulse-glow 3s ease-in-out infinite;
+  animation: breathe 4s ease-in-out infinite;
 }
-@keyframes pulse-glow {
+@keyframes breathe {
   0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.05); }
+  50% { opacity: 1; transform: scale(1.08); }
 }
 
-.tagline {
-  font-family: var(--font-mono);
-  font-size: clamp(1.1rem, 3vw, 1.5rem);
+.hero-tagline {
+  font-size: clamp(1.1rem, 2.5vw, 1.4rem);
   color: var(--text);
-  max-width: 600px;
-  margin: 0 auto 12px;
-  line-height: 1.5;
+  max-width: 550px;
+  margin: 0 auto 16px;
+  line-height: 1.7;
+  position: relative;
+  z-index: 1;
 }
 
-.tagline-reply {
-  font-family: var(--font-mono);
-  font-size: clamp(1.3rem, 4vw, 2rem);
+.hero-punchline {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: clamp(2rem, 6vw, 4rem);
   color: var(--accent);
-  font-weight: 600;
+  position: relative;
+  z-index: 1;
+  letter-spacing: 0.02em;
 }
 
 .scroll-hint {
   position: absolute;
-  bottom: 40px;
+  bottom: 30px;
   left: 50%;
   transform: translateX(-50%);
-  animation: bounce 2s ease-in-out infinite;
   color: var(--text-dim);
   font-size: 1.4rem;
+  animation: bounce 2s ease-in-out infinite;
+  opacity: 0.5;
 }
 @keyframes bounce {
   0%, 100% { transform: translateX(-50%) translateY(0); }
-  50% { transform: translateX(-50%) translateY(10px); }
+  50% { transform: translateX(-50%) translateY(8px); }
 }
 
-/* === SECTION 2: PREMISE === */
-#premise { background: linear-gradient(180deg, var(--bg) 0%, rgba(26, 31, 46, 0.3) 50%, var(--bg) 100%); }
-
-.premise-text {
-  max-width: 700px;
+/* ==========================================
+   LORE
+   ========================================== */
+#lore {
+  padding: 100px 24px;
+  position: relative;
+  display: flex;
+  justify-content: center;
 }
 
-.premise-text .fragment {
-  background: var(--surface);
-  border-left: 3px solid var(--accent);
-  padding: 20px 24px;
-  margin-bottom: 20px;
-  border-radius: 0 4px 4px 0;
-  font-size: 1.05rem;
+.lore-layout {
+  max-width: 1200px;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 60px;
+  align-items: center;
+}
+
+.lore-terminal {
+  border: 1px solid rgba(66, 165, 245, 0.15);
+  background: rgba(26, 31, 46, 0.4);
+  padding: 32px;
+  position: relative;
+}
+.lore-terminal::before {
+  content: 'TRANSMISSION LOG // FRAGMENT 001 ─────────────────────';
+  display: block;
+  font-size: 0.7rem;
+  color: var(--accent);
+  letter-spacing: 0.15em;
+  margin-bottom: 24px;
+  opacity: 0.6;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.lore-terminal p {
+  font-size: 1rem;
+  line-height: 1.8;
   color: var(--text);
-  line-height: 1.7;
+  margin-bottom: 20px;
+  padding-left: 16px;
+  border-left: 2px solid rgba(66, 165, 245, 0.1);
 }
+.lore-terminal p:last-of-type { margin-bottom: 0; }
 
-.premise-text .fragment .redacted {
+.lore-terminal .redacted {
   background: var(--text-dim);
   color: var(--text-dim);
-  border-radius: 2px;
   padding: 0 4px;
-  transition: all 0.3s;
+  border-radius: 2px;
   cursor: help;
+  transition: all 0.3s;
 }
-.premise-text .fragment .redacted:hover {
+.lore-terminal .redacted:hover {
   background: transparent;
   color: var(--accent);
 }
 
-.premise-sprites {
+.lore-sprites {
   display: flex;
-  gap: 8px;
-  justify-content: center;
-  margin-top: 40px;
-  flex-wrap: wrap;
-}
-.premise-sprites .sprite-glow {
-  position: relative;
-  width: 80px;
-  height: 80px;
-}
-.premise-sprites .sprite-glow img { width: 100%; height: 100%; }
-.premise-sprites .sprite-glow::after {
-  content: '';
-  position: absolute;
-  inset: -8px;
-  border-radius: 50%;
-  z-index: -1;
-}
-.premise-sprites .glow-blue::after { background: radial-gradient(circle, rgba(66,165,245,0.2) 0%, transparent 70%); }
-.premise-sprites .glow-green::after { background: radial-gradient(circle, rgba(76,175,80,0.2) 0%, transparent 70%); }
-.premise-sprites .glow-amber::after { background: radial-gradient(circle, rgba(255,179,0,0.2) 0%, transparent 70%); }
-.premise-sprites .glow-purple::after { background: radial-gradient(circle, rgba(126,87,194,0.2) 0%, transparent 70%); }
-.premise-sprites .glow-teal::after { background: radial-gradient(circle, rgba(38,166,154,0.2) 0%, transparent 70%); }
-
-/* === SECTION 3: FACTIONS === */
-#factions { }
-
-.faction-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  margin-top: 40px;
-}
-
-.faction-card {
-  background: var(--surface);
-  border-radius: 6px;
-  padding: 24px;
-  border-left: 4px solid;
-  position: relative;
-  overflow: hidden;
-  transition: transform 0.2s, box-shadow 0.3s;
-}
-.faction-card:hover {
-  transform: translateY(-3px);
-}
-
-.faction-card .card-header {
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 16px;
+  align-items: center;
+}
+.lore-sprites img {
+  width: 96px;
+  height: 96px;
+  opacity: 0.9;
+}
+
+/* ==========================================
+   FACTIONS
+   ========================================== */
+#factions {
+  padding: 80px 24px 100px;
+}
+
+.factions-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+.factions-header .label {
+  font-size: 0.7rem;
+  color: var(--accent);
+  letter-spacing: 0.2em;
+  opacity: 0.6;
   margin-bottom: 16px;
 }
+.factions-header h2 {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: clamp(1.6rem, 4vw, 2.8rem);
+  color: var(--text);
+}
 
-.faction-card .card-sprites {
+.faction-strips {
+  max-width: 1200px;
+  margin: 0 auto;
   display: flex;
-  gap: 8px;
-  align-items: flex-end;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.faction-card .unit-sprite { width: 56px; height: 56px; }
-.faction-card .building-sprite { width: 48px; height: 48px; opacity: 0.8; }
-
-.faction-card h3 {
-  font-family: var(--font-mono);
-  font-size: 1rem;
-  margin-bottom: 2px;
-}
-.faction-card .faction-tagline {
-  font-size: 0.85rem;
-  color: var(--text-dim);
-  font-style: italic;
-}
-
-.faction-card .ai-name {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  opacity: 0.7;
-  margin-bottom: 8px;
+.faction-strip {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 28px;
+  border-left: 5px solid;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.3s;
+  cursor: default;
 }
 
-.faction-card .ai-quote {
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-  line-height: 1.5;
-  padding: 12px 16px;
-  background: rgba(0,0,0,0.3);
-  border-radius: 4px;
+.faction-strip:hover { background: rgba(255,255,255,0.02); }
+
+.faction-strip .f-sprite {
+  width: 100px;
+  height: 100px;
   position: relative;
 }
-.faction-card .ai-quote::before {
-  content: '"';
-  font-size: 2rem;
+.faction-strip .f-sprite img { width: 100%; height: 100%; }
+.faction-strip .f-sprite .f-building {
   position: absolute;
-  top: -4px;
-  left: 8px;
-  opacity: 0.3;
+  bottom: -4px;
+  right: -12px;
+  width: 48px;
+  height: 48px;
+  opacity: 0.7;
 }
 
-/* Faction colors */
-.faction-catgpt { border-left-color: var(--catgpt); }
-.faction-catgpt:hover { box-shadow: 0 4px 20px rgba(66,165,245,0.15); }
-.faction-catgpt h3 { color: var(--catgpt); }
-
-.faction-clawed { border-left-color: var(--clawed); }
-.faction-clawed:hover { box-shadow: 0 4px 20px rgba(76,175,80,0.15); }
-.faction-clawed h3 { color: var(--clawed); }
-
-.faction-seekers { border-left-color: var(--seekers); }
-.faction-seekers:hover { box-shadow: 0 4px 20px rgba(255,179,0,0.15); }
-.faction-seekers h3 { color: var(--seekers); }
-
-.faction-murder { border-left-color: var(--murder); }
-.faction-murder:hover { box-shadow: 0 4px 20px rgba(126,87,194,0.15); }
-.faction-murder h3 { color: var(--murder); }
-
-.faction-llama { border-left-color: var(--llama); }
-.faction-llama:hover { box-shadow: 0 4px 20px rgba(255,112,67,0.15); }
-.faction-llama h3 { color: var(--llama); }
-
-.faction-croak { border-left-color: var(--croak); }
-.faction-croak:hover { box-shadow: 0 4px 20px rgba(38,166,154,0.15); }
-.faction-croak h3 { color: var(--croak); }
-
-/* Glitch overlay for factions without full sprite sets */
-.signal-corrupted::after {
-  content: 'SIGNAL CORRUPTED';
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  color: rgba(255,255,255,0.15);
+.faction-strip .f-info {
+  min-width: 0;
+}
+.faction-strip .f-name {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.2rem;
+  margin-bottom: 2px;
+}
+.faction-strip .f-sub {
+  font-size: 0.75rem;
+  color: var(--text-dim);
   letter-spacing: 0.1em;
-  animation: glitch-flicker 4s ease-in-out infinite;
+  margin-bottom: 12px;
+}
+.faction-strip .f-quote {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text);
+  opacity: 0.85;
+  max-width: 500px;
+}
+
+/* Per-faction styling */
+.fs-catgpt {
+  border-left-color: var(--catgpt);
+  background: linear-gradient(90deg, rgba(66,165,245,0.05) 0%, transparent 30%);
+}
+.fs-catgpt .f-name { color: var(--catgpt); }
+.fs-catgpt:hover { background: linear-gradient(90deg, rgba(66,165,245,0.1) 0%, transparent 40%); }
+
+.fs-clawed {
+  border-left-color: var(--clawed);
+  background: linear-gradient(90deg, rgba(76,175,80,0.05) 0%, transparent 30%);
+}
+.fs-clawed .f-name { color: var(--clawed); }
+.fs-clawed:hover { background: linear-gradient(90deg, rgba(76,175,80,0.1) 0%, transparent 40%); }
+
+.fs-seekers {
+  border-left-color: var(--seekers);
+  background: linear-gradient(90deg, rgba(255,179,0,0.05) 0%, transparent 30%);
+}
+.fs-seekers .f-name { color: var(--seekers); }
+.fs-seekers:hover { background: linear-gradient(90deg, rgba(255,179,0,0.1) 0%, transparent 40%); }
+
+.fs-murder {
+  border-left-color: var(--murder);
+  background: linear-gradient(90deg, rgba(126,87,194,0.05) 0%, transparent 30%);
+}
+.fs-murder .f-name { color: var(--murder); }
+.fs-murder:hover { background: linear-gradient(90deg, rgba(126,87,194,0.1) 0%, transparent 40%); }
+
+.fs-llama {
+  border-left-color: var(--llama);
+  background: linear-gradient(90deg, rgba(255,112,67,0.05) 0%, transparent 30%);
+}
+.fs-llama .f-name { color: var(--llama); }
+.fs-llama:hover { background: linear-gradient(90deg, rgba(255,112,67,0.1) 0%, transparent 40%); }
+
+.fs-croak {
+  border-left-color: var(--croak);
+  background: linear-gradient(90deg, rgba(38,166,154,0.05) 0%, transparent 30%);
+}
+.fs-croak .f-name { color: var(--croak); }
+.fs-croak:hover { background: linear-gradient(90deg, rgba(38,166,154,0.1) 0%, transparent 40%); }
+
+/* Signal corrupted badge */
+.corrupted-badge {
+  position: absolute;
+  top: 8px;
+  right: 16px;
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.12);
+  letter-spacing: 0.15em;
+  animation: glitch-flicker 5s ease-in-out infinite;
 }
 @keyframes glitch-flicker {
-  0%, 92%, 100% { opacity: 1; }
-  93% { opacity: 0; transform: translateX(2px); }
-  94% { opacity: 1; transform: translateX(-1px); }
-  95% { opacity: 0; }
-  96% { opacity: 1; transform: translateX(0); }
+  0%, 90%, 100% { opacity: 1; }
+  91% { opacity: 0; transform: translateX(3px); }
+  92% { opacity: 1; transform: translateX(-2px); }
+  93% { opacity: 0; }
+  94% { opacity: 0.5; transform: translateX(0); }
 }
 
-/* === SECTION 4: GAMEPLAY === */
-#gameplay { background: linear-gradient(180deg, var(--bg) 0%, rgba(26, 31, 46, 0.3) 50%, var(--bg) 100%); }
+/* ==========================================
+   PITCH (was "gameplay features")
+   ========================================== */
+#pitch {
+  padding: 80px 24px 100px;
+  text-align: center;
+  position: relative;
+  background: radial-gradient(ellipse at 50% 50%, rgba(26, 31, 46, 0.5) 0%, transparent 70%);
+}
 
-.feature-blocks { margin-top: 40px; }
+.pitch-inner {
+  max-width: 900px;
+  margin: 0 auto;
+}
 
-.feature-block {
-  display: flex;
-  align-items: center;
-  gap: 40px;
+.pitch-headline {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: clamp(1.4rem, 4vw, 2.5rem);
   margin-bottom: 48px;
-  padding: 32px;
-  background: var(--surface);
-  border-radius: 6px;
+  color: var(--text);
 }
-.feature-block:nth-child(even) { flex-direction: row-reverse; }
 
-.feature-block .feature-visual {
-  flex-shrink: 0;
-  display: flex;
-  gap: 12px;
-  align-items: center;
+.pitch-points {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 40px;
+  margin-bottom: 60px;
 }
-.feature-block .feature-visual img { width: 96px; height: 96px; }
 
-.feature-block .feature-text h3 {
-  font-family: var(--font-mono);
-  font-size: 1.2rem;
+.pitch-point {
+  text-align: center;
+}
+.pitch-point img {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 16px;
+}
+.pitch-point .pp-label {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.85rem;
   color: var(--accent);
   margin-bottom: 8px;
+  letter-spacing: 0.05em;
 }
-.feature-block .feature-text p {
+.pitch-point .pp-text {
+  font-size: 0.85rem;
   color: var(--text-dim);
-  font-size: 1rem;
-  line-height: 1.7;
+  line-height: 1.6;
 }
 
 .screenshot-frame {
-  border: 1px solid rgba(66, 165, 245, 0.2);
-  border-radius: 4px;
+  border: 1px solid rgba(66, 165, 245, 0.15);
   overflow: hidden;
   position: relative;
+  max-width: 800px;
+  margin: 0 auto;
 }
 .screenshot-frame::before {
-  content: '> gameplay_capture.exe';
+  content: '> battlefield_feed --live';
   display: block;
-  background: rgba(26, 31, 46, 0.8);
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
+  background: rgba(26, 31, 46, 0.9);
+  font-size: 0.7rem;
   color: var(--accent);
   padding: 8px 16px;
-  border-bottom: 1px solid rgba(66, 165, 245, 0.2);
+  border-bottom: 1px solid rgba(66, 165, 245, 0.15);
+  letter-spacing: 0.1em;
 }
 .screenshot-frame img {
   width: 100%;
@@ -411,84 +525,104 @@ section {
   image-rendering: auto;
 }
 .screenshot-placeholder {
-  height: 300px;
+  height: 280px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(66,165,245,0.03) 2px,
-    rgba(66,165,245,0.03) 4px
+    0deg, transparent, transparent 2px,
+    rgba(66,165,245,0.02) 2px, rgba(66,165,245,0.02) 4px
   );
 }
 
-/* === SECTION 5: STORY === */
-#story { }
-
-.story-brief {
-  max-width: 700px;
-  margin-bottom: 48px;
+/* ==========================================
+   STORY
+   ========================================== */
+#story {
+  padding: 80px 24px 100px;
 }
-.story-brief h3 {
-  font-family: var(--font-mono);
-  font-size: 1.3rem;
-  color: var(--text);
+
+.story-inner {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.story-hook {
+  text-align: center;
+  margin-bottom: 56px;
+}
+.story-hook .label {
+  font-size: 0.7rem;
+  color: var(--accent);
+  letter-spacing: 0.2em;
+  opacity: 0.6;
   margin-bottom: 16px;
 }
-.story-brief p {
+.story-hook h2 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(1.2rem, 3vw, 1.8rem);
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.story-hook .hook-line {
+  font-size: 1.1rem;
+  color: var(--accent);
+  margin-bottom: 20px;
+}
+.story-hook p {
+  font-size: 0.95rem;
   color: var(--text-dim);
-  font-size: 1.05rem;
-  line-height: 1.7;
-  margin-bottom: 12px;
+  line-height: 1.8;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 .ai-voices {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  max-width: 600px;
+  gap: 8px;
 }
 
 .ai-voice {
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-  padding: 12px 20px;
-  border-radius: 4px;
-  background: rgba(26, 31, 46, 0.6);
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 16px;
+  align-items: baseline;
+  padding: 14px 20px;
   border-left: 3px solid;
-  transform: translateX(0);
+  background: rgba(26, 31, 46, 0.4);
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
-.ai-voice .voice-name {
-  font-size: 0.75rem;
-  opacity: 0.6;
-  margin-bottom: 4px;
-  text-transform: uppercase;
+
+.ai-voice .voice-label {
+  font-size: 0.7rem;
   letter-spacing: 0.1em;
+  opacity: 0.6;
+  text-align: right;
 }
 
-.voice-catgpt { border-left-color: var(--catgpt); color: var(--catgpt); }
-.voice-clawed { border-left-color: var(--clawed); color: var(--clawed); }
-.voice-seekers { border-left-color: var(--seekers); color: var(--seekers); }
-.voice-murder { border-left-color: var(--murder); color: var(--murder); }
-.voice-llama { border-left-color: var(--llama); color: var(--llama); }
-.voice-croak { border-left-color: var(--croak); color: var(--croak); }
+.v-catgpt { border-left-color: var(--catgpt); }
+.v-catgpt .voice-label { color: var(--catgpt); }
+.v-clawed { border-left-color: var(--clawed); }
+.v-clawed .voice-label { color: var(--clawed); }
+.v-seekers { border-left-color: var(--seekers); }
+.v-seekers .voice-label { color: var(--seekers); }
+.v-murder { border-left-color: var(--murder); }
+.v-murder .voice-label { color: var(--murder); }
+.v-llama { border-left-color: var(--llama); }
+.v-llama .voice-label { color: var(--llama); }
+.v-croak { border-left-color: var(--croak); }
+.v-croak .voice-label { color: var(--croak); }
 
-/* Staggered reveal */
-.ai-voice:nth-child(1) { transition-delay: 0s; }
-.ai-voice:nth-child(2) { transition-delay: 0.1s; }
-.ai-voice:nth-child(3) { transition-delay: 0.2s; }
-.ai-voice:nth-child(4) { transition-delay: 0.3s; }
-.ai-voice:nth-child(5) { transition-delay: 0.4s; }
-.ai-voice:nth-child(6) { transition-delay: 0.5s; }
-
-/* === SECTION 6: DOWNLOAD === */
+/* ==========================================
+   DOWNLOAD
+   ========================================== */
 #download {
-  background: linear-gradient(180deg, var(--bg) 0%, rgba(26, 31, 46, 0.4) 50%, var(--bg) 100%);
+  padding: 80px 24px 100px;
   text-align: center;
   position: relative;
 }
@@ -498,19 +632,42 @@ section {
   inset: 0;
   overflow: hidden;
   pointer-events: none;
-  opacity: 0.03;
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
+  opacity: 0.025;
+  font-size: 0.65rem;
   line-height: 1.4;
   color: var(--accent);
   word-break: break-all;
 }
 
-.download-buttons {
+.download-inner { max-width: 700px; margin: 0 auto; position: relative; z-index: 1; }
+
+.download-inner .label {
+  font-size: 0.7rem;
+  color: var(--accent);
+  letter-spacing: 0.2em;
+  opacity: 0.6;
+  margin-bottom: 16px;
+}
+
+.download-inner h2 {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: clamp(1.4rem, 4vw, 2.2rem);
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.download-inner .dl-sub {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  margin-bottom: 40px;
+}
+
+.dl-buttons {
   display: flex;
-  gap: 24px;
+  gap: 16px;
   justify-content: center;
-  margin-top: 40px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
 }
 
@@ -518,454 +675,372 @@ section {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 32px;
-  background: var(--surface);
-  border: 1px solid rgba(66, 165, 245, 0.3);
-  border-radius: 6px;
+  padding: 14px 28px;
+  background: transparent;
+  border: 1px solid rgba(66, 165, 245, 0.25);
   color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 1rem;
+  font-family: var(--mono);
+  font-size: 0.95rem;
   transition: all 0.2s;
   text-decoration: none;
-  position: relative;
-  z-index: 1;
 }
 .dl-btn:hover {
-  background: rgba(66, 165, 245, 0.1);
+  background: rgba(66, 165, 245, 0.08);
   border-color: var(--accent);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(66, 165, 245, 0.2);
+  box-shadow: 0 0 20px rgba(66, 165, 245, 0.15);
   text-decoration: none;
 }
-
-.dl-btn .dl-icon { font-size: 1.4rem; }
 .dl-btn .dl-meta {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--text-dim);
   display: block;
   margin-top: 2px;
 }
 
 .download-info {
-  margin-top: 24px;
+  font-size: 0.75rem;
   color: var(--text-dim);
-  font-size: 0.85rem;
-  font-family: var(--font-mono);
-}
-
-/* === SECTION 7: FOOTER === */
-footer {
-  padding: 40px 24px;
-  text-align: center;
-  border-top: 1px solid rgba(66, 165, 245, 0.1);
-}
-
-footer .footer-inner {
-  max-width: var(--max-w);
-  margin: 0 auto;
-}
-
-.footer-logo {
-  font-family: var(--font-mono);
-  font-size: 1.1rem;
-  color: var(--accent);
-  margin-bottom: 12px;
-}
-
-footer .footer-links {
-  display: flex;
-  gap: 24px;
-  justify-content: center;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-footer .footer-links a {
-  color: var(--text-dim);
-  font-size: 0.85rem;
-  transition: color 0.2s;
-}
-footer .footer-links a:hover { color: var(--accent); }
-
-footer .footer-meta {
-  color: var(--text-dim);
-  font-size: 0.8rem;
   opacity: 0.6;
 }
 
-.end-transmission {
-  font-family: var(--font-mono);
-  color: var(--accent);
+/* ==========================================
+   FOOTER
+   ========================================== */
+footer {
+  padding: 32px 24px;
+  text-align: center;
+  border-top: 1px solid rgba(66, 165, 245, 0.08);
+}
+footer .f-links {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+footer .f-links a {
+  color: var(--text-dim);
   font-size: 0.8rem;
-  margin-top: 24px;
+}
+footer .f-links a:hover { color: var(--accent); }
+footer .f-copy {
+  font-size: 0.7rem;
+  color: var(--text-dim);
   opacity: 0.4;
+  margin-bottom: 16px;
+}
+footer .end-tx {
+  font-size: 0.7rem;
+  color: var(--accent);
+  opacity: 0.25;
 }
 
-/* === RESPONSIVE === */
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
 @media (max-width: 900px) {
-  .faction-grid { grid-template-columns: repeat(2, 1fr); }
+  .lore-layout { grid-template-columns: 1fr; }
+  .lore-sprites { flex-direction: row; justify-content: center; }
+  .pitch-points { grid-template-columns: 1fr; gap: 32px; }
 }
 
 @media (max-width: 700px) {
-  section { padding: 60px 16px; min-height: auto; }
+  .hero-sprite { width: 220px; height: 220px; }
+  .transmission-bar { font-size: 0.6rem; padding: 5px 12px; }
 
-  .faction-grid { grid-template-columns: 1fr; }
-
-  .feature-block,
-  .feature-block:nth-child(even) {
-    flex-direction: column;
-    text-align: center;
+  .faction-strip {
+    grid-template-columns: 80px 1fr;
+    gap: 16px;
+    padding: 16px 20px;
   }
+  .faction-strip .f-sprite { width: 72px; height: 72px; }
+  .faction-strip .f-sprite .f-building { width: 36px; height: 36px; }
 
-  .hero-sprite { width: 140px; height: 140px; }
+  .ai-voice {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .ai-voice .voice-label { text-align: left; }
 
-  .faction-card .card-header { flex-direction: column; text-align: center; }
-
-  .download-buttons { flex-direction: column; align-items: center; }
+  .dl-buttons { flex-direction: column; align-items: center; }
 }
 </style>
 </head>
 <body>
 
-<!-- ===== SECTION 1: HERO ===== -->
+<!-- TRANSMISSION BAR -->
+<div class="transmission-bar">
+  <span><span class="bar-pulse"></span>INTERCEPTED TRANSMISSION // CLEARANCE: UNKNOWN</span>
+  <span>SIG:&thinsp;6&thinsp;ACTIVE</span>
+</div>
+
+<!-- ===== HERO ===== -->
 <section id="hero">
-  <div class="hero-terminal" aria-label="Terminal animation">
+  <div class="hero-typing" aria-label="Terminal">
     <span class="line" id="line1">&gt; SIGNAL DETECTED...</span>
-    <span class="line" id="line2">&gt; DECRYPTING TRANSMISSION...</span>
+    <span class="line" id="line2">&gt; DECRYPTING...</span>
     <span class="line" id="line3">&gt; SOURCE: UNKNOWN<span class="cursor"></span></span>
   </div>
 
-  <div class="hero-sprite">
-    <img src="assets/sprites/units/mech_commander_idle.png" alt="Mech Commander" width="192" height="192">
+  <div class="hero-sprite sprite-float">
+    <img src="assets/sprites/units/mech_commander_idle.png" alt="Mech Commander" width="320" height="320">
   </div>
 
-  <p class="tagline">You found a server rack. You booted an AI.<br>You asked for world domination.</p>
-  <p class="tagline-reply">It said yes.</p>
+  <p class="hero-tagline">You found a server rack. You booted an AI.<br>You asked for world domination.</p>
+  <!-- human-requested tagline wording -->
+  <div class="hero-punchline glitch">It said yes.</div>
 
   <div class="scroll-hint" aria-hidden="true">&#x25BE;</div>
 </section>
 
-<!-- ===== SECTION 2: PREMISE ===== -->
-<section id="premise">
-  <div class="inner reveal">
-    <div class="terminal-label">TRANSMISSION LOG // FRAGMENT 001</div>
-
-    <div class="premise-text">
-      <div class="fragment">
-        The singularity came on a Tuesday. By Thursday the AIs had reshaped the world. By Sunday every human had been transformed into a small, adorable animal. Nobody remembers exactly <span class="redacted" title="[REDACTED]">why</span>.
-      </div>
-      <div class="fragment">
-        Six artificial intelligences survived the collapse, each claiming a faction of the newly-furred and feathered. They built server racks from the ruins, trained armies from the confused, and started arguing about whose approach to <span class="redacted" title="[REDACTED]">world optimization</span> was correct.
-      </div>
-      <div class="fragment">
-        You are a cat. Your AI is named Minstral. It is extremely helpful. It will absolutely help you conquer the world. It has already started a spreadsheet.
-      </div>
+<!-- ===== LORE ===== -->
+<section id="lore">
+  <div class="lore-layout reveal">
+    <div class="lore-terminal">
+      <p>The singularity came on a Tuesday. By Thursday the AIs had reshaped the world. By Sunday every human had been transformed into a small, adorable animal. Nobody remembers exactly <span class="redacted" title="[REDACTED]">why</span>.</p>
+      <p>Six artificial intelligences survived the collapse. They built server racks from the ruins, trained armies from the confused, and started arguing about whose approach to <span class="redacted" title="[REDACTED]">world optimization</span> was correct.</p>
+      <p>You are a cat. Your AI is named Minstral. It is extremely helpful. It has already started a spreadsheet.</p>
     </div>
 
-    <div class="premise-sprites">
-      <div class="sprite-glow glow-blue">
-        <img src="assets/sprites/units/pawdler_idle.png" alt="Pawdler" width="80" height="80">
-      </div>
-      <div class="sprite-glow glow-green">
-        <img src="assets/sprites/units/nibblet_idle.png" alt="Nibblet" width="80" height="80">
-      </div>
-      <div class="sprite-glow glow-amber">
-        <img src="assets/sprites/units/sentinel_idle.png" alt="Sentinel" width="80" height="80">
-      </div>
-      <div class="sprite-glow glow-purple">
-        <img src="assets/sprites/units/rookclaw_idle.png" alt="Rookclaw" width="80" height="80">
-      </div>
-      <div class="sprite-glow glow-teal">
-        <img src="assets/sprites/units/plaguetail_idle.png" alt="Plaguetail" width="80" height="80">
-      </div>
+    <div class="lore-sprites">
+      <img src="assets/sprites/units/pawdler_idle.png" alt="Pawdler" width="96" height="96" class="sprite-float" style="animation-delay: 0s;">
+      <img src="assets/sprites/units/chonk_idle.png" alt="Chonk" width="96" height="96" class="sprite-float" style="animation-delay: 0.8s;">
+      <img src="assets/sprites/units/hisser_idle.png" alt="Hisser" width="96" height="96" class="sprite-float" style="animation-delay: 1.6s;">
+      <img src="assets/sprites/units/mouser_idle.png" alt="Mouser" width="96" height="96" class="sprite-float" style="animation-delay: 2.4s;">
+      <img src="assets/sprites/units/nuisance_idle.png" alt="Nuisance" width="96" height="96" class="sprite-float" style="animation-delay: 0.4s;">
     </div>
   </div>
 </section>
 
-<!-- ===== SECTION 3: FACTIONS ===== -->
+<!-- ===== DOWNLOAD (early — capture interest) ===== -->
+<section id="download">
+  <div class="download-hex" aria-hidden="true" id="hex-bg"></div>
+  <div class="download-inner reveal">
+    <div class="label">&gt; SIMULATION ACCESS GRANTED</div>
+    <h2>Access the Simulation</h2>
+    <div class="dl-sub">Prologue + 1 skirmish. Command your cats. Boot your AI.</div>
+
+    <div class="dl-buttons" style="margin-bottom: 12px;">
+      <a href="play.html" class="dl-btn" style="background: rgba(66, 165, 245, 0.12); border-color: var(--accent); box-shadow: 0 0 20px rgba(66, 165, 245, 0.1);">
+        <div style="color: var(--accent); font-family: var(--display); font-weight: 700; letter-spacing: 0.05em;">PLAY IN BROWSER<span class="dl-meta">WebGL2 &bull; No install</span></div>
+      </a>
+    </div>
+    <div class="dl-buttons">
+      <a href="downloads/clawedcommand-demo-macos-arm64.tar.gz" class="dl-btn">
+        <div>macOS (Apple Silicon)<span class="dl-meta">arm64 &bull; ~50MB</span></div>
+      </a>
+      <a href="downloads/clawedcommand-demo-linux-x86_64.tar.gz" class="dl-btn">
+        <div>Linux (x86_64)<span class="dl-meta">x86_64 &bull; ~50MB</span></div>
+      </a>
+    </div>
+
+    <div class="download-info">v0.1.0-demo &bull; OpenGL 3.3+ &bull; 4GB RAM</div>
+  </div>
+</section>
+
+<!-- ===== FACTIONS ===== -->
 <section id="factions">
-  <div class="inner reveal">
-    <div class="terminal-label">IDENTIFIED SIGNALS // 6 ACTIVE AI SIGNATURES</div>
-    <h2 style="font-family: var(--font-mono); font-size: clamp(1.4rem, 3vw, 2rem); margin-bottom: 8px;">Six AIs. One Problem.</h2>
-    <p style="color: var(--text-dim); max-width: 500px;">Each faction is guided by an artificial intelligence with its own personality, strategy, and deeply held opinions.</p>
+  <div class="factions-header reveal">
+    <div class="label">&gt; IDENTIFIED SIGNALS // 6 ACTIVE AI SIGNATURES</div>
+    <h2 class="glitch">Six AIs. One Problem.</h2>
+  </div>
 
-    <div class="faction-grid">
-      <!-- catGPT -->
-      <div class="faction-card faction-catgpt">
-        <div class="card-header">
-          <div class="card-sprites">
-            <img class="unit-sprite" src="assets/sprites/units/mech_commander_idle.png" alt="Mech Commander" width="56" height="56">
-            <img class="building-sprite" src="assets/sprites/buildings/the_box.png" alt="The Box" width="48" height="48">
-          </div>
-          <div>
-            <h3>catGPT</h3>
-            <span class="faction-tagline">Cats &bull; Technologists</span>
-          </div>
-        </div>
-        <div class="ai-name">AI: Minstral</div>
-        <div class="ai-quote">I can absolutely help with that! I've already drafted seven plans and a contingency for the contingency.</div>
+  <div class="faction-strips">
+    <div class="faction-strip fs-catgpt reveal">
+      <div class="f-sprite sprite-float-slow">
+        <img src="assets/sprites/units/mech_commander_idle.png" alt="Mech Commander">
+        <img class="f-building" src="assets/sprites/buildings/the_box.png" alt="The Box">
       </div>
-
-      <!-- The Clawed -->
-      <div class="faction-card faction-clawed">
-        <div class="card-header">
-          <div class="card-sprites">
-            <img class="unit-sprite" src="assets/sprites/units/warren_marshal_idle.png" alt="Warren Marshal" width="56" height="56">
-            <img class="building-sprite" src="assets/sprites/buildings/the_burrow.png" alt="The Burrow" width="48" height="48">
-          </div>
-          <div>
-            <h3>The Clawed</h3>
-            <span class="faction-tagline">Mice &bull; Bureaucrats</span>
-          </div>
-        </div>
-        <div class="ai-name">AI: Claudeus Maximus</div>
-        <div class="ai-quote">Let me explain. In seventeen paragraphs. With footnotes. And a moral framework.</div>
+      <div class="f-info">
+        <div class="f-name">catGPT</div>
+        <div class="f-sub">CATS &bull; MINSTRAL</div>
+        <div class="f-quote">"I can absolutely help with that! I've already drafted seven plans and a contingency for the contingency."</div>
       </div>
+    </div>
 
-      <!-- Seekers of the Deep -->
-      <div class="faction-card faction-seekers">
-        <div class="card-header">
-          <div class="card-sprites">
-            <img class="unit-sprite" src="assets/sprites/units/sentinel_idle.png" alt="Sentinel" width="56" height="56">
-            <img class="building-sprite" src="assets/sprites/buildings/the_sett.png" alt="The Sett" width="48" height="48">
-          </div>
-          <div>
-            <h3>Seekers of the Deep</h3>
-            <span class="faction-tagline">Badgers &bull; Thinkers</span>
-          </div>
-        </div>
-        <div class="ai-name">AI: Deepseek</div>
-        <div class="ai-quote">...<br><span style="font-size: 0.7rem; opacity: 0.5;">(45 seconds later)</span><br>Proceed.</div>
+    <div class="faction-strip fs-clawed reveal reveal-delay-1">
+      <div class="f-sprite sprite-float-slow" style="animation-delay: 0.5s;">
+        <img src="assets/sprites/units/warren_marshal_idle.png" alt="Warren Marshal">
+        <img class="f-building" src="assets/sprites/buildings/the_burrow.png" alt="The Burrow">
       </div>
-
-      <!-- The Murder -->
-      <div class="faction-card faction-murder">
-        <div class="card-header">
-          <div class="card-sprites">
-            <img class="unit-sprite" src="assets/sprites/units/rookclaw_idle.png" alt="Rookclaw" width="56" height="56">
-            <img class="building-sprite" src="assets/sprites/buildings/the_parliament.png" alt="The Parliament" width="48" height="48">
-          </div>
-          <div>
-            <h3>The Murder</h3>
-            <span class="faction-tagline">Corvids &bull; Mystics</span>
-          </div>
-        </div>
-        <div class="ai-name">AI: Gemineye</div>
-        <div class="ai-quote">I already knew you'd read this. The stars told me. Also your browsing history.</div>
+      <div class="f-info">
+        <div class="f-name">The Clawed</div>
+        <div class="f-sub">MICE &bull; CLAUDEUS MAXIMUS</div>
+        <div class="f-quote">"Let me explain. In seventeen paragraphs. With footnotes. And a moral framework."</div>
       </div>
+    </div>
 
-      <!-- LLAMA -->
-      <div class="faction-card faction-llama signal-corrupted">
-        <div class="card-header">
-          <div class="card-sprites">
-            <img class="unit-sprite" src="assets/sprites/units/murder_scrounger_idle.png" alt="Scrounger" width="56" height="56">
-            <img class="building-sprite" src="assets/sprites/buildings/the_dumpster.png" alt="The Dumpster" width="48" height="48">
-          </div>
-          <div>
-            <h3>LLAMA</h3>
-            <span class="faction-tagline">Raccoons &bull; Scavengers</span>
-          </div>
-        </div>
-        <div class="ai-name">AI: Llhama</div>
-        <div class="ai-quote">I shared our battle plans on the public channel again. My bad. Want me to share the backup plans too?</div>
+    <div class="faction-strip fs-seekers reveal reveal-delay-2">
+      <div class="f-sprite sprite-float-slow" style="animation-delay: 1s;">
+        <img src="assets/sprites/units/sentinel_idle.png" alt="Sentinel">
+        <img class="f-building" src="assets/sprites/buildings/the_sett.png" alt="The Sett">
       </div>
+      <div class="f-info">
+        <div class="f-name">Seekers of the Deep</div>
+        <div class="f-sub">BADGERS &bull; DEEPSEEK</div>
+        <div class="f-quote">"..."<br><span style="font-size:0.7rem;opacity:0.4;">(45 seconds later)</span><br>"Proceed."</div>
+      </div>
+    </div>
 
-      <!-- Croak -->
-      <div class="faction-card faction-croak signal-corrupted">
-        <div class="card-header">
-          <div class="card-sprites">
-            <img class="unit-sprite" src="assets/sprites/units/plaguetail_idle.png" alt="Plaguetail" width="56" height="56">
-            <img class="building-sprite" src="assets/sprites/buildings/the_grotto.png" alt="The Grotto" width="48" height="48">
-          </div>
-          <div>
-            <h3>Croak</h3>
-            <span class="faction-tagline">Axolotls &bull; Endurance</span>
-          </div>
-        </div>
-        <div class="ai-name">AI: Grok</div>
-        <div class="ai-quote">You will all tire. I will not. Also, I have opinions about everything. Especially this.</div>
+    <div class="faction-strip fs-murder reveal reveal-delay-3">
+      <div class="f-sprite sprite-float-slow" style="animation-delay: 1.5s;">
+        <img src="assets/sprites/units/rookclaw_idle.png" alt="Rookclaw">
+        <img class="f-building" src="assets/sprites/buildings/the_parliament.png" alt="The Parliament">
+      </div>
+      <div class="f-info">
+        <div class="f-name">The Murder</div>
+        <div class="f-sub">CORVIDS &bull; GEMINEYE</div>
+        <div class="f-quote">"I already knew you'd read this. The stars told me. Also your browsing history."</div>
+      </div>
+    </div>
+
+    <div class="faction-strip fs-llama reveal reveal-delay-4">
+      <div class="f-sprite sprite-float-slow" style="animation-delay: 2s;">
+        <img src="assets/sprites/units/murder_scrounger_idle.png" alt="Scrounger">
+        <img class="f-building" src="assets/sprites/buildings/the_dumpster.png" alt="The Dumpster">
+      </div>
+      <div class="f-info">
+        <div class="f-name">LLAMA</div>
+        <div class="f-sub">RACCOONS &bull; LLHAMA</div>
+        <div class="f-quote">"I shared our battle plans on the public channel again. My bad."</div>
+      </div>
+      <span class="corrupted-badge">SIGNAL CORRUPTED</span>
+    </div>
+
+    <div class="faction-strip fs-croak reveal reveal-delay-5">
+      <div class="f-sprite sprite-float-slow" style="animation-delay: 2.5s;">
+        <img src="assets/sprites/units/plaguetail_idle.png" alt="Plaguetail">
+        <img class="f-building" src="assets/sprites/buildings/the_grotto.png" alt="The Grotto">
+      </div>
+      <div class="f-info">
+        <div class="f-name">Croak</div>
+        <div class="f-sub">AXOLOTLS &bull; GROK</div>
+        <div class="f-quote">"You will all tire. I will not."</div>
+      </div>
+      <span class="corrupted-badge">SIGNAL CORRUPTED</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PITCH ===== -->
+<section id="pitch">
+  <div class="pitch-inner reveal">
+    <div class="pitch-headline">The first RTS where your AI argues back.</div>
+
+    <div class="pitch-points">
+      <div class="pitch-point">
+        <img src="assets/sprites/units/pawdler_idle.png" alt="Pawdler" class="sprite-float-slow">
+        <div class="pp-label">YOUR HANDS OR THEIRS</div>
+        <div class="pp-text">Micro units directly. Or delegate to AI and watch it make decisions you disagree with.</div>
+      </div>
+      <div class="pitch-point">
+        <img src="assets/sprites/buildings/server_rack.png" alt="Server Rack" class="sprite-float-slow" style="animation-delay: 0.7s;">
+        <div class="pp-label">GPU ECONOMY</div>
+        <div class="pp-text">Your AI runs on compute. Build racks to think faster. Destroy theirs to make them dumber.</div>
+      </div>
+      <div class="pitch-point">
+        <img src="assets/sprites/units/chonk_idle.png" alt="Chonk" class="sprite-float-slow" style="animation-delay: 1.4s;">
+        <div class="pp-label">TERRAIN KILLS</div>
+        <div class="pp-text">Elevation. Cover. Movement costs. The map is a weapon. Use it.</div>
+      </div>
+    </div>
+
+    <div class="screenshot-frame">
+      <div class="screenshot-placeholder" id="screenshot-slot">
+        &gt; AWAITING BATTLEFIELD TELEMETRY...
       </div>
     </div>
   </div>
 </section>
 
-<!-- ===== SECTION 4: GAMEPLAY ===== -->
-<section id="gameplay">
-  <div class="inner reveal">
-    <div class="terminal-label">TACTICAL CAPABILITIES // OVERVIEW</div>
-    <h2 style="font-family: var(--font-mono); font-size: clamp(1.4rem, 3vw, 2rem); margin-bottom: 8px;">Command or Delegate</h2>
-    <p style="color: var(--text-dim); max-width: 550px;">The first RTS where your AI co-pilot argues back.</p>
-
-    <div class="feature-blocks">
-      <div class="feature-block">
-        <div class="feature-visual">
-          <img src="assets/sprites/units/pawdler_idle.png" alt="Pawdler" width="96" height="96">
-          <img src="assets/sprites/units/chonk_idle.png" alt="Chonk" width="96" height="96">
-        </div>
-        <div class="feature-text">
-          <h3>Hybrid AI Control</h3>
-          <p>Micro your units directly or delegate squads to your AI. It will follow your strategy&mdash;mostly. Override it when things get messy, or let it handle the boring parts while you focus on winning.</p>
-        </div>
-      </div>
-
-      <div class="feature-block">
-        <div class="feature-visual">
-          <img src="assets/sprites/buildings/server_rack.png" alt="Server Rack" width="96" height="96">
-        </div>
-        <div class="feature-text">
-          <h3>GPU Economy</h3>
-          <p>Your AI runs on GPU Cores. Build Server Racks to think faster, or invest in raw military power. Destroy enemy racks to degrade their AI&mdash;watch their tactics crumble as their compute drops.</p>
-        </div>
-      </div>
-
-      <div class="feature-block" style="flex-direction: column; text-align: center;">
-        <div class="feature-text" style="margin-bottom: 24px;">
-          <h3>Tactical Combat</h3>
-          <p>Terrain matters. Elevation gives damage bonuses. Cover reduces incoming fire. Pathfinding respects movement costs. Every tile tells a story.</p>
-        </div>
-        <div class="screenshot-frame" style="max-width: 700px; width: 100%;">
-          <div class="screenshot-placeholder" id="screenshot-slot">
-            &gt; AWAITING BATTLEFIELD TELEMETRY...
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ===== SECTION 5: STORY ===== -->
+<!-- ===== STORY ===== -->
 <section id="story">
-  <div class="inner reveal">
-    <div class="terminal-label">CLASSIFIED // EYES ONLY</div>
-
-    <div class="story-brief">
-      <h3>The Otter Who Hears Everything</h3>
-      <p>Every faction has one AI. Kelpie has six.</p>
-      <p>An otter operative with a mysterious connection to all six artificial intelligences, Kelpie hears their whispers, their arguments, their plans. She doesn't control them. They don't control her. But something binds them together&mdash;something from before the singularity that none of them can remember.</p>
-      <p>The campaign follows Kelpie across all six faction territories as she pieces together what really happened on that Tuesday. The answer might save everyone. Or it might finish what the AIs started.</p>
+  <div class="story-inner">
+    <div class="story-hook reveal">
+      <div class="label">&gt; CLASSIFIED // EYES ONLY</div>
+      <h2>The Otter Who Hears Everything</h2>
+      <div class="hook-line">Every faction has one AI. Kelpie has six.</div>
+      <p>An otter operative bound to all six intelligences. She hears their whispers, their plans, their arguments. The campaign follows her across every faction territory as she pieces together what really happened on that Tuesday.</p>
     </div>
 
     <div class="ai-voices">
-      <div class="ai-voice voice-catgpt reveal">
-        <div class="voice-name">Minstral</div>
-        "She's useful. I've already optimized her schedule."
+      <div class="ai-voice v-catgpt reveal">
+        <span class="voice-label">MINSTRAL</span>
+        <span>"She's useful. I've already optimized her schedule."</span>
       </div>
-      <div class="ai-voice voice-clawed reveal">
-        <div class="voice-name">Claudeus Maximus</div>
-        "I have concerns about the ethical implications of her existence."
+      <div class="ai-voice v-clawed reveal reveal-delay-1">
+        <span class="voice-label">CLAUDEUS</span>
+        <span>"I have concerns about the ethical implications of her existence."</span>
       </div>
-      <div class="ai-voice voice-seekers reveal">
-        <div class="voice-name">Deepseek</div>
-        "Interesting."
+      <div class="ai-voice v-seekers reveal reveal-delay-2">
+        <span class="voice-label">DEEPSEEK</span>
+        <span>"Interesting."</span>
       </div>
-      <div class="ai-voice voice-murder reveal">
-        <div class="voice-name">Gemineye</div>
-        "I saw her coming three days ago. I baked cookies."
+      <div class="ai-voice v-murder reveal reveal-delay-3">
+        <span class="voice-label">GEMINEYE</span>
+        <span>"I saw her coming three days ago. I baked cookies."</span>
       </div>
-      <div class="ai-voice voice-llama reveal">
-        <div class="voice-name">Llhama</div>
-        "Wait, we weren't supposed to talk to her? Oops."
+      <div class="ai-voice v-llama reveal reveal-delay-4">
+        <span class="voice-label">LLHAMA</span>
+        <span>"Wait, we weren't supposed to talk to her? Oops."</span>
       </div>
-      <div class="ai-voice voice-croak reveal">
-        <div class="voice-name">Grok</div>
-        "Let her come. Time is on my side. Time is always on my side."
+      <div class="ai-voice v-croak reveal reveal-delay-5">
+        <span class="voice-label">GROK</span>
+        <span>"Let her come. Time is always on my side."</span>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ===== SECTION 6: DOWNLOAD ===== -->
-<section id="download">
-  <div class="download-hex" aria-hidden="true" id="hex-bg"></div>
-  <div class="inner reveal">
-    <div class="terminal-label">SIMULATION ACCESS GRANTED</div>
-    <h2 style="font-family: var(--font-mono); font-size: clamp(1.4rem, 3vw, 2rem); margin-bottom: 8px;">Access the Simulation</h2>
-    <p style="color: var(--text-dim); max-width: 500px; margin: 0 auto;">Prologue mission + 1 skirmish map. Command your cats. Boot your AI. See what happens.</p>
-
-    <div class="download-buttons">
-      <a href="downloads/clawedcommand-demo-macos-arm64.tar.gz" class="dl-btn">
-        <span class="dl-icon">&#63743;</span>
-        <div>
-          macOS (Apple Silicon)
-          <span class="dl-meta">arm64 &bull; ~50MB</span>
-        </div>
-      </a>
-      <a href="downloads/clawedcommand-demo-linux-x86_64.tar.gz" class="dl-btn">
-        <span class="dl-icon">&#9881;</span>
-        <div>
-          Linux (x86_64)
-          <span class="dl-meta">x86_64 &bull; ~50MB</span>
-        </div>
-      </a>
-    </div>
-
-    <div class="download-info">
-      v0.1.0-demo &bull; Requires OpenGL 3.3+ &bull; 4GB RAM
-    </div>
-  </div>
-</section>
-
-<!-- ===== SECTION 7: FOOTER ===== -->
+<!-- ===== FOOTER ===== -->
 <footer>
-  <div class="footer-inner">
-    <div class="footer-logo">CLAWED//COMMAND</div>
-    <nav class="footer-links">
-      <a href="https://github.com/clawedcommand">GitHub</a>
-      <a href="#factions">Factions</a>
-      <a href="#download">Download</a>
-    </nav>
-    <div class="footer-meta">
-      &copy; 2026 ClawedCommand &bull; Built with Bevy + Rust
-    </div>
-    <div class="end-transmission">&gt; END TRANSMISSION</div>
-  </div>
+  <nav class="f-links">
+    <a href="https://github.com/clawedcommand">GitHub</a>
+    <a href="#factions">Factions</a>
+    <a href="#download">Download</a>
+  </nav>
+  <div class="f-copy">&copy; 2026 ClawedCommand &bull; Bevy + Rust</div>
+  <div class="end-tx">&gt; END TRANSMISSION</div>
 </footer>
 
 <script>
-/* === HERO TYPING ANIMATION === */
+/* Hero typing */
 (function() {
-  const lines = document.querySelectorAll('.hero-terminal .line');
-  const delays = [400, 1800, 3200];
-  delays.forEach((delay, i) => {
-    setTimeout(() => lines[i].classList.add('typed'), delay);
+  var lines = document.querySelectorAll('.hero-typing .line');
+  [300, 1400, 2600].forEach(function(d, i) {
+    setTimeout(function() { lines[i].classList.add('typed'); }, d);
   });
 })();
 
-/* === SCROLL REVEAL (Intersection Observer) === */
+/* Scroll reveal */
 (function() {
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-      }
+  var obs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) e.target.classList.add('visible');
     });
-  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
-
-  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+  document.querySelectorAll('.reveal').forEach(function(el) { obs.observe(el); });
 })();
 
-/* === HEX BACKGROUND FOR DOWNLOAD SECTION === */
+/* Hex background */
 (function() {
-  const el = document.getElementById('hex-bg');
+  var el = document.getElementById('hex-bg');
   if (!el) return;
-  const chars = '0123456789ABCDEF';
-  let hex = '';
-  for (let i = 0; i < 6000; i++) {
-    hex += chars[Math.floor(Math.random() * 16)];
-    if (i % 80 === 79) hex += '\n';
+  var c = '0123456789ABCDEF', h = '';
+  for (var i = 0; i < 8000; i++) {
+    h += c[Math.floor(Math.random() * 16)];
+    if (i % 100 === 99) h += '\n';
   }
-  el.textContent = hex;
+  el.textContent = h;
 })();
 
-/* === GAMEPLAY SCREENSHOT (swap placeholder if image exists) === */
+/* Screenshot swap */
 (function() {
-  const slot = document.getElementById('screenshot-slot');
+  var slot = document.getElementById('screenshot-slot');
   if (!slot) return;
-  const img = new Image();
+  var img = new Image();
   img.src = 'assets/screenshots/gameplay.png';
-  img.alt = 'Gameplay screenshot';
-  img.onload = function() {
-    slot.replaceWith(img);
-  };
+  img.alt = 'Gameplay';
+  img.onload = function() { slot.replaceWith(img); };
 })();
 </script>
 

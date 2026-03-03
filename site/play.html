@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClawedCommand — Play</title>
+<meta name="description" content="Play ClawedCommand in your browser. A post-singularity RTS where six rival AIs wage war through adorable animal factions.">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0D1117;
+  --surface: #1A1F2E;
+  --text: #ECEFF1;
+  --text-dim: #90A4AE;
+  --accent: #42A5F5;
+  --accent-dim: rgba(66, 165, 245, 0.15);
+  --mono: 'Share Tech Mono', monospace;
+  --display: 'Orbitron', sans-serif;
+  --success: #4CAF50;
+  --warn: #FFB300;
+  --error: #FF5252;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+}
+
+/* === GAME CANVAS === */
+#game-canvas {
+  width: 100vw;
+  height: 100vh;
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  outline: none;
+}
+
+/* === LOADING SCREEN === */
+#loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.6s ease;
+}
+#loading-screen.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-sprite {
+  width: 128px;
+  height: 128px;
+  image-rendering: pixelated;
+  animation: float 3s ease-in-out infinite;
+  margin-bottom: 32px;
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.loading-title {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: 1.6rem;
+  color: var(--accent);
+  margin-bottom: 32px;
+  letter-spacing: 0.05em;
+}
+
+.loading-bar-track {
+  width: 320px;
+  height: 4px;
+  background: rgba(66, 165, 245, 0.1);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.loading-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+  box-shadow: 0 0 8px rgba(66, 165, 245, 0.4);
+}
+
+.loading-status {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  letter-spacing: 0.15em;
+  min-height: 1.2em;
+}
+
+.loading-error {
+  color: var(--error);
+  font-size: 0.85rem;
+  margin-top: 16px;
+  max-width: 500px;
+  text-align: center;
+  line-height: 1.6;
+  display: none;
+}
+
+/* === TOP BAR === */
+#top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: 36px;
+  background: rgba(13, 17, 23, 0.85);
+  border-bottom: 1px solid var(--accent-dim);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+#top-bar.visible { opacity: 1; }
+
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.top-bar-left a {
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.top-bar-left a:hover { color: var(--accent); }
+
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* === AI SETTINGS BUTTON === */
+.ai-settings-btn {
+  background: transparent;
+  border: 1px solid var(--accent-dim);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  padding: 4px 12px;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  transition: all 0.2s;
+}
+.ai-settings-btn:hover {
+  background: rgba(66, 165, 245, 0.08);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* === AI SETTINGS PANEL === */
+#ai-panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+}
+#ai-panel-overlay.open { display: flex; }
+
+#ai-panel {
+  background: var(--surface);
+  border: 1px solid var(--accent-dim);
+  width: 420px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.ai-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--accent-dim);
+}
+.ai-panel-header h3 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+}
+.ai-panel-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+.ai-panel-close:hover { color: var(--text); }
+
+.ai-panel-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ai-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ai-field label {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.ai-field select,
+.ai-field input {
+  background: var(--bg);
+  border: 1px solid rgba(66, 165, 245, 0.2);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.ai-field select:focus,
+.ai-field input:focus {
+  border-color: var(--accent);
+}
+.ai-field select option {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.ai-field .field-hint {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  opacity: 0.7;
+  line-height: 1.4;
+}
+
+.ai-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(13, 17, 23, 0.6);
+  font-size: 0.75rem;
+}
+.ai-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ai-status-dot.disconnected { background: var(--text-dim); }
+.ai-status-dot.connecting { background: var(--warn); animation: pulse-dot 1s ease-in-out infinite; }
+.ai-status-dot.connected { background: var(--success); }
+.ai-status-dot.error { background: var(--error); }
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.conditional-fields { display: none; }
+.conditional-fields.visible { display: contents; }
+
+.ai-panel-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--accent-dim);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-connect {
+  background: rgba(66, 165, 245, 0.1);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  padding: 6px 16px;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  transition: all 0.2s;
+}
+.btn-connect:hover {
+  background: rgba(66, 165, 245, 0.2);
+}
+
+/* === SCANLINES (subtle) === */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.04) 2px,
+    rgba(0, 0, 0, 0.04) 4px
+  );
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div id="loading-screen">
+  <img src="assets/sprites/units/mech_commander_idle.png" alt="" class="loading-sprite" width="128" height="128">
+  <div class="loading-title">CLAWEDCOMMAND</div>
+  <div class="loading-bar-track">
+    <div class="loading-bar-fill" id="loading-bar"></div>
+  </div>
+  <div class="loading-status" id="loading-status">INITIALIZING...</div>
+  <div class="loading-error" id="loading-error"></div>
+</div>
+
+<!-- TOP BAR (hidden until game loaded) -->
+<div id="top-bar">
+  <div class="top-bar-left">
+    <a href="/">&larr; BACK</a>
+    <span style="color: var(--text-dim); opacity: 0.3;">|</span>
+    <span style="color: var(--text-dim);">CLAWEDCOMMAND</span>
+  </div>
+  <div class="top-bar-right">
+    <span id="fps-counter" style="color: var(--text-dim);"></span>
+    <button class="ai-settings-btn" id="ai-settings-open">AI CONFIG</button>
+  </div>
+</div>
+
+<!-- GAME CANVAS (Bevy renders here) -->
+<canvas id="game-canvas"></canvas>
+
+<!-- AI SETTINGS PANEL -->
+<div id="ai-panel-overlay">
+  <div id="ai-panel">
+    <div class="ai-panel-header">
+      <h3>AI CONFIGURATION</h3>
+      <button class="ai-panel-close" id="ai-panel-close">&times;</button>
+    </div>
+    <div class="ai-panel-body">
+      <div class="ai-field">
+        <label>Backend</label>
+        <select id="ai-backend">
+          <option value="none">No AI (Manual Control)</option>
+          <option value="webllm">WebLLM (In-Browser)</option>
+          <option value="ollama">Ollama (Local)</option>
+          <option value="remote">Remote API</option>
+          <option value="claude-code">Claude Code</option>
+        </select>
+        <span class="field-hint">Choose how the AI agent connects to an LLM</span>
+      </div>
+
+      <!-- WebLLM fields -->
+      <div class="conditional-fields" data-backend="webllm">
+        <div class="ai-field">
+          <label>Model</label>
+          <select id="ai-webllm-model">
+            <option value="devstral-small-2-q4">Devstral Small 2 (Q4, 15GB)</option>
+            <option value="llama-3.1-8b-q4">Llama 3.1 8B (Q4, 5GB)</option>
+            <option value="phi-3-mini-q4">Phi-3 Mini (Q4, 2GB)</option>
+          </select>
+          <span class="field-hint">Model runs entirely in your browser via WebGPU</span>
+        </div>
+      </div>
+
+      <!-- Ollama fields -->
+      <div class="conditional-fields" data-backend="ollama">
+        <div class="ai-field">
+          <label>Endpoint</label>
+          <input type="text" id="ai-ollama-endpoint" value="http://localhost:11434" placeholder="http://localhost:11434">
+        </div>
+        <div class="ai-field">
+          <label>Model</label>
+          <select id="ai-ollama-model">
+            <option value="devstral-small-2">devstral-small-2</option>
+            <option value="llama3.1:8b">llama3.1:8b</option>
+            <option value="codestral:latest">codestral:latest</option>
+          </select>
+          <span class="field-hint">Requires Ollama running locally with CORS enabled</span>
+        </div>
+      </div>
+
+      <!-- Remote API fields -->
+      <div class="conditional-fields" data-backend="remote">
+        <div class="ai-field">
+          <label>API Endpoint</label>
+          <input type="text" id="ai-remote-endpoint" placeholder="https://api.mistral.ai/v1">
+        </div>
+        <div class="ai-field">
+          <label>API Key</label>
+          <input type="password" id="ai-remote-key" placeholder="sk-...">
+        </div>
+        <div class="ai-field">
+          <label>Model</label>
+          <input type="text" id="ai-remote-model" value="devstral-2-2512" placeholder="devstral-2-2512">
+        </div>
+      </div>
+
+      <!-- Claude Code fields -->
+      <div class="conditional-fields" data-backend="claude-code">
+        <div class="ai-field">
+          <label>MCP Endpoint</label>
+          <input type="text" id="ai-claude-endpoint" placeholder="ws://localhost:3000">
+          <span class="field-hint">Connect to a local Claude Code session running the MCP server</span>
+        </div>
+      </div>
+
+      <!-- Connection status -->
+      <div class="ai-status">
+        <span class="ai-status-dot disconnected" id="ai-status-dot"></span>
+        <span id="ai-status-text">Not connected</span>
+      </div>
+    </div>
+    <div class="ai-panel-footer">
+      <button class="btn-connect" id="ai-connect-btn">CONNECT</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+// --- Loading progress ---
+const bar = document.getElementById('loading-bar');
+const status = document.getElementById('loading-status');
+const errorEl = document.getElementById('loading-error');
+const screen = document.getElementById('loading-screen');
+const topBar = document.getElementById('top-bar');
+
+function setProgress(pct, msg) {
+  bar.style.width = pct + '%';
+  status.textContent = msg;
+}
+
+function showError(msg) {
+  errorEl.textContent = msg;
+  errorEl.style.display = 'block';
+  status.textContent = 'FAILED';
+}
+
+// --- WASM init ---
+setProgress(5, 'DOWNLOADING WASM MODULE...');
+
+try {
+  const { default: init } = await import('./wasm/cc_client.js');
+
+  setProgress(40, 'INITIALIZING ENGINE...');
+  await init();
+
+  setProgress(90, 'LOADING ASSETS...');
+
+  // Give Bevy a moment to start its asset loading
+  setTimeout(() => {
+    setProgress(100, 'READY');
+    setTimeout(() => {
+      screen.classList.add('fade-out');
+      topBar.classList.add('visible');
+      setTimeout(() => { screen.style.display = 'none'; }, 600);
+    }, 300);
+  }, 500);
+
+} catch (e) {
+  console.error('WASM init failed:', e);
+  showError('Failed to initialize: ' + e.message + '\n\nRequires a browser with WebGL2 support.');
+}
+
+// --- AI Settings panel ---
+const overlay = document.getElementById('ai-panel-overlay');
+const backendSelect = document.getElementById('ai-backend');
+
+document.getElementById('ai-settings-open').addEventListener('click', () => {
+  overlay.classList.add('open');
+});
+document.getElementById('ai-panel-close').addEventListener('click', () => {
+  overlay.classList.remove('open');
+});
+overlay.addEventListener('click', (e) => {
+  if (e.target === overlay) overlay.classList.remove('open');
+});
+
+// Show/hide conditional fields based on backend selection
+backendSelect.addEventListener('change', () => {
+  const val = backendSelect.value;
+  document.querySelectorAll('.conditional-fields').forEach(el => {
+    el.classList.toggle('visible', el.dataset.backend === val);
+  });
+});
+
+// Connect button (stub — wired up when WASM agent is ready)
+document.getElementById('ai-connect-btn').addEventListener('click', () => {
+  const dot = document.getElementById('ai-status-dot');
+  const text = document.getElementById('ai-status-text');
+  const backend = backendSelect.value;
+
+  if (backend === 'none') {
+    dot.className = 'ai-status-dot disconnected';
+    text.textContent = 'Manual control — no AI backend';
+    return;
+  }
+
+  dot.className = 'ai-status-dot connecting';
+  text.textContent = 'Connecting to ' + backend + '...';
+
+  // Simulate connection attempt (replace with real WASM bridge)
+  setTimeout(() => {
+    dot.className = 'ai-status-dot connected';
+    text.textContent = 'Connected to ' + backend;
+  }, 1500);
+});
+
+// Escape key closes panel
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && overlay.classList.contains('open')) {
+    overlay.classList.remove('open');
+  }
+});
+</script>
+
+</body>
+</html>

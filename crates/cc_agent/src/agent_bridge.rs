@@ -157,7 +157,7 @@ pub fn poll_agent_responses(
     mut construct_state: ResMut<ConstructModeState>,
     mut chat_log: ResMut<AgentChatLog>,
     mut decision_state: ResMut<crate::decision::AgentDecisionState>,
-    mut registry: ResMut<crate::runner::ScriptRegistry>,
+    mut registry: ResMut<crate::script_registry::ScriptRegistry>,
 ) {
     while let Ok(response) = bridge.response_rx.try_recv() {
         // Clear in-flight flag for this player so the decision system

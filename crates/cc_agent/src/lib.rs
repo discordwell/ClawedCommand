@@ -7,6 +7,7 @@ pub mod decision;
 pub mod events;
 pub mod llm_client;
 pub mod mcp_tools;
+pub mod script_registry;
 pub mod snapshot;
 pub mod spatial;
 pub mod tool_tier;
@@ -48,7 +49,8 @@ impl Plugin for AgentPlugin {
             .init_resource::<tool_tier::ToolRegistry>()
             .init_resource::<tool_tier::FactionToolStates>()
             .init_resource::<decision::AgentDecisionState>()
-            .init_resource::<llm_client::AgentStatus>();
+            .init_resource::<llm_client::AgentStatus>()
+            .init_resource::<script_registry::ScriptRegistry>();
 
         // Native: create connected bridge + channels, spawn LLM thread on Startup
         #[cfg(not(target_arch = "wasm32"))]

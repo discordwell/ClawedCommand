@@ -16,6 +16,7 @@ use cc_sim::campaign::state::{CampaignPhase, CampaignState};
 use cc_voice::VoicePlugin;
 
 /// Parsed demo mode from CLI arguments.
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Clone)]
 enum DemoMode {
     /// Canyon battle (original --demo behavior).
@@ -34,6 +35,7 @@ enum DemoMode {
 /// Supports: `--demo` (canyon 1), `--demo canyon [N]`, `--demo showcase`,
 /// `--demo cutscene [N]`, `--demo N` (canyon N for backward compat),
 /// `--showcase` (legacy alias for `--demo showcase`).
+#[cfg(not(target_arch = "wasm32"))]
 fn parse_demo_mode() -> Option<DemoMode> {
     let args: Vec<String> = std::env::args().collect();
 
@@ -70,6 +72,7 @@ fn parse_demo_mode() -> Option<DemoMode> {
 fn main() {
     let mut app = App::new();
 
+    #[cfg(not(target_arch = "wasm32"))]
     let demo_mode = parse_demo_mode();
 
     app.add_plugins(
@@ -78,18 +81,24 @@ fn main() {
                 primary_window: Some(Window {
                     title: "ClawedCommand".into(),
                     resolution: (1280u32, 720u32).into(),
+                    #[cfg(target_arch = "wasm32")]
+                    canvas: Some("#game-canvas".into()),
                     ..default()
                 }),
                 ..default()
             })
             .set(AssetPlugin {
+                #[cfg(not(target_arch = "wasm32"))]
                 file_path: "../../assets".to_string(),
+                #[cfg(target_arch = "wasm32")]
+                file_path: "assets".to_string(),
                 ..default()
             })
             .set(ImagePlugin::default_nearest()),
     )
     .insert_resource(ClearColor(Color::srgb(0.06, 0.06, 0.10)));
 
+    #[cfg(not(target_arch = "wasm32"))]
     match &demo_mode {
         Some(DemoMode::Canyon(scenario)) => {
             setup_canyon(&mut app, *scenario);
@@ -137,6 +146,7 @@ fn main() {
 }
 
 /// Set up the canyon battle demo (original --demo behavior).
+#[cfg(not(target_arch = "wasm32"))]
 fn setup_canyon(app: &mut App, scenario: u8) {
     let ron_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../assets/campaign/demo_canyon.ron");
@@ -242,6 +252,7 @@ fn setup_canyon(app: &mut App, scenario: u8) {
 }
 
 /// Validate a mission, load it into a new CampaignState, and insert it as a resource.
+#[cfg(not(target_arch = "wasm32"))]
 fn load_demo_mission(app: &mut App, mission: cc_core::mission::MissionDefinition, label: &str) {
     if let Err(errors) = mission.validate() {
         panic!("{label} mission validation failed: {errors:?}");
@@ -253,6 +264,7 @@ fn load_demo_mission(app: &mut App, mission: cc_core::mission::MissionDefinition
 }
 
 /// Build a 6-player resource set with max resources (for showcase/cutscene demos).
+#[cfg(not(target_arch = "wasm32"))]
 fn demo_player_resources() -> cc_sim::resources::PlayerResources {
     cc_sim::resources::PlayerResources {
         players: (0..6)
@@ -268,6 +280,7 @@ fn demo_player_resources() -> cc_sim::resources::PlayerResources {
 }
 
 /// Set up the building showcase demo.
+#[cfg(not(target_arch = "wasm32"))]
 fn setup_showcase(app: &mut App) {
     let mission = showcase::build_showcase_mission();
     load_demo_mission(app, mission, "Showcase");
@@ -276,6 +289,7 @@ fn setup_showcase(app: &mut App) {
 }
 
 /// Set up a cutscene dialogue demo.
+#[cfg(not(target_arch = "wasm32"))]
 fn setup_cutscene(app: &mut App, scenario: u8) {
     eprintln!("Cutscene scenario {scenario}");
 
@@ -289,6 +303,7 @@ fn setup_cutscene(app: &mut App, scenario: u8) {
 }
 
 /// Set up the voice command demo.
+#[cfg(not(target_arch = "wasm32"))]
 fn setup_voice_demo(app: &mut App) {
     eprintln!("Voice command demo");
 
@@ -306,6 +321,7 @@ fn setup_voice_demo(app: &mut App) {
 }
 
 /// Set up the AI mirror match demo — two CatGPT armies with Gen 42 scripts.
+#[cfg(not(target_arch = "wasm32"))]
 fn setup_match(app: &mut App) {
     eprintln!("AI Mirror Match demo");
 

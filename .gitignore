@@ -24,3 +24,12 @@ training/outputs/**/checkpoint-*/
 training/lora_checkpoints/
 training/mlx_adapter/
 training/mlx_adapter_notrans/
+
+# Generated site assets (built by prepare_assets.py and deploy.sh)
+site/wasm/
+site/assets/campaign/
+site/assets/scripts/
+site/assets/sprites/heroes/
+site/assets/sprites/projectiles/
+site/assets/sprites/terrain/
+site/assets/sprites/resources/

@@ -23,3 +23,4 @@ required-features = []
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 bevy = { workspace = true, features = ["webgl2"] }
 getrandom = { version = "0.2", features = ["js"] }
+wasm-bindgen = "0.2"
