@@ -98,6 +98,26 @@ pub fn execute_script_with_context_tiered(
                 ?;
         }
 
+        // ctx:allies_in_range(x, y, range)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, (_self, x, y, range): (LuaValue, i32, i32, f64)| {
+                    let mut ctx = cell.borrow_mut();
+                    let fixed_range = Fixed::from_num(range);
+                    let units = ctx.allies_in_range(GridPos::new(x, y), fixed_range);
+                    let tbl = lua.create_table()?;
+                    for (i, unit) in units.iter().enumerate() {
+                        tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
+                    }
+                    Ok(tbl)
+                })
+                ?;
+            ctx_table
+                .set("allies_in_range", f)
+                ?;
+        }
+
         // ctx:nearest_enemy(x, y)
         {
             let cell = &ctx_cell;
@@ -112,6 +132,24 @@ pub fn execute_script_with_context_tiered(
                 ?;
             ctx_table
                 .set("nearest_enemy", f)
+                ?;
+        }
+
+        // ctx:nearest_ally(x, y, kind?)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, (_self, x, y, kind): (LuaValue, i32, i32, Option<String>)| {
+                    let mut ctx = cell.borrow_mut();
+                    let unit_kind = kind.and_then(|s| s.parse::<UnitKind>().ok());
+                    match ctx.nearest_ally(GridPos::new(x, y), unit_kind) {
+                        Some(unit) => Ok(LuaValue::Table(unit_to_lua_table(lua, unit)?)),
+                        None => Ok(LuaValue::Nil),
+                    }
+                })
+                ?;
+            ctx_table
+                .set("nearest_ally", f)
                 ?;
         }
 
@@ -1723,7 +1761,7 @@ pub fn execute_script_with_context_tiered(
                         None
                     };
                     match result {
-                        Some(ticks) => Ok(LuaValue::Integer(ticks as i32)),
+                        Some(ticks) => Ok(LuaValue::Number(ticks as f64)),
                         None => Ok(LuaValue::Nil),
                     }
                 })?;
