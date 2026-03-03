@@ -21,6 +21,7 @@ pub mod terrain_atlas;
 pub mod terrain_borders;
 pub mod tile_gen;
 pub mod tilemap;
+pub mod tweens;
 pub mod unit_gen;
 pub mod units;
 pub mod vfx;
@@ -162,6 +163,11 @@ impl Plugin for RenderPlugin {
                     animation::derive_anim_state,
                     animation::advance_animation
                         .after(animation::derive_anim_state),
+                    tweens::apply_unit_tweens
+                        .after(units::sync_unit_sprites)
+                        .after(selection::render_selection_indicators)
+                        .after(animation::advance_animation)
+                        .run_if(zoom_lod::is_tactical),
                 ),
             )
             // VFX particle systems

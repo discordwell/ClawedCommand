@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::renderer::animation::{AnimIndices, AnimState, AnimTimer, PrevAnimState};
 use crate::renderer::hero_sprites::HeroSprites;
+use crate::renderer::tweens::TweenState;
 use crate::setup::{TeamMaterials, UnitMesh, team_color, unit_scale};
 use crate::renderer::unit_gen::{UnitSprites, kind_index};
 use crate::renderer::zoom_lod::{self, ZoomTier};
@@ -63,6 +64,7 @@ pub fn spawn_unit_visuals(
                 PrevAnimState::default(),
                 AnimIndices::default(),
                 AnimTimer::default(),
+                TweenState::new(unit_type.kind),
             ));
         } else if let Some(ref team_mats) = team_mats {
             // Fallback: colored circle mesh

@@ -13,6 +13,7 @@ use cc_sim::resources::{MapResource, PlayerResources, SpawnPositions};
 
 use crate::renderer::animation::{AnimIndices, AnimState, AnimTimer, PrevAnimState};
 use crate::renderer::building_gen::{BuildingSprites, building_kind_index, building_scale};
+use crate::renderer::tweens::TweenState;
 use crate::renderer::buildings::SpriteBuilding;
 use crate::renderer::resource_nodes::ResourceNodeSprites;
 use crate::renderer::unit_gen::{UnitSprites, kind_index};
@@ -371,6 +372,7 @@ pub fn setup_game(
                     PrevAnimState::default(),
                     AnimIndices::default(),
                     AnimTimer::default(),
+                    TweenState::new(kind),
                 ));
 
                 zoom_lod::spawn_strategic_icon(
