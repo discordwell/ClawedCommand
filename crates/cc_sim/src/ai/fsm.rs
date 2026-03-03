@@ -275,7 +275,7 @@ pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
         },
         Faction::SeekersOfTheDeep => AiPersonalityProfile {
             name: "Deepseek".into(),
-            attack_threshold: 6, // tanky expensive units, attack with fewer
+            attack_threshold: 8, // same as CatGPT but no econ investment = faster army
             unit_preferences: vec![
                 (UnitKind::Sapjaw, 4),   // 100f 0gpu, 1.5 DPS melee — best T1 fighter
                 (UnitKind::Dustclaw, 3), // 75f 0gpu, 1.2 DPS melee, fast
@@ -283,7 +283,7 @@ pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
                 (UnitKind::Ironhide, 2), // 125f 0gpu, 250 HP tank
             ], // removed GPU-gated: Embermaw, Cragback, Gutripper
             target_workers: 4,
-            economy_priority: true, // was false
+            economy_priority: false, // military-first for tanky units
             retreat_threshold: 50,
             eval_speed_mult: 1.0,
             chaos_factor: 0,
@@ -316,26 +316,26 @@ pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
                 (UnitKind::Wrecker, 3),
             ], // removed HeapTitan (gpu=20, unusable at Basic tier)
             target_workers: 3,
-            economy_priority: true, // was false
+            economy_priority: false, // military-first for raid/kite style
             retreat_threshold: 25,
             eval_speed_mult: 0.6,
-            chaos_factor: 8, // was 12
+            chaos_factor: 8,
             leak_chance: 30,
             max_tier: None,
         },
         Faction::Croak => AiPersonalityProfile {
             name: "Grok".into(),
-            attack_threshold: 7,
+            attack_threshold: 8, // same as CatGPT but no econ investment = faster army
             unit_preferences: vec![
-                (UnitKind::Regeneron, 3),   // barracks melee
-                (UnitKind::Croaker, 3),     // barracks ranged
-                (UnitKind::Gulper, 2),      // barracks bruiser
-                (UnitKind::Leapfrog, 2),    // barracks harasser
+                (UnitKind::Regeneron, 4),   // barracks melee — fast, cheap, solid DPS
+                (UnitKind::Croaker, 3),     // barracks ranged — range 6 outranges Hisser
+                (UnitKind::Leapfrog, 3),    // barracks harasser — fast, cheap
+                (UnitKind::Gulper, 1),      // barracks tank — too slow (0.07) to keep up
                 (UnitKind::Shellwarden, 3), // tech tank (available later)
                 (UnitKind::Broodmother, 1), // tech support (available later)
             ],
             target_workers: 4,
-            economy_priority: true, // was false
+            economy_priority: false, // tanky units need to be on the field
             retreat_threshold: 40,
             eval_speed_mult: 0.9,
             chaos_factor: 10,
@@ -822,7 +822,7 @@ fn run_ai_fsm(
     let base_interval = ai_state.difficulty.eval_interval();
     // Apply eval_speed_mult from profile: higher = slower decisions
     let interval = ((base_interval as f32) * ai_state.profile.eval_speed_mult).max(1.0) as u64;
-    if tick % interval != 0 || tick == 0 {
+    if !tick.is_multiple_of(interval) || tick == 0 {
         return;
     }
 
@@ -884,21 +884,19 @@ fn run_ai_fsm(
         AiPhase::EarlyGame => {
             // Train workers until target count
             let worker_cost = cc_core::unit_stats::base_stats(fmap.worker).food_cost;
-            if uc.worker_count < target_workers {
-                if let Some(box_e) = bc.hq_entity {
-                    if pres.food >= worker_cost
-                        && pres.supply < pres.supply_cap
-                        && bc.hq_queue_len < AI_MAX_QUEUE_DEPTH
-                    {
-                        cmd_queue.push_for_player(
-                            ai_player,
-                            GameCommand::TrainUnit {
-                                building: EntityId::from_entity(box_e),
-                                unit_kind: fmap.worker,
-                            },
-                        );
-                    }
-                }
+            if uc.worker_count < target_workers
+                && let Some(box_e) = bc.hq_entity
+                && pres.food >= worker_cost
+                && pres.supply < pres.supply_cap
+                && bc.hq_queue_len < AI_MAX_QUEUE_DEPTH
+            {
+                cmd_queue.push_for_player(
+                    ai_player,
+                    GameCommand::TrainUnit {
+                        building: EntityId::from_entity(box_e),
+                        unit_kind: fmap.worker,
+                    },
+                );
             }
             if uc.worker_count >= target_workers {
                 AiPhase::BuildUp
@@ -917,8 +915,7 @@ fn run_ai_fsm(
                 && !bc.has_resource_depot
                 && pres.food >= depot_cost.food_cost
                 && bc.has_hq
-            {
-                if let Some(b) = try_build(
+                && let Some(b) = try_build(
                     ai_player,
                     fmap.resource_depot,
                     bc.hq_pos,
@@ -927,17 +924,16 @@ fn run_ai_fsm(
                     &uc.idle_workers,
                     &uc.all_workers,
                     cmd_queue,
-                ) {
-                    builder_used = Some(b);
-                }
+                )
+            {
+                builder_used = Some(b);
             }
 
             if builder_used.is_none()
                 && !bc.has_barracks
                 && pres.food >= barracks_cost.food_cost
                 && bc.has_hq
-            {
-                if let Some(b) = try_build(
+                && let Some(b) = try_build(
                     ai_player,
                     fmap.barracks,
                     bc.hq_pos,
@@ -946,13 +942,13 @@ fn run_ai_fsm(
                     &uc.idle_workers,
                     &uc.all_workers,
                     cmd_queue,
-                ) {
-                    builder_used = Some(b);
-                }
+                )
+            {
+                builder_used = Some(b);
             }
 
-            if builder_used.is_none() {
-                if let Some(b) = maybe_build_supply(
+            if builder_used.is_none()
+                && let Some(b) = maybe_build_supply(
                     ai_player,
                     pres,
                     &uc.idle_workers,
@@ -963,9 +959,9 @@ fn run_ai_fsm(
                     cmd_queue,
                     bc.pending_supply_count,
                     supply_kind,
-                ) {
-                    builder_used = Some(b);
-                }
+                )
+            {
+                builder_used = Some(b);
             }
 
             if let Some(ct_e) = bc.barracks_entity {
@@ -990,21 +986,19 @@ fn run_ai_fsm(
 
             let worker_cost = cc_core::unit_stats::base_stats(fmap.worker).food_cost;
             let buildup_worker_cap = (target_workers + 1).min(AI_MAX_MIDGAME_WORKERS);
-            if uc.worker_count < buildup_worker_cap {
-                if let Some(box_e) = bc.hq_entity {
-                    if pres.food >= worker_cost + reserve
-                        && pres.supply < pres.supply_cap
-                        && bc.hq_queue_len < AI_MAX_QUEUE_DEPTH
-                    {
-                        cmd_queue.push_for_player(
-                            ai_player,
-                            GameCommand::TrainUnit {
-                                building: EntityId::from_entity(box_e),
-                                unit_kind: fmap.worker,
-                            },
-                        );
-                    }
-                }
+            if uc.worker_count < buildup_worker_cap
+                && let Some(box_e) = bc.hq_entity
+                && pres.food >= worker_cost + reserve
+                && pres.supply < pres.supply_cap
+                && bc.hq_queue_len < AI_MAX_QUEUE_DEPTH
+            {
+                cmd_queue.push_for_player(
+                    ai_player,
+                    GameCommand::TrainUnit {
+                        building: EntityId::from_entity(box_e),
+                        unit_kind: fmap.worker,
+                    },
+                );
             }
 
             let defense_pos = bc
@@ -1022,7 +1016,7 @@ fn run_ai_fsm(
             }
 
             // Scale BuildUp length with attack_threshold: higher threshold → more buildup
-            let buildup_target = ((attack_threshold + 1) / 2).max(3);
+            let buildup_target = attack_threshold.div_ceil(2).max(3);
             if uc.army_count >= buildup_target {
                 AiPhase::MidGame
             } else {
@@ -1049,8 +1043,7 @@ fn run_ai_fsm(
                     && pres.food >= tech_stats.food_cost
                     && pres.gpu_cores >= tech_stats.gpu_cost
                     && bc.has_hq
-                {
-                    if let Some(b) = try_build(
+                    && let Some(b) = try_build(
                         ai_player,
                         fmap.tech,
                         bc.hq_pos,
@@ -1059,9 +1052,9 @@ fn run_ai_fsm(
                         &uc.idle_workers,
                         &uc.all_workers,
                         cmd_queue,
-                    ) {
-                        builder_used = Some(b);
-                    }
+                    )
+                {
+                    builder_used = Some(b);
                 }
 
                 if builder_used.is_none()
@@ -1069,8 +1062,7 @@ fn run_ai_fsm(
                     && pres.food >= research_stats.food_cost
                     && pres.gpu_cores >= research_stats.gpu_cost
                     && bc.has_hq
-                {
-                    if let Some(b) = try_build(
+                    && let Some(b) = try_build(
                         ai_player,
                         fmap.research,
                         bc.hq_pos,
@@ -1079,9 +1071,9 @@ fn run_ai_fsm(
                         &uc.idle_workers,
                         &uc.all_workers,
                         cmd_queue,
-                    ) {
-                        builder_used = Some(b);
-                    }
+                    )
+                {
+                    builder_used = Some(b);
                 }
             }
 
@@ -1092,8 +1084,7 @@ fn run_ai_fsm(
                 && pres.food >= tower_stats.food_cost
                 && pres.gpu_cores >= tower_stats.gpu_cost
                 && bc.has_hq
-            {
-                if let Some(b) = try_build(
+                && let Some(b) = try_build(
                     ai_player,
                     fmap.defense_tower,
                     bc.hq_pos,
@@ -1102,9 +1093,9 @@ fn run_ai_fsm(
                     &uc.idle_workers,
                     &uc.all_workers,
                     cmd_queue,
-                ) {
-                    builder_used = Some(b);
-                }
+                )
+            {
+                builder_used = Some(b);
             }
 
             if let Some(sp_e) = bc.research_entity {
@@ -1125,46 +1116,47 @@ fn run_ai_fsm(
                 }
             }
 
-            if let Some(sr_e) = bc.tech_entity {
-                if pres.supply < pres.supply_cap && bc.tech_queue_len < AI_MAX_QUEUE_DEPTH {
-                    let tech_producible =
-                        cc_core::building_stats::building_stats(fmap.tech).can_produce;
-                    let kind =
-                        pick_unit_kind(&ai_state.profile, uc.army_count, tick, tech_producible);
-                    let stats = cc_core::unit_stats::base_stats(kind);
-                    if pres.food >= stats.food_cost + reserve && pres.gpu_cores >= stats.gpu_cost {
-                        cmd_queue.push_for_player(
-                            ai_player,
-                            GameCommand::TrainUnit {
-                                building: EntityId::from_entity(sr_e),
-                                unit_kind: kind,
-                            },
-                        );
-                    }
+            if let Some(sr_e) = bc.tech_entity
+                && pres.supply < pres.supply_cap
+                && bc.tech_queue_len < AI_MAX_QUEUE_DEPTH
+            {
+                let tech_producible =
+                    cc_core::building_stats::building_stats(fmap.tech).can_produce;
+                let kind = pick_unit_kind(&ai_state.profile, uc.army_count, tick, tech_producible);
+                let stats = cc_core::unit_stats::base_stats(kind);
+                if pres.food >= stats.food_cost + reserve && pres.gpu_cores >= stats.gpu_cost {
+                    cmd_queue.push_for_player(
+                        ai_player,
+                        GameCommand::TrainUnit {
+                            building: EntityId::from_entity(sr_e),
+                            unit_kind: kind,
+                        },
+                    );
                 }
             }
 
-            if let Some(ct_e) = bc.barracks_entity {
-                if pres.supply < pres.supply_cap && bc.barracks_queue_len < AI_MAX_QUEUE_DEPTH {
-                    let barracks_producible =
-                        cc_core::building_stats::building_stats(barracks_kind).can_produce;
-                    let kind =
-                        pick_unit_kind(&ai_state.profile, uc.army_count, tick, barracks_producible);
-                    let stats = cc_core::unit_stats::base_stats(kind);
-                    if pres.food >= stats.food_cost + reserve {
-                        cmd_queue.push_for_player(
-                            ai_player,
-                            GameCommand::TrainUnit {
-                                building: EntityId::from_entity(ct_e),
-                                unit_kind: kind,
-                            },
-                        );
-                    }
+            if let Some(ct_e) = bc.barracks_entity
+                && pres.supply < pres.supply_cap
+                && bc.barracks_queue_len < AI_MAX_QUEUE_DEPTH
+            {
+                let barracks_producible =
+                    cc_core::building_stats::building_stats(barracks_kind).can_produce;
+                let kind =
+                    pick_unit_kind(&ai_state.profile, uc.army_count, tick, barracks_producible);
+                let stats = cc_core::unit_stats::base_stats(kind);
+                if pres.food >= stats.food_cost + reserve {
+                    cmd_queue.push_for_player(
+                        ai_player,
+                        GameCommand::TrainUnit {
+                            building: EntityId::from_entity(ct_e),
+                            unit_kind: kind,
+                        },
+                    );
                 }
             }
 
-            if builder_used.is_none() {
-                if let Some(b) = maybe_build_supply(
+            if builder_used.is_none()
+                && let Some(b) = maybe_build_supply(
                     ai_player,
                     pres,
                     &uc.idle_workers,
@@ -1175,27 +1167,25 @@ fn run_ai_fsm(
                     cmd_queue,
                     bc.pending_supply_count,
                     supply_kind,
-                ) {
-                    builder_used = Some(b);
-                }
+                )
+            {
+                builder_used = Some(b);
             }
 
             let worker_cost_mid = cc_core::unit_stats::base_stats(fmap.worker).food_cost;
-            if uc.worker_count < AI_MAX_MIDGAME_WORKERS {
-                if let Some(box_e) = bc.hq_entity {
-                    if pres.food >= worker_cost_mid + reserve
-                        && pres.supply < pres.supply_cap
-                        && bc.hq_queue_len < AI_MAX_QUEUE_DEPTH
-                    {
-                        cmd_queue.push_for_player(
-                            ai_player,
-                            GameCommand::TrainUnit {
-                                building: EntityId::from_entity(box_e),
-                                unit_kind: fmap.worker,
-                            },
-                        );
-                    }
-                }
+            if uc.worker_count < AI_MAX_MIDGAME_WORKERS
+                && let Some(box_e) = bc.hq_entity
+                && pres.food >= worker_cost_mid + reserve
+                && pres.supply < pres.supply_cap
+                && bc.hq_queue_len < AI_MAX_QUEUE_DEPTH
+            {
+                cmd_queue.push_for_player(
+                    ai_player,
+                    GameCommand::TrainUnit {
+                        building: EntityId::from_entity(box_e),
+                        unit_kind: fmap.worker,
+                    },
+                );
             }
 
             let defense_pos = bc
@@ -1233,43 +1223,43 @@ fn run_ai_fsm(
             let should_reissue = !ai_state.attack_ordered
                 || tick.saturating_sub(ai_state.last_attack_tick) >= ATTACK_REISSUE_INTERVAL;
 
-            if should_reissue {
-                if let Some(target) = ai_state.enemy_spawn {
-                    if !uc.army_entities.is_empty() {
-                        issue_attack_commands(
-                            tier,
-                            tick,
-                            ai_state,
-                            &uc.army_entities,
-                            ai_player,
-                            retreat_threshold,
-                            units,
-                            health_query,
-                            cmd_queue,
-                            bc.hq_pos,
-                            target,
-                            map,
-                        );
-                    }
-                }
+            if should_reissue
+                && let Some(target) = ai_state.enemy_spawn
+                && !uc.army_entities.is_empty()
+            {
+                issue_attack_commands(
+                    tier,
+                    tick,
+                    ai_state,
+                    &uc.army_entities,
+                    ai_player,
+                    retreat_threshold,
+                    units,
+                    health_query,
+                    cmd_queue,
+                    bc.hq_pos,
+                    target,
+                    map,
+                );
             }
 
-            if let Some(ct_e) = bc.barracks_entity {
-                if pres.supply < pres.supply_cap && bc.barracks_queue_len < AI_MAX_QUEUE_DEPTH {
-                    let barracks_producible =
-                        cc_core::building_stats::building_stats(barracks_kind).can_produce;
-                    let kind =
-                        pick_unit_kind(&ai_state.profile, uc.army_count, tick, barracks_producible);
-                    let stats = cc_core::unit_stats::base_stats(kind);
-                    if pres.food >= stats.food_cost {
-                        cmd_queue.push_for_player(
-                            ai_player,
-                            GameCommand::TrainUnit {
-                                building: EntityId::from_entity(ct_e),
-                                unit_kind: kind,
-                            },
-                        );
-                    }
+            if let Some(ct_e) = bc.barracks_entity
+                && pres.supply < pres.supply_cap
+                && bc.barracks_queue_len < AI_MAX_QUEUE_DEPTH
+            {
+                let barracks_producible =
+                    cc_core::building_stats::building_stats(barracks_kind).can_produce;
+                let kind =
+                    pick_unit_kind(&ai_state.profile, uc.army_count, tick, barracks_producible);
+                let stats = cc_core::unit_stats::base_stats(kind);
+                if pres.food >= stats.food_cost {
+                    cmd_queue.push_for_player(
+                        ai_player,
+                        GameCommand::TrainUnit {
+                            building: EntityId::from_entity(ct_e),
+                            unit_kind: kind,
+                        },
+                    );
                 }
             }
 
@@ -1333,22 +1323,23 @@ fn run_ai_fsm(
                 );
             }
 
-            if let Some(ct_e) = bc.barracks_entity {
-                if pres.supply < pres.supply_cap && bc.barracks_queue_len < AI_MAX_QUEUE_DEPTH {
-                    let barracks_producible =
-                        cc_core::building_stats::building_stats(barracks_kind).can_produce;
-                    let kind =
-                        pick_unit_kind(&ai_state.profile, uc.army_count, tick, barracks_producible);
-                    let stats = cc_core::unit_stats::base_stats(kind);
-                    if pres.food >= stats.food_cost {
-                        cmd_queue.push_for_player(
-                            ai_player,
-                            GameCommand::TrainUnit {
-                                building: EntityId::from_entity(ct_e),
-                                unit_kind: kind,
-                            },
-                        );
-                    }
+            if let Some(ct_e) = bc.barracks_entity
+                && pres.supply < pres.supply_cap
+                && bc.barracks_queue_len < AI_MAX_QUEUE_DEPTH
+            {
+                let barracks_producible =
+                    cc_core::building_stats::building_stats(barracks_kind).can_produce;
+                let kind =
+                    pick_unit_kind(&ai_state.profile, uc.army_count, tick, barracks_producible);
+                let stats = cc_core::unit_stats::base_stats(kind);
+                if pres.food >= stats.food_cost {
+                    cmd_queue.push_for_player(
+                        ai_player,
+                        GameCommand::TrainUnit {
+                            building: EntityId::from_entity(ct_e),
+                            unit_kind: kind,
+                        },
+                    );
                 }
             }
 
@@ -1749,7 +1740,7 @@ fn find_weakest_enemy_near(
         if let Ok(health) = health_query.get(entity) {
             let is_weaker = best
                 .as_ref()
-                .map_or(true, |(_, _, best_hp)| health.current < *best_hp);
+                .is_none_or(|(_, _, best_hp)| health.current < *best_hp);
             if is_weaker {
                 best = Some((entity, grid, health.current));
             }
@@ -1777,11 +1768,11 @@ fn wounded_units(
 ) -> Vec<Entity> {
     army.iter()
         .filter(|&&e| {
-            if let Ok(health) = health_query.get(e) {
-                if health.max > Fixed::ZERO {
-                    let pct = (health.current * Fixed::from_num(100)) / health.max;
-                    return pct < Fixed::from_num(threshold_pct);
-                }
+            if let Ok(health) = health_query.get(e)
+                && health.max > Fixed::ZERO
+            {
+                let pct = (health.current * Fixed::from_num(100)) / health.max;
+                return pct < Fixed::from_num(threshold_pct);
             }
             false
         })

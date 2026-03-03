@@ -96,11 +96,11 @@ pub fn process_commands(
         } else {
             // Player input clears voice override for affected units so manual
             // commands take immediate effect.
-            if source == CommandSource::PlayerInput {
-                if let Some(ids) = cmd.unit_ids() {
-                    for id in ids {
-                        voice_override.overrides.remove(id);
-                    }
+            if source == CommandSource::PlayerInput
+                && let Some(ids) = cmd.unit_ids()
+            {
+                for id in ids {
+                    voice_override.overrides.remove(id);
                 }
             }
             cmd
@@ -482,19 +482,19 @@ pub fn process_commands(
                     }
 
                     // RestrictedUnits enforcement (player 0 only — campaign missions)
-                    if player_id == 0 {
-                        if let Some(ref r) = restrictions {
-                            if let Some(ref allowed) = r.allowed_unit_kinds {
-                                if !allowed.contains(&unit_kind) {
-                                    continue;
-                                }
-                            }
-                            if let Some(max_count) = r.max_unit_count {
-                                let current =
-                                    unit_owners.iter().filter(|o| o.player_id == 0).count() as u32;
-                                if current >= max_count {
-                                    continue;
-                                }
+                    if player_id == 0
+                        && let Some(ref r) = restrictions
+                    {
+                        if let Some(ref allowed) = r.allowed_unit_kinds
+                            && !allowed.contains(&unit_kind)
+                        {
+                            continue;
+                        }
+                        if let Some(max_count) = r.max_unit_count {
+                            let current =
+                                unit_owners.iter().filter(|o| o.player_id == 0).count() as u32;
+                            if current >= max_count {
+                                continue;
                             }
                         }
                     }
@@ -535,18 +535,17 @@ pub fn process_commands(
 
             GameCommand::CancelQueue { building } => {
                 let building_entity = Entity::from_bits(building.0);
-                if let Ok(mut queue) = prod_queues.get_mut(building_entity) {
-                    if let Some((unit_kind, _)) = queue.queue.pop_front() {
-                        // Refund resources
-                        if let Ok((_, _, owner, _, _)) = buildings.get(building_entity) {
-                            let player_id = owner.player_id;
-                            let ustats = base_stats(unit_kind);
-                            if let Some(pres) = player_resources.players.get_mut(player_id as usize)
-                            {
-                                pres.food += ustats.food_cost;
-                                pres.gpu_cores += ustats.gpu_cost;
-                                pres.supply = pres.supply.saturating_sub(ustats.supply_cost);
-                            }
+                if let Ok(mut queue) = prod_queues.get_mut(building_entity)
+                    && let Some((unit_kind, _)) = queue.queue.pop_front()
+                {
+                    // Refund resources
+                    if let Ok((_, _, owner, _, _)) = buildings.get(building_entity) {
+                        let player_id = owner.player_id;
+                        let ustats = base_stats(unit_kind);
+                        if let Some(pres) = player_resources.players.get_mut(player_id as usize) {
+                            pres.food += ustats.food_cost;
+                            pres.gpu_cores += ustats.gpu_cost;
+                            pres.supply = pres.supply.saturating_sub(ustats.supply_cost);
                         }
                     }
                 }
@@ -559,17 +558,17 @@ pub fn process_commands(
             }
 
             GameCommand::RecallControlGroup { group } => {
-                if let Some(group_ids) = control_groups.groups.get(group as usize) {
-                    if !group_ids.is_empty() {
-                        // Deselect all, then select control group
-                        for (entity, _, _, _, _) in query.iter() {
-                            commands.entity(entity).remove::<Selected>();
-                        }
-                        for (entity, _, _, _, _) in query.iter() {
-                            let eid = EntityId::from_entity(entity);
-                            if group_ids.contains(&eid) {
-                                commands.entity(entity).insert(Selected);
-                            }
+                if let Some(group_ids) = control_groups.groups.get(group as usize)
+                    && !group_ids.is_empty()
+                {
+                    // Deselect all, then select control group
+                    for (entity, _, _, _, _) in query.iter() {
+                        commands.entity(entity).remove::<Selected>();
+                    }
+                    for (entity, _, _, _, _) in query.iter() {
+                        let eid = EntityId::from_entity(entity);
+                        if group_ids.contains(&eid) {
+                            commands.entity(entity).insert(Selected);
                         }
                     }
                 }
@@ -1484,10 +1483,10 @@ pub fn process_commands(
                     let player_id = owner.player_id as usize;
 
                     // Check not already researched
-                    if let Some(pres) = player_resources.players.get(player_id) {
-                        if pres.completed_upgrades.contains(&upgrade) {
-                            continue;
-                        }
+                    if let Some(pres) = player_resources.players.get(player_id)
+                        && pres.completed_upgrades.contains(&upgrade)
+                    {
+                        continue;
                     }
 
                     let ustats = upgrade_stats(upgrade);
@@ -1509,14 +1508,14 @@ pub fn process_commands(
 
             GameCommand::CancelResearch { building } => {
                 let building_entity = Entity::from_bits(building.0);
-                if let Ok((owner, mut queue)) = research_queues.get_mut(building_entity) {
-                    if let Some((upgrade, _)) = queue.queue.pop_front() {
-                        let player_id = owner.player_id as usize;
-                        let ustats = upgrade_stats(upgrade);
-                        if let Some(pres) = player_resources.players.get_mut(player_id) {
-                            pres.food += ustats.food_cost;
-                            pres.gpu_cores += ustats.gpu_cost;
-                        }
+                if let Ok((owner, mut queue)) = research_queues.get_mut(building_entity)
+                    && let Some((upgrade, _)) = queue.queue.pop_front()
+                {
+                    let player_id = owner.player_id as usize;
+                    let ustats = upgrade_stats(upgrade);
+                    if let Some(pres) = player_resources.players.get_mut(player_id) {
+                        pres.food += ustats.food_cost;
+                        pres.gpu_cores += ustats.gpu_cost;
                     }
                 }
             }

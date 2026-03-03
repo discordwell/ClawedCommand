@@ -87,19 +87,19 @@ pub fn spawn_tilemap(
 
                 for (dx, dy) in [(0, 1), (1, 0)] {
                     let neighbor_grid = GridPos::new(x + dx, y + dy);
-                    if let Some(neighbor) = map.get(neighbor_grid) {
-                        if neighbor.elevation < tile.elevation {
-                            let nworld = WorldPos::from_grid(neighbor_grid);
-                            let nscreen = world_to_screen(nworld);
-                            let n_elev_offset = neighbor.elevation as f32 * ELEVATION_PIXEL_OFFSET;
+                    if let Some(neighbor) = map.get(neighbor_grid)
+                        && neighbor.elevation < tile.elevation
+                    {
+                        let nworld = WorldPos::from_grid(neighbor_grid);
+                        let nscreen = world_to_screen(nworld);
+                        let n_elev_offset = neighbor.elevation as f32 * ELEVATION_PIXEL_OFFSET;
 
-                            commands.spawn((
-                                CliffShadow,
-                                Mesh2d(shadow_mesh.clone()),
-                                MeshMaterial2d(shadow_material.clone()),
-                                Transform::from_xyz(nscreen.x, -nscreen.y + n_elev_offset, -9.9),
-                            ));
-                        }
+                        commands.spawn((
+                            CliffShadow,
+                            Mesh2d(shadow_mesh.clone()),
+                            MeshMaterial2d(shadow_material.clone()),
+                            Transform::from_xyz(nscreen.x, -nscreen.y + n_elev_offset, -9.9),
+                        ));
                     }
                 }
             }
@@ -166,19 +166,19 @@ fn spawn_tilemap_fallback(
 
             for (dx, dy) in [(0, 1), (1, 0)] {
                 let neighbor_grid = GridPos::new(x + dx, y + dy);
-                if let Some(neighbor) = map.get(neighbor_grid) {
-                    if neighbor.elevation < tile.elevation {
-                        let nworld = WorldPos::from_grid(neighbor_grid);
-                        let nscreen = world_to_screen(nworld);
-                        let n_elev_offset = neighbor.elevation as f32 * ELEVATION_PIXEL_OFFSET;
+                if let Some(neighbor) = map.get(neighbor_grid)
+                    && neighbor.elevation < tile.elevation
+                {
+                    let nworld = WorldPos::from_grid(neighbor_grid);
+                    let nscreen = world_to_screen(nworld);
+                    let n_elev_offset = neighbor.elevation as f32 * ELEVATION_PIXEL_OFFSET;
 
-                        commands.spawn((
-                            CliffShadow,
-                            Mesh2d(tile_mesh.clone()),
-                            MeshMaterial2d(shadow_material.clone()),
-                            Transform::from_xyz(nscreen.x, -nscreen.y + n_elev_offset, -9.9),
-                        ));
-                    }
+                    commands.spawn((
+                        CliffShadow,
+                        Mesh2d(tile_mesh.clone()),
+                        MeshMaterial2d(shadow_material.clone()),
+                        Transform::from_xyz(nscreen.x, -nscreen.y + n_elev_offset, -9.9),
+                    ));
                 }
             }
         }

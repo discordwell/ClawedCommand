@@ -1946,16 +1946,6 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
             range: Fixed::from_bits(4 << 16),
             max_charges: 0,
         },
-        // Non-cat/LLAMA/Croak/Seekers faction abilities — placeholder stats
-        _ => AbilityDef {
-            id,
-            activation: Passive,
-            cooldown_ticks: 0,
-            gpu_cost: 0,
-            duration_ticks: 0,
-            range: Fixed::ZERO,
-            max_charges: 0,
-        },
     }
 }
 
@@ -2368,7 +2358,6 @@ pub fn unit_abilities(kind: UnitKind) -> [AbilityId; 3] {
             AbilityId::ExpendableHeroism,
             AbilityId::WhiskernetRelay,
         ],
-        other => unimplemented!("unit_abilities not yet defined for {other:?}"),
     }
 }
 

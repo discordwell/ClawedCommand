@@ -222,341 +222,339 @@ pub fn production_system(
         }
 
         // Phase 2: Tick production queue
-        if let Some(mut queue) = prod_queue {
-            if let Some((unit_kind, ticks_remaining)) = queue.queue.front_mut() {
-                if *ticks_remaining > 0 {
-                    *ticks_remaining -= 1;
+        if let Some(mut queue) = prod_queue
+            && let Some((unit_kind, ticks_remaining)) = queue.queue.front_mut()
+        {
+            if *ticks_remaining > 0 {
+                *ticks_remaining -= 1;
+            }
+            if *ticks_remaining == 0 {
+                let kind = *unit_kind;
+                queue.queue.pop_front();
+
+                // Spawn the trained unit at the building's position
+                let stats = base_stats(kind);
+                let spawn_grid = pos.world.to_grid();
+                let spawn_world = WorldPos::from_grid(spawn_grid);
+
+                let mut unit_health = Health {
+                    current: stats.health,
+                    max: stats.health,
+                };
+                let mut attack_stats = AttackStats {
+                    damage: stats.damage,
+                    range: stats.range,
+                    attack_speed: stats.attack_speed,
+                    cooldown_remaining: 0,
+                };
+                let mut move_speed = MovementSpeed { speed: stats.speed };
+
+                // Apply completed upgrades to newly spawned unit
+                let player_id = owner.player_id as usize;
+                if let Some(pres) = _player_resources.players.get(player_id) {
+                    apply_upgrades_to_new_unit(
+                        kind,
+                        &pres.completed_upgrades,
+                        &mut unit_health,
+                        &mut attack_stats,
+                        &mut move_speed,
+                    );
                 }
-                if *ticks_remaining == 0 {
-                    let kind = *unit_kind;
-                    queue.queue.pop_front();
 
-                    // Spawn the trained unit at the building's position
-                    let stats = base_stats(kind);
-                    let spawn_grid = pos.world.to_grid();
-                    let spawn_world = WorldPos::from_grid(spawn_grid);
+                let mut entity_cmds = commands.spawn((
+                    Position { world: spawn_world },
+                    Velocity::zero(),
+                    GridCell { pos: spawn_grid },
+                    Owner {
+                        player_id: owner.player_id,
+                    },
+                    UnitType { kind },
+                    unit_health,
+                    move_speed,
+                    attack_stats,
+                    AttackTypeMarker {
+                        attack_type: stats.attack_type,
+                    },
+                    AbilitySlots::from_abilities(unit_abilities(kind)),
+                    StatusEffects::default(),
+                    StatModifiers::default(),
+                ));
 
-                    let mut unit_health = Health {
-                        current: stats.health,
-                        max: stats.health,
-                    };
-                    let mut attack_stats = AttackStats {
-                        damage: stats.damage,
-                        range: stats.range,
-                        attack_speed: stats.attack_speed,
-                        cooldown_remaining: 0,
-                    };
-                    let mut move_speed = MovementSpeed { speed: stats.speed };
+                // DreamSiegeTimer for Catnappers
+                if kind == UnitKind::Catnapper {
+                    entity_cmds.insert(DreamSiegeTimer::default());
+                }
 
-                    // Apply completed upgrades to newly spawned unit
-                    let player_id = owner.player_id as usize;
-                    if let Some(pres) = _player_resources.players.get(player_id) {
-                        apply_upgrades_to_new_unit(
-                            kind,
-                            &pres.completed_upgrades,
-                            &mut unit_health,
-                            &mut attack_stats,
-                            &mut move_speed,
-                        );
-                    }
+                // --- Croak spawn-time components ---
 
-                    let mut entity_cmds = commands.spawn((
-                        Position { world: spawn_world },
-                        Velocity::zero(),
-                        GridCell { pos: spawn_grid },
-                        Owner {
-                            player_id: owner.player_id,
-                        },
-                        UnitType { kind },
-                        unit_health,
-                        move_speed,
-                        attack_stats,
-                        AttackTypeMarker {
-                            attack_type: stats.attack_type,
-                        },
-                        AbilitySlots::from_abilities(unit_abilities(kind)),
-                        StatusEffects::default(),
-                        StatModifiers::default(),
-                    ));
+                // Regeneron: LimbTracker (starts with full limbs)
+                if kind == UnitKind::Regeneron {
+                    entity_cmds.insert(LimbTracker {
+                        current_limbs: 4,
+                        max_limbs: 4,
+                        regen_ticks: 200,
+                    });
+                }
 
-                    // DreamSiegeTimer for Catnappers
-                    if kind == UnitKind::Catnapper {
-                        entity_cmds.insert(DreamSiegeTimer::default());
-                    }
+                // Broodmother: SpawnlingCounter
+                if kind == UnitKind::Broodmother {
+                    entity_cmds.insert(SpawnlingCounter {
+                        count: 0,
+                        spawn_cooldown: 300, // 30s
+                    });
+                }
 
-                    // --- Croak spawn-time components ---
+                // Shellwarden: AncientMoss aura
+                if kind == UnitKind::Shellwarden {
+                    entity_cmds.insert(Aura {
+                        aura_type: AuraType::AncientMoss,
+                        radius: Fixed::from_bits(3 << 16), // 3 tiles
+                        active: true,
+                    });
+                }
 
-                    // Regeneron: LimbTracker (starts with full limbs)
-                    if kind == UnitKind::Regeneron {
-                        entity_cmds.insert(LimbTracker {
-                            current_limbs: 4,
-                            max_limbs: 4,
-                            regen_ticks: 200,
-                        });
-                    }
+                // Bogwhisper: BogSong aura
+                if kind == UnitKind::Bogwhisper {
+                    entity_cmds.insert(Aura {
+                        aura_type: AuraType::BogSong,
+                        radius: Fixed::from_bits(5 << 16), // 5 tiles
+                        active: true,
+                    });
+                }
 
-                    // Broodmother: SpawnlingCounter
-                    if kind == UnitKind::Broodmother {
-                        entity_cmds.insert(SpawnlingCounter {
-                            count: 0,
-                            spawn_cooldown: 300, // 30s
-                        });
-                    }
+                // MurkCommander: UndyingPresence aura
+                if kind == UnitKind::MurkCommander {
+                    entity_cmds.insert(Aura {
+                        aura_type: AuraType::UndyingPresence,
+                        radius: Fixed::from_bits(8 << 16), // 8 tiles
+                        active: true,
+                    });
+                }
 
-                    // Shellwarden: AncientMoss aura
-                    if kind == UnitKind::Shellwarden {
-                        entity_cmds.insert(Aura {
-                            aura_type: AuraType::AncientMoss,
-                            radius: Fixed::from_bits(3 << 16), // 3 tiles
-                            active: true,
-                        });
-                    }
+                // Croaker: BogPatchCounter
+                if kind == UnitKind::Croaker {
+                    entity_cmds.insert(BogPatchCounter {
+                        active_patches: Vec::new(),
+                    });
+                }
 
-                    // Bogwhisper: BogSong aura
-                    if kind == UnitKind::Bogwhisper {
-                        entity_cmds.insert(Aura {
-                            aura_type: AuraType::BogSong,
-                            radius: Fixed::from_bits(5 << 16), // 5 tiles
-                            active: true,
-                        });
-                    }
+                // --- LLAMA spawn-time components ---
 
-                    // MurkCommander: UndyingPresence aura
-                    if kind == UnitKind::MurkCommander {
-                        entity_cmds.insert(Aura {
-                            aura_type: AuraType::UndyingPresence,
+                // Scrounger: PocketStashInventory (PocketStash ability)
+                if kind == UnitKind::Scrounger {
+                    entity_cmds.insert(PocketStashInventory::default());
+                }
+
+                // HeapTitan: ScrapArmor aura
+                if kind == UnitKind::HeapTitan {
+                    entity_cmds.insert(Aura {
+                        aura_type: AuraType::ScrapArmorAura,
+                        radius: Fixed::from_bits(4 << 16), // 4 tiles
+                        active: true,
+                    });
+                }
+
+                // PatchPossum: FeignDeathTracker (passive auto-trigger)
+                if kind == UnitKind::PatchPossum {
+                    entity_cmds.insert(FeignDeathTracker::default());
+                }
+
+                // GreaseMonkey: JunkLauncherState (crit tracking)
+                if kind == UnitKind::GreaseMonkey {
+                    entity_cmds.insert(JunkLauncherState::default());
+                }
+
+                // JunkyardKing: OpenSourceUplink aura + FrankensteinTracker
+                if kind == UnitKind::JunkyardKing {
+                    entity_cmds.insert((
+                        Aura {
+                            aura_type: AuraType::OpenSourceUplinkAura,
                             radius: Fixed::from_bits(8 << 16), // 8 tiles
                             active: true,
-                        });
-                    }
+                        },
+                        FrankensteinTracker::default(),
+                    ));
+                }
 
-                    // Croaker: BogPatchCounter
-                    if kind == UnitKind::Croaker {
-                        entity_cmds.insert(BogPatchCounter {
-                            active_patches: Vec::new(),
-                        });
-                    }
-
-                    // --- LLAMA spawn-time components ---
-
-                    // Scrounger: PocketStashInventory (PocketStash ability)
-                    if kind == UnitKind::Scrounger {
-                        entity_cmds.insert(PocketStashInventory::default());
-                    }
-
-                    // HeapTitan: ScrapArmor aura
-                    if kind == UnitKind::HeapTitan {
-                        entity_cmds.insert(Aura {
-                            aura_type: AuraType::ScrapArmorAura,
-                            radius: Fixed::from_bits(4 << 16), // 4 tiles
+                // Chonk passive components: GravitationalChonk aura + NineLives tracker
+                if kind == UnitKind::Chonk {
+                    entity_cmds.insert((
+                        Aura {
+                            aura_type: AuraType::GravitationalChonk,
+                            radius: Fixed::from_bits(3 << 16),
                             active: true,
-                        });
-                    }
+                        },
+                        NineLivesTracker::default(),
+                    ));
+                }
 
-                    // PatchPossum: FeignDeathTracker (passive auto-trigger)
-                    if kind == UnitKind::PatchPossum {
-                        entity_cmds.insert(FeignDeathTracker::default());
-                    }
+                // --- Murder spawn-time components ---
 
-                    // GreaseMonkey: JunkLauncherState (crit tracking)
-                    if kind == UnitKind::GreaseMonkey {
-                        entity_cmds.insert(JunkLauncherState::default());
-                    }
+                // Aerial marker for flying Murder units
+                if matches!(
+                    kind,
+                    UnitKind::MurderScrounger
+                        | UnitKind::Sentinel
+                        | UnitKind::Rookclaw
+                        | UnitKind::Magpike
+                        | UnitKind::Magpyre
+                        | UnitKind::Jaycaller
+                        | UnitKind::Jayflicker
+                        | UnitKind::Hootseer
+                ) {
+                    entity_cmds.insert(Aerial);
+                }
 
-                    // JunkyardKing: OpenSourceUplink aura + FrankensteinTracker
-                    if kind == UnitKind::JunkyardKing {
-                        entity_cmds.insert((
-                            Aura {
-                                aura_type: AuraType::OpenSourceUplinkAura,
-                                radius: Fixed::from_bits(8 << 16), // 8 tiles
-                                active: true,
-                            },
-                            FrankensteinTracker::default(),
-                        ));
-                    }
+                // Dusktalon: ground-based stealth assassin
+                if kind == UnitKind::Dusktalon {
+                    entity_cmds.insert(Stealth {
+                        stealthed: true,
+                        detection_radius: Fixed::from_bits(3 << 16),
+                    });
+                }
 
-                    // Chonk passive components: GravitationalChonk aura + NineLives tracker
-                    if kind == UnitKind::Chonk {
-                        entity_cmds.insert((
-                            Aura {
-                                aura_type: AuraType::GravitationalChonk,
-                                radius: Fixed::from_bits(3 << 16),
-                                active: true,
-                            },
-                            NineLivesTracker::default(),
-                        ));
-                    }
-
-                    // --- Murder spawn-time components ---
-
-                    // Aerial marker for flying Murder units
-                    if matches!(
-                        kind,
-                        UnitKind::MurderScrounger
-                            | UnitKind::Sentinel
-                            | UnitKind::Rookclaw
-                            | UnitKind::Magpike
-                            | UnitKind::Magpyre
-                            | UnitKind::Jaycaller
-                            | UnitKind::Jayflicker
-                            | UnitKind::Hootseer
-                    ) {
-                        entity_cmds.insert(Aerial);
-                    }
-
-                    // Dusktalon: ground-based stealth assassin
-                    if kind == UnitKind::Dusktalon {
-                        entity_cmds.insert(Stealth {
-                            stealthed: true,
-                            detection_radius: Fixed::from_bits(3 << 16),
-                        });
-                    }
-
-                    // Hootseer: DreadAura + PanopticGazeCone
-                    if kind == UnitKind::Hootseer {
-                        entity_cmds.insert((
-                            Aura {
-                                aura_type: AuraType::DreadAura,
-                                radius: Fixed::from_bits(5 << 16),
-                                active: true,
-                            },
-                            PanopticGazeCone {
-                                direction: Fixed::ZERO,
-                                half_angle: Fixed::from_bits(1 << 16), // ~1 radian (~57 degrees, half of 120-degree cone)
-                            },
-                        ));
-                    }
-
-                    // CorvusRex: CorvidNetwork aura
-                    if kind == UnitKind::CorvusRex {
-                        entity_cmds.insert(Aura {
-                            aura_type: AuraType::CorvidNetwork,
-                            radius: Fixed::from_bits(10 << 16),
-                            active: true,
-                        });
-                    }
-
-                    // Magpike: TrinketWard passive tracker
-                    if kind == UnitKind::Magpike {
-                        entity_cmds.insert(TrinketWardTracker {
-                            trinkets_collected: 0,
-                        });
-                    }
-                    // --- Seekers of the Deep spawn-time components ---
-                    if matches!(
-                        kind,
-                        UnitKind::Delver
-                            | UnitKind::Ironhide
-                            | UnitKind::Cragback
-                            | UnitKind::Warden
-                            | UnitKind::Sapjaw
-                            | UnitKind::Wardenmother
-                            | UnitKind::SeekerTunneler
-                            | UnitKind::Embermaw
-                            | UnitKind::Dustclaw
-                            | UnitKind::Gutripper
-                    ) {
-                        entity_cmds.insert(StationaryTimer::default());
-                    }
-                    if matches!(
-                        kind,
-                        UnitKind::Ironhide
-                            | UnitKind::Cragback
-                            | UnitKind::Wardenmother
-                            | UnitKind::Gutripper
-                    ) {
-                        entity_cmds.insert(HeavyUnit);
-                    }
-                    if kind == UnitKind::Warden {
-                        entity_cmds.insert(Aura {
-                            aura_type: AuraType::VigilanceAura,
+                // Hootseer: DreadAura + PanopticGazeCone
+                if kind == UnitKind::Hootseer {
+                    entity_cmds.insert((
+                        Aura {
+                            aura_type: AuraType::DreadAura,
                             radius: Fixed::from_bits(5 << 16),
                             active: true,
-                        });
+                        },
+                        PanopticGazeCone {
+                            direction: Fixed::ZERO,
+                            half_angle: Fixed::from_bits(1 << 16), // ~1 radian (~57 degrees, half of 120-degree cone)
+                        },
+                    ));
+                }
+
+                // CorvusRex: CorvidNetwork aura
+                if kind == UnitKind::CorvusRex {
+                    entity_cmds.insert(Aura {
+                        aura_type: AuraType::CorvidNetwork,
+                        radius: Fixed::from_bits(10 << 16),
+                        active: true,
+                    });
+                }
+
+                // Magpike: TrinketWard passive tracker
+                if kind == UnitKind::Magpike {
+                    entity_cmds.insert(TrinketWardTracker {
+                        trinkets_collected: 0,
+                    });
+                }
+                // --- Seekers of the Deep spawn-time components ---
+                if matches!(
+                    kind,
+                    UnitKind::Delver
+                        | UnitKind::Ironhide
+                        | UnitKind::Cragback
+                        | UnitKind::Warden
+                        | UnitKind::Sapjaw
+                        | UnitKind::Wardenmother
+                        | UnitKind::SeekerTunneler
+                        | UnitKind::Embermaw
+                        | UnitKind::Dustclaw
+                        | UnitKind::Gutripper
+                ) {
+                    entity_cmds.insert(StationaryTimer::default());
+                }
+                if matches!(
+                    kind,
+                    UnitKind::Ironhide
+                        | UnitKind::Cragback
+                        | UnitKind::Wardenmother
+                        | UnitKind::Gutripper
+                ) {
+                    entity_cmds.insert(HeavyUnit);
+                }
+                if kind == UnitKind::Warden {
+                    entity_cmds.insert(Aura {
+                        aura_type: AuraType::VigilanceAura,
+                        radius: Fixed::from_bits(5 << 16),
+                        active: true,
+                    });
+                }
+                if kind == UnitKind::Wardenmother {
+                    entity_cmds.insert(Aura {
+                        aura_type: AuraType::DeepseekUplinkAura,
+                        radius: Fixed::from_bits(8 << 16),
+                        active: true,
+                    });
+                }
+                if kind == UnitKind::Gutripper {
+                    entity_cmds.insert((
+                        FrenzyStacks::default(),
+                        BloodgreedTracker {
+                            lifesteal_fraction: Fixed::from_num(0.20f32),
+                        },
+                    ));
+                }
+
+                // --- The Clawed (Mice) spawn-time components ---
+                if kind == UnitKind::Gnawer {
+                    entity_cmds.insert(StructuralWeaknessTimer::default());
+                }
+                if kind == UnitKind::Sparks {
+                    entity_cmds.insert(StaticChargeStacks::default());
+                }
+                if kind == UnitKind::Plaguetail {
+                    entity_cmds.insert(ContagionCloudOnDeath);
+                }
+                if kind == UnitKind::WarrenMarshal {
+                    entity_cmds.insert(Aura {
+                        aura_type: AuraType::RallyTheSwarm,
+                        radius: Fixed::from_bits(6 << 16),
+                        active: true,
+                    });
+                }
+
+                let new_entity = entity_cmds.id();
+
+                // Auto-move to rally point if set
+                if let Some(rally) = rally {
+                    let rally_world = WorldPos::from_grid(rally.target);
+                    commands.entity(new_entity).insert(MoveTarget {
+                        target: rally_world,
+                    });
+                } else if kind == UnitKind::Pawdler
+                    || kind == UnitKind::Ponderer
+                    || kind == UnitKind::MurderScrounger
+                    || kind == UnitKind::Scrounger
+                    || kind == UnitKind::Delver
+                    || kind == UnitKind::Nibblet
+                {
+                    // Auto-gather: send newly produced workers to nearest deposit
+                    let spawn_pos = spawn_world;
+                    let mut best_dist_sq = i64::MAX;
+                    let mut best_deposit: Option<(Entity, WorldPos)> = None;
+
+                    for (dep_entity, dep_pos, dep) in deposits.iter() {
+                        if dep.remaining == 0 {
+                            continue;
+                        }
+                        let dx = spawn_pos.x.to_bits() as i64 - dep_pos.world.x.to_bits() as i64;
+                        let dy = spawn_pos.y.to_bits() as i64 - dep_pos.world.y.to_bits() as i64;
+                        let dist_sq = dx * dx + dy * dy;
+                        if dist_sq < best_dist_sq {
+                            best_dist_sq = dist_sq;
+                            best_deposit = Some((dep_entity, dep_pos.world));
+                        }
                     }
-                    if kind == UnitKind::Wardenmother {
-                        entity_cmds.insert(Aura {
-                            aura_type: AuraType::DeepseekUplinkAura,
-                            radius: Fixed::from_bits(8 << 16),
-                            active: true,
-                        });
-                    }
-                    if kind == UnitKind::Gutripper {
-                        entity_cmds.insert((
-                            FrenzyStacks::default(),
-                            BloodgreedTracker {
-                                lifesteal_fraction: Fixed::from_num(0.20f32),
+
+                    if let Some((dep_entity, dep_world)) = best_deposit {
+                        let dep_resource = deposits.get(dep_entity).unwrap().2.resource_type;
+                        commands.entity(new_entity).insert((
+                            Gathering {
+                                deposit_entity: EntityId::from_entity(dep_entity),
+                                carried_type: dep_resource,
+                                carried_amount: 0,
+                                state: GatherState::MovingToDeposit,
+                                last_pos: (spawn_pos.x, spawn_pos.y),
+                                stale_ticks: 0,
                             },
+                            MoveTarget { target: dep_world },
                         ));
-                    }
-
-                    // --- The Clawed (Mice) spawn-time components ---
-                    if kind == UnitKind::Gnawer {
-                        entity_cmds.insert(StructuralWeaknessTimer::default());
-                    }
-                    if kind == UnitKind::Sparks {
-                        entity_cmds.insert(StaticChargeStacks::default());
-                    }
-                    if kind == UnitKind::Plaguetail {
-                        entity_cmds.insert(ContagionCloudOnDeath);
-                    }
-                    if kind == UnitKind::WarrenMarshal {
-                        entity_cmds.insert(Aura {
-                            aura_type: AuraType::RallyTheSwarm,
-                            radius: Fixed::from_bits(6 << 16),
-                            active: true,
-                        });
-                    }
-
-                    let new_entity = entity_cmds.id();
-
-                    // Auto-move to rally point if set
-                    if let Some(rally) = rally {
-                        let rally_world = WorldPos::from_grid(rally.target);
-                        commands.entity(new_entity).insert(MoveTarget {
-                            target: rally_world,
-                        });
-                    } else if kind == UnitKind::Pawdler
-                        || kind == UnitKind::Ponderer
-                        || kind == UnitKind::MurderScrounger
-                        || kind == UnitKind::Scrounger
-                        || kind == UnitKind::Delver
-                        || kind == UnitKind::Nibblet
-                    {
-                        // Auto-gather: send newly produced workers to nearest deposit
-                        let spawn_pos = spawn_world;
-                        let mut best_dist_sq = i64::MAX;
-                        let mut best_deposit: Option<(Entity, WorldPos)> = None;
-
-                        for (dep_entity, dep_pos, dep) in deposits.iter() {
-                            if dep.remaining == 0 {
-                                continue;
-                            }
-                            let dx =
-                                spawn_pos.x.to_bits() as i64 - dep_pos.world.x.to_bits() as i64;
-                            let dy =
-                                spawn_pos.y.to_bits() as i64 - dep_pos.world.y.to_bits() as i64;
-                            let dist_sq = dx * dx + dy * dy;
-                            if dist_sq < best_dist_sq {
-                                best_dist_sq = dist_sq;
-                                best_deposit = Some((dep_entity, dep_pos.world));
-                            }
-                        }
-
-                        if let Some((dep_entity, dep_world)) = best_deposit {
-                            let dep_resource = deposits.get(dep_entity).unwrap().2.resource_type;
-                            commands.entity(new_entity).insert((
-                                Gathering {
-                                    deposit_entity: EntityId::from_entity(dep_entity),
-                                    carried_type: dep_resource,
-                                    carried_amount: 0,
-                                    state: GatherState::MovingToDeposit,
-                                    last_pos: (spawn_pos.x, spawn_pos.y),
-                                    stale_ticks: 0,
-                                },
-                                MoveTarget { target: dep_world },
-                            ));
-                        }
                     }
                 }
             }

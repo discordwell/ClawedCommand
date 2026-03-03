@@ -1,13 +1,11 @@
 use bevy::prelude::*;
 
-use cc_agent::agent_bridge::{AgentBridge, AgentRequest, AgentSource};
-use cc_agent::construct_mode::{ConstructModeState, LuaScript, ScriptLibrary, ScriptTestResult};
-use cc_agent::llm_client::ChatMessage;
-use cc_agent::tool_tier::FactionToolStates;
+use cc_agent::construct_mode::{ConstructModeState, ScriptLibrary, ScriptTestResult};
 
 use super::LocalPlayer;
 
 /// System prompt for construct mode.
+#[allow(dead_code)]
 const CONSTRUCT_MODE_SYSTEM_PROMPT: &str = r#"You are Minstral, an AI assistant in the RTS game ClawedCommand. The player is asking you to create or modify a Lua script for army automation.
 
 Generate a Lua script using the ctx API. Available methods:
@@ -342,12 +340,12 @@ pub fn construct_mode_keys(
     ];
 
     for (key, idx) in &key_map {
-        if keys.just_pressed(*key) {
-            if let Some(script) = library.scripts.get(*idx) {
-                state.editable_source = script.source.clone();
-                state.current_script = Some(script.clone());
-                state.test_result = None;
-            }
+        if keys.just_pressed(*key)
+            && let Some(script) = library.scripts.get(*idx)
+        {
+            state.editable_source = script.source.clone();
+            state.current_script = Some(script.clone());
+            state.test_result = None;
         }
     }
 

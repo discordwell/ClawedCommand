@@ -164,37 +164,38 @@ pub fn wave_spawner_system(
 
     // Check AtTick waves
     for wave in &mission.enemy_waves {
-        if let WaveTrigger::AtTick(tick) = wave.trigger {
-            if clock.tick == tick && !wave_tracker.processed.contains(&wave.wave_id) {
-                spawn_wave_entities(
-                    &mut commands,
-                    &wave.wave_id,
-                    &wave.units,
-                    &wave.ai_behavior,
-                    &mut wave_tracker,
-                    &map_res.map,
-                );
-                wave_tracker.processed.insert(wave.wave_id.clone());
-            }
+        if let WaveTrigger::AtTick(tick) = wave.trigger
+            && clock.tick == tick
+            && !wave_tracker.processed.contains(&wave.wave_id)
+        {
+            spawn_wave_entities(
+                &mut commands,
+                &wave.wave_id,
+                &wave.units,
+                &wave.ai_behavior,
+                &mut wave_tracker,
+                &map_res.map,
+            );
+            wave_tracker.processed.insert(wave.wave_id.clone());
         }
     }
 
     // Check trigger-spawned waves (OnTrigger waves marked in spawned_waves by trigger system)
     let spawned_waves = campaign.spawned_waves.clone();
     for wave in &mission.enemy_waves {
-        if let WaveTrigger::OnTrigger(trigger_id) = &wave.trigger {
-            if spawned_waves.contains(trigger_id) && !wave_tracker.processed.contains(&wave.wave_id)
-            {
-                spawn_wave_entities(
-                    &mut commands,
-                    &wave.wave_id,
-                    &wave.units,
-                    &wave.ai_behavior,
-                    &mut wave_tracker,
-                    &map_res.map,
-                );
-                wave_tracker.processed.insert(wave.wave_id.clone());
-            }
+        if let WaveTrigger::OnTrigger(trigger_id) = &wave.trigger
+            && spawned_waves.contains(trigger_id)
+            && !wave_tracker.processed.contains(&wave.wave_id)
+        {
+            spawn_wave_entities(
+                &mut commands,
+                &wave.wave_id,
+                &wave.units,
+                &wave.ai_behavior,
+                &mut wave_tracker,
+                &map_res.map,
+            );
+            wave_tracker.processed.insert(wave.wave_id.clone());
         }
     }
 

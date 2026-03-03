@@ -121,7 +121,11 @@ fn terrain_pixel(terrain: TerrainType, px: usize, py: usize, variant: u8) -> (u8
             let base_b = 163u8;
             // Fine noise with subtle wavy lines
             let variation = ((fine as i16) - 128) / 12;
-            let wave = if (py + px / 4) % 6 == 0 { -8i16 } else { 0 };
+            let wave = if (py + px / 4).is_multiple_of(6) {
+                -8i16
+            } else {
+                0
+            };
             (
                 clamp_u8(base_r as i16 + variation + wave),
                 clamp_u8(base_g as i16 + variation + wave),
@@ -147,7 +151,7 @@ fn terrain_pixel(terrain: TerrainType, px: usize, py: usize, variant: u8) -> (u8
             let base_b = 217u8;
             // Wave line pattern with highlights
             let wave_offset = if variant == 0 { 0 } else { 3 };
-            let wave = if (py + wave_offset + px / 8) % 5 == 0 {
+            let wave = if (py + wave_offset + px / 8).is_multiple_of(5) {
                 15i16
             } else {
                 0
@@ -166,7 +170,7 @@ fn terrain_pixel(terrain: TerrainType, px: usize, py: usize, variant: u8) -> (u8
             let base_b = 232u8;
             // Sparse waves, ground color bleed-through
             let wave_offset = if variant == 0 { 0 } else { 2 };
-            let wave = if (py + wave_offset + px / 6) % 7 == 0 {
+            let wave = if (py + wave_offset + px / 6).is_multiple_of(7) {
                 10i16
             } else {
                 0
@@ -185,7 +189,7 @@ fn terrain_pixel(terrain: TerrainType, px: usize, py: usize, variant: u8) -> (u8
             let base_b = 140u8;
             // Angular noise with dark crack lines
             let variation = ((noise as i16) - 128) / 5;
-            let crack = if (px.wrapping_mul(3) ^ py.wrapping_mul(7)) % 17 == 0 {
+            let crack = if (px.wrapping_mul(3) ^ py.wrapping_mul(7)).is_multiple_of(17) {
                 -40i16
             } else {
                 0
@@ -227,7 +231,7 @@ fn terrain_pixel(terrain: TerrainType, px: usize, py: usize, variant: u8) -> (u8
             let base_g = 110u8;
             let base_b = 122u8;
             // Grid circuit lines with cyan accent dots
-            let grid_line = if px % 8 == 0 || py % 8 == 0 {
+            let grid_line = if px.is_multiple_of(8) || py.is_multiple_of(8) {
                 -15i16
             } else {
                 0

@@ -122,18 +122,18 @@ pub fn update_building_info(
         }
 
         // Show queue
-        if let Some(q) = queue {
-            if !q.queue.is_empty() {
-                let queue_items: Vec<String> = q
-                    .queue
-                    .iter()
-                    .map(|(kind, ticks)| {
-                        let secs = *ticks as f32 / 10.0;
-                        format!("{kind:?}({secs:.0}s)")
-                    })
-                    .collect();
-                lines.push(format!("Queue: {}", queue_items.join(" > ")));
-            }
+        if let Some(q) = queue
+            && !q.queue.is_empty()
+        {
+            let queue_items: Vec<String> = q
+                .queue
+                .iter()
+                .map(|(kind, ticks)| {
+                    let secs = *ticks as f32 / 10.0;
+                    format!("{kind:?}({secs:.0}s)")
+                })
+                .collect();
+            lines.push(format!("Queue: {}", queue_items.join(" > ")));
         }
     } else {
         // Non-producer building (FishMarket, LitterBox, etc.)

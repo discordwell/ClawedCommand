@@ -214,7 +214,7 @@ fn evaluate_condition(
         } => {
             *interval_ticks > 0
                 && tick >= *offset_ticks
-                && (tick - *offset_ticks) % *interval_ticks == 0
+                && (tick - *offset_ticks).is_multiple_of(*interval_ticks)
         }
     }
 }

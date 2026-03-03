@@ -87,13 +87,14 @@ pub fn detect_events(
         .collect();
 
     for unit in &current.my_units {
-        if let Some(&prev_hp) = prev_my_health.get(&unit.id) {
-            if unit.health_current < prev_hp && !unit.is_dead {
-                events.push(ScriptEvent::UnitAttacked {
-                    unit_id: unit.id,
-                    damage_taken: prev_hp - unit.health_current,
-                });
-            }
+        if let Some(&prev_hp) = prev_my_health.get(&unit.id)
+            && unit.health_current < prev_hp
+            && !unit.is_dead
+        {
+            events.push(ScriptEvent::UnitAttacked {
+                unit_id: unit.id,
+                damage_taken: prev_hp - unit.health_current,
+            });
         }
     }
 

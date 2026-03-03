@@ -283,10 +283,10 @@ pub fn environmental_hazard_system(
                     for x in 0..width {
                         for y in 0..height {
                             let pos = GridPos::new(x, y);
-                            if let Some(tile) = map_res.map.get_mut(pos) {
-                                if tile.elevation < level {
-                                    tile.dynamic_flags |= FLAG_WATER_CONVERTED;
-                                }
+                            if let Some(tile) = map_res.map.get_mut(pos)
+                                && tile.elevation < level
+                            {
+                                tile.dynamic_flags |= FLAG_WATER_CONVERTED;
                             }
                         }
                     }
@@ -310,13 +310,13 @@ pub fn environmental_hazard_system(
             MissionMutator::DenseFog {
                 periodic_clearing, ..
             } => {
-                if let Some(clearing) = periodic_clearing {
-                    if clearing.interval_ticks > 0 {
-                        let cycle = tick % clearing.interval_ticks;
-                        let is_clear = cycle < clearing.clear_duration_ticks;
-                        fog.currently_clear = is_clear;
-                        mutator_state.fog_cleared = is_clear;
-                    }
+                if let Some(clearing) = periodic_clearing
+                    && clearing.interval_ticks > 0
+                {
+                    let cycle = tick % clearing.interval_ticks;
+                    let is_clear = cycle < clearing.clear_duration_ticks;
+                    fog.currently_clear = is_clear;
+                    mutator_state.fog_cleared = is_clear;
                 }
             }
 

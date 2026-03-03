@@ -70,7 +70,11 @@ impl CommandQueue {
 
         let mut result = Vec::with_capacity(p0.len() + p1.len() + other.len());
 
-        let (first, second) = if tick % 2 == 0 { (p0, p1) } else { (p1, p0) };
+        let (first, second) = if tick.is_multiple_of(2) {
+            (p0, p1)
+        } else {
+            (p1, p0)
+        };
 
         // Interleave: one from first, one from second, repeat
         let mut i = 0;
@@ -111,31 +115,20 @@ pub struct MapResource {
 }
 
 /// Control groups: 10 groups (0-9), each holding a list of unit EntityIds.
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct ControlGroups {
     pub groups: [Vec<EntityId>; 10],
 }
 
-impl Default for ControlGroups {
-    fn default() -> Self {
-        Self {
-            groups: Default::default(),
-        }
-    }
-}
-
 /// Current game state — Playing, Paused, or Victory with a winner.
-#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum GameState {
+    #[default]
     Playing,
     Paused,
-    Victory { winner: u8 },
-}
-
-impl Default for GameState {
-    fn default() -> Self {
-        GameState::Playing
-    }
+    Victory {
+        winner: u8,
+    },
 }
 
 /// Spawn positions for each player (player_id → grid position).

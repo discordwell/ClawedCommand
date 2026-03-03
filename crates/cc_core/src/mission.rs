@@ -279,7 +279,7 @@ pub enum TriggerAction {
 }
 
 /// What mission comes after this one.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum NextMission {
     /// A specific mission ID.
     Fixed(String),
@@ -290,13 +290,8 @@ pub enum NextMission {
         on_false: String,
     },
     /// No next mission (end of campaign or handled externally).
+    #[default]
     None,
-}
-
-impl Default for NextMission {
-    fn default() -> Self {
-        NextMission::None
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1359,6 +1354,125 @@ mod tests {
     #[test]
     fn pond_defense_positions_on_passable_terrain() {
         let mission = load_pond_defense();
+        assert_all_positions_passable(&mission);
+    }
+
+    // ── Act 1 M2-M4 inline map tests ─────────────────────────────────────
+
+    fn load_act1_m2() -> MissionDefinition {
+        let ron_str = include_str!("../../../assets/campaign/act1_m2_dead_drop.ron");
+        ron::from_str(ron_str).expect("Failed to parse act1_m2_dead_drop.ron")
+    }
+
+    fn load_act1_m3() -> MissionDefinition {
+        let ron_str = include_str!("../../../assets/campaign/act1_m3_counter_raid.ron");
+        ron::from_str(ron_str).expect("Failed to parse act1_m3_counter_raid.ron")
+    }
+
+    fn load_act1_m4() -> MissionDefinition {
+        let ron_str = include_str!("../../../assets/campaign/act1_m4_envoy.ron");
+        ron::from_str(ron_str).expect("Failed to parse act1_m4_envoy.ron")
+    }
+
+    #[test]
+    fn parse_act1_m2_dead_drop_ron() {
+        let mission = load_act1_m2();
+        assert_eq!(mission.id, "act1_m2_dead_drop");
+        assert_eq!(mission.act, 1);
+        assert_eq!(mission.mission_index, 2);
+        mission.validate().expect("M2 validation failed");
+    }
+
+    #[test]
+    fn act1_m2_has_inline_map() {
+        let mission = load_act1_m2();
+        match &mission.map {
+            MissionMap::Inline {
+                width,
+                height,
+                tiles,
+                elevation,
+            } => {
+                assert_eq!(*width, 48);
+                assert_eq!(*height, 48);
+                assert_eq!(tiles.len(), 48 * 48);
+                assert_eq!(elevation.len(), 48 * 48);
+            }
+            _ => panic!("Expected Inline map for M2"),
+        }
+    }
+
+    #[test]
+    fn act1_m2_positions_on_passable_terrain() {
+        let mission = load_act1_m2();
+        assert_all_positions_passable(&mission);
+    }
+
+    #[test]
+    fn parse_act1_m3_counter_raid_ron() {
+        let mission = load_act1_m3();
+        assert_eq!(mission.id, "act1_m3_counter_raid");
+        assert_eq!(mission.act, 1);
+        assert_eq!(mission.mission_index, 3);
+        mission.validate().expect("M3 validation failed");
+    }
+
+    #[test]
+    fn act1_m3_has_inline_map() {
+        let mission = load_act1_m3();
+        match &mission.map {
+            MissionMap::Inline {
+                width,
+                height,
+                tiles,
+                elevation,
+            } => {
+                assert_eq!(*width, 64);
+                assert_eq!(*height, 64);
+                assert_eq!(tiles.len(), 64 * 64);
+                assert_eq!(elevation.len(), 64 * 64);
+            }
+            _ => panic!("Expected Inline map for M3"),
+        }
+    }
+
+    #[test]
+    fn act1_m3_positions_on_passable_terrain() {
+        let mission = load_act1_m3();
+        assert_all_positions_passable(&mission);
+    }
+
+    #[test]
+    fn parse_act1_m4_envoy_ron() {
+        let mission = load_act1_m4();
+        assert_eq!(mission.id, "act1_m4_envoy");
+        assert_eq!(mission.act, 1);
+        assert_eq!(mission.mission_index, 4);
+        mission.validate().expect("M4 validation failed");
+    }
+
+    #[test]
+    fn act1_m4_has_inline_map() {
+        let mission = load_act1_m4();
+        match &mission.map {
+            MissionMap::Inline {
+                width,
+                height,
+                tiles,
+                elevation,
+            } => {
+                assert_eq!(*width, 64);
+                assert_eq!(*height, 48);
+                assert_eq!(tiles.len(), 64 * 48);
+                assert_eq!(elevation.len(), 64 * 48);
+            }
+            _ => panic!("Expected Inline map for M4"),
+        }
+    }
+
+    #[test]
+    fn act1_m4_positions_on_passable_terrain() {
+        let mission = load_act1_m4();
         assert_all_positions_passable(&mission);
     }
 }

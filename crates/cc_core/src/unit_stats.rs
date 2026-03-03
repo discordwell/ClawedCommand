@@ -301,15 +301,15 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
         UnitKind::Warden => UnitBaseStats {
             health: Fixed::from_bits(150 << 16),
             speed: Fixed::from_bits(6553),
-            damage: Fixed::from_bits(10 << 16),
-            range: Fixed::from_bits(4 << 16),
+            damage: Fixed::from_bits(14 << 16),
+            range: Fixed::from_bits(5 << 16),
             attack_speed: 15,
             attack_type: AttackType::Ranged,
             food_cost: 100,
             gpu_cost: 0,
             supply_cost: 2,
             train_time: 80,
-        }, // dmg 8→10, range 3→4 (DPS 0.53→0.67)
+        }, // dmg 10→14, range 4→5 (DPS 9.33, matches Hisser)
         UnitKind::Sapjaw => UnitBaseStats {
             health: Fixed::from_bits(120 << 16),
             speed: Fixed::from_bits(9175),
@@ -745,7 +745,6 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             supply_cost: 6,
             train_time: 230,
         },
-        other => unimplemented!("base_stats not yet defined for {other:?}"),
     }
 }
 

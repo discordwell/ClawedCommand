@@ -3,8 +3,8 @@ use bevy::prelude::*;
 use cc_core::building_stats::building_stats;
 use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::{
-    Building, BuildingKind, Owner, Producer, ProductionQueue, ResearchQueue, Researcher, Selected,
-    UnitKind, UnitType, UpgradeType,
+    Building, Owner, Producer, ProductionQueue, ResearchQueue, Researcher, Selected, UnitKind,
+    UnitType, UpgradeType,
 };
 use cc_core::unit_stats::base_stats;
 use cc_core::upgrade_stats::upgrade_stats;
@@ -194,14 +194,14 @@ pub fn update_command_card(
                 }
 
                 // Queue status
-                if let Some(queue) = prod_queue {
-                    if !queue.queue.is_empty() {
-                        lines.push(format!("Queue: {} — [X] Cancel", queue.queue.len()));
-                        if keys.just_pressed(KeyCode::KeyX) {
-                            cmd_queue.push(GameCommand::CancelQueue {
-                                building: EntityId(entity.to_bits()),
-                            });
-                        }
+                if let Some(queue) = prod_queue
+                    && !queue.queue.is_empty()
+                {
+                    lines.push(format!("Queue: {} — [X] Cancel", queue.queue.len()));
+                    if keys.just_pressed(KeyCode::KeyX) {
+                        cmd_queue.push(GameCommand::CancelQueue {
+                            building: EntityId(entity.to_bits()),
+                        });
                     }
                 }
             }
@@ -252,10 +252,10 @@ pub fn update_command_card(
                     lines.push(format!("RESEARCH: {}", research_parts.join("  ")));
                 }
 
-                if let Some(rqueue) = research_queue {
-                    if !rqueue.queue.is_empty() {
-                        lines.push(format!("Research Q: {}", rqueue.queue.len()));
-                    }
+                if let Some(rqueue) = research_queue
+                    && !rqueue.queue.is_empty()
+                {
+                    lines.push(format!("Research Q: {}", rqueue.queue.len()));
                 }
             }
         }

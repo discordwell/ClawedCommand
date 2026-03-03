@@ -4,7 +4,7 @@ use cc_core::terrain::TerrainType;
 
 /// Resource holding terrain sprite atlas handles.
 /// Until real art is generated, falls back to colored rectangles.
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct TerrainAtlas {
     /// Base tile atlas (one sprite per terrain type). None = use colored rects.
     pub base_atlas: Option<Handle<TextureAtlasLayout>>,
@@ -19,17 +19,6 @@ pub struct TerrainAtlas {
 pub struct TransitionAtlasEntry {
     pub layout: Handle<TextureAtlasLayout>,
     pub image: Handle<Image>,
-}
-
-impl Default for TerrainAtlas {
-    fn default() -> Self {
-        Self {
-            base_atlas: None,
-            base_image: None,
-            transition_atlases: Default::default(),
-            art_loaded: false,
-        }
-    }
 }
 
 impl TerrainAtlas {

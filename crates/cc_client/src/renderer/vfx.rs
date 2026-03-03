@@ -123,7 +123,7 @@ pub fn spawn_trail_particles(
     projectiles: Query<(&Transform, Option<&ProjectileKind>), With<ProjectileSprite>>,
 ) {
     *frame_counter += 1;
-    if *frame_counter % 3 != 0 {
+    if !(*frame_counter).is_multiple_of(3) {
         return;
     }
 

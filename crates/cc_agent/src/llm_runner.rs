@@ -329,12 +329,7 @@ async fn run_loop(
     response_tx: crossbeam_channel::Sender<AgentResponse>,
     token_tx: Sender<TokenChunk>,
 ) {
-    loop {
-        let request = match request_rx.recv() {
-            Ok(req) => req,
-            Err(_) => break,
-        };
-
+    while let Ok(request) = request_rx.recv() {
         let response = process_request(client, &request, config, streaming_client, &token_tx).await;
 
         if response_tx.send(response).is_err() {

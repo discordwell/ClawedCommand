@@ -68,8 +68,8 @@ pub fn spawn_health_bars(
     for (entity, parent_transform, unit_type, building) in units.iter() {
         let parent_scale = parent_transform.scale.x.max(0.01);
 
-        let (bar_width, bar_height, bar_y_offset, inverse_scale) = if unit_type.is_some() {
-            let kind = unit_type.unwrap().kind;
+        let (bar_width, bar_height, bar_y_offset, inverse_scale) = if let Some(ut) = unit_type {
+            let kind = ut.kind;
             (
                 bar_width_for_kind(kind),
                 UNIT_BAR_HEIGHT,

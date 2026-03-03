@@ -424,17 +424,17 @@ pub fn apply_unit_tweens(
         transform.scale = Vec3::splat(final_scale);
 
         // 9. Hit flash on Sprite.color (lerp toward white, preserving alpha)
-        if let Some(mut sprite) = sprite {
-            if tween.hit_timer > 0.0 {
-                let flash = hit_flash_factor(tween.hit_timer, tween.params.hit_flash_duration);
-                let linear = sprite.color.to_linear();
-                sprite.color = Color::LinearRgba(LinearRgba::new(
-                    (linear.red + flash * (1.0 - linear.red)).min(1.0),
-                    (linear.green + flash * (1.0 - linear.green)).min(1.0),
-                    (linear.blue + flash * (1.0 - linear.blue)).min(1.0),
-                    linear.alpha, // preserve alpha
-                ));
-            }
+        if let Some(mut sprite) = sprite
+            && tween.hit_timer > 0.0
+        {
+            let flash = hit_flash_factor(tween.hit_timer, tween.params.hit_flash_duration);
+            let linear = sprite.color.to_linear();
+            sprite.color = Color::LinearRgba(LinearRgba::new(
+                (linear.red + flash * (1.0 - linear.red)).min(1.0),
+                (linear.green + flash * (1.0 - linear.green)).min(1.0),
+                (linear.blue + flash * (1.0 - linear.blue)).min(1.0),
+                linear.alpha, // preserve alpha
+            ));
         }
 
         // 10. Tick down one-shot timers

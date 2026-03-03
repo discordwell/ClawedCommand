@@ -234,20 +234,18 @@ impl OpenAiCompatibleClient {
                         });
                     }
 
-                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(data) {
-                        if let Some(delta_content) = json["choices"]
+                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(data)
+                        && let Some(delta_content) = json["choices"]
                             .get(0)
                             .and_then(|c| c["delta"]["content"].as_str())
-                        {
-                            if !delta_content.is_empty() {
-                                full_content.push_str(delta_content);
-                                let _ = token_tx.try_send(TokenChunk {
-                                    source,
-                                    content: delta_content.to_string(),
-                                    done: false,
-                                });
-                            }
-                        }
+                        && !delta_content.is_empty()
+                    {
+                        full_content.push_str(delta_content);
+                        let _ = token_tx.try_send(TokenChunk {
+                            source,
+                            content: delta_content.to_string(),
+                            done: false,
+                        });
                     }
                 }
             }
@@ -427,10 +425,10 @@ impl LlmConfig {
             config.model = model;
         }
 
-        if let Ok(temp) = std::env::var("CLAWED_LLM_TEMP") {
-            if let Ok(t) = temp.parse::<f32>() {
-                config.temperature = t;
-            }
+        if let Ok(temp) = std::env::var("CLAWED_LLM_TEMP")
+            && let Ok(t) = temp.parse::<f32>()
+        {
+            config.temperature = t;
         }
 
         if let Ok(ft) = std::env::var("CLAWED_LLM_FINETUNED") {
@@ -442,18 +440,13 @@ impl LlmConfig {
 }
 
 /// Agent readiness status, used by UI to show initialization progress.
-#[derive(Debug, Clone, Resource)]
+#[derive(Debug, Clone, Resource, Default)]
 pub enum AgentStatus {
+    #[default]
     Unconfigured,
     Initializing(f32),
     Ready,
     Error(String),
-}
-
-impl Default for AgentStatus {
-    fn default() -> Self {
-        Self::Unconfigured
-    }
 }
 
 #[cfg(test)]

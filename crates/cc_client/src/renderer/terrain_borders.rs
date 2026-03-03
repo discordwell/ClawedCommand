@@ -32,18 +32,18 @@ pub fn draw_terrain_borders(
 
                 // Check east neighbor (+1, 0 in grid)
                 let east = GridPos::new(x + 1, y);
-                if let Some(east_tile) = map.get(east) {
-                    if east_tile.terrain != tile.terrain {
-                        result.push((Vec2::new(sx + HALF_W, sy), Vec2::new(sx, sy - HALF_H)));
-                    }
+                if let Some(east_tile) = map.get(east)
+                    && east_tile.terrain != tile.terrain
+                {
+                    result.push((Vec2::new(sx + HALF_W, sy), Vec2::new(sx, sy - HALF_H)));
                 }
 
                 // Check south neighbor (0, +1 in grid)
                 let south = GridPos::new(x, y + 1);
-                if let Some(south_tile) = map.get(south) {
-                    if south_tile.terrain != tile.terrain {
-                        result.push((Vec2::new(sx, sy - HALF_H), Vec2::new(sx - HALF_W, sy)));
-                    }
+                if let Some(south_tile) = map.get(south)
+                    && south_tile.terrain != tile.terrain
+                {
+                    result.push((Vec2::new(sx, sy - HALF_H), Vec2::new(sx - HALF_W, sy)));
                 }
             }
         }

@@ -115,28 +115,27 @@ pub fn combat_system(
 
                 // Apply attacker's damage_multiplier
                 if let Some(mods) = attacker_mods {
-                    final_damage = final_damage * mods.damage_multiplier;
+                    final_damage *= mods.damage_multiplier;
                 }
 
                 // DreamSiege passive (Catnapper): ramp damage on same target
                 // Increment by attack_speed to approximate elapsed ticks between attacks
-                if unit_type.kind == UnitKind::Catnapper {
-                    if let Some(ref mut siege_timer) = dream_siege_timer {
-                        if siege_timer.current_target == Some(EntityId::from_entity(target_entity))
-                        {
-                            siege_timer.ticks_on_target += stats.attack_speed as u32;
-                        } else {
-                            siege_timer.current_target = Some(EntityId::from_entity(target_entity));
-                            siege_timer.ticks_on_target = 0;
-                        }
-                        let siege_mult = dream_siege_multiplier(siege_timer.ticks_on_target);
-                        final_damage = final_damage * siege_mult;
+                if unit_type.kind == UnitKind::Catnapper
+                    && let Some(ref mut siege_timer) = dream_siege_timer
+                {
+                    if siege_timer.current_target == Some(EntityId::from_entity(target_entity)) {
+                        siege_timer.ticks_on_target += stats.attack_speed;
+                    } else {
+                        siege_timer.current_target = Some(EntityId::from_entity(target_entity));
+                        siege_timer.ticks_on_target = 0;
                     }
+                    let siege_mult = dream_siege_multiplier(siege_timer.ticks_on_target);
+                    final_damage *= siege_mult;
                 }
 
                 // Apply target's damage_reduction
                 if let Some(mods) = target_mods {
-                    final_damage = final_damage * mods.damage_reduction;
+                    final_damage *= mods.damage_reduction;
                 }
 
                 match atk_type.attack_type {

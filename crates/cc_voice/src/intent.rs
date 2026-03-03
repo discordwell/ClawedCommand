@@ -780,15 +780,15 @@ pub fn voice_intent_system(
         let parsed = parse_voice_text(&event.text);
 
         // Control group recall — "group one" with no action
-        if let Some(n) = parsed.group_number {
-            if parsed.action.is_none() {
-                cmd_queue.push_sourced(
-                    Some(0),
-                    cc_core::commands::CommandSource::VoiceCommand,
-                    GameCommand::RecallControlGroup { group: n },
-                );
-                continue;
-            }
+        if let Some(n) = parsed.group_number
+            && parsed.action.is_none()
+        {
+            cmd_queue.push_sourced(
+                Some(0),
+                cc_core::commands::CommandSource::VoiceCommand,
+                GameCommand::RecallControlGroup { group: n },
+            );
+            continue;
         }
 
         let Some(action) = parsed.action else {

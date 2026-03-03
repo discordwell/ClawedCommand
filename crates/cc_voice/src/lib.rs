@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 pub mod audio;
 pub mod events;
 pub mod intent;
@@ -38,16 +40,10 @@ impl Default for VoiceConfig {
 }
 
 /// Runtime state for the voice pipeline.
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct VoiceState {
     /// Whether the voice pipeline is active (models loaded, mic available).
     pub enabled: bool,
-}
-
-impl Default for VoiceState {
-    fn default() -> Self {
-        Self { enabled: false }
-    }
 }
 
 /// Bevy plugin for voice command recognition.

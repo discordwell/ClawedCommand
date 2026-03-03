@@ -59,16 +59,14 @@ pub fn builder_system(
                     remaining_ticks: bstats.build_time,
                     total_ticks: bstats.build_time,
                 });
-            } else {
-                if !bstats.can_produce.is_empty() {
-                    building.insert((Producer, ProductionQueue::default()));
-                }
+            } else if !bstats.can_produce.is_empty() {
+                building.insert((Producer, ProductionQueue::default()));
             }
 
-            if bstats.supply_provided > 0 {
-                if let Some(pres) = player_resources.players.get_mut(owner.player_id as usize) {
-                    pres.supply_cap += bstats.supply_provided;
-                }
+            if bstats.supply_provided > 0
+                && let Some(pres) = player_resources.players.get_mut(owner.player_id as usize)
+            {
+                pres.supply_cap += bstats.supply_provided;
             }
 
             commands.entity(entity).remove::<BuildOrder>();

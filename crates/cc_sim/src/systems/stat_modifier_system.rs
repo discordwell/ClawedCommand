@@ -19,39 +19,38 @@ pub fn stat_modifier_system(mut query: Query<(&StatusEffects, &mut StatModifiers
             match instance.effect {
                 StatusEffectId::Zoomies => {
                     // +100% speed, invulnerable, can't attack
-                    modifiers.speed_multiplier = modifiers.speed_multiplier * Fixed::from_num(2);
+                    modifiers.speed_multiplier *= Fixed::from_num(2);
                     modifiers.invulnerable = true;
                     modifiers.cannot_attack = true;
                 }
                 StatusEffectId::LoafModeActive => {
                     // Immobile + 50% damage reduction
                     modifiers.immobilized = true;
-                    modifiers.damage_reduction =
-                        modifiers.damage_reduction * Fixed::from_bits(32768); // 0.5
+                    modifiers.damage_reduction *= Fixed::from_bits(32768); // 0.5
                 }
                 StatusEffectId::Motivated => {
                     // +15% damage
-                    modifiers.damage_multiplier = modifiers.damage_multiplier
-                        * Fixed::from_bits((1 << 16) + (1 << 16) * 15 / 100); // 1.15
+                    modifiers.damage_multiplier *=
+                        Fixed::from_bits((1 << 16) + (1 << 16) * 15 / 100); // 1.15
                 }
                 StatusEffectId::HarmonicBuff => {
                     // +20% damage, +10% speed
-                    modifiers.damage_multiplier = modifiers.damage_multiplier
-                        * Fixed::from_bits((1 << 16) + (1 << 16) * 20 / 100); // 1.20
-                    modifiers.speed_multiplier = modifiers.speed_multiplier
-                        * Fixed::from_bits((1 << 16) + (1 << 16) * 10 / 100); // 1.10
+                    modifiers.damage_multiplier *=
+                        Fixed::from_bits((1 << 16) + (1 << 16) * 20 / 100); // 1.20
+                    modifiers.speed_multiplier *=
+                        Fixed::from_bits((1 << 16) + (1 << 16) * 10 / 100); // 1.10
                 }
                 StatusEffectId::LullabyDebuff => {
                     // -30% speed, -15% attack speed
-                    modifiers.speed_multiplier = modifiers.speed_multiplier
-                        * Fixed::from_bits((1 << 16) - (1 << 16) * 30 / 100); // 0.70
-                    modifiers.attack_speed_multiplier = modifiers.attack_speed_multiplier
-                        * Fixed::from_bits((1 << 16) + (1 << 16) * 15 / 100); // 1.15 (slower)
+                    modifiers.speed_multiplier *=
+                        Fixed::from_bits((1 << 16) - (1 << 16) * 30 / 100); // 0.70
+                    modifiers.attack_speed_multiplier *=
+                        Fixed::from_bits((1 << 16) + (1 << 16) * 15 / 100); // 1.15 (slower)
                 }
                 StatusEffectId::TacticalLink => {
                     // -20% cooldowns
-                    modifiers.cooldown_multiplier = modifiers.cooldown_multiplier
-                        * Fixed::from_bits((1 << 16) - (1 << 16) * 20 / 100); // 0.80
+                    modifiers.cooldown_multiplier *=
+                        Fixed::from_bits((1 << 16) - (1 << 16) * 20 / 100); // 0.80
                 }
                 StatusEffectId::Annoyed => {
                     // -5% damage per stack (stacking debuff from Nuisance)
@@ -59,7 +58,7 @@ pub fn stat_modifier_system(mut query: Query<(&StatusEffects, &mut StatModifiers
                     let total_reduction =
                         reduction_per_stack * Fixed::from_num(instance.stacks as i32);
                     let mult = (FIXED_ONE - total_reduction).max(Fixed::from_bits((1 << 16) / 2)); // floor at 0.5
-                    modifiers.damage_multiplier = modifiers.damage_multiplier * mult;
+                    modifiers.damage_multiplier *= mult;
                 }
                 StatusEffectId::Corroded => {
                     // -10% damage reduction per stack (takes more damage)
@@ -67,12 +66,11 @@ pub fn stat_modifier_system(mut query: Query<(&StatusEffects, &mut StatModifiers
                     let total_increase =
                         increase_per_stack * Fixed::from_num(instance.stacks as i32);
                     let mult = FIXED_ONE + total_increase; // > 1.0 means takes more damage
-                    modifiers.damage_reduction = modifiers.damage_reduction * mult;
+                    modifiers.damage_reduction *= mult;
                 }
                 StatusEffectId::Disoriented => {
                     // -50% speed (CC)
-                    modifiers.speed_multiplier =
-                        modifiers.speed_multiplier * Fixed::from_bits(32768); // 0.5
+                    modifiers.speed_multiplier *= Fixed::from_bits(32768); // 0.5
                 }
                 StatusEffectId::Drowsed => {
                     // Immobile + silenced (CC)
@@ -81,10 +79,10 @@ pub fn stat_modifier_system(mut query: Query<(&StatusEffects, &mut StatModifiers
                 }
                 StatusEffectId::Tilted => {
                     // -30% speed, -20% damage (CC)
-                    modifiers.speed_multiplier = modifiers.speed_multiplier
-                        * Fixed::from_bits((1 << 16) - (1 << 16) * 30 / 100); // 0.70
-                    modifiers.damage_multiplier = modifiers.damage_multiplier
-                        * Fixed::from_bits((1 << 16) - (1 << 16) * 20 / 100); // 0.80
+                    modifiers.speed_multiplier *=
+                        Fixed::from_bits((1 << 16) - (1 << 16) * 30 / 100); // 0.70
+                    modifiers.damage_multiplier *=
+                        Fixed::from_bits((1 << 16) - (1 << 16) * 20 / 100); // 0.80
                 }
                 StatusEffectId::NineLivesReviving => {
                     // Invulnerable during revive
@@ -97,8 +95,8 @@ pub fn stat_modifier_system(mut query: Query<(&StatusEffects, &mut StatModifiers
                 }
                 StatusEffectId::SpiteCarryBuff => {
                     // +50% gather speed
-                    modifiers.gather_speed_multiplier = modifiers.gather_speed_multiplier
-                        * Fixed::from_bits((1 << 16) + (1 << 16) * 50 / 100); // 1.5
+                    modifiers.gather_speed_multiplier *=
+                        Fixed::from_bits((1 << 16) + (1 << 16) * 50 / 100); // 1.5
                 }
                 StatusEffectId::PowerNapping => {
                     // Self-immobilize + can't attack
@@ -111,8 +109,8 @@ pub fn stat_modifier_system(mut query: Query<(&StatusEffects, &mut StatModifiers
                 }
                 StatusEffectId::Waterlogged => {
                     // -10% speed (Croak debuff)
-                    modifiers.speed_multiplier = modifiers.speed_multiplier
-                        * Fixed::from_bits((1 << 16) - (1 << 16) * 10 / 100); // 0.90
+                    modifiers.speed_multiplier *=
+                        Fixed::from_bits((1 << 16) - (1 << 16) * 10 / 100); // 0.90
                 }
                 StatusEffectId::Stunned => {
                     // Hard stun CC: immobile, can't attack, silenced
@@ -127,25 +125,25 @@ pub fn stat_modifier_system(mut query: Query<(&StatusEffects, &mut StatModifiers
                 StatusEffectId::Entrenched => {
                     // Immobile, 30% damage reduction, 20% damage boost
                     modifiers.immobilized = true;
-                    modifiers.damage_reduction = modifiers.damage_reduction
-                        * Fixed::from_bits((1 << 16) - (1 << 16) * 30 / 100); // 0.70
-                    modifiers.damage_multiplier = modifiers.damage_multiplier
-                        * Fixed::from_bits((1 << 16) + (1 << 16) * 20 / 100); // 1.20
+                    modifiers.damage_reduction *=
+                        Fixed::from_bits((1 << 16) - (1 << 16) * 30 / 100); // 0.70
+                    modifiers.damage_multiplier *=
+                        Fixed::from_bits((1 << 16) + (1 << 16) * 20 / 100); // 1.20
                 }
                 StatusEffectId::SpeedBuff => {
                     // +50% speed (no attack penalty)
-                    modifiers.speed_multiplier = modifiers.speed_multiplier
-                        * Fixed::from_bits((1 << 16) + (1 << 16) * 50 / 100); // 1.50
+                    modifiers.speed_multiplier *=
+                        Fixed::from_bits((1 << 16) + (1 << 16) * 50 / 100); // 1.50
                 }
                 StatusEffectId::ArmorBuff => {
                     // 30% damage reduction
-                    modifiers.damage_reduction = modifiers.damage_reduction
-                        * Fixed::from_bits((1 << 16) - (1 << 16) * 30 / 100); // 0.70
+                    modifiers.damage_reduction *=
+                        Fixed::from_bits((1 << 16) - (1 << 16) * 30 / 100); // 0.70
                 }
                 StatusEffectId::DamageBuff => {
                     // +25% damage
-                    modifiers.damage_multiplier = modifiers.damage_multiplier
-                        * Fixed::from_bits((1 << 16) + (1 << 16) * 25 / 100); // 1.25
+                    modifiers.damage_multiplier *=
+                        Fixed::from_bits((1 << 16) + (1 << 16) * 25 / 100); // 1.25
                 }
                 StatusEffectId::PlayingDead => {
                     // Invulnerable, immobile, can't attack, silenced

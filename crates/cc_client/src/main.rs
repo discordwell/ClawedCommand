@@ -238,9 +238,10 @@ fn setup_canyon(app: &mut App, scenario: u8) {
     if scenario == 3 {
         let player_res = cc_sim::resources::PlayerResources {
             players: vec![cc_sim::resources::PlayerResourceState::default(), {
-                let mut p = cc_sim::resources::PlayerResourceState::default();
-                p.gpu_cores = 200;
-                p
+                cc_sim::resources::PlayerResourceState {
+                    gpu_cores: 200,
+                    ..Default::default()
+                }
             }],
         };
         app.insert_resource(player_res);
@@ -264,12 +265,11 @@ fn load_demo_mission(app: &mut App, mission: cc_core::mission::MissionDefinition
 fn demo_player_resources() -> cc_sim::resources::PlayerResources {
     cc_sim::resources::PlayerResources {
         players: (0..6)
-            .map(|_| {
-                let mut p = cc_sim::resources::PlayerResourceState::default();
-                p.food = 9999;
-                p.gpu_cores = 9999;
-                p.supply_cap = 100;
-                p
+            .map(|_| cc_sim::resources::PlayerResourceState {
+                food: 9999,
+                gpu_cores: 9999,
+                supply_cap: 100,
+                ..Default::default()
             })
             .collect(),
     }
@@ -390,19 +390,17 @@ fn setup_match(app: &mut App) {
     // Give both players resources for the FSM to work with
     let player_res = cc_sim::resources::PlayerResources {
         players: vec![
-            {
-                let mut p = cc_sim::resources::PlayerResourceState::default();
-                p.food = 500;
-                p.gpu_cores = 200;
-                p.supply_cap = 50;
-                p
+            cc_sim::resources::PlayerResourceState {
+                food: 500,
+                gpu_cores: 200,
+                supply_cap: 50,
+                ..Default::default()
             },
-            {
-                let mut p = cc_sim::resources::PlayerResourceState::default();
-                p.food = 500;
-                p.gpu_cores = 200;
-                p.supply_cap = 50;
-                p
+            cc_sim::resources::PlayerResourceState {
+                food: 500,
+                gpu_cores: 200,
+                supply_cap: 50,
+                ..Default::default()
             },
         ],
     };

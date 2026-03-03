@@ -81,8 +81,8 @@ pub fn init_fog(
     map_res: Res<MapResource>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    let w = map_res.map.width as u32;
-    let h = map_res.map.height as u32;
+    let w = map_res.map.width;
+    let h = map_res.map.height;
     let size = (w * h) as usize;
     fog.width = w;
     fog.height = h;

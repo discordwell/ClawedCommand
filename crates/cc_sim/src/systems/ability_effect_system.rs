@@ -26,16 +26,16 @@ pub fn ability_effect_system(
 ) {
     for (entity, slots, mut effects, health, dream_siege_timer, owner) in query.iter_mut() {
         // T2 Fix: DreamSiege reset on Catnapper taking damage
-        if let Some(mut siege_timer) = dream_siege_timer {
-            if let Some(health) = health {
-                if siege_timer.last_hp > cc_core::math::FIXED_ZERO
-                    && health.current < siege_timer.last_hp
-                {
-                    siege_timer.ticks_on_target = 0;
-                    siege_timer.current_target = None;
-                }
-                siege_timer.last_hp = health.current;
+        if let Some(mut siege_timer) = dream_siege_timer
+            && let Some(health) = health
+        {
+            if siege_timer.last_hp > cc_core::math::FIXED_ZERO
+                && health.current < siege_timer.last_hp
+            {
+                siege_timer.ticks_on_target = 0;
+                siege_timer.current_target = None;
             }
+            siege_timer.last_hp = health.current;
         }
 
         for slot in &slots.slots {
@@ -52,12 +52,10 @@ pub fn ability_effect_system(
                 );
                 if slot.duration_remaining > 0
                     && slot.duration_remaining % POWER_NAP_GPU_INTERVAL == 0
+                    && let Some(owner) = owner
+                    && let Some(pres) = player_res.players.get_mut(owner.player_id as usize)
                 {
-                    if let Some(owner) = owner {
-                        if let Some(pres) = player_res.players.get_mut(owner.player_id as usize) {
-                            pres.gpu_cores += 1;
-                        }
-                    }
+                    pres.gpu_cores += 1;
                 }
                 continue;
             }

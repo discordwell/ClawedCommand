@@ -1,3 +1,6 @@
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
+
 pub mod agent_bridge;
 #[cfg(feature = "harness")]
 pub mod arena;

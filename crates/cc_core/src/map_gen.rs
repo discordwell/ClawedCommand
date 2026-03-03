@@ -15,9 +15,10 @@ use crate::terrain::TerrainType;
 // ---------------------------------------------------------------------------
 
 /// Map template defining macro-level strategic layout.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum MapTemplate {
     /// Central river valley with bridge chokepoints and elevated flanks.
+    #[default]
     Valley,
     /// Open map with 3 roads crossing at a fortified center.
     Crossroads,
@@ -27,24 +28,13 @@ pub enum MapTemplate {
     Islands,
 }
 
-impl Default for MapTemplate {
-    fn default() -> Self {
-        Self::Valley
-    }
-}
-
 /// Predefined map dimensions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum MapSize {
-    Small,  // 48x48
+    Small, // 48x48
+    #[default]
     Medium, // 64x64
-    Large,  // 96x96
-}
-
-impl Default for MapSize {
-    fn default() -> Self {
-        Self::Medium
-    }
+    Large, // 96x96
 }
 
 impl MapSize {
@@ -993,10 +983,8 @@ fn place_ramps_on_lanes(map: &mut GameMap, layout: &TemplateLayout, w: u32, h: u
                 map.in_bounds(np) && map.elevation_at(np) != elev
             });
 
-            if at_transition {
-                if let Some(tile) = map.get_mut(pos) {
-                    tile.terrain = TerrainType::Ramp;
-                }
+            if at_transition && let Some(tile) = map.get_mut(pos) {
+                tile.terrain = TerrainType::Ramp;
             }
         });
     }
@@ -1012,10 +1000,10 @@ fn place_fords_on_lanes(map: &mut GameMap, layout: &TemplateLayout, w: u32, h: u
                 for dx in -brush_r..=brush_r {
                     if dx * dx + dy * dy <= brush_r * brush_r {
                         let pos = GridPos::new(px + dx, py + dy);
-                        if let Some(tile) = map.get_mut(pos) {
-                            if tile.terrain == TerrainType::Water {
-                                tile.terrain = TerrainType::Shallows;
-                            }
+                        if let Some(tile) = map.get_mut(pos)
+                            && tile.terrain == TerrainType::Water
+                        {
+                            tile.terrain = TerrainType::Shallows;
                         }
                     }
                 }
@@ -1043,7 +1031,7 @@ fn place_tiered_resources(
 
         // T0 (safe): FishPond + GpuDeposit within 5 tiles of spawn
         // Fish: 3 tiles toward center along x, 1 tile toward center along y
-        let fish_pos = find_passable_near(map, sx + dx * 3, sy + dy * 1, 5);
+        let fish_pos = find_passable_near(map, sx + dx * 3, sy + dy, 5);
         resources.push(ResourcePlacement {
             kind: ResourceKind::FishPond,
             pos: fish_pos,
@@ -1063,7 +1051,7 @@ fn place_tiered_resources(
             kind: ResourceKind::FishPond,
             pos: t1_fish,
         });
-        let t1_berry = find_passable_near(map, t1_x + dx * 2, t1_y + dy * 1, 5);
+        let t1_berry = find_passable_near(map, t1_x + dx * 2, t1_y + dy, 5);
         resources.push(ResourcePlacement {
             kind: ResourceKind::BerryBush,
             pos: t1_berry,
@@ -1236,10 +1224,8 @@ fn carve_emergency_path(map: &mut GameMap, x0: i32, y0: i32, x1: i32, y1: i32) {
                     break;
                 }
             }
-            if needs_ramp {
-                if let Some(tile) = map.get_mut(pos) {
-                    tile.terrain = TerrainType::Ramp;
-                }
+            if needs_ramp && let Some(tile) = map.get_mut(pos) {
+                tile.terrain = TerrainType::Ramp;
             }
         }
 

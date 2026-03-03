@@ -35,7 +35,7 @@ pub fn should_fire(tick: u64, initial_delay_ticks: u64, interval_ticks: u64) -> 
     if interval_ticks == 0 || tick < initial_delay_ticks {
         return false;
     }
-    (tick - initial_delay_ticks) % interval_ticks == 0
+    (tick - initial_delay_ticks).is_multiple_of(interval_ticks)
 }
 
 /// Control restrictions derived from mutators — checked by command filtering

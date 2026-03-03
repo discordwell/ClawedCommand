@@ -100,8 +100,7 @@ pub fn build_showcase_mission() -> MissionDefinition {
 
     // Build all 48 building spawns
     let mut buildings = Vec::with_capacity(48);
-    for faction_idx in 0..6usize {
-        let (cx, cy) = FACTION_CENTERS[faction_idx];
+    for (faction_idx, &(cx, cy)) in FACTION_CENTERS.iter().enumerate().take(6) {
         let player_id = faction_idx as u8;
         let faction_start = faction_idx * 8;
 

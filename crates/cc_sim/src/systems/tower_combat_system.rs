@@ -52,10 +52,8 @@ pub fn tower_combat_system(
             }
 
             let dist_sq = tower_pos.world.distance_squared(target_pos.world);
-            if dist_sq <= range_sq {
-                if best_target.is_none() || dist_sq < best_target.unwrap().1 {
-                    best_target = Some((target_entity, dist_sq));
-                }
+            if dist_sq <= range_sq && (best_target.is_none() || dist_sq < best_target.unwrap().1) {
+                best_target = Some((target_entity, dist_sq));
             }
         }
 

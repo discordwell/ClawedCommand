@@ -6,7 +6,9 @@ use crate::mutator::HazardDirection;
 /// Terrain type for each tile on the map.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
+#[derive(Default)]
 pub enum TerrainType {
+    #[default]
     Grass = 0,
     Dirt = 1,
     Sand = 2,
@@ -107,12 +109,6 @@ impl TerrainType {
         Self::Road,
         Self::TechRuins,
     ];
-}
-
-impl Default for TerrainType {
-    fn default() -> Self {
-        Self::Grass
-    }
 }
 
 impl std::fmt::Display for TerrainType {

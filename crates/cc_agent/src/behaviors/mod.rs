@@ -174,11 +174,11 @@ pub fn harass_economy(ctx: &mut ScriptContext, raider_ids: &[EntityId]) -> Behav
         // No workers visible — attack-move toward enemy buildings
         let enemy_buildings: Vec<GridPos> = ctx.enemy_buildings().iter().map(|b| b.pos).collect();
 
-        if let Some(&building_pos) = enemy_buildings.first() {
-            if !raider_ids.is_empty() {
-                ctx.cmd_attack_move(raider_ids.to_vec(), building_pos);
-                commands_issued += 1;
-            }
+        if let Some(&building_pos) = enemy_buildings.first()
+            && !raider_ids.is_empty()
+        {
+            ctx.cmd_attack_move(raider_ids.to_vec(), building_pos);
+            commands_issued += 1;
         }
     }
 

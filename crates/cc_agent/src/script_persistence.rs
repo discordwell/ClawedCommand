@@ -50,7 +50,7 @@ pub fn save_script(script: &LuaScript) -> Result<PathBuf, std::io::Error> {
         t.starts_with("-- ")
             && !t.starts_with("-- Intents:")
             && t.len() > 3
-            && t[3..].split_whitespace().next().map_or(false, |w| {
+            && t[3..].split_whitespace().next().is_some_and(|w| {
                 w.chars()
                     .all(|c| c.is_alphanumeric() || c == '_' || c == ':')
             })

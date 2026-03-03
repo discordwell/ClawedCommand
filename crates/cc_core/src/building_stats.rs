@@ -467,7 +467,6 @@ pub fn building_stats(kind: BuildingKind) -> BuildingBaseStats {
             supply_provided: 0,
             can_produce: &[],
         },
-        other => unimplemented!("building_stats not yet defined for {other:?}"),
     }
 }
 

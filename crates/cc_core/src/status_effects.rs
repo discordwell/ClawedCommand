@@ -84,19 +84,11 @@ pub struct StatusInstance {
 /// Component tracking all active status effects on an entity.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+#[derive(Default)]
 pub struct StatusEffects {
     pub effects: Vec<StatusInstance>,
     /// Remaining ticks of CC immunity (granted after CC expires).
     pub cc_immunity_remaining: u32,
-}
-
-impl Default for StatusEffects {
-    fn default() -> Self {
-        Self {
-            effects: Vec::new(),
-            cc_immunity_remaining: 0,
-        }
-    }
 }
 
 impl StatusEffects {

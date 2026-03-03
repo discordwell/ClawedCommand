@@ -21,14 +21,8 @@ pub mod prompt_overlay;
 use bevy::prelude::*;
 
 /// Identifies which player the local client controls.
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct LocalPlayer(pub u8);
-
-impl Default for LocalPlayer {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 /// Shared UI state -- notifications, etc.
 #[derive(Resource, Default)]

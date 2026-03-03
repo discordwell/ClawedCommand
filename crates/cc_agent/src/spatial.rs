@@ -87,10 +87,10 @@ impl SpatialIndex {
         for dy in -radius..=radius {
             for dx in -radius..=radius {
                 let cell = GridPos::new(center.x + dx, center.y + dy);
-                if let Some(indices) = self.cells.get(&cell) {
-                    if !indices.is_empty() {
-                        return true;
-                    }
+                if let Some(indices) = self.cells.get(&cell)
+                    && !indices.is_empty()
+                {
+                    return true;
                 }
             }
         }

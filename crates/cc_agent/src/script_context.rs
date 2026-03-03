@@ -357,10 +357,10 @@ impl<'a> ScriptContext<'a> {
             if unit.is_dead {
                 continue;
             }
-            if let Some(k) = kind {
-                if unit.kind != k {
-                    continue;
-                }
+            if let Some(k) = kind
+                && unit.kind != k
+            {
+                continue;
             }
             let dist_sq = world_from.distance_squared(unit.world_pos);
             let max_dist = fixed_from_i32(search_radius);
@@ -418,7 +418,7 @@ impl<'a> ScriptContext<'a> {
         self.state
             .my_units
             .iter()
-            .filter(|u| u.is_idle && !u.is_dead && kind.map_or(true, |k| u.kind == k))
+            .filter(|u| u.is_idle && !u.is_dead && kind.is_none_or(|k| u.kind == k))
             .collect()
     }
 
@@ -470,7 +470,7 @@ impl<'a> ScriptContext<'a> {
         self.state
             .my_units
             .iter()
-            .filter(|u| !u.is_dead && kind.map_or(true, |k| u.kind == k))
+            .filter(|u| !u.is_dead && kind.is_none_or(|k| u.kind == k))
             .count()
     }
 
@@ -776,10 +776,10 @@ impl<'a> ScriptContext<'a> {
             if deposit.remaining == 0 {
                 continue;
             }
-            if let Some(k) = kind {
-                if deposit.resource_type != k {
-                    continue;
-                }
+            if let Some(k) = kind
+                && deposit.resource_type != k
+            {
+                continue;
             }
             let world_dep = cc_core::coords::WorldPos::from_grid(deposit.pos);
             let dist_sq = world_from.distance_squared(world_dep);
@@ -1338,16 +1338,16 @@ impl<'a> ScriptContext<'a> {
         let mut my_total_dps = 0.0;
         let mut my_count = 0u32;
         for id in my_ids {
-            if let Some(u) = self.state.unit_by_id(*id) {
-                if !u.is_dead {
-                    my_total_hp += u.health_current.to_num::<f64>();
-                    let dmg: f64 = u.attack_damage.to_num::<f64>();
-                    let aspd = u.attack_speed;
-                    if aspd > 0 {
-                        my_total_dps += dmg / aspd as f64;
-                    }
-                    my_count += 1;
+            if let Some(u) = self.state.unit_by_id(*id)
+                && !u.is_dead
+            {
+                my_total_hp += u.health_current.to_num::<f64>();
+                let dmg: f64 = u.attack_damage.to_num::<f64>();
+                let aspd = u.attack_speed;
+                if aspd > 0 {
+                    my_total_dps += dmg / aspd as f64;
                 }
+                my_count += 1;
             }
         }
 
@@ -1355,16 +1355,16 @@ impl<'a> ScriptContext<'a> {
         let mut enemy_total_dps = 0.0;
         let mut enemy_count = 0u32;
         for id in enemy_ids {
-            if let Some(u) = self.state.unit_by_id(*id) {
-                if !u.is_dead {
-                    enemy_total_hp += u.health_current.to_num::<f64>();
-                    let dmg: f64 = u.attack_damage.to_num::<f64>();
-                    let aspd = u.attack_speed;
-                    if aspd > 0 {
-                        enemy_total_dps += dmg / aspd as f64;
-                    }
-                    enemy_count += 1;
+            if let Some(u) = self.state.unit_by_id(*id)
+                && !u.is_dead
+            {
+                enemy_total_hp += u.health_current.to_num::<f64>();
+                let dmg: f64 = u.attack_damage.to_num::<f64>();
+                let aspd = u.attack_speed;
+                if aspd > 0 {
+                    enemy_total_dps += dmg / aspd as f64;
                 }
+                enemy_count += 1;
             }
         }
 
@@ -1474,10 +1474,10 @@ impl<'a> ScriptContext<'a> {
 
     /// Remove units from a squad.
     pub fn squad_remove(&mut self, name: &str, unit_ids: &[u64]) {
-        if let Some(ref mut squads) = self.squads {
-            if let Some(members) = squads.get_mut(name) {
-                members.retain(|id| !unit_ids.contains(id));
-            }
+        if let Some(ref mut squads) = self.squads
+            && let Some(members) = squads.get_mut(name)
+        {
+            members.retain(|id| !unit_ids.contains(id));
         }
     }
 

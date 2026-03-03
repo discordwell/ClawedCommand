@@ -1,3 +1,7 @@
+// Bevy ECS queries and systems naturally exceed these thresholds
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
+
 pub mod cutscene;
 pub mod input;
 pub mod loading;

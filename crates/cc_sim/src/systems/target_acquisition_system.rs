@@ -85,16 +85,17 @@ pub fn target_acquisition_system(
                 target: EntityId::from_entity(target_entity),
             });
             // For AttackMove units, also chase the target (clear stale path first)
-            if atk_move.is_some() && hold.is_none() {
-                if let Ok((_, target_pos, _)) = potential_targets.get(target_entity) {
-                    commands.entity(entity).remove::<Path>();
-                    commands.entity(entity).insert(ChasingTarget {
-                        target: EntityId::from_entity(target_entity),
-                    });
-                    commands.entity(entity).insert(MoveTarget {
-                        target: target_pos.world,
-                    });
-                }
+            if atk_move.is_some()
+                && hold.is_none()
+                && let Ok((_, target_pos, _)) = potential_targets.get(target_entity)
+            {
+                commands.entity(entity).remove::<Path>();
+                commands.entity(entity).insert(ChasingTarget {
+                    target: EntityId::from_entity(target_entity),
+                });
+                commands.entity(entity).insert(MoveTarget {
+                    target: target_pos.world,
+                });
             }
         }
     }

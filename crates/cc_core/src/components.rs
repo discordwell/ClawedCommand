@@ -764,16 +764,9 @@ impl UnderConstruction {
 /// Production queue for a building that can train units.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+#[derive(Default)]
 pub struct ProductionQueue {
     pub queue: VecDeque<(UnitKind, u32)>, // (kind, ticks_remaining)
-}
-
-impl Default for ProductionQueue {
-    fn default() -> Self {
-        Self {
-            queue: VecDeque::new(),
-        }
-    }
 }
 
 /// Rally point for a production building — new units move here after spawning.
@@ -964,18 +957,10 @@ impl Default for DreamSiegeTimer {
 
 /// Tracks Chonk's NineLives passive — revives once on lethal damage.
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct NineLivesTracker {
     /// Tick when last triggered (0 = never triggered).
     pub last_triggered_tick: u64,
-}
-
-impl Default for NineLivesTracker {
-    fn default() -> Self {
-        Self {
-            last_triggered_tick: 0,
-        }
-    }
 }
 
 /// A hairball obstacle spawned by Nuisance — blocks terrain for a limited time.
@@ -1006,30 +991,16 @@ impl Default for PocketStashInventory {
 
 /// Tracks Patch Possum's FeignDeath cooldown (passive auto-trigger).
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct FeignDeathTracker {
     pub last_triggered_tick: u64,
 }
 
-impl Default for FeignDeathTracker {
-    fn default() -> Self {
-        Self {
-            last_triggered_tick: 0,
-        }
-    }
-}
-
 /// Tracks Grease Monkey's JunkLauncher attack count for crit calculation.
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct JunkLauncherState {
     pub attack_count: u32,
-}
-
-impl Default for JunkLauncherState {
-    fn default() -> Self {
-        Self { attack_count: 0 }
-    }
 }
 
 /// Tracks Junkyard King's active Frankenstein Protocol summons.
@@ -1206,16 +1177,9 @@ impl std::str::FromStr for UpgradeType {
 /// Research queue for a ScratchingPost (parallels ProductionQueue).
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+#[derive(Default)]
 pub struct ResearchQueue {
     pub queue: VecDeque<(UpgradeType, u32)>, // (upgrade, ticks_remaining)
-}
-
-impl Default for ResearchQueue {
-    fn default() -> Self {
-        Self {
-            queue: VecDeque::new(),
-        }
-    }
 }
 
 /// Marker: this building can perform research (fully constructed ScratchingPost).
@@ -1253,32 +1217,17 @@ pub struct WaveMember {
 /// Tracks Gnawer structural weakness stacks against buildings.
 /// Each consecutive attack on the same building adds a stack, increasing damage.
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct StructuralWeaknessTimer {
     pub stacks: u32,
     pub target_entity: Option<EntityId>,
 }
 
-impl Default for StructuralWeaknessTimer {
-    fn default() -> Self {
-        Self {
-            stacks: 0,
-            target_entity: None,
-        }
-    }
-}
-
 /// Tracks Sparks static charge stacks, accumulated during movement.
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct StaticChargeStacks {
     pub stacks: u32,
-}
-
-impl Default for StaticChargeStacks {
-    fn default() -> Self {
-        Self { stacks: 0 }
-    }
 }
 
 /// Marker: Plaguetail spawns a contagion cloud on death.
@@ -1340,17 +1289,10 @@ pub struct UniqueBuildingLimit;
 // ---------------------------------------------------------------------------
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+#[derive(Default)]
 pub struct StationaryTimer {
     pub ticks_stationary: u32,
     pub dug_in: bool,
-}
-impl Default for StationaryTimer {
-    fn default() -> Self {
-        Self {
-            ticks_stationary: 0,
-            dug_in: false,
-        }
-    }
 }
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
@@ -1360,17 +1302,10 @@ pub struct HeavyUnit;
 pub struct Entrenched;
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+#[derive(Default)]
 pub struct FrenzyStacks {
     pub current_stacks: u32,
     pub frozen_until_tick: u64,
-}
-impl Default for FrenzyStacks {
-    fn default() -> Self {
-        Self {
-            current_stacks: 0,
-            frozen_until_tick: 0,
-        }
-    }
 }
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]

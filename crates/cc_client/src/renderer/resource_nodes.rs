@@ -156,7 +156,7 @@ fn generate_monkey_mine() -> Image {
             let dx = (px as f32 - c).abs() / 7.0;
             let dy = (py as f32 - c).abs() / 7.0;
             let d = dx + dy;
-            if d <= 1.0 && d >= 0.75 {
+            if (0.75..=1.0).contains(&d) {
                 set_px(&mut data, px as i32, py as i32, 220, 180, 30, 255);
             } else if d < 0.75 {
                 set_px(&mut data, px as i32, py as i32, 180, 140, 20, 200);

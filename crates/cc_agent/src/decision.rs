@@ -127,12 +127,9 @@ pub fn agent_decision_system(
         )
         .collect();
 
-    let building_data: Vec<_> = buildings
-        .iter()
-        .map(|(e, pos, own, bld, hp, uc, pq, rq)| (e, pos, own, bld, hp, uc, pq, rq))
-        .collect();
+    let building_data: Vec<_> = buildings.iter().collect();
 
-    let deposit_data: Vec<_> = deposits.iter().map(|(e, pos, dep)| (e, pos, dep)).collect();
+    let deposit_data: Vec<_> = deposits.iter().collect();
 
     let ai_players: Vec<u8> = decision_state.ai_players.iter().copied().collect();
     for player_id in ai_players {

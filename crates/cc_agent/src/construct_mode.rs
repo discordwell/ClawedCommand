@@ -88,7 +88,7 @@ pub struct ScriptTestResult {
 }
 
 /// State for the Construct Mode UI.
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct ConstructModeState {
     pub active: bool,
     pub chat_history: Vec<ChatMessage>,
@@ -100,18 +100,4 @@ pub struct ConstructModeState {
     pub editable_source: String,
     /// Result of last test run.
     pub test_result: Option<ScriptTestResult>,
-}
-
-impl Default for ConstructModeState {
-    fn default() -> Self {
-        Self {
-            active: false,
-            chat_history: Vec::new(),
-            current_script: None,
-            chat_input: String::new(),
-            waiting_for_response: false,
-            editable_source: String::new(),
-            test_result: None,
-        }
-    }
 }

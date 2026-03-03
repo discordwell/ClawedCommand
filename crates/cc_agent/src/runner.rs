@@ -9,7 +9,7 @@ use cc_core::status_effects::StatusEffects;
 use cc_core::terrain::FactionId;
 use cc_sim::resources::{CommandQueue, MapResource, PlayerResources, SimClock};
 
-use crate::events::{self, ScriptRegistration};
+use crate::events::{self};
 use crate::lua_runtime;
 use crate::script_context::ScriptContext;
 pub use crate::script_registry::ScriptRegistry;
@@ -99,12 +99,9 @@ pub fn script_runner_system(
         )
         .collect();
 
-    let building_data: Vec<_> = buildings
-        .iter()
-        .map(|(e, pos, own, bld, hp, uc, pq, rq)| (e, pos, own, bld, hp, uc, pq, rq))
-        .collect();
+    let building_data: Vec<_> = buildings.iter().collect();
 
-    let deposit_data: Vec<_> = deposits.iter().map(|(e, pos, dep)| (e, pos, dep)).collect();
+    let deposit_data: Vec<_> = deposits.iter().collect();
 
     // Determine which players have scripts registered
     let player_ids: Vec<u8> = registry

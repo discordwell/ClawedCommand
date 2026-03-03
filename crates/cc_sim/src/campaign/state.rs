@@ -19,16 +19,11 @@ pub enum Act3Choice {
 }
 
 /// Status of the Patches character.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum PatchesStatus {
+    #[default]
     Free,
     Captured,
-}
-
-impl Default for PatchesStatus {
-    fn default() -> Self {
-        PatchesStatus::Free
-    }
 }
 
 /// Persistent campaign state that survives across mission loads.
@@ -241,14 +236,14 @@ pub fn mission_objective_system(
             } => {
                 // Auto-evaluate: complete when hero is within radius of position
                 for (identity, _owner, _is_dead, pos_opt) in heroes.iter() {
-                    if identity.hero_id == *hero {
-                        if let Some(pos) = pos_opt {
-                            let grid = pos.world.to_grid();
-                            let dx = (grid.x - position.x).abs();
-                            let dy = (grid.y - position.y).abs();
-                            if dx <= *radius && dy <= *radius {
-                                campaign.complete_objective(&obj.id);
-                            }
+                    if identity.hero_id == *hero
+                        && let Some(pos) = pos_opt
+                    {
+                        let grid = pos.world.to_grid();
+                        let dx = (grid.x - position.x).abs();
+                        let dy = (grid.y - position.y).abs();
+                        if dx <= *radius && dy <= *radius {
+                            campaign.complete_objective(&obj.id);
                         }
                     }
                 }

@@ -10,14 +10,8 @@ pub struct AvailableMissions {
 }
 
 /// Resource: controls whether the campaign menu is open.
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct CampaignMenuOpen(pub bool);
-
-impl Default for CampaignMenuOpen {
-    fn default() -> Self {
-        Self(false)
-    }
-}
 
 /// Toggle campaign menu with Escape when no campaign is active.
 pub fn campaign_menu_toggle(

@@ -79,8 +79,8 @@ pub fn spawn_props(
                 }
                 TerrainType::Grass => {
                     // Scattered grass tufts (only on ~30% of tiles)
-                    if hash % 3 == 0 {
-                        let mat = if hash % 2 == 0 {
+                    if hash.is_multiple_of(3) {
+                        let mat = if hash.is_multiple_of(2) {
                             grass_dark_mat.clone()
                         } else {
                             grass_light_mat.clone()
@@ -106,7 +106,7 @@ pub fn spawn_props(
                 }
                 TerrainType::Water => {
                     // Tiny splash near shore tiles (~20% of water tiles)
-                    if hash % 5 == 0 {
+                    if hash.is_multiple_of(5) {
                         commands.spawn((
                             Prop,
                             Mesh2d(splash_mesh.clone()),

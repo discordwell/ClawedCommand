@@ -27,11 +27,11 @@ pub fn isolate_dead_material(
         ecmds.insert(DeathTimer(0.0, original_scale));
 
         // Clone material for Mesh2d units so fade doesn't affect living units
-        if let Some(mat) = mesh_mat {
-            if let Some(existing) = materials.get(&mat.0).cloned() {
-                let cloned = materials.add(existing);
-                ecmds.insert(MeshMaterial2d(cloned));
-            }
+        if let Some(mat) = mesh_mat
+            && let Some(existing) = materials.get(&mat.0).cloned()
+        {
+            let cloned = materials.add(existing);
+            ecmds.insert(MeshMaterial2d(cloned));
         }
     }
 }

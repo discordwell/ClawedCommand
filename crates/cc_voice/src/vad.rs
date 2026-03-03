@@ -1,9 +1,9 @@
-/// Silero VAD wrapper — detects speech in 512-sample chunks using ONNX inference.
-///
-/// Uses Silero VAD v5 (`silero_vad.onnx`, ~2.2MB). The model is stateful,
-/// carrying RNN h/c state across calls for continuous speech detection.
-///
-/// When compiled without the `voice` feature, falls back to a stub returning 0.0.
+//! Silero VAD wrapper — detects speech in 512-sample chunks using ONNX inference.
+//!
+//! Uses Silero VAD v5 (`silero_vad.onnx`, ~2.2MB). The model is stateful,
+//! carrying RNN h/c state across calls for continuous speech detection.
+//!
+//! When compiled without the `voice` feature, falls back to a stub returning 0.0.
 
 /// Speech probability threshold — above this means "speech detected".
 pub const DEFAULT_SPEECH_THRESHOLD: f32 = 0.5;
@@ -16,7 +16,7 @@ pub const VAD_CHUNK_SAMPLES: usize = 512;
 const VAD_CONTEXT_SAMPLES: usize = 64;
 
 /// Silero VAD v5 state dimensions: batch=1, hidden=128, num_layers=2.
-const VAD_STATE_SIZE: usize = 2 * 1 * 128;
+const VAD_STATE_SIZE: usize = 2 * 128;
 
 /// Total input size: context (64) + chunk (512) = 576 samples.
 #[cfg(feature = "voice")]

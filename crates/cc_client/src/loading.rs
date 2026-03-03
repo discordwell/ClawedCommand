@@ -59,7 +59,7 @@ fn track_loading_system(asset_server: Res<AssetServer>, mut tracker: ResMut<Load
         })
         .count();
 
-    let progress = loaded as f32 / total as f32;
+    let _progress = loaded as f32 / total as f32;
 
     #[cfg(target_arch = "wasm32")]
     LOADING_PROGRESS.store(progress.to_bits(), Ordering::Relaxed);

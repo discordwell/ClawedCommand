@@ -137,13 +137,13 @@ pub fn advance_animation(
 
         // Advance frame timer
         timer.tick(time.delta());
-        if timer.just_finished() {
-            if let Some(ref mut atlas) = sprite.texture_atlas {
-                if atlas.index >= indices.last {
-                    atlas.index = indices.first;
-                } else {
-                    atlas.index += 1;
-                }
+        if timer.just_finished()
+            && let Some(ref mut atlas) = sprite.texture_atlas
+        {
+            if atlas.index >= indices.last {
+                atlas.index = indices.first;
+            } else {
+                atlas.index += 1;
             }
         }
     }

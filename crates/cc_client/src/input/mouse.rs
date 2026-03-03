@@ -168,12 +168,12 @@ pub fn handle_mouse_input(
     }
 
     // --- Left click held: check drag threshold ---
-    if mouse_button.pressed(MouseButton::Left) {
-        if let Some(start) = state.drag_state.start {
-            let delta = cursor_pos - start;
-            if delta.length() > DRAG_THRESHOLD {
-                state.drag_state.active = true;
-            }
+    if mouse_button.pressed(MouseButton::Left)
+        && let Some(start) = state.drag_state.start
+    {
+        let delta = cursor_pos - start;
+        if delta.length() > DRAG_THRESHOLD {
+            state.drag_state.active = true;
         }
     }
 
@@ -199,10 +199,13 @@ pub fn handle_mouse_input(
                         continue;
                     }
                     let unit_screen = unit_to_viewport(pos, camera, camera_transform);
-                    if let Some(sp) = unit_screen {
-                        if sp.x >= min_x && sp.x <= max_x && sp.y >= min_y && sp.y <= max_y {
-                            box_selected.push(EntityId(entity.to_bits()));
-                        }
+                    if let Some(sp) = unit_screen
+                        && sp.x >= min_x
+                        && sp.x <= max_x
+                        && sp.y >= min_y
+                        && sp.y <= max_y
+                    {
+                        box_selected.push(EntityId(entity.to_bits()));
                     }
                 }
                 if !box_selected.is_empty() {
@@ -255,10 +258,13 @@ pub fn handle_mouse_input(
                                 continue;
                             }
                             // Only units actually visible in the viewport
-                            if let Some(vp) = unit_to_viewport(pos, camera, camera_transform) {
-                                if vp.x >= 0.0 && vp.x <= win_w && vp.y >= 0.0 && vp.y <= win_h {
-                                    all_of_type.push(EntityId(e.to_bits()));
-                                }
+                            if let Some(vp) = unit_to_viewport(pos, camera, camera_transform)
+                                && vp.x >= 0.0
+                                && vp.x <= win_w
+                                && vp.y >= 0.0
+                                && vp.y <= win_h
+                            {
+                                all_of_type.push(EntityId(e.to_bits()));
                             }
                         }
                         if !all_of_type.is_empty() {

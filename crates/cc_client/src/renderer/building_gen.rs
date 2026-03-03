@@ -375,6 +375,7 @@ fn fill_rect(
 }
 
 /// Fill a circle.
+#[allow(dead_code)]
 fn fill_circle(
     data: &mut [u8],
     w: usize,
