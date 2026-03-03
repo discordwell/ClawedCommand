@@ -10,9 +10,12 @@
 use bevy::ecs::world::EntityWorldMut;
 use bevy::prelude::*;
 
-use cc_core::commands::{EntityId, GameCommand};
+use cc_core::abilities::AbilityId;
+use cc_core::building_stats::building_stats;
+use cc_core::commands::{AbilityTarget, EntityId, GameCommand};
 use cc_core::components::{
-    Building, CursorGridPos, Dead, Faction, Owner, Position, StatModifiers, UnitKind, VoiceBuffed,
+    AbilitySlots, Building, CursorGridPos, Dead, Faction, Owner, Position, ResourceDeposit,
+    StatModifiers, UnitKind, UpgradeType, VoiceBuffed,
 };
 use cc_core::coords::GridPos;
 use cc_core::status_effects::{StatusEffectId, StatusEffects, StatusInstance};
@@ -40,6 +43,10 @@ pub enum KeywordRole {
     Direction(DirectionKind),
     /// Building name — for build/train commands
     Building(BuildingKind),
+    /// Self-cast ability keyword (range=ZERO only)
+    Ability(AbilityId),
+    /// Upgrade category keyword (damage, health, speed)
+    Upgrade(UpgradeCategory),
     /// Control group number
     GroupNumber(u8),
     /// Meta command (cancel, help, undo, yes, no)
@@ -70,6 +77,12 @@ pub enum AgentAction {
     Charge,
     Siege,
     Rally,
+    UseAbility,
+    Select,
+    Deselect,
+    SetGroup,
+    Cancel,
+    Research,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -111,6 +124,8 @@ pub enum BuildingKind {
     Market,
     Rack,
     Post,
+    Supply,   // LitterBox, WarrenExpansion, DeepWarren, NestBox, TrashPile, ReedBed
+    Garrison, // CatFlap, Mousehole, BulwarkGate, ThornHedge, DumpsterRelay, TidalGate
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -121,6 +136,13 @@ pub enum MetaAction {
     Undo,
     Yes,
     No,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UpgradeCategory {
+    Damage,
+    Health,
+    Speed,
 }
 
 /// Classify a keyword string into its role.
@@ -145,6 +167,32 @@ pub fn classify_keyword(keyword: &str) -> KeywordRole {
         "charge" => KeywordRole::Agent(AgentAction::Charge),
         "siege" => KeywordRole::Agent(AgentAction::Siege),
         "rally" => KeywordRole::Agent(AgentAction::Rally),
+        "use" => KeywordRole::Agent(AgentAction::UseAbility),
+        "select" => KeywordRole::Agent(AgentAction::Select),
+        "deselect" => KeywordRole::Agent(AgentAction::Deselect),
+        "set" => KeywordRole::Agent(AgentAction::SetGroup),
+        "abort" => KeywordRole::Agent(AgentAction::Cancel),
+        "research" => KeywordRole::Agent(AgentAction::Research),
+        "upgrade" => KeywordRole::Agent(AgentAction::Research),
+
+        // Self-cast ability keywords (range=ZERO only)
+        "zoomies" | "zoom" => KeywordRole::Ability(AbilityId::Zoomies),
+        "loaf" => KeywordRole::Ability(AbilityId::LoafMode),
+        "spite" => KeywordRole::Ability(AbilityId::SpiteCarry),
+        "nap" | "powernap" => KeywordRole::Ability(AbilityId::PowerNap),
+        "shadow" => KeywordRole::Ability(AbilityId::ShadowNetwork),
+        "booby" => KeywordRole::Ability(AbilityId::BoobyTrap),
+        "tunnel" => KeywordRole::Ability(AbilityId::TunnelNetwork),
+        "uplink" | "geppity" => KeywordRole::Ability(AbilityId::GeppityUplink),
+
+        // Upgrade category keywords
+        "damage" | "claws" | "fangs" | "talons" | "teeth" => {
+            KeywordRole::Upgrade(UpgradeCategory::Damage)
+        }
+        "health" | "armor" | "fur" | "hide" | "plumage" => {
+            KeywordRole::Upgrade(UpgradeCategory::Health)
+        }
+        "speed" | "paws" | "wings" | "mucus" => KeywordRole::Upgrade(UpgradeCategory::Speed),
 
         // catGPT units (+ abbreviations)
         "pawdler" | "pawds" => KeywordRole::UnitName(UnitKind::Pawdler),
@@ -220,13 +268,71 @@ pub fn classify_keyword(keyword: &str) -> KeywordRole {
         "east" => KeywordRole::Direction(DirectionKind::East),
         "west" => KeywordRole::Direction(DirectionKind::West),
 
-        // Buildings
-        "barracks" | "tree" => KeywordRole::Building(BuildingKind::Barracks), // Cat Tree = Barracks per GAME_DESIGN.md
-        "refinery" | "market" => KeywordRole::Building(BuildingKind::Refinery),
-        "tower" => KeywordRole::Building(BuildingKind::Tower),
-        "box" => KeywordRole::Building(BuildingKind::Box),
-        "post" => KeywordRole::Building(BuildingKind::Post), // Scratching Post = Research per GAME_DESIGN.md
-        "rack" => KeywordRole::Building(BuildingKind::Rack),
+        // Buildings — generic role names (faction-agnostic)
+        "barracks" | "training" => KeywordRole::Building(BuildingKind::Barracks),
+        "refinery" | "depot" | "resource" | "economy" => {
+            KeywordRole::Building(BuildingKind::Refinery)
+        }
+        "tech" | "technology" => KeywordRole::Building(BuildingKind::Rack),
+        "lab" => KeywordRole::Building(BuildingKind::Post),
+        "tower" | "defense" | "turret" => KeywordRole::Building(BuildingKind::Tower),
+        "supply" | "population" | "housing" => KeywordRole::Building(BuildingKind::Supply),
+        "garrison" | "gate" | "bunker" => KeywordRole::Building(BuildingKind::Garrison),
+        "box" | "headquarters" | "hq" => KeywordRole::Building(BuildingKind::Box),
+
+        // Buildings — CatGpt faction names
+        "tree" => KeywordRole::Building(BuildingKind::Barracks), // CatTree
+        "market" | "fish" => KeywordRole::Building(BuildingKind::Refinery), // FishMarket
+        "rack" | "server" => KeywordRole::Building(BuildingKind::Rack), // ServerRack
+        "post" | "scratching" => KeywordRole::Building(BuildingKind::Post), // ScratchingPost
+        "litter" => KeywordRole::Building(BuildingKind::Supply), // LitterBox
+        "laser" | "pointer" => KeywordRole::Building(BuildingKind::Tower), // LaserPointer
+        "flap" => KeywordRole::Building(BuildingKind::Garrison), // CatFlap
+
+        // Buildings — TheClawed faction names
+        "nesting" => KeywordRole::Building(BuildingKind::Barracks), // NestingBox
+        "vault" | "seed" => KeywordRole::Building(BuildingKind::Refinery), // SeedVault
+        "junk" | "transmitter" => KeywordRole::Building(BuildingKind::Rack), // JunkTransmitter / JunkServer
+        "gnaw" => KeywordRole::Building(BuildingKind::Post),                 // GnawLab
+        "warren" => KeywordRole::Building(BuildingKind::Supply),             // WarrenExpansion
+        "squeak" => KeywordRole::Building(BuildingKind::Tower),              // SqueakTower
+        "mousehole" | "mouse" => KeywordRole::Building(BuildingKind::Garrison), // Mousehole
+
+        // Buildings — SeekersOfTheDeep faction names
+        "hollow" => KeywordRole::Building(BuildingKind::Barracks), // WarHollow
+        "burrow" => KeywordRole::Building(BuildingKind::Refinery), // BurrowDepot
+        "tap" | "core" => KeywordRole::Building(BuildingKind::Rack), // CoreTap
+        "claw" | "marks" => KeywordRole::Building(BuildingKind::Post), // ClawMarks
+        "deep" => KeywordRole::Building(BuildingKind::Supply),     // DeepWarren
+        "slag" => KeywordRole::Building(BuildingKind::Tower),      // SlagThrower
+        "bulwark" => KeywordRole::Building(BuildingKind::Garrison), // BulwarkGate
+
+        // Buildings — TheMurder faction names
+        "rookery" => KeywordRole::Building(BuildingKind::Barracks), // Rookery
+        "carrion" | "cache" => KeywordRole::Building(BuildingKind::Refinery), // CarrionCache
+        "antenna" | "array" => KeywordRole::Building(BuildingKind::Rack), // AntennaArray
+        "panopticon" => KeywordRole::Building(BuildingKind::Post),  // Panopticon
+        "nest" => KeywordRole::Building(BuildingKind::Supply),      // NestBox
+        "watchtower" | "watch" => KeywordRole::Building(BuildingKind::Tower), // Watchtower
+        "thorn" | "hedge" => KeywordRole::Building(BuildingKind::Garrison), // ThornHedge
+
+        // Buildings — LLAMA faction names
+        "chop" | "shop" => KeywordRole::Building(BuildingKind::Barracks), // ChopShop
+        "scrap" | "heap" => KeywordRole::Building(BuildingKind::Refinery), // ScrapHeap
+        // "junk" already mapped above (shared with TheClawed — both → Rack)
+        "tinker" | "bench" => KeywordRole::Building(BuildingKind::Post), // TinkerBench
+        "trash" | "pile" => KeywordRole::Building(BuildingKind::Supply), // TrashPile
+        "tetanus" => KeywordRole::Building(BuildingKind::Tower),         // TetanusTower
+        "relay" | "dumpster" => KeywordRole::Building(BuildingKind::Garrison), // DumpsterRelay
+
+        // Buildings — Croak faction names
+        "spawning" | "pools" | "pool" => KeywordRole::Building(BuildingKind::Barracks), // SpawningPools
+        "lily" => KeywordRole::Building(BuildingKind::Refinery), // LilyMarket
+        "sunken" => KeywordRole::Building(BuildingKind::Rack),   // SunkenServer
+        "fossil" | "stones" => KeywordRole::Building(BuildingKind::Post), // FossilStones
+        "reed" | "bed" => KeywordRole::Building(BuildingKind::Supply), // ReedBed
+        "spore" => KeywordRole::Building(BuildingKind::Tower),   // SporeTower
+        "tidal" => KeywordRole::Building(BuildingKind::Garrison), // TidalGate
 
         // Meta
         "base" => KeywordRole::Meta(MetaAction::Base),
@@ -258,6 +364,9 @@ pub struct ParsedVoiceCommand {
     pub unit_filter: Option<UnitKind>,
     pub direction: Option<DirectionKind>,
     pub building: Option<BuildingKind>,
+    pub ability: Option<AbilityId>,
+    pub upgrade: Option<UpgradeCategory>,
+    pub group_number: Option<u8>,
 }
 
 /// Parse a full transcription text into a structured voice command.
@@ -308,11 +417,30 @@ pub fn parse_voice_text(text: &str) -> ParsedVoiceCommand {
                     result.building = Some(bk);
                 }
             }
+            KeywordRole::Ability(id) => {
+                if result.ability.is_none() {
+                    result.ability = Some(id);
+                }
+                // Auto-set UseAbility if no action yet (bare "zoomies" works)
+                if result.action.is_none() {
+                    result.action = Some(AgentAction::UseAbility);
+                }
+            }
+            KeywordRole::Upgrade(cat) => {
+                if result.upgrade.is_none() {
+                    result.upgrade = Some(cat);
+                }
+            }
+            KeywordRole::GroupNumber(n) => {
+                if result.group_number.is_none() {
+                    result.group_number = Some(n);
+                }
+            }
             // Meta Cancel resets everything parsed so far
             KeywordRole::Meta(MetaAction::Cancel) => {
                 result = ParsedVoiceCommand::default();
             }
-            // Conjunctions, group numbers, other meta, ignored, unrecognized — skip
+            // Conjunctions, other meta, ignored, unrecognized — skip
             _ => {}
         }
     }
@@ -346,15 +474,16 @@ pub fn resolve_agent_command(action: AgentAction, unit_ids: &[EntityId]) -> Opti
             Some(GameCommand::HoldPosition { unit_ids: ids })
         }
 
-        // Worker commands (still need context — gather needs resource target)
-        AgentAction::Gather => {
-            log::debug!("Gather agent needs resource target — not yet wired");
-            None
-        }
-        AgentAction::Train => {
-            log::debug!("Train agent needs building context — not yet wired");
-            None
-        }
+        // Train, Gather, UseAbility, Select, Deselect, SetGroup, Cancel, Research
+        // are handled by voice_intent_system directly (need query context)
+        AgentAction::Train
+        | AgentAction::Gather
+        | AgentAction::UseAbility
+        | AgentAction::Select
+        | AgentAction::Deselect
+        | AgentAction::SetGroup
+        | AgentAction::Cancel
+        | AgentAction::Research => None,
 
         // Support commands (still need ally target)
         AgentAction::Follow | AgentAction::Heal => {
@@ -475,6 +604,8 @@ pub fn voice_building_to_game_building(
         BuildingKind::Box => fmap.hq,
         BuildingKind::Rack => fmap.tech,
         BuildingKind::Post => fmap.research,
+        BuildingKind::Supply => fmap.supply,
+        BuildingKind::Garrison => fmap.garrison,
     }
 }
 
@@ -516,6 +647,53 @@ pub fn find_voice_build_position(
         }
     }
     None
+}
+
+/// Resolve an UpgradeCategory to a faction-specific UpgradeType by matching variant names.
+///
+/// Returns None if the faction has no research upgrade in the given category
+/// (e.g. CatGpt has SiegeTraining in slot [2], not a speed upgrade).
+pub fn resolve_upgrade(faction: Faction, category: UpgradeCategory) -> Option<UpgradeType> {
+    let fmap = faction_map(faction);
+    let is_match = |u: &UpgradeType| match category {
+        UpgradeCategory::Damage => matches!(
+            u,
+            UpgradeType::SharperClaws
+                | UpgradeType::SharperTeeth
+                | UpgradeType::SharperFangs
+                | UpgradeType::SharperTalons
+                | UpgradeType::RustyFangs
+        ),
+        UpgradeCategory::Health => matches!(
+            u,
+            UpgradeType::ThickerFur
+                | UpgradeType::ThickerHide
+                | UpgradeType::ReinforcedHide
+                | UpgradeType::HardenedPlumage
+                | UpgradeType::ScrapPlating
+                | UpgradeType::TougherHide
+        ),
+        UpgradeCategory::Speed => matches!(
+            u,
+            UpgradeType::NimblePaws
+                | UpgradeType::QuickPaws
+                | UpgradeType::SwiftWings
+                | UpgradeType::SlickerMucus
+                | UpgradeType::TrashRunning
+        ),
+    };
+    fmap.research_upgrades.iter().find(|u| is_match(u)).copied()
+}
+
+/// Infer the player's faction from their owned buildings.
+fn infer_player_faction(
+    player_buildings: &Query<(Entity, &Position, &Owner, &Building)>,
+) -> Faction {
+    player_buildings
+        .iter()
+        .find(|(_, _, owner, b)| owner.player_id == 0 && b.kind.is_hq())
+        .map(|(_, _, _, b)| infer_faction_from_hq(b.kind))
+        .unwrap_or(Faction::CatGpt)
 }
 
 /// Duration of the voice-command SpeedBuff (effectively permanent).
@@ -588,6 +766,8 @@ pub fn voice_intent_system(
     status_query: Query<Option<&StatusEffects>, Without<Dead>>,
     restrictions: Option<Res<cc_sim::campaign::mutator_state::ControlRestrictions>>,
     mut ping_writer: MessageWriter<VoicePingRequest>,
+    ability_query: Query<&AbilitySlots, Without<Dead>>,
+    deposit_query: Query<(Entity, &Position, &ResourceDeposit)>,
 ) {
     // Gate: skip voice commands if voice is disabled by mission mutator
     if restrictions.as_ref().is_some_and(|r| !r.voice_enabled) {
@@ -598,6 +778,18 @@ pub fn voice_intent_system(
         log::info!("Voice text: \"{}\"", event.text);
 
         let parsed = parse_voice_text(&event.text);
+
+        // Control group recall — "group one" with no action
+        if let Some(n) = parsed.group_number {
+            if parsed.action.is_none() {
+                cmd_queue.push_sourced(
+                    Some(0),
+                    cc_core::commands::CommandSource::VoiceCommand,
+                    GameCommand::RecallControlGroup { group: n },
+                );
+                continue;
+            }
+        }
 
         let Some(action) = parsed.action else {
             log::debug!("No action keyword found in transcription — ignoring");
@@ -709,13 +901,7 @@ pub fn voice_intent_system(
             // Build → find nearest worker + build site
             AgentAction::Build => {
                 if let Some(voice_bk) = parsed.building {
-                    // Infer faction from player's HQ building
-                    let player_faction = player_buildings
-                        .iter()
-                        .find(|(_, _, owner, b)| owner.player_id == 0 && b.kind.is_hq())
-                        .map(|(_, _, _, b)| infer_faction_from_hq(b.kind))
-                        .unwrap_or(Faction::CatGpt);
-
+                    let player_faction = infer_player_faction(&player_buildings);
                     let fmap = faction_map(player_faction);
                     let game_bk = voice_building_to_game_building(voice_bk, &fmap);
 
@@ -757,6 +943,185 @@ pub fn voice_intent_system(
                     None
                 }
             }
+            // Train → find production building for the requested unit
+            AgentAction::Train => {
+                let player_faction = infer_player_faction(&player_buildings);
+                let fmap = faction_map(player_faction);
+
+                // Default to first barracks producible unit if none specified
+                let unit_kind = parsed.unit_filter.unwrap_or(fmap.worker);
+
+                // Find own building that can produce this unit
+                let producer = player_buildings
+                    .iter()
+                    .filter(|(_, _, owner, _)| owner.player_id == 0)
+                    .find(|(_, _, _, b)| {
+                        building_stats(b.kind).can_produce.contains(&unit_kind)
+                    })
+                    .map(|(e, _, _, _)| EntityId(e.to_bits()));
+
+                if let Some(building) = producer {
+                    Some(GameCommand::TrainUnit {
+                        building,
+                        unit_kind,
+                    })
+                } else {
+                    log::debug!("Voice train: no building can produce {unit_kind:?}");
+                    None
+                }
+            }
+            // UseAbility → activate self-cast ability on matching units
+            AgentAction::UseAbility => {
+                if let Some(ability_id) = parsed.ability {
+                    for &entity in &entities {
+                        if let Ok(slots) = ability_query.get(entity) {
+                            for (slot_idx, slot) in slots.slots.iter().enumerate() {
+                                if slot.id == ability_id
+                                    && slot.cooldown_remaining == 0
+                                    && !slot.active
+                                {
+                                    cmd_queue.push_sourced(
+                                        Some(0),
+                                        cc_core::commands::CommandSource::VoiceCommand,
+                                        GameCommand::ActivateAbility {
+                                            unit_id: EntityId(entity.to_bits()),
+                                            slot: slot_idx as u8,
+                                            target: AbilityTarget::SelfCast,
+                                        },
+                                    );
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    voice_override.set(&unit_ids);
+                } else {
+                    log::debug!("Voice 'use' without ability keyword — ignoring");
+                }
+                continue;
+            }
+            // Gather → send workers to nearest resource deposit
+            AgentAction::Gather => {
+                // Get own workers (override any selector)
+                let workers: Vec<EntityId> = own_units()
+                    .filter(|(_, ut, _, _)| ut.kind.is_worker())
+                    .map(|(e, _, _, _)| EntityId(e.to_bits()))
+                    .collect();
+
+                if workers.is_empty() {
+                    log::debug!("Voice gather: no workers found");
+                    None
+                } else {
+                    // Find nearest deposit to cursor or worker centroid
+                    let center = cursor_grid.pos.unwrap_or_else(|| {
+                        let worker_positions: Vec<_> = own_units()
+                            .filter(|(_, ut, _, _)| ut.kind.is_worker())
+                            .map(|(_, _, pos, _)| pos.world.to_grid())
+                            .collect();
+                        if worker_positions.is_empty() {
+                            GridPos::new(mw as i32 / 2, mh as i32 / 2)
+                        } else {
+                            let sx: i64 = worker_positions.iter().map(|p| p.x as i64).sum();
+                            let sy: i64 = worker_positions.iter().map(|p| p.y as i64).sum();
+                            let n = worker_positions.len() as i64;
+                            GridPos::new((sx / n) as i32, (sy / n) as i32)
+                        }
+                    });
+
+                    let deposit = deposit_query
+                        .iter()
+                        .min_by_key(|(_, pos, _)| {
+                            let gp = pos.world.to_grid();
+                            (gp.x - center.x).abs() + (gp.y - center.y).abs()
+                        })
+                        .map(|(e, _, _)| EntityId(e.to_bits()));
+
+                    if let Some(dep) = deposit {
+                        Some(GameCommand::GatherResource {
+                            unit_ids: workers,
+                            deposit: dep,
+                        })
+                    } else {
+                        log::debug!("Voice gather: no resource deposit found");
+                        None
+                    }
+                }
+            }
+            // Cancel → cancel production queue on nearest production building
+            AgentAction::Cancel => {
+                let center = cursor_grid
+                    .pos
+                    .unwrap_or(GridPos::new(mw as i32 / 2, mh as i32 / 2));
+                let producer = player_buildings
+                    .iter()
+                    .filter(|(_, _, owner, b)| {
+                        owner.player_id == 0 && !building_stats(b.kind).can_produce.is_empty()
+                    })
+                    .min_by_key(|(_, pos, _, _)| {
+                        let gp = pos.world.to_grid();
+                        (gp.x - center.x).abs() + (gp.y - center.y).abs()
+                    })
+                    .map(|(e, _, _, _)| EntityId(e.to_bits()));
+
+                if let Some(building) = producer {
+                    Some(GameCommand::CancelQueue { building })
+                } else {
+                    log::debug!("Voice cancel: no production building found");
+                    None
+                }
+            }
+            // Research → queue research at research building
+            AgentAction::Research => {
+                if let Some(category) = parsed.upgrade {
+                    let player_faction = infer_player_faction(&player_buildings);
+                    let fmap = faction_map(player_faction);
+
+                    let upgrade = resolve_upgrade(player_faction, category);
+                    let research_bld = player_buildings
+                        .iter()
+                        .filter(|(_, _, owner, _)| owner.player_id == 0)
+                        .find(|(_, _, _, b)| b.kind == fmap.research)
+                        .map(|(e, _, _, _)| EntityId(e.to_bits()));
+
+                    match (upgrade, research_bld) {
+                        (Some(u), Some(b)) => Some(GameCommand::Research {
+                            building: b,
+                            upgrade: u,
+                        }),
+                        _ => {
+                            log::debug!("Voice research: no upgrade or building for {category:?}");
+                            None
+                        }
+                    }
+                } else {
+                    log::debug!("Voice 'research' without upgrade keyword — ignoring");
+                    None
+                }
+            }
+            // Select → select resolved units
+            AgentAction::Select => {
+                if !unit_ids.is_empty() {
+                    Some(GameCommand::Select {
+                        unit_ids: unit_ids.clone(),
+                    })
+                } else {
+                    None
+                }
+            }
+            // Deselect → deselect all
+            AgentAction::Deselect => Some(GameCommand::Deselect),
+            // SetGroup → assign control group
+            AgentAction::SetGroup => {
+                if let Some(n) = parsed.group_number {
+                    Some(GameCommand::SetControlGroup {
+                        group: n,
+                        unit_ids: unit_ids.clone(),
+                    })
+                } else {
+                    log::debug!("Voice 'set' without group number — ignoring");
+                    None
+                }
+            }
             // Everything else (stop, hold, defend, guard, etc.)
             _ => resolve_agent_command(action, &unit_ids),
         };
@@ -766,7 +1131,9 @@ pub fn voice_intent_system(
             let ping_target = match &c {
                 GameCommand::Move { target, .. }
                 | GameCommand::AttackMove { target, .. }
-                | GameCommand::Build { position: target, .. } => Some(*target),
+                | GameCommand::Build {
+                    position: target, ..
+                } => Some(*target),
                 GameCommand::HoldPosition { .. } | GameCommand::Stop { .. } => {
                     compute_own_centroid(&entities, &all_units)
                 }
@@ -1449,5 +1816,689 @@ mod tests {
         // Cancel clears hisser, then stop is parsed fresh
         assert_eq!(parsed.action, Some(AgentAction::Stop));
         assert_eq!(parsed.unit_filter, None);
+    }
+
+    // --- Expanded building alias tests ---
+
+    #[test]
+    fn test_classify_generic_role_aliases() {
+        // Generic role names map to the correct voice BuildingKind
+        assert_eq!(
+            classify_keyword("tech"),
+            KeywordRole::Building(BuildingKind::Rack)
+        );
+        assert_eq!(
+            classify_keyword("technology"),
+            KeywordRole::Building(BuildingKind::Rack)
+        );
+        // "research" and "upgrade" now map to Agent(Research)
+        assert_eq!(
+            classify_keyword("research"),
+            KeywordRole::Agent(AgentAction::Research)
+        );
+        assert_eq!(
+            classify_keyword("upgrade"),
+            KeywordRole::Agent(AgentAction::Research)
+        );
+        assert_eq!(
+            classify_keyword("lab"),
+            KeywordRole::Building(BuildingKind::Post)
+        );
+        assert_eq!(
+            classify_keyword("defense"),
+            KeywordRole::Building(BuildingKind::Tower)
+        );
+        assert_eq!(
+            classify_keyword("turret"),
+            KeywordRole::Building(BuildingKind::Tower)
+        );
+        assert_eq!(
+            classify_keyword("supply"),
+            KeywordRole::Building(BuildingKind::Supply)
+        );
+        assert_eq!(
+            classify_keyword("population"),
+            KeywordRole::Building(BuildingKind::Supply)
+        );
+        assert_eq!(
+            classify_keyword("garrison"),
+            KeywordRole::Building(BuildingKind::Garrison)
+        );
+        assert_eq!(
+            classify_keyword("bunker"),
+            KeywordRole::Building(BuildingKind::Garrison)
+        );
+        assert_eq!(
+            classify_keyword("depot"),
+            KeywordRole::Building(BuildingKind::Refinery)
+        );
+        assert_eq!(
+            classify_keyword("economy"),
+            KeywordRole::Building(BuildingKind::Refinery)
+        );
+        assert_eq!(
+            classify_keyword("training"),
+            KeywordRole::Building(BuildingKind::Barracks)
+        );
+        assert_eq!(
+            classify_keyword("headquarters"),
+            KeywordRole::Building(BuildingKind::Box)
+        );
+        assert_eq!(
+            classify_keyword("hq"),
+            KeywordRole::Building(BuildingKind::Box)
+        );
+    }
+
+    #[test]
+    fn test_parse_build_a_phrasing() {
+        // "build a server" → Build + Rack ("a" is unrecognized, skipped)
+        let parsed = parse_voice_text("build a server");
+        assert_eq!(parsed.action, Some(AgentAction::Build));
+        assert_eq!(parsed.building, Some(BuildingKind::Rack));
+    }
+
+    #[test]
+    fn test_parse_build_tech() {
+        let parsed = parse_voice_text("build tech");
+        assert_eq!(parsed.action, Some(AgentAction::Build));
+        assert_eq!(parsed.building, Some(BuildingKind::Rack));
+    }
+
+    #[test]
+    fn test_parse_build_supply() {
+        let parsed = parse_voice_text("build supply");
+        assert_eq!(parsed.action, Some(AgentAction::Build));
+        assert_eq!(parsed.building, Some(BuildingKind::Supply));
+    }
+
+    #[test]
+    fn test_parse_build_garrison() {
+        let parsed = parse_voice_text("build garrison");
+        assert_eq!(parsed.action, Some(AgentAction::Build));
+        assert_eq!(parsed.building, Some(BuildingKind::Garrison));
+    }
+
+    #[test]
+    fn test_classify_catgpt_building_aliases() {
+        assert_eq!(
+            classify_keyword("server"),
+            KeywordRole::Building(BuildingKind::Rack)
+        );
+        assert_eq!(
+            classify_keyword("scratching"),
+            KeywordRole::Building(BuildingKind::Post)
+        );
+        assert_eq!(
+            classify_keyword("litter"),
+            KeywordRole::Building(BuildingKind::Supply)
+        );
+        assert_eq!(
+            classify_keyword("laser"),
+            KeywordRole::Building(BuildingKind::Tower)
+        );
+        assert_eq!(
+            classify_keyword("pointer"),
+            KeywordRole::Building(BuildingKind::Tower)
+        );
+        assert_eq!(
+            classify_keyword("flap"),
+            KeywordRole::Building(BuildingKind::Garrison)
+        );
+        assert_eq!(
+            classify_keyword("fish"),
+            KeywordRole::Building(BuildingKind::Refinery)
+        );
+    }
+
+    #[test]
+    fn test_classify_clawed_building_aliases() {
+        assert_eq!(
+            classify_keyword("nesting"),
+            KeywordRole::Building(BuildingKind::Barracks)
+        );
+        assert_eq!(
+            classify_keyword("vault"),
+            KeywordRole::Building(BuildingKind::Refinery)
+        );
+        assert_eq!(
+            classify_keyword("gnaw"),
+            KeywordRole::Building(BuildingKind::Post)
+        );
+        assert_eq!(
+            classify_keyword("warren"),
+            KeywordRole::Building(BuildingKind::Supply)
+        );
+        assert_eq!(
+            classify_keyword("squeak"),
+            KeywordRole::Building(BuildingKind::Tower)
+        );
+        assert_eq!(
+            classify_keyword("mousehole"),
+            KeywordRole::Building(BuildingKind::Garrison)
+        );
+    }
+
+    #[test]
+    fn test_classify_seekers_building_aliases() {
+        assert_eq!(
+            classify_keyword("hollow"),
+            KeywordRole::Building(BuildingKind::Barracks)
+        );
+        assert_eq!(
+            classify_keyword("burrow"),
+            KeywordRole::Building(BuildingKind::Refinery)
+        );
+        assert_eq!(
+            classify_keyword("tap"),
+            KeywordRole::Building(BuildingKind::Rack)
+        );
+        assert_eq!(
+            classify_keyword("slag"),
+            KeywordRole::Building(BuildingKind::Tower)
+        );
+        assert_eq!(
+            classify_keyword("deep"),
+            KeywordRole::Building(BuildingKind::Supply)
+        );
+        assert_eq!(
+            classify_keyword("bulwark"),
+            KeywordRole::Building(BuildingKind::Garrison)
+        );
+    }
+
+    #[test]
+    fn test_classify_murder_building_aliases() {
+        assert_eq!(
+            classify_keyword("rookery"),
+            KeywordRole::Building(BuildingKind::Barracks)
+        );
+        assert_eq!(
+            classify_keyword("carrion"),
+            KeywordRole::Building(BuildingKind::Refinery)
+        );
+        assert_eq!(
+            classify_keyword("antenna"),
+            KeywordRole::Building(BuildingKind::Rack)
+        );
+        assert_eq!(
+            classify_keyword("panopticon"),
+            KeywordRole::Building(BuildingKind::Post)
+        );
+        assert_eq!(
+            classify_keyword("nest"),
+            KeywordRole::Building(BuildingKind::Supply)
+        );
+        assert_eq!(
+            classify_keyword("thorn"),
+            KeywordRole::Building(BuildingKind::Garrison)
+        );
+    }
+
+    #[test]
+    fn test_classify_llama_building_aliases() {
+        assert_eq!(
+            classify_keyword("chop"),
+            KeywordRole::Building(BuildingKind::Barracks)
+        );
+        assert_eq!(
+            classify_keyword("scrap"),
+            KeywordRole::Building(BuildingKind::Refinery)
+        );
+        assert_eq!(
+            classify_keyword("tinker"),
+            KeywordRole::Building(BuildingKind::Post)
+        );
+        assert_eq!(
+            classify_keyword("trash"),
+            KeywordRole::Building(BuildingKind::Supply)
+        );
+        assert_eq!(
+            classify_keyword("tetanus"),
+            KeywordRole::Building(BuildingKind::Tower)
+        );
+        assert_eq!(
+            classify_keyword("relay"),
+            KeywordRole::Building(BuildingKind::Garrison)
+        );
+    }
+
+    #[test]
+    fn test_classify_croak_building_aliases() {
+        assert_eq!(
+            classify_keyword("spawning"),
+            KeywordRole::Building(BuildingKind::Barracks)
+        );
+        assert_eq!(
+            classify_keyword("pool"),
+            KeywordRole::Building(BuildingKind::Barracks)
+        );
+        assert_eq!(
+            classify_keyword("lily"),
+            KeywordRole::Building(BuildingKind::Refinery)
+        );
+        assert_eq!(
+            classify_keyword("sunken"),
+            KeywordRole::Building(BuildingKind::Rack)
+        );
+        assert_eq!(
+            classify_keyword("fossil"),
+            KeywordRole::Building(BuildingKind::Post)
+        );
+        assert_eq!(
+            classify_keyword("reed"),
+            KeywordRole::Building(BuildingKind::Supply)
+        );
+        assert_eq!(
+            classify_keyword("spore"),
+            KeywordRole::Building(BuildingKind::Tower)
+        );
+        assert_eq!(
+            classify_keyword("tidal"),
+            KeywordRole::Building(BuildingKind::Garrison)
+        );
+    }
+
+    #[test]
+    fn test_voice_building_mapping_supply_garrison() {
+        use cc_core::components::BuildingKind as GBK;
+
+        // CatGpt: Supply → LitterBox, Garrison → CatFlap
+        let catgpt = faction_map(Faction::CatGpt);
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Supply, &catgpt),
+            GBK::LitterBox
+        );
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Garrison, &catgpt),
+            GBK::CatFlap
+        );
+
+        // Croak: Supply → ReedBed, Garrison → TidalGate
+        let croak = faction_map(Faction::Croak);
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Supply, &croak),
+            GBK::ReedBed
+        );
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Garrison, &croak),
+            GBK::TidalGate
+        );
+
+        // LLAMA: Supply → TrashPile, Garrison → DumpsterRelay
+        let llama = faction_map(Faction::Llama);
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Supply, &llama),
+            GBK::TrashPile
+        );
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Garrison, &llama),
+            GBK::DumpsterRelay
+        );
+    }
+
+    #[test]
+    fn test_faction_keyword_resolves_via_factionmap() {
+        use cc_core::components::BuildingKind as GBK;
+
+        // "sunken" → voice Rack → FactionMap.tech
+        // Croak player: tech → SunkenServer
+        let croak = faction_map(Faction::Croak);
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Rack, &croak),
+            GBK::SunkenServer
+        );
+
+        // CatGpt player saying "sunken" still gets Rack → ServerRack
+        let catgpt = faction_map(Faction::CatGpt);
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Rack, &catgpt),
+            GBK::ServerRack
+        );
+    }
+
+    // --- New voice command expansion tests ---
+
+    #[test]
+    fn test_classify_ability_keywords() {
+        assert_eq!(
+            classify_keyword("zoomies"),
+            KeywordRole::Ability(AbilityId::Zoomies)
+        );
+        assert_eq!(
+            classify_keyword("zoom"),
+            KeywordRole::Ability(AbilityId::Zoomies)
+        );
+        assert_eq!(
+            classify_keyword("loaf"),
+            KeywordRole::Ability(AbilityId::LoafMode)
+        );
+        assert_eq!(
+            classify_keyword("spite"),
+            KeywordRole::Ability(AbilityId::SpiteCarry)
+        );
+        assert_eq!(
+            classify_keyword("nap"),
+            KeywordRole::Ability(AbilityId::PowerNap)
+        );
+        assert_eq!(
+            classify_keyword("powernap"),
+            KeywordRole::Ability(AbilityId::PowerNap)
+        );
+        assert_eq!(
+            classify_keyword("shadow"),
+            KeywordRole::Ability(AbilityId::ShadowNetwork)
+        );
+        assert_eq!(
+            classify_keyword("booby"),
+            KeywordRole::Ability(AbilityId::BoobyTrap)
+        );
+        assert_eq!(
+            classify_keyword("tunnel"),
+            KeywordRole::Ability(AbilityId::TunnelNetwork)
+        );
+        assert_eq!(
+            classify_keyword("uplink"),
+            KeywordRole::Ability(AbilityId::GeppityUplink)
+        );
+        assert_eq!(
+            classify_keyword("geppity"),
+            KeywordRole::Ability(AbilityId::GeppityUplink)
+        );
+    }
+
+    #[test]
+    fn test_classify_new_action_keywords() {
+        assert_eq!(
+            classify_keyword("use"),
+            KeywordRole::Agent(AgentAction::UseAbility)
+        );
+        assert_eq!(
+            classify_keyword("select"),
+            KeywordRole::Agent(AgentAction::Select)
+        );
+        assert_eq!(
+            classify_keyword("deselect"),
+            KeywordRole::Agent(AgentAction::Deselect)
+        );
+        assert_eq!(
+            classify_keyword("set"),
+            KeywordRole::Agent(AgentAction::SetGroup)
+        );
+        assert_eq!(
+            classify_keyword("abort"),
+            KeywordRole::Agent(AgentAction::Cancel)
+        );
+    }
+
+    #[test]
+    fn test_classify_upgrade_keywords() {
+        assert_eq!(
+            classify_keyword("damage"),
+            KeywordRole::Upgrade(UpgradeCategory::Damage)
+        );
+        assert_eq!(
+            classify_keyword("claws"),
+            KeywordRole::Upgrade(UpgradeCategory::Damage)
+        );
+        assert_eq!(
+            classify_keyword("fangs"),
+            KeywordRole::Upgrade(UpgradeCategory::Damage)
+        );
+        assert_eq!(
+            classify_keyword("talons"),
+            KeywordRole::Upgrade(UpgradeCategory::Damage)
+        );
+        assert_eq!(
+            classify_keyword("teeth"),
+            KeywordRole::Upgrade(UpgradeCategory::Damage)
+        );
+        assert_eq!(
+            classify_keyword("health"),
+            KeywordRole::Upgrade(UpgradeCategory::Health)
+        );
+        assert_eq!(
+            classify_keyword("armor"),
+            KeywordRole::Upgrade(UpgradeCategory::Health)
+        );
+        assert_eq!(
+            classify_keyword("fur"),
+            KeywordRole::Upgrade(UpgradeCategory::Health)
+        );
+        assert_eq!(
+            classify_keyword("hide"),
+            KeywordRole::Upgrade(UpgradeCategory::Health)
+        );
+        assert_eq!(
+            classify_keyword("plumage"),
+            KeywordRole::Upgrade(UpgradeCategory::Health)
+        );
+        assert_eq!(
+            classify_keyword("speed"),
+            KeywordRole::Upgrade(UpgradeCategory::Speed)
+        );
+        assert_eq!(
+            classify_keyword("paws"),
+            KeywordRole::Upgrade(UpgradeCategory::Speed)
+        );
+        assert_eq!(
+            classify_keyword("wings"),
+            KeywordRole::Upgrade(UpgradeCategory::Speed)
+        );
+        assert_eq!(
+            classify_keyword("mucus"),
+            KeywordRole::Upgrade(UpgradeCategory::Speed)
+        );
+    }
+
+    #[test]
+    fn test_parse_train_hisser() {
+        let parsed = parse_voice_text("train hisser");
+        assert_eq!(parsed.action, Some(AgentAction::Train));
+        assert_eq!(parsed.unit_filter, Some(UnitKind::Hisser));
+    }
+
+    #[test]
+    fn test_parse_bare_zoomies() {
+        // Bare ability keyword auto-sets UseAbility
+        let parsed = parse_voice_text("zoomies");
+        assert_eq!(parsed.action, Some(AgentAction::UseAbility));
+        assert_eq!(parsed.ability, Some(AbilityId::Zoomies));
+    }
+
+    #[test]
+    fn test_parse_use_loaf() {
+        let parsed = parse_voice_text("use loaf");
+        assert_eq!(parsed.action, Some(AgentAction::UseAbility));
+        assert_eq!(parsed.ability, Some(AbilityId::LoafMode));
+    }
+
+    #[test]
+    fn test_parse_gather() {
+        let parsed = parse_voice_text("gather");
+        assert_eq!(parsed.action, Some(AgentAction::Gather));
+    }
+
+    #[test]
+    fn test_parse_workers_gather() {
+        let parsed = parse_voice_text("workers gather");
+        assert_eq!(parsed.action, Some(AgentAction::Gather));
+        assert_eq!(parsed.selector, Some(SelectorKind::Workers));
+    }
+
+    #[test]
+    fn test_parse_group_one_recall() {
+        // "group one" with no action → should set group_number, no action
+        let parsed = parse_voice_text("group one");
+        assert_eq!(parsed.action, None);
+        assert_eq!(parsed.group_number, Some(1));
+        assert_eq!(parsed.selector, Some(SelectorKind::Group));
+    }
+
+    #[test]
+    fn test_parse_set_group_two() {
+        let parsed = parse_voice_text("set group two");
+        assert_eq!(parsed.action, Some(AgentAction::SetGroup));
+        assert_eq!(parsed.group_number, Some(2));
+    }
+
+    #[test]
+    fn test_parse_abort() {
+        let parsed = parse_voice_text("abort");
+        assert_eq!(parsed.action, Some(AgentAction::Cancel));
+    }
+
+    #[test]
+    fn test_parse_research_damage() {
+        let parsed = parse_voice_text("research damage");
+        assert_eq!(parsed.action, Some(AgentAction::Research));
+        assert_eq!(parsed.upgrade, Some(UpgradeCategory::Damage));
+    }
+
+    #[test]
+    fn test_parse_upgrade_speed() {
+        let parsed = parse_voice_text("upgrade speed");
+        assert_eq!(parsed.action, Some(AgentAction::Research));
+        assert_eq!(parsed.upgrade, Some(UpgradeCategory::Speed));
+    }
+
+    #[test]
+    fn test_parse_research_claws() {
+        let parsed = parse_voice_text("research claws");
+        assert_eq!(parsed.action, Some(AgentAction::Research));
+        assert_eq!(parsed.upgrade, Some(UpgradeCategory::Damage));
+    }
+
+    #[test]
+    fn test_parse_select_hisser() {
+        let parsed = parse_voice_text("select hisser");
+        assert_eq!(parsed.action, Some(AgentAction::Select));
+        assert_eq!(parsed.unit_filter, Some(UnitKind::Hisser));
+    }
+
+    #[test]
+    fn test_parse_deselect() {
+        let parsed = parse_voice_text("deselect");
+        assert_eq!(parsed.action, Some(AgentAction::Deselect));
+    }
+
+    #[test]
+    fn test_cancel_still_resets_midphrase() {
+        // "cancel" (Meta) still resets mid-phrase — not confused with AgentAction::Cancel
+        let parsed = parse_voice_text("hisser cancel stop");
+        assert_eq!(parsed.action, Some(AgentAction::Stop));
+        assert_eq!(parsed.unit_filter, None);
+    }
+
+    #[test]
+    fn test_resolve_upgrade_catgpt_damage() {
+        assert_eq!(
+            resolve_upgrade(Faction::CatGpt, UpgradeCategory::Damage),
+            Some(UpgradeType::SharperClaws)
+        );
+    }
+
+    #[test]
+    fn test_resolve_upgrade_catgpt_health() {
+        assert_eq!(
+            resolve_upgrade(Faction::CatGpt, UpgradeCategory::Health),
+            Some(UpgradeType::ThickerFur)
+        );
+    }
+
+    #[test]
+    fn test_resolve_upgrade_catgpt_speed_is_none() {
+        // CatGpt has SiegeTraining in slot [2], not a speed upgrade
+        assert_eq!(
+            resolve_upgrade(Faction::CatGpt, UpgradeCategory::Speed),
+            None
+        );
+    }
+
+    #[test]
+    fn test_resolve_upgrade_murder_speed() {
+        assert_eq!(
+            resolve_upgrade(Faction::TheMurder, UpgradeCategory::Speed),
+            Some(UpgradeType::SwiftWings)
+        );
+    }
+
+    #[test]
+    fn test_resolve_upgrade_clawed_speed() {
+        assert_eq!(
+            resolve_upgrade(Faction::TheClawed, UpgradeCategory::Speed),
+            Some(UpgradeType::QuickPaws)
+        );
+    }
+
+    #[test]
+    fn test_resolve_upgrade_croak_health() {
+        assert_eq!(
+            resolve_upgrade(Faction::Croak, UpgradeCategory::Health),
+            Some(UpgradeType::TougherHide)
+        );
+    }
+
+    #[test]
+    fn test_resolve_upgrade_croak_damage_is_none() {
+        // Croak has TougherHide (health), SlickerMucus (speed), AmphibianAgility (special)
+        assert_eq!(
+            resolve_upgrade(Faction::Croak, UpgradeCategory::Damage),
+            None
+        );
+    }
+
+    #[test]
+    fn test_resolve_upgrade_seekers_speed_is_none() {
+        // Seekers have SteadyStance, not a speed upgrade
+        assert_eq!(
+            resolve_upgrade(Faction::SeekersOfTheDeep, UpgradeCategory::Speed),
+            None
+        );
+    }
+
+    #[test]
+    fn test_parse_train_alone_defaults_to_worker() {
+        // "train" without a unit keyword defaults to worker in voice_intent_system
+        let parsed = parse_voice_text("train");
+        assert_eq!(parsed.action, Some(AgentAction::Train));
+        assert_eq!(parsed.unit_filter, None); // resolved at system level
+    }
+
+    #[test]
+    fn test_parse_research_alone_no_upgrade() {
+        // "research" without category keyword — no upgrade set
+        let parsed = parse_voice_text("research");
+        assert_eq!(parsed.action, Some(AgentAction::Research));
+        assert_eq!(parsed.upgrade, None);
+    }
+
+    #[test]
+    fn test_resolve_agent_command_delegates_new_actions() {
+        // New actions are handled by voice_intent_system, not resolve_agent_command
+        let ids = vec![EntityId(1)];
+        assert!(resolve_agent_command(AgentAction::Train, &ids).is_none());
+        assert!(resolve_agent_command(AgentAction::UseAbility, &ids).is_none());
+        assert!(resolve_agent_command(AgentAction::Select, &ids).is_none());
+        assert!(resolve_agent_command(AgentAction::Deselect, &ids).is_none());
+        assert!(resolve_agent_command(AgentAction::SetGroup, &ids).is_none());
+        assert!(resolve_agent_command(AgentAction::Cancel, &ids).is_none());
+        assert!(resolve_agent_command(AgentAction::Research, &ids).is_none());
+    }
+
+    #[test]
+    fn test_resolve_upgrade_llama() {
+        assert_eq!(
+            resolve_upgrade(Faction::Llama, UpgradeCategory::Damage),
+            Some(UpgradeType::RustyFangs)
+        );
+        assert_eq!(
+            resolve_upgrade(Faction::Llama, UpgradeCategory::Health),
+            Some(UpgradeType::ScrapPlating)
+        );
+        assert_eq!(
+            resolve_upgrade(Faction::Llama, UpgradeCategory::Speed),
+            Some(UpgradeType::NimblePaws)
+        );
     }
 }
