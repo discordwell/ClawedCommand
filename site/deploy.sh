@@ -2,9 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REMOTE_USER="${DEPLOY_USER:-root}"
-REMOTE_HOST="${DEPLOY_HOST:-clawedcommand.com}"
-REMOTE_PATH="${DEPLOY_PATH:-/var/www/clawedcommand.com/}"
+SSH_HOST="${DEPLOY_SSH_HOST:-ovh2}"
+REMOTE_PATH="${DEPLOY_PATH:-/opt/clawed/site/}"
 
 echo "=== ClawedCommand Deploy ==="
 echo ""
@@ -15,15 +14,15 @@ python3 "$SCRIPT_DIR/prepare_assets.py"
 echo ""
 
 # Step 2: Sync to VPS (exclude downloads dir — binaries uploaded separately)
-echo ">> Deploying to ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}"
+echo ">> Deploying to ${SSH_HOST}:${REMOTE_PATH}"
 rsync -avz --delete \
   --exclude='prepare_assets.py' \
   --exclude='deploy.sh' \
   --exclude='downloads/' \
-  -e ssh \
+  -e "ssh" \
   "$SCRIPT_DIR/" \
-  "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}"
+  "${SSH_HOST}:${REMOTE_PATH}"
 
 echo ""
 echo "=== Deploy complete ==="
-echo "Site: https://${REMOTE_HOST}"
+echo "Site: https://clawedcommand.com"
