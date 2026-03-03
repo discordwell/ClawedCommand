@@ -955,9 +955,7 @@ pub fn voice_intent_system(
                 let producer = player_buildings
                     .iter()
                     .filter(|(_, _, owner, _)| owner.player_id == 0)
-                    .find(|(_, _, _, b)| {
-                        building_stats(b.kind).can_produce.contains(&unit_kind)
-                    })
+                    .find(|(_, _, _, b)| building_stats(b.kind).can_produce.contains(&unit_kind))
                     .map(|(e, _, _, _)| EntityId(e.to_bits()));
 
                 if let Some(building) = producer {
