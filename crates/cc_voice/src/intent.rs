@@ -19,7 +19,7 @@ use cc_core::status_effects::{StatusEffectId, StatusEffects, StatusInstance};
 use cc_sim::ai::fsm::{FactionMap, faction_map};
 use cc_sim::resources::MapResource;
 
-use crate::events::VoiceCommandEvent;
+use crate::events::{VoiceCommandEvent, VoicePingRequest};
 
 // ---------------------------------------------------------------------------
 // Keyword classification
@@ -587,6 +587,7 @@ pub fn voice_intent_system(
     mut voice_override: ResMut<cc_sim::resources::VoiceOverride>,
     status_query: Query<Option<&StatusEffects>, Without<Dead>>,
     restrictions: Option<Res<cc_sim::campaign::mutator_state::ControlRestrictions>>,
+    mut ping_writer: MessageWriter<VoicePingRequest>,
 ) {
     // Gate: skip voice commands if voice is disabled by mission mutator
     if restrictions.as_ref().is_some_and(|r| !r.voice_enabled) {
@@ -761,6 +762,21 @@ pub fn voice_intent_system(
         };
 
         if let Some(c) = cmd {
+            // Extract target position for the sonar-ping VFX
+            let ping_target = match &c {
+                GameCommand::Move { target, .. }
+                | GameCommand::AttackMove { target, .. }
+                | GameCommand::Build { position: target, .. } => Some(*target),
+                GameCommand::HoldPosition { .. } | GameCommand::Stop { .. } => {
+                    compute_own_centroid(&entities, &all_units)
+                }
+                _ => None,
+            };
+            if let Some(target) = ping_target {
+                let elevation = map_res.map.elevation_at(target);
+                ping_writer.write(VoicePingRequest { target, elevation });
+            }
+
             cmd_queue.push_sourced(Some(0), cc_core::commands::CommandSource::VoiceCommand, c);
 
             // Suppress script/AI commands for these units while
@@ -793,6 +809,30 @@ fn compute_enemy_centroid(
         sum_x += gp.x as i64;
         sum_y += gp.y as i64;
         count += 1;
+    }
+    if count > 0 {
+        Some(GridPos::new((sum_x / count) as i32, (sum_y / count) as i32))
+    } else {
+        None
+    }
+}
+
+/// Compute the centroid of a set of own-player entities (for ping placement on
+/// positionless commands like HoldPosition / Stop).
+fn compute_own_centroid(
+    entities: &[Entity],
+    all_units: &Query<(Entity, &cc_core::components::UnitType, &Position, &Owner), Without<Dead>>,
+) -> Option<GridPos> {
+    let mut sum_x: i64 = 0;
+    let mut sum_y: i64 = 0;
+    let mut count: i64 = 0;
+    for entity in entities {
+        if let Ok((_, _, pos, _)) = all_units.get(*entity) {
+            let gp = pos.world.to_grid();
+            sum_x += gp.x as i64;
+            sum_y += gp.y as i64;
+            count += 1;
+        }
     }
     if count > 0 {
         Some(GridPos::new((sum_x / count) as i32, (sum_y / count) as i32))

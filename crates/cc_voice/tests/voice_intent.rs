@@ -14,7 +14,7 @@ use cc_core::coords::{GridPos, WorldPos};
 use cc_core::map::GameMap;
 use cc_core::unit_stats::base_stats;
 use cc_sim::resources::{CommandQueue, MapResource, VoiceOverride};
-use cc_voice::events::VoiceCommandEvent;
+use cc_voice::events::{VoiceCommandEvent, VoicePingRequest};
 use cc_voice::intent::voice_intent_system;
 
 // ---------------------------------------------------------------------------
@@ -46,6 +46,7 @@ fn make_voice_sim(map: GameMap) -> (World, Schedule) {
     world.insert_resource(CursorGridPos::default());
     world.insert_resource(VoiceInjectionQueue::default());
     world.init_resource::<Messages<VoiceCommandEvent>>();
+    world.init_resource::<Messages<VoicePingRequest>>();
 
     let mut schedule = Schedule::new(Update);
     schedule.add_systems((inject_voice_events, voice_intent_system).chain());

@@ -6,9 +6,10 @@ use cc_core::coords::GridPos;
 use cc_core::mission::*;
 use cc_core::status_effects::{StatusEffectId, StatusEffects, StatusInstance};
 use cc_core::terrain::TerrainType;
-use cc_sim::resources::{CommandQueue, SimClock};
+use cc_sim::resources::{CommandQueue, MapResource, SimClock};
 
 use crate::cutscene::CutsceneCamera;
+use crate::renderer::voice_ping::spawn_voice_ping;
 use crate::setup::UnitMesh;
 
 // ---------------------------------------------------------------------------
@@ -19,12 +20,17 @@ const MAP_WIDTH: u32 = 40;
 const MAP_HEIGHT: u32 = 30;
 
 /// Tick thresholds for each phase transition.
-const PHASE_RETREAT_TICK: u64 = 30;
+const PHASE_FALLBACK_TICK: u64 = 30;
 const PHASE_CHARGE_TICK: u64 = 80;
 const PHASE_ATTACK_TICK: u64 = 130;
+const PHASE_HOLD_TICK: u64 = 180;
+const PHASE_PULLBACK_TICK: u64 = 230;
 
 /// Duration of the SpeedBuff (effectively permanent for the demo).
 const BUFF_DURATION: u32 = 9999;
+
+/// Retreat target — behind the Chonk wall.
+const RETREAT_POS: GridPos = GridPos::new(4, 15);
 
 // ---------------------------------------------------------------------------
 // Types
@@ -35,12 +41,16 @@ const BUFF_DURATION: u32 = 9999;
 pub enum VoiceDemoPhase {
     /// Establishing shot — units idle.
     Setup,
-    /// Hissers retreat behind Chonks.
-    Retreat,
+    /// Hissers fall back behind Chonks.
+    Fallback,
     /// Mice charge toward cat line.
     Charge,
     /// All cats attack-move toward mice.
     Attack,
+    /// Cats hold position — dig in.
+    Hold,
+    /// Cats retreat back to starting area.
+    PullBack,
     /// Combat plays out naturally, no more scripted commands.
     Done,
 }
@@ -49,18 +59,22 @@ pub enum VoiceDemoPhase {
 #[derive(Resource)]
 pub struct VoiceDemoState {
     pub phase: VoiceDemoPhase,
-    pub retreat_issued: bool,
+    pub fallback_issued: bool,
     pub charge_issued: bool,
     pub attack_issued: bool,
+    pub hold_issued: bool,
+    pub pullback_issued: bool,
 }
 
 impl Default for VoiceDemoState {
     fn default() -> Self {
         Self {
             phase: VoiceDemoPhase::Setup,
-            retreat_issued: false,
+            fallback_issued: false,
             charge_issued: false,
             attack_issued: false,
+            hold_issued: false,
+            pullback_issued: false,
         }
     }
 }
@@ -143,13 +157,25 @@ pub fn build_voice_demo_mission() -> MissionDefinition {
             voice_style: VoiceStyle::AiVoice,
             portrait: "portrait_minstral".into(),
         },
+        DialogueLine {
+            speaker: "Minstral".into(),
+            text: "Hold the line! Don't let them through.".into(),
+            voice_style: VoiceStyle::AiVoice,
+            portrait: "portrait_minstral".into(),
+        },
+        DialogueLine {
+            speaker: "Minstral".into(),
+            text: "Pull back! Regroup at the tree line.".into(),
+            voice_style: VoiceStyle::AiVoice,
+            portrait: "portrait_minstral".into(),
+        },
     ];
 
     // Triggers: show dialogue lines at the correct ticks
     let triggers = vec![
         ScriptedTrigger {
-            id: "voice_retreat".into(),
-            condition: TriggerCondition::AtTick(PHASE_RETREAT_TICK),
+            id: "voice_fallback".into(),
+            condition: TriggerCondition::AtTick(PHASE_FALLBACK_TICK),
             actions: vec![TriggerAction::ShowDialogue(vec![0])],
             once: true,
         },
@@ -163,6 +189,18 @@ pub fn build_voice_demo_mission() -> MissionDefinition {
             id: "voice_attack".into(),
             condition: TriggerCondition::AtTick(PHASE_ATTACK_TICK),
             actions: vec![TriggerAction::ShowDialogue(vec![2])],
+            once: true,
+        },
+        ScriptedTrigger {
+            id: "voice_hold".into(),
+            condition: TriggerCondition::AtTick(PHASE_HOLD_TICK),
+            actions: vec![TriggerAction::ShowDialogue(vec![3])],
+            once: true,
+        },
+        ScriptedTrigger {
+            id: "voice_pullback".into(),
+            condition: TriggerCondition::AtTick(PHASE_PULLBACK_TICK),
+            actions: vec![TriggerAction::ShowDialogue(vec![4])],
             once: true,
         },
     ];
@@ -228,24 +266,31 @@ pub fn voice_demo_system(
     mut cmd_queue: ResMut<CommandQueue>,
     units: Query<(Entity, &UnitType, &Owner), (With<UnitMesh>, Without<Dead>)>,
     status_query: Query<Option<&StatusEffects>, (With<UnitMesh>, Without<Dead>)>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    map_res: Res<MapResource>,
 ) {
     let tick = clock.tick;
 
-    // Phase transitions
-    if tick >= PHASE_ATTACK_TICK && state.phase < VoiceDemoPhase::Attack {
+    // Phase transitions (check highest first for correct priority)
+    if tick >= PHASE_PULLBACK_TICK && state.phase < VoiceDemoPhase::PullBack {
+        state.phase = VoiceDemoPhase::PullBack;
+    } else if tick >= PHASE_HOLD_TICK && state.phase < VoiceDemoPhase::Hold {
+        state.phase = VoiceDemoPhase::Hold;
+    } else if tick >= PHASE_ATTACK_TICK && state.phase < VoiceDemoPhase::Attack {
         state.phase = VoiceDemoPhase::Attack;
     } else if tick >= PHASE_CHARGE_TICK && state.phase < VoiceDemoPhase::Charge {
         state.phase = VoiceDemoPhase::Charge;
-    } else if tick >= PHASE_RETREAT_TICK && state.phase < VoiceDemoPhase::Retreat {
-        state.phase = VoiceDemoPhase::Retreat;
+    } else if tick >= PHASE_FALLBACK_TICK && state.phase < VoiceDemoPhase::Fallback {
+        state.phase = VoiceDemoPhase::Fallback;
     }
 
     match state.phase {
         VoiceDemoPhase::Setup => {} // Idle, establishing shot
-        VoiceDemoPhase::Retreat => {
-            if !state.retreat_issued {
-                state.retreat_issued = true;
-                // Hissers (P0) retreat behind Chonks
+        VoiceDemoPhase::Fallback => {
+            if !state.fallback_issued {
+                state.fallback_issued = true;
+                // Hissers (P0) fall back behind Chonks
                 let hisser_entities: Vec<Entity> = units
                     .iter()
                     .filter(|(_, ut, owner)| {
@@ -259,13 +304,14 @@ pub fn voice_demo_system(
                     .map(|e| EntityId(e.to_bits()))
                     .collect();
 
+                let target = RETREAT_POS;
                 if !hisser_ids.is_empty() {
                     cmd_queue.push_sourced(
                         Some(0),
                         CommandSource::Script,
                         GameCommand::Move {
                             unit_ids: hisser_ids,
-                            target: GridPos::new(4, 15),
+                            target,
                         },
                     );
                 }
@@ -274,6 +320,8 @@ pub fn voice_demo_system(
                 for entity in &hisser_entities {
                     apply_voice_buff(&mut commands, *entity, &status_query);
                 }
+
+                spawn_voice_ping(&mut commands, &mut meshes, &mut materials, target, map_res.map.elevation_at(target));
             }
         }
         VoiceDemoPhase::Charge => {
@@ -291,13 +339,14 @@ pub fn voice_demo_system(
                     .map(|e| EntityId(e.to_bits()))
                     .collect();
 
+                let target = GridPos::new(8, 15);
                 if !mouse_ids.is_empty() {
                     cmd_queue.push_sourced(
                         Some(1),
                         CommandSource::Script,
                         GameCommand::AttackMove {
                             unit_ids: mouse_ids,
-                            target: GridPos::new(8, 15),
+                            target,
                         },
                     );
                 }
@@ -306,6 +355,8 @@ pub fn voice_demo_system(
                 for entity in &mouse_entities {
                     apply_voice_buff(&mut commands, *entity, &status_query);
                 }
+
+                spawn_voice_ping(&mut commands, &mut meshes, &mut materials, target, map_res.map.elevation_at(target));
             }
         }
         VoiceDemoPhase::Attack => {
@@ -323,13 +374,14 @@ pub fn voice_demo_system(
                     .map(|e| EntityId(e.to_bits()))
                     .collect();
 
+                let target = GridPos::new(32, 15);
                 if !cat_ids.is_empty() {
                     cmd_queue.push_sourced(
                         Some(0),
                         CommandSource::Script,
                         GameCommand::AttackMove {
                             unit_ids: cat_ids,
-                            target: GridPos::new(32, 15),
+                            target,
                         },
                     );
                 }
@@ -339,7 +391,83 @@ pub fn voice_demo_system(
                     apply_voice_buff(&mut commands, *entity, &status_query);
                 }
 
-                state.phase = VoiceDemoPhase::Done;
+                spawn_voice_ping(&mut commands, &mut meshes, &mut materials, target, map_res.map.elevation_at(target));
+            }
+        }
+        VoiceDemoPhase::Hold => {
+            if !state.hold_issued {
+                state.hold_issued = true;
+                // All cats (P0) hold position
+                let cat_entities: Vec<Entity> = units
+                    .iter()
+                    .filter(|(_, _, owner)| owner.player_id == 0)
+                    .map(|(e, _, _)| e)
+                    .collect();
+
+                let cat_ids: Vec<EntityId> = cat_entities
+                    .iter()
+                    .map(|e| EntityId(e.to_bits()))
+                    .collect();
+
+                if !cat_ids.is_empty() {
+                    cmd_queue.push_sourced(
+                        Some(0),
+                        CommandSource::Script,
+                        GameCommand::HoldPosition {
+                            unit_ids: cat_ids,
+                        },
+                    );
+                }
+
+                // Apply buff to all cats
+                for entity in &cat_entities {
+                    apply_voice_buff(&mut commands, *entity, &status_query);
+                }
+
+                // Ping at approximate battle center
+                let hold_target = GridPos::new(20, 15);
+                spawn_voice_ping(
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    hold_target,
+                    map_res.map.elevation_at(hold_target),
+                );
+            }
+        }
+        VoiceDemoPhase::PullBack => {
+            if !state.pullback_issued {
+                state.pullback_issued = true;
+                // All cats (P0) retreat to starting area
+                let cat_entities: Vec<Entity> = units
+                    .iter()
+                    .filter(|(_, _, owner)| owner.player_id == 0)
+                    .map(|(e, _, _)| e)
+                    .collect();
+
+                let cat_ids: Vec<EntityId> = cat_entities
+                    .iter()
+                    .map(|e| EntityId(e.to_bits()))
+                    .collect();
+
+                let target = RETREAT_POS;
+                if !cat_ids.is_empty() {
+                    cmd_queue.push_sourced(
+                        Some(0),
+                        CommandSource::Script,
+                        GameCommand::Move {
+                            unit_ids: cat_ids,
+                            target,
+                        },
+                    );
+                }
+
+                // Apply buff to all cats
+                for entity in &cat_entities {
+                    apply_voice_buff(&mut commands, *entity, &status_query);
+                }
+
+                spawn_voice_ping(&mut commands, &mut meshes, &mut materials, target, map_res.map.elevation_at(target));
             }
         }
         VoiceDemoPhase::Done => {} // Combat plays out naturally
@@ -459,8 +587,8 @@ mod tests {
     #[test]
     fn voice_demo_dialogue_and_triggers() {
         let mission = build_voice_demo_mission();
-        assert_eq!(mission.dialogue.len(), 3, "should have 3 dialogue lines");
-        assert_eq!(mission.triggers.len(), 3, "should have 3 triggers");
+        assert_eq!(mission.dialogue.len(), 5, "should have 5 dialogue lines");
+        assert_eq!(mission.triggers.len(), 5, "should have 5 triggers");
 
         // All dialogue from Minstral with AiVoice style
         for line in &mission.dialogue {
@@ -479,9 +607,11 @@ mod tests {
     #[test]
     fn voice_demo_phase_ordering() {
         // Phases must be ordered for PartialOrd comparisons in the FSM
-        assert!(VoiceDemoPhase::Setup < VoiceDemoPhase::Retreat);
-        assert!(VoiceDemoPhase::Retreat < VoiceDemoPhase::Charge);
+        assert!(VoiceDemoPhase::Setup < VoiceDemoPhase::Fallback);
+        assert!(VoiceDemoPhase::Fallback < VoiceDemoPhase::Charge);
         assert!(VoiceDemoPhase::Charge < VoiceDemoPhase::Attack);
-        assert!(VoiceDemoPhase::Attack < VoiceDemoPhase::Done);
+        assert!(VoiceDemoPhase::Attack < VoiceDemoPhase::Hold);
+        assert!(VoiceDemoPhase::Hold < VoiceDemoPhase::PullBack);
+        assert!(VoiceDemoPhase::PullBack < VoiceDemoPhase::Done);
     }
 }

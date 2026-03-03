@@ -24,6 +24,7 @@ pub mod tilemap;
 pub mod unit_gen;
 pub mod units;
 pub mod vfx;
+pub mod voice_ping;
 pub mod water;
 pub mod zoom_lod;
 
@@ -173,6 +174,15 @@ impl Plugin for RenderPlugin {
                         .run_if(zoom_lod::is_tactical),
                     vfx::spawn_impact_vfx
                         .run_if(zoom_lod::is_tactical),
+                ),
+            )
+            // Voice-command sonar-ping VFX
+            .add_systems(
+                Update,
+                (
+                    voice_ping::update_voice_pings,
+                    #[cfg(feature = "native")]
+                    voice_ping::spawn_voice_pings_from_events,
                 ),
             );
     }

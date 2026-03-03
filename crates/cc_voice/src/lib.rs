@@ -69,6 +69,7 @@ impl Plugin for VoicePlugin {
 
         app.add_message::<events::VoiceCommandEvent>();
         app.add_message::<events::VoiceStateChanged>();
+        app.add_message::<events::VoicePingRequest>();
 
         app.add_systems(Startup, pipeline::startup_voice_pipeline);
         app.add_systems(
