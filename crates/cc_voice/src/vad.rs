@@ -1,10 +1,9 @@
-/// Silero VAD wrapper (currently unused — kept for future use).
+/// Silero VAD wrapper — detects speech in 512-sample chunks using ONNX inference.
 ///
-/// Uses a Silero VAD v5 ONNX model to detect speech in 512-sample chunks.
-/// The model is stateful (carries RNN h/c state across calls).
+/// Uses Silero VAD v5 (`silero_vad.onnx`, ~2.2MB). The model is stateful,
+/// carrying RNN h/c state across calls for continuous speech detection.
 ///
-/// Not currently in the voice pipeline hot path — PTT press/release boundaries
-/// are used instead. Will be re-enabled when ort dependency is wired back in.
+/// When compiled without the `voice` feature, falls back to a stub returning 0.0.
 
 /// Speech probability threshold — above this means "speech detected".
 pub const DEFAULT_SPEECH_THRESHOLD: f32 = 0.5;
@@ -19,19 +18,40 @@ const VAD_CONTEXT_SAMPLES: usize = 64;
 /// Silero VAD v5 state dimensions: batch=1, hidden=128, num_layers=2.
 const VAD_STATE_SIZE: usize = 2 * 1 * 128;
 
+/// Total input size: context (64) + chunk (512) = 576 samples.
+#[cfg(feature = "voice")]
+const VAD_INPUT_SIZE: usize = VAD_CONTEXT_SAMPLES + VAD_CHUNK_SAMPLES;
+
 pub struct VadProcessor {
     /// Combined RNN state: [2, 1, 128] (Silero VAD v5 uses a single "state" tensor)
     state: Vec<f32>,
     /// Context buffer: last 64 samples from previous chunk, prepended to next chunk.
     /// Provides overlap to smooth detection probability transitions.
     context: Vec<f32>,
+    /// ONNX runtime session for Silero VAD inference. None when running as stub.
+    #[cfg(feature = "voice")]
+    session: Option<ort::session::Session>,
 }
 
 impl VadProcessor {
-    /// Create a VAD processor stub.
-    ///
-    /// When ort is available (future), this will load the ONNX model.
-    /// Currently returns a stub that always reports no speech.
+    /// Create a VAD processor and load the ONNX model.
+    #[cfg(feature = "voice")]
+    pub fn new(model_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let session = ort::session::Session::builder()?
+            .with_intra_threads(1)?
+            .commit_from_file(model_path)?;
+
+        log::info!("Silero VAD model loaded from '{model_path}'");
+
+        Ok(Self {
+            state: vec![0.0f32; VAD_STATE_SIZE],
+            context: vec![0.0f32; VAD_CONTEXT_SAMPLES],
+            session: Some(session),
+        })
+    }
+
+    /// Create a VAD processor stub (no model loaded, always returns 0.0).
+    #[cfg(not(feature = "voice"))]
     pub fn new(_model_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         Ok(Self {
             state: vec![0.0f32; VAD_STATE_SIZE],
@@ -39,10 +59,28 @@ impl VadProcessor {
         })
     }
 
+    /// Create a stub VAD processor for testing (no ONNX model, returns 0.0).
+    #[cfg(all(test, feature = "voice"))]
+    fn new_stub() -> Self {
+        Self {
+            state: vec![0.0f32; VAD_STATE_SIZE],
+            context: vec![0.0f32; VAD_CONTEXT_SAMPLES],
+            session: None,
+        }
+    }
+
+    /// Update the rolling context buffer with the tail of the given chunk.
+    fn update_context(&mut self, audio_chunk: &[f32]) {
+        let start = audio_chunk.len().saturating_sub(VAD_CONTEXT_SAMPLES);
+        self.context.clear();
+        self.context.extend_from_slice(&audio_chunk[start..]);
+    }
+
     /// Process a 512-sample audio chunk and return speech probability [0.0, 1.0].
     ///
     /// Prepends 64-sample context buffer before the chunk for smoother detection.
-    /// Currently a stub — returns 0.0. Will use ort when re-enabled.
+    /// Runs ONNX inference with stateful RNN (h/c state carried across calls).
+    #[cfg(feature = "voice")]
     pub fn process(&mut self, audio_chunk: &[f32]) -> Result<f32, Box<dyn std::error::Error>> {
         assert_eq!(
             audio_chunk.len(),
@@ -50,10 +88,54 @@ impl VadProcessor {
             "VAD requires exactly {VAD_CHUNK_SAMPLES} samples per chunk"
         );
 
-        // Save last VAD_CONTEXT_SAMPLES as context for next call
-        let start = audio_chunk.len().saturating_sub(VAD_CONTEXT_SAMPLES);
-        self.context.clear();
-        self.context.extend_from_slice(&audio_chunk[start..]);
+        let Some(session) = &mut self.session else {
+            // Stub path: no model loaded, update context and return 0.0
+            self.update_context(audio_chunk);
+            return Ok(0.0);
+        };
+
+        use ort::value::TensorRef;
+
+        // Build input: [1, 576] = context(64) + chunk(512)
+        let mut input = Vec::with_capacity(VAD_INPUT_SIZE);
+        input.extend_from_slice(&self.context);
+        input.extend_from_slice(audio_chunk);
+
+        let input_ref = TensorRef::from_array_view(([1usize, VAD_INPUT_SIZE], &input[..]))?;
+        let state_ref = TensorRef::from_array_view(([2usize, 1, 128], &self.state[..]))?;
+        let sr_data = [16000i64];
+        let sr_ref = TensorRef::from_array_view(([1usize], &sr_data[..]))?;
+
+        let outputs = session.run(ort::inputs![
+            "input" => input_ref,
+            "state" => state_ref,
+            "sr" => sr_ref,
+        ])?;
+
+        // Extract speech probability and new RNN state from outputs.
+        // Clone values before dropping `outputs` (which borrows `session`/`self`).
+        let (_shape, prob_data) = outputs["output"].try_extract_tensor::<f32>()?;
+        let prob = prob_data[0];
+        let (_shape, new_state_data) = outputs["stateN"].try_extract_tensor::<f32>()?;
+        let new_state = new_state_data.to_vec();
+        drop(outputs);
+
+        self.state = new_state;
+        self.update_context(audio_chunk);
+
+        Ok(prob)
+    }
+
+    /// Stub process — returns 0.0 when voice feature is disabled.
+    #[cfg(not(feature = "voice"))]
+    pub fn process(&mut self, audio_chunk: &[f32]) -> Result<f32, Box<dyn std::error::Error>> {
+        assert_eq!(
+            audio_chunk.len(),
+            VAD_CHUNK_SAMPLES,
+            "VAD requires exactly {VAD_CHUNK_SAMPLES} samples per chunk"
+        );
+
+        self.update_context(audio_chunk);
 
         // Stub: no model loaded, return 0.0
         Ok(0.0)
@@ -76,15 +158,26 @@ impl VadProcessor {
 mod tests {
     use super::*;
 
+    fn make_vad() -> VadProcessor {
+        #[cfg(feature = "voice")]
+        {
+            VadProcessor::new_stub()
+        }
+        #[cfg(not(feature = "voice"))]
+        {
+            VadProcessor::new("nonexistent.onnx").unwrap()
+        }
+    }
+
     #[test]
     fn test_vad_state_shape() {
-        let vad = VadProcessor::new("nonexistent.onnx").unwrap();
+        let vad = make_vad();
         assert_eq!(vad.state.len(), VAD_STATE_SIZE);
     }
 
     #[test]
     fn test_vad_reset() {
-        let mut vad = VadProcessor::new("nonexistent.onnx").unwrap();
+        let mut vad = make_vad();
         vad.state.fill(1.0);
         vad.context.fill(1.0);
         vad.reset();
@@ -94,7 +187,7 @@ mod tests {
 
     #[test]
     fn test_vad_silence_returns_zero() {
-        let mut vad = VadProcessor::new("nonexistent.onnx").unwrap();
+        let mut vad = make_vad();
         let silence = vec![0.0f32; VAD_CHUNK_SAMPLES];
         let prob = vad.process(&silence).unwrap();
         assert_eq!(prob, 0.0, "stub VAD should return 0.0 for any input");
@@ -102,7 +195,7 @@ mod tests {
 
     #[test]
     fn test_vad_context_buffer_updated() {
-        let mut vad = VadProcessor::new("nonexistent.onnx").unwrap();
+        let mut vad = make_vad();
 
         // Create a chunk with known values at the end
         let mut chunk = vec![0.0f32; VAD_CHUNK_SAMPLES];
@@ -122,7 +215,7 @@ mod tests {
 
     #[test]
     fn test_vad_context_reset_clears() {
-        let mut vad = VadProcessor::new("nonexistent.onnx").unwrap();
+        let mut vad = make_vad();
         let chunk = vec![1.0f32; VAD_CHUNK_SAMPLES];
         vad.process(&chunk).unwrap();
 

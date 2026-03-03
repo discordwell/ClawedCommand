@@ -10,12 +10,18 @@ use bevy::prelude::*;
 /// Configuration resource for the voice pipeline.
 #[derive(Resource)]
 pub struct VoiceConfig {
-    /// Path to Silero VAD ONNX model (kept for future use).
+    /// Path to Silero VAD ONNX model.
     pub vad_model_path: String,
     /// Path to Whisper GGML model file.
     pub whisper_model_path: String,
-    /// Push-to-talk key.
-    pub ptt_key: KeyCode,
+    /// Key to toggle mute/unmute (starts unmuted = listening).
+    pub toggle_key: KeyCode,
+    /// VAD probability threshold for speech onset.
+    pub vad_onset_threshold: f32,
+    /// VAD probability threshold for speech offset (lower = hysteresis).
+    pub vad_offset_threshold: f32,
+    /// Milliseconds of silence after speech offset before triggering transcription.
+    pub silence_duration_ms: u32,
 }
 
 impl Default for VoiceConfig {
@@ -23,7 +29,10 @@ impl Default for VoiceConfig {
         Self {
             vad_model_path: "assets/voice/silero_vad.onnx".into(),
             whisper_model_path: "assets/voice/ggml-tiny.en.bin".into(),
-            ptt_key: KeyCode::KeyV,
+            toggle_key: KeyCode::KeyV,
+            vad_onset_threshold: 0.5,
+            vad_offset_threshold: 0.3,
+            silence_duration_ms: 500,
         }
     }
 }
@@ -47,7 +56,7 @@ impl Default for VoiceState {
 /// - `VoiceConfig` resource (insert before adding plugin to override defaults)
 /// - `VoiceCommandEvent` and `VoiceStateChanged` events
 /// - Startup system to load models and spawn inference thread
-/// - Update systems for PTT input, polling results, and intent mapping
+/// - Update systems for mute toggle, polling results, and intent mapping
 pub struct VoicePlugin;
 
 impl Plugin for VoicePlugin {
@@ -65,7 +74,7 @@ impl Plugin for VoicePlugin {
         app.add_systems(
             Update,
             (
-                pipeline::handle_ptt_input,
+                pipeline::handle_voice_toggle,
                 pipeline::poll_voice_results,
                 intent::voice_intent_system,
             )

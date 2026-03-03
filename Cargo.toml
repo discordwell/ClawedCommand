@@ -13,6 +13,7 @@ ringbuf = "0.4"
 crossbeam-channel = "0.5"
 cpal = "0.15"
 whisper-rs = "0.15"
+ort = { version = "2.0.0-rc.11", features = ["load-dynamic"] }
 log = "0.4"
 
 

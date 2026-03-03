@@ -1,15 +1,14 @@
-/// Three-thread voice processing pipeline.
+/// Three-thread voice processing pipeline with VAD-driven speech detection.
 ///
 /// Architecture:
 ///   1. **OS audio thread** (cpal): mic → ring buffer (lock-free SPSC)
-///   2. **Inference thread**: ring buffer → accumulate while PTT held → Whisper on release → channel
+///   2. **Inference thread**: ring buffer → VAD detects speech → accumulate → silence timeout → Whisper → channel
 ///   3. **Bevy main thread**: channel → VoiceCommandEvent
 ///
-/// The inference thread runs in a tight loop:
-///   - PTT not held → drain ring buffer, sleep
-///   - PTT just pressed → clear accumulator, start accumulating
-///   - PTT held → read samples from ring buffer into accumulator
-///   - PTT released → run Whisper on accumulated audio, send text result
+/// The inference thread runs a VAD state machine:
+///   - Idle: read 512-sample chunks, run VAD. Speech onset → Speaking.
+///   - Speaking: accumulate chunks. Speech offset → Trailing. Max 5s → force transcribe.
+///   - Trailing: continue accumulating. Speech resumes → Speaking. 500ms silence → transcribe.
 #[cfg(feature = "voice")]
 use crossbeam_channel::{Receiver, Sender};
 #[cfg(feature = "voice")]
@@ -25,6 +24,7 @@ use std::sync::{
 use crate::events::VoiceCommandEvent;
 use crate::events::VoiceStateChanged;
 use crate::{VoiceConfig, VoiceState};
+use crate::vad::VAD_CHUNK_SAMPLES;
 
 /// Resource holding the channel receiver for transcribed voice text.
 #[cfg(feature = "voice")]
@@ -33,16 +33,181 @@ pub struct VoiceTranscriptReceiver {
     pub rx: Receiver<String>,
 }
 
-/// Shared atomic flag: true when PTT is held down and we should listen.
+/// Shared atomic flag: true when muted (voice listening suppressed).
+/// Default: false (starts listening/unmuted).
 #[derive(Resource, Clone)]
-pub struct ListeningFlag {
+pub struct MuteFlag {
     pub flag: Arc<AtomicBool>,
 }
 
-/// Startup system: loads Whisper model, starts audio capture, spawns inference thread.
+// ── VAD State Machine ──────────────────────────────────────────────────────
+
+/// VAD-driven speech detection state machine.
+///
+/// States: Idle → Speaking → Trailing → (emit audio) → Idle
+///
+/// Designed to be unit-testable: feed VAD probabilities and audio chunks,
+/// get back completed speech segments.
+#[derive(Debug, PartialEq, Eq)]
+enum VadState {
+    Idle,
+    Speaking,
+    Trailing,
+}
+
+pub(crate) struct VadStateMachine {
+    state: VadState,
+    /// Accumulated speech audio samples.
+    accumulator: Vec<f32>,
+    /// Rolling pre-speech buffer (1 VAD chunk = 512 samples).
+    pre_speech_buf: Vec<f32>,
+    /// Count of consecutive low-probability chunks in Trailing state.
+    silence_chunks: u32,
+
+    // Thresholds
+    onset_threshold: f32,
+    offset_threshold: f32,
+    /// Number of silent chunks before triggering transcription.
+    silence_chunk_limit: u32,
+    /// Minimum samples for valid speech (shorter = noise).
+    min_samples: usize,
+    /// Maximum samples before forced transcription.
+    max_samples: usize,
+}
+
+impl VadStateMachine {
+    /// Create a new VAD state machine with the given thresholds.
+    ///
+    /// - `onset_threshold`: VAD probability to start speech (default 0.5)
+    /// - `offset_threshold`: VAD probability to consider silence (default 0.3)
+    /// - `silence_duration_ms`: milliseconds of silence to end speech (default 500)
+    pub fn new(onset_threshold: f32, offset_threshold: f32, silence_duration_ms: u32) -> Self {
+        // 16kHz / 512 samples = 31.25 chunks/sec → silence_ms / 32 ≈ chunk count
+        let silence_chunk_limit = (silence_duration_ms as f32 / 32.0).ceil() as u32;
+
+        Self {
+            state: VadState::Idle,
+            accumulator: Vec::with_capacity(48000),
+            pre_speech_buf: Vec::with_capacity(VAD_CHUNK_SAMPLES),
+            silence_chunks: 0,
+            onset_threshold,
+            offset_threshold,
+            silence_chunk_limit,
+            min_samples: 4800,  // 300ms at 16kHz
+            max_samples: 80000, // 5s at 16kHz
+        }
+    }
+
+    /// Feed a VAD probability and audio chunk. Returns accumulated speech audio
+    /// when a complete utterance is detected (speech ended by silence timeout
+    /// or max duration reached).
+    pub fn feed(&mut self, prob: f32, chunk: &[f32]) -> Option<Vec<f32>> {
+        match self.state {
+            VadState::Idle => {
+                if prob >= self.onset_threshold {
+                    // Speech onset — prepend pre-speech buffer for word onset preservation
+                    self.accumulator.clear();
+                    self.accumulator.extend_from_slice(&self.pre_speech_buf);
+                    self.accumulator.extend_from_slice(chunk);
+                    self.state = VadState::Speaking;
+                    log::debug!("VAD: speech onset (prob={prob:.2})");
+                } else {
+                    // Update rolling pre-speech buffer
+                    self.pre_speech_buf.clear();
+                    self.pre_speech_buf.extend_from_slice(chunk);
+                }
+                None
+            }
+            VadState::Speaking => {
+                self.accumulator.extend_from_slice(chunk);
+
+                // Max duration reached — force transcription
+                if self.accumulator.len() >= self.max_samples {
+                    log::info!("VAD: max speech duration reached, forcing transcription");
+                    return self.emit();
+                }
+
+                if prob < self.offset_threshold {
+                    // Speech may be ending — enter trailing silence
+                    self.silence_chunks = 1;
+                    self.state = VadState::Trailing;
+                    log::trace!("VAD: speech offset candidate (prob={prob:.2})");
+                }
+                None
+            }
+            VadState::Trailing => {
+                self.accumulator.extend_from_slice(chunk);
+
+                // Max duration check
+                if self.accumulator.len() >= self.max_samples {
+                    log::info!("VAD: max speech duration reached during trailing");
+                    return self.emit();
+                }
+
+                if prob >= self.onset_threshold {
+                    // Speech resumed
+                    self.silence_chunks = 0;
+                    self.state = VadState::Speaking;
+                    log::trace!("VAD: speech resumed (prob={prob:.2})");
+                    None
+                } else {
+                    self.silence_chunks += 1;
+                    if self.silence_chunks >= self.silence_chunk_limit {
+                        // Silence timeout — end of utterance
+                        log::debug!(
+                            "VAD: silence timeout ({} chunks), ending utterance",
+                            self.silence_chunks
+                        );
+                        // Trim trailing silence (remove the silent chunks)
+                        let trim_samples =
+                            self.silence_chunks as usize * VAD_CHUNK_SAMPLES;
+                        let keep = self.accumulator.len().saturating_sub(trim_samples);
+                        self.accumulator.truncate(keep);
+                        self.emit()
+                    } else {
+                        None
+                    }
+                }
+            }
+        }
+    }
+
+    /// Extract accumulated audio and reset state. Returns None if too short.
+    fn emit(&mut self) -> Option<Vec<f32>> {
+        let audio = std::mem::take(&mut self.accumulator);
+        self.state = VadState::Idle;
+        self.silence_chunks = 0;
+        self.pre_speech_buf.clear();
+
+        if audio.len() >= self.min_samples {
+            let duration_ms = audio.len() * 1000 / 16000;
+            log::info!("VAD: emitting {duration_ms}ms speech ({} samples)", audio.len());
+            Some(audio)
+        } else {
+            log::debug!(
+                "VAD: discarding too-short speech ({} samples < {})",
+                audio.len(),
+                self.min_samples
+            );
+            None
+        }
+    }
+
+    /// Reset all state (call when muting).
+    pub fn reset(&mut self) {
+        self.accumulator.clear();
+        self.pre_speech_buf.clear();
+        self.silence_chunks = 0;
+        self.state = VadState::Idle;
+    }
+}
+
+// ── Startup & Systems ──────────────────────────────────────────────────────
+
+/// Startup system: loads Whisper + VAD models, starts audio capture, spawns inference thread.
 #[cfg(feature = "voice")]
 pub fn startup_voice_pipeline(mut commands: Commands, config: Res<VoiceConfig>) {
-    log::info!("Initializing voice pipeline...");
+    log::info!("Initializing voice pipeline (passive VAD mode)...");
 
     let whisper_path = &config.whisper_model_path;
 
@@ -51,6 +216,18 @@ pub fn startup_voice_pipeline(mut commands: Commands, config: Res<VoiceConfig>) 
         Err(e) => {
             log::error!("Failed to load Whisper model from '{whisper_path}': {e}");
             log::warn!("Voice pipeline disabled — Whisper model not found");
+            commands.insert_resource(VoiceState { enabled: false });
+            return;
+        }
+    };
+
+    // Load VAD model
+    let vad_path = &config.vad_model_path;
+    let vad = match crate::vad::VadProcessor::new(vad_path) {
+        Ok(v) => v,
+        Err(e) => {
+            log::error!("Failed to load VAD model from '{vad_path}': {e}");
+            log::warn!("Voice pipeline disabled — VAD model not found");
             commands.insert_resource(VoiceState { enabled: false });
             return;
         }
@@ -70,22 +247,28 @@ pub fn startup_voice_pipeline(mut commands: Commands, config: Res<VoiceConfig>) 
     // Channel for inference → Bevy
     let (tx, rx) = crossbeam_channel::bounded::<String>(16);
 
-    // PTT flag
-    let listening = Arc::new(AtomicBool::new(false));
-    let listening_clone = listening.clone();
+    // Mute flag — false = listening (default)
+    let mute = Arc::new(AtomicBool::new(false));
+    let mute_clone = mute.clone();
+
+    let state_machine = VadStateMachine::new(
+        config.vad_onset_threshold,
+        config.vad_offset_threshold,
+        config.silence_duration_ms,
+    );
 
     // Spawn inference thread
     std::thread::Builder::new()
         .name("voice-inference".into())
         .spawn(move || {
-            inference_loop(consumer, transcriber, tx, listening_clone);
+            inference_loop(consumer, vad, transcriber, tx, mute_clone, state_machine);
         })
         .expect("failed to spawn voice inference thread");
 
-    log::info!("Voice pipeline ready (PTT: V key, Whisper tiny.en)");
+    log::info!("Voice pipeline ready (passive VAD, V key = mute toggle)");
 
     commands.insert_resource(VoiceTranscriptReceiver { rx });
-    commands.insert_resource(ListeningFlag { flag: listening });
+    commands.insert_resource(MuteFlag { flag: mute });
     commands.insert_resource(VoiceState { enabled: true });
 }
 
@@ -96,91 +279,90 @@ pub fn startup_voice_pipeline(mut commands: Commands) {
     commands.insert_resource(VoiceState { enabled: false });
 }
 
-/// The inference thread's main loop.
+/// The inference thread's main loop — VAD-driven speech detection.
 ///
-/// Accumulates audio while PTT is held, then transcribes on release.
+/// Reads 512-sample chunks from the ring buffer, runs VAD, and uses the
+/// VadStateMachine to detect speech boundaries. Transcribes with Whisper
+/// when speech ends.
 #[cfg(feature = "voice")]
 fn inference_loop(
     mut consumer: ringbuf::HeapCons<f32>,
+    mut vad: crate::vad::VadProcessor,
     transcriber: crate::transcriber::WhisperTranscriber,
     tx: Sender<String>,
-    is_listening: Arc<AtomicBool>,
+    is_muted: Arc<AtomicBool>,
+    mut state_machine: VadStateMachine,
 ) {
-    let mut accumulator: Vec<f32> = Vec::with_capacity(48000); // up to 3s at 16kHz
-    let mut was_listening = false;
-    // Minimum samples for transcription (0.3 seconds) — shorter clips are noise
-    let min_samples: usize = 4800;
-    // Maximum samples (5 seconds) — truncate to avoid long Whisper runs
-    let max_samples: usize = 80000;
+    let mut chunk_buf = vec![0.0f32; VAD_CHUNK_SAMPLES];
+    // Persist fill position across iterations to avoid losing partial reads
+    let mut filled = 0usize;
 
     loop {
-        let currently_listening = is_listening.load(Ordering::Relaxed);
-
-        if currently_listening {
-            if !was_listening {
-                // PTT just pressed → clear accumulator
-                accumulator.clear();
-                log::debug!("PTT pressed — accumulating audio");
-            }
-
-            // Read all available samples from ring buffer into accumulator
-            let mut count = 0;
-            while let Some(sample) = consumer.try_pop() {
-                if accumulator.len() < max_samples {
-                    accumulator.push(sample);
-                }
-                count += 1;
-            }
-
-            if count > 0 {
-                log::trace!("Accumulated {count} samples (total: {})", accumulator.len());
-            }
-
-            was_listening = true;
-            std::thread::sleep(std::time::Duration::from_millis(10));
-        } else if was_listening {
-            // PTT just released → transcribe accumulated audio
-            was_listening = false;
-
-            // Drain any remaining samples that arrived between last read and release
-            while let Some(sample) = consumer.try_pop() {
-                if accumulator.len() < max_samples {
-                    accumulator.push(sample);
-                }
-            }
-
-            if accumulator.len() >= min_samples {
-                let duration_ms = accumulator.len() * 1000 / 16000;
-                log::info!(
-                    "PTT released — transcribing {duration_ms}ms of audio ({} samples)",
-                    accumulator.len()
-                );
-
-                match transcriber.transcribe(&accumulator) {
-                    Ok(text) => {
-                        if !text.is_empty() {
-                            log::info!("Whisper transcription: \"{text}\"");
-                            let _ = tx.send(text);
-                        } else {
-                            log::debug!("Whisper returned empty transcription — silence?");
-                        }
-                    }
-                    Err(e) => {
-                        log::error!("Whisper transcription error: {e}");
-                    }
-                }
-            } else {
-                log::debug!(
-                    "PTT released — too short ({} samples < {min_samples}), skipping",
-                    accumulator.len()
-                );
-            }
-
-            accumulator.clear();
-        } else {
-            // Not listening — drain ring buffer to keep it fresh
+        if is_muted.load(Ordering::Relaxed) {
+            // Muted — drain ring buffer, discard in-progress speech, sleep
             while consumer.try_pop().is_some() {}
-            std::thread::sleep(std::time::Duration::from_millis(20));
+            state_machine.reset();
+            vad.reset();
+            filled = 0;
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            continue;
+        }
+
+        // Continue filling chunk_buf from where we left off
+        while filled < VAD_CHUNK_SAMPLES {
+            match consumer.try_pop() {
+                Some(sample) => {
+                    chunk_buf[filled] = sample;
+                    filled += 1;
+                }
+                None => break,
+            }
+        }
+
+        if filled < VAD_CHUNK_SAMPLES {
+            // Not enough samples yet — sleep briefly and retry (partial data preserved)
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            continue;
+        }
+
+        // Full chunk ready — reset fill counter for next chunk
+        filled = 0;
+
+        // Run VAD on the chunk
+        let prob = match vad.process(&chunk_buf) {
+            Ok(p) => p,
+            Err(e) => {
+                log::error!("VAD inference error: {e}");
+                std::thread::sleep(std::time::Duration::from_millis(10));
+                continue;
+            }
+        };
+
+        // Feed to state machine
+        if let Some(speech_audio) = state_machine.feed(prob, &chunk_buf) {
+            // Speech segment complete — transcribe with Whisper
+            let duration_ms = speech_audio.len() * 1000 / 16000;
+            log::info!(
+                "Transcribing {duration_ms}ms of speech ({} samples)",
+                speech_audio.len()
+            );
+
+            match transcriber.transcribe(&speech_audio) {
+                Ok(text) => {
+                    if !text.is_empty() {
+                        log::info!("Whisper transcription: \"{text}\"");
+                        let _ = tx.send(text);
+                    } else {
+                        log::debug!("Whisper returned empty transcription — noise?");
+                    }
+                }
+                Err(e) => {
+                    log::error!("Whisper transcription error: {e}");
+                }
+            }
+
+            // Reset VAD RNN state between utterances for clean detection
+            vad.reset();
         }
     }
 }
@@ -202,25 +384,169 @@ pub fn poll_voice_results(
 #[cfg(not(feature = "voice"))]
 pub fn poll_voice_results() {}
 
-/// Bevy system: V key toggles push-to-talk.
-pub fn handle_ptt_input(
+/// Bevy system: V key toggles mute/unmute for voice listening.
+pub fn handle_voice_toggle(
     keyboard: Res<ButtonInput<KeyCode>>,
-    listening: Option<Res<ListeningFlag>>,
+    mute: Option<Res<MuteFlag>>,
     config: Res<VoiceConfig>,
     mut state_events: MessageWriter<VoiceStateChanged>,
 ) {
-    let Some(listening) = listening else { return };
+    let Some(mute) = mute else { return };
 
-    let ptt_key = config.ptt_key;
-
-    if keyboard.just_pressed(ptt_key) {
-        listening.flag.store(true, Ordering::Relaxed);
-        state_events.write(VoiceStateChanged { listening: true });
-        log::debug!("PTT pressed — listening");
+    if keyboard.just_pressed(config.toggle_key) {
+        let was_muted = mute.flag.load(Ordering::Relaxed);
+        let now_muted = !was_muted;
+        mute.flag.store(now_muted, Ordering::Relaxed);
+        state_events.write(VoiceStateChanged {
+            listening: !now_muted,
+        });
+        if now_muted {
+            log::info!("Voice muted (V toggle)");
+        } else {
+            log::info!("Voice unmuted (V toggle)");
+        }
     }
-    if keyboard.just_released(ptt_key) {
-        listening.flag.store(false, Ordering::Relaxed);
-        state_events.write(VoiceStateChanged { listening: false });
-        log::debug!("PTT released — stopped");
+}
+
+// ── Tests ──────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_sm() -> VadStateMachine {
+        // onset=0.5, offset=0.3, silence=500ms (~16 chunks)
+        VadStateMachine::new(0.5, 0.3, 500)
+    }
+
+    fn chunk(val: f32) -> Vec<f32> {
+        vec![val; VAD_CHUNK_SAMPLES]
+    }
+
+    #[test]
+    fn idle_stays_idle_on_silence() {
+        let mut sm = make_sm();
+        let result = sm.feed(0.1, &chunk(0.0));
+        assert!(result.is_none());
+        assert_eq!(sm.state, VadState::Idle);
+    }
+
+    #[test]
+    fn onset_transitions_to_speaking() {
+        let mut sm = make_sm();
+        let result = sm.feed(0.6, &chunk(0.5));
+        assert!(result.is_none());
+        assert_eq!(sm.state, VadState::Speaking);
+        // Accumulator should contain pre-speech buf + chunk
+        assert_eq!(sm.accumulator.len(), VAD_CHUNK_SAMPLES); // pre-speech buf was empty
+    }
+
+    #[test]
+    fn onset_prepends_pre_speech_buffer() {
+        let mut sm = make_sm();
+        // First, feed a silent chunk to populate pre-speech buffer
+        sm.feed(0.1, &chunk(0.1));
+        assert_eq!(sm.pre_speech_buf.len(), VAD_CHUNK_SAMPLES);
+
+        // Now trigger onset — should prepend pre-speech buf
+        sm.feed(0.6, &chunk(0.5));
+        assert_eq!(sm.state, VadState::Speaking);
+        assert_eq!(sm.accumulator.len(), VAD_CHUNK_SAMPLES * 2);
+    }
+
+    #[test]
+    fn speaking_to_trailing_on_low_prob() {
+        let mut sm = make_sm();
+        sm.feed(0.6, &chunk(0.5)); // → Speaking
+        sm.feed(0.2, &chunk(0.0)); // → Trailing
+        assert_eq!(sm.state, VadState::Trailing);
+    }
+
+    #[test]
+    fn trailing_back_to_speaking_on_high_prob() {
+        let mut sm = make_sm();
+        sm.feed(0.6, &chunk(0.5)); // → Speaking
+        sm.feed(0.2, &chunk(0.0)); // → Trailing
+        sm.feed(0.6, &chunk(0.5)); // → Speaking
+        assert_eq!(sm.state, VadState::Speaking);
+        assert_eq!(sm.silence_chunks, 0);
+    }
+
+    #[test]
+    fn silence_timeout_triggers_emission() {
+        let mut sm = make_sm();
+
+        // Need enough speech to pass min_samples (4800 = ~9.4 chunks)
+        sm.feed(0.6, &chunk(0.5)); // Speaking
+        for _ in 0..10 {
+            sm.feed(0.6, &chunk(0.5)); // Keep speaking
+        }
+
+        // Now go silent for silence_chunk_limit chunks
+        let limit = sm.silence_chunk_limit;
+        for i in 0..limit {
+            let result = sm.feed(0.1, &chunk(0.0));
+            if i == limit - 1 {
+                // Last silent chunk should trigger emission
+                assert!(result.is_some(), "should emit on silence timeout");
+                let audio = result.unwrap();
+                // Audio should have trailing silence trimmed
+                assert!(audio.len() >= sm.min_samples);
+            } else {
+                assert!(result.is_none());
+            }
+        }
+        assert_eq!(sm.state, VadState::Idle);
+    }
+
+    #[test]
+    fn too_short_speech_discarded() {
+        let mut sm = make_sm();
+
+        // Only 1 chunk of speech (~32ms) — below min_samples (300ms = 4800 samples)
+        sm.feed(0.6, &chunk(0.5)); // Speaking, 512 samples
+
+        // Immediately go silent
+        let limit = sm.silence_chunk_limit;
+        let mut emitted = false;
+        for _ in 0..limit {
+            if sm.feed(0.1, &chunk(0.0)).is_some() {
+                emitted = true;
+            }
+        }
+        assert!(!emitted, "too-short speech should be discarded");
+        assert_eq!(sm.state, VadState::Idle);
+    }
+
+    #[test]
+    fn max_speech_forces_transcription() {
+        let mut sm = make_sm();
+        sm.feed(0.6, &chunk(0.5)); // Speaking
+
+        // Feed until max_samples exceeded
+        let chunks_to_max = sm.max_samples / VAD_CHUNK_SAMPLES + 1;
+        let mut emitted = false;
+        for _ in 0..chunks_to_max {
+            if sm.feed(0.6, &chunk(0.5)).is_some() {
+                emitted = true;
+                break;
+            }
+        }
+        assert!(emitted, "should force transcription at max_samples");
+        assert_eq!(sm.state, VadState::Idle);
+    }
+
+    #[test]
+    fn reset_returns_to_idle() {
+        let mut sm = make_sm();
+        sm.feed(0.6, &chunk(0.5)); // Speaking
+        sm.feed(0.6, &chunk(0.5)); // More speaking
+        assert_eq!(sm.state, VadState::Speaking);
+
+        sm.reset();
+        assert_eq!(sm.state, VadState::Idle);
+        assert!(sm.accumulator.is_empty());
+        assert!(sm.pre_speech_buf.is_empty());
+        assert_eq!(sm.silence_chunks, 0);
     }
 }

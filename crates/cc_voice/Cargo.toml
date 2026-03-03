@@ -5,7 +5,7 @@ edition = "2024"
 
 [features]
 default = ["voice"]
-voice = ["dep:whisper-rs", "dep:cpal", "dep:ringbuf", "dep:crossbeam-channel"]
+voice = ["dep:whisper-rs", "dep:cpal", "dep:ringbuf", "dep:crossbeam-channel", "dep:ort"]
 
 [dependencies]
 cc_core = { path = "../cc_core", features = ["bevy"] }
@@ -17,5 +17,6 @@ whisper-rs = { workspace = true, optional = true }
 cpal = { workspace = true, optional = true }
 ringbuf = { workspace = true, optional = true }
 crossbeam-channel = { workspace = true, optional = true }
+ort = { workspace = true, optional = true }
 
 log = { workspace = true }
