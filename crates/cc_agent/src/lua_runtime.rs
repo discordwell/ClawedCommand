@@ -6,7 +6,7 @@ use cc_core::coords::GridPos;
 use cc_core::math::Fixed;
 use mlua::prelude::*;
 
-use crate::script_context::{ScriptContext, UnitState};
+use crate::script_context::{BlackboardValue, EnemyMemoryEntry, ScriptContext, ScriptEvent, UnitState};
 use crate::snapshot::{BuildingSnapshot, ResourceSnapshot, UnitSnapshot};
 use crate::tool_tier::ToolTier;
 
@@ -622,6 +622,317 @@ pub fn execute_script_with_context_tiered(
             ctx_table
                 .set("map_size", f)
                 ?;
+        }
+
+        // -------------------------------------------------------------------
+        // Phase 2: Vision query bindings (free)
+        // -------------------------------------------------------------------
+
+        // ctx:is_visible(x, y) → bool
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, (_self, x, y): (LuaValue, i32, i32)| {
+                    let ctx = cell.borrow();
+                    Ok(ctx.is_visible(GridPos::new(x, y)))
+                })?;
+            ctx_table.set("is_visible", f)?;
+        }
+
+        // ctx:fog_state(x, y) → "visible" or "fog"
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, (_self, x, y): (LuaValue, i32, i32)| {
+                    let ctx = cell.borrow();
+                    Ok(ctx.fog_state(GridPos::new(x, y)).to_string())
+                })?;
+            ctx_table.set("fog_state", f)?;
+        }
+
+        // -------------------------------------------------------------------
+        // Phase 2: Enemy memory bindings (budget-costed)
+        // -------------------------------------------------------------------
+
+        // ctx:last_seen_enemies() → table of memory entries
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, _self: LuaValue| {
+                    let mut ctx = cell.borrow_mut();
+                    let entries = ctx.last_seen_enemies();
+                    let tbl = lua.create_table()?;
+                    for (i, entry) in entries.iter().enumerate() {
+                        tbl.set(i + 1, enemy_memory_to_lua_table(lua, entry)?)?;
+                    }
+                    Ok(tbl)
+                })?;
+            ctx_table.set("last_seen_enemies", f)?;
+        }
+
+        // ctx:last_seen_at(unit_id) → memory entry or nil
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, (_self, unit_id): (LuaValue, u64)| {
+                    let mut ctx = cell.borrow_mut();
+                    match ctx.last_seen_at(unit_id) {
+                        Some(entry) => Ok(LuaValue::Table(enemy_memory_to_lua_table(lua, &entry)?)),
+                        None => Ok(LuaValue::Nil),
+                    }
+                })?;
+            ctx_table.set("last_seen_at", f)?;
+        }
+
+        // -------------------------------------------------------------------
+        // Phase 2: Threat assessment bindings (budget-costed)
+        // -------------------------------------------------------------------
+
+        // ctx:threat_level(x, y, radius) → number
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, (_self, x, y, radius): (LuaValue, i32, i32, i32)| {
+                    let mut ctx = cell.borrow_mut();
+                    Ok(ctx.threat_level(GridPos::new(x, y), radius))
+                })?;
+            ctx_table.set("threat_level", f)?;
+        }
+
+        // ctx:army_strength() → {total_hp, total_dps, unit_count}
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, _self: LuaValue| {
+                    let mut ctx = cell.borrow_mut();
+                    let strength = ctx.army_strength();
+                    let tbl = lua.create_table()?;
+                    tbl.set("total_hp", strength.total_hp)?;
+                    tbl.set("total_dps", strength.total_dps)?;
+                    tbl.set("unit_count", strength.unit_count)?;
+                    Ok(tbl)
+                })?;
+            ctx_table.set("army_strength", f)?;
+        }
+
+        // -------------------------------------------------------------------
+        // Phase 2: Inter-script event bindings (free)
+        // -------------------------------------------------------------------
+
+        // ctx:emit_event(name, data_string)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, (_self, name, data): (LuaValue, String, String)| {
+                    let mut ctx = cell.borrow_mut();
+                    ctx.emit_event(name, data);
+                    Ok(())
+                })?;
+            ctx_table.set("emit_event", f)?;
+        }
+
+        // ctx:poll_events(name) → table of {name, data, tick}
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, (_self, name): (LuaValue, String)| {
+                    let mut ctx = cell.borrow_mut();
+                    let events = ctx.poll_events(&name);
+                    let tbl = lua.create_table()?;
+                    for (i, event) in events.iter().enumerate() {
+                        tbl.set(i + 1, script_event_to_lua_table(lua, event)?)?;
+                    }
+                    Ok(tbl)
+                })?;
+            ctx_table.set("poll_events", f)?;
+        }
+
+        // ctx:drain_events(name) → table of {name, data, tick}
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, (_self, name): (LuaValue, String)| {
+                    let mut ctx = cell.borrow_mut();
+                    let events = ctx.drain_events(&name);
+                    let tbl = lua.create_table()?;
+                    for (i, event) in events.iter().enumerate() {
+                        tbl.set(i + 1, script_event_to_lua_table(lua, event)?)?;
+                    }
+                    Ok(tbl)
+                })?;
+            ctx_table.set("drain_events", f)?;
+        }
+
+        // -------------------------------------------------------------------
+        // Phase 3: Strategic assessment, expansion, squads, scoring
+        // -------------------------------------------------------------------
+
+        // ctx:game_phase() → "early", "mid", or "late"
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, _self: LuaValue| {
+                    let ctx = cell.borrow();
+                    Ok(ctx.game_phase().to_string())
+                })?;
+            ctx_table.set("game_phase", f)?;
+        }
+
+        // ctx:expansion_sites() → table of {deposit_id, resource_type, x, y, remaining, distance_to_base}
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, _self: LuaValue| {
+                    let mut ctx = cell.borrow_mut();
+                    let sites = ctx.expansion_sites();
+                    let tbl = lua.create_table()?;
+                    for (i, site) in sites.iter().enumerate() {
+                        let entry = lua.create_table()?;
+                        entry.set("deposit_id", site.deposit_id)?;
+                        entry.set("resource_type", site.resource_type.clone())?;
+                        entry.set("x", site.x)?;
+                        entry.set("y", site.y)?;
+                        entry.set("remaining", site.remaining)?;
+                        entry.set("distance_to_base", site.distance_to_base)?;
+                        tbl.set(i + 1, entry)?;
+                    }
+                    Ok(tbl)
+                })?;
+            ctx_table.set("expansion_sites", f)?;
+        }
+
+        // ctx:predict_engagement({my_id1, my_id2}, {enemy_id1, enemy_id2})
+        // → {winner, confidence, my_survivors, enemy_survivors}
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(
+                    |lua, (_self, my_ids, enemy_ids): (LuaValue, Vec<u64>, Vec<u64>)| {
+                        let mut ctx = cell.borrow_mut();
+                        let my_eids: Vec<EntityId> = my_ids.into_iter().map(EntityId).collect();
+                        let enemy_eids: Vec<EntityId> =
+                            enemy_ids.into_iter().map(EntityId).collect();
+                        let pred = ctx.predict_engagement(&my_eids, &enemy_eids);
+                        let tbl = lua.create_table()?;
+                        tbl.set("winner", pred.winner)?;
+                        tbl.set("confidence", pred.confidence)?;
+                        tbl.set("my_survivors", pred.my_survivors)?;
+                        tbl.set("enemy_survivors", pred.enemy_survivors)?;
+                        Ok(tbl)
+                    },
+                )?;
+            ctx_table.set("predict_engagement", f)?;
+        }
+
+        // ctx:squad_create(name, {id1, id2, ...})
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(
+                    |_, (_self, name, unit_ids): (LuaValue, String, Vec<u64>)| {
+                        let mut ctx = cell.borrow_mut();
+                        ctx.squad_create(name, unit_ids);
+                        Ok(())
+                    },
+                )?;
+            ctx_table.set("squad_create", f)?;
+        }
+
+        // ctx:squad_add(name, {id1, id2})
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(
+                    |_, (_self, name, unit_ids): (LuaValue, String, Vec<u64>)| {
+                        let mut ctx = cell.borrow_mut();
+                        ctx.squad_add(&name, unit_ids);
+                        Ok(())
+                    },
+                )?;
+            ctx_table.set("squad_add", f)?;
+        }
+
+        // ctx:squad_remove(name, {id1, id2})
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(
+                    |_, (_self, name, unit_ids): (LuaValue, String, Vec<u64>)| {
+                        let mut ctx = cell.borrow_mut();
+                        ctx.squad_remove(&name, &unit_ids);
+                        Ok(())
+                    },
+                )?;
+            ctx_table.set("squad_remove", f)?;
+        }
+
+        // ctx:squad_units(name) → table of unit IDs (auto-prunes dead)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, (_self, name): (LuaValue, String)| {
+                    let mut ctx = cell.borrow_mut();
+                    let ids = ctx.squad_units(&name);
+                    let tbl = lua.create_table()?;
+                    for (i, id) in ids.iter().enumerate() {
+                        tbl.set(i + 1, *id)?;
+                    }
+                    Ok(tbl)
+                })?;
+            ctx_table.set("squad_units", f)?;
+        }
+
+        // ctx:squad_centroid(name) → x, y (two return values) or nil, nil
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, (_self, name): (LuaValue, String)| {
+                    let mut ctx = cell.borrow_mut();
+                    match ctx.squad_centroid(&name) {
+                        Some((x, y)) => Ok((LuaValue::Integer(x), LuaValue::Integer(y))),
+                        None => Ok((LuaValue::Nil, LuaValue::Nil)),
+                    }
+                })?;
+            ctx_table.set("squad_centroid", f)?;
+        }
+
+        // ctx:squad_disband(name)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, (_self, name): (LuaValue, String)| {
+                    let mut ctx = cell.borrow_mut();
+                    ctx.squad_disband(&name);
+                    Ok(())
+                })?;
+            ctx_table.set("squad_disband", f)?;
+        }
+
+        // ctx:squad_list() → table of squad name strings
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, _self: LuaValue| {
+                    let ctx = cell.borrow();
+                    let names = ctx.squad_list();
+                    let tbl = lua.create_table()?;
+                    for (i, name) in names.iter().enumerate() {
+                        tbl.set(i + 1, name.clone())?;
+                    }
+                    Ok(tbl)
+                })?;
+            ctx_table.set("squad_list", f)?;
+        }
+
+        // ctx:game_score() → number (positive = winning)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, _self: LuaValue| {
+                    let mut ctx = cell.borrow_mut();
+                    Ok(ctx.game_score())
+                })?;
+            ctx_table.set("game_score", f)?;
         }
 
         // -------------------------------------------------------------------
@@ -1289,6 +1600,184 @@ pub fn execute_script_with_context_tiered(
             ctx_table.set("resource_deposits", f)?;
         }
 
+        // -------------------------------------------------------------------
+        // Blackboard bindings
+        // -------------------------------------------------------------------
+
+        // ctx:blackboard_get(key)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, (_self, key): (LuaValue, String)| {
+                    let ctx = cell.borrow();
+                    match ctx.blackboard_get(&key) {
+                        Some(BlackboardValue::String(s)) => Ok(LuaValue::String(lua.create_string(s)?)),
+                        Some(BlackboardValue::Number(n)) => Ok(LuaValue::Number(*n)),
+                        Some(BlackboardValue::Bool(b)) => Ok(LuaValue::Boolean(*b)),
+                        None => Ok(LuaValue::Nil),
+                    }
+                })?;
+            ctx_table.set("blackboard_get", f)?;
+        }
+
+        // ctx:blackboard_set(key, value)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, (_self, key, value): (LuaValue, String, LuaValue)| {
+                    let mut ctx = cell.borrow_mut();
+                    match value {
+                        LuaValue::Nil => { ctx.blackboard_remove(&key); }
+                        LuaValue::Boolean(b) => { ctx.blackboard_set(key, BlackboardValue::Bool(b)); }
+                        LuaValue::Integer(n) => { ctx.blackboard_set(key, BlackboardValue::Number(n as f64)); }
+                        LuaValue::Number(n) => { ctx.blackboard_set(key, BlackboardValue::Number(n)); }
+                        LuaValue::String(s) => {
+                            let s = s.to_str().map(|s| s.to_owned()).unwrap_or_default();
+                            ctx.blackboard_set(key, BlackboardValue::String(s));
+                        }
+                        _ => { /* Unsupported type — silently ignore */ }
+                    }
+                    Ok(())
+                })?;
+            ctx_table.set("blackboard_set", f)?;
+        }
+
+        // ctx:blackboard_keys()
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, _self: LuaValue| {
+                    let ctx = cell.borrow();
+                    let keys = ctx.blackboard_keys();
+                    let tbl = lua.create_table()?;
+                    for (i, key) in keys.iter().enumerate() {
+                        tbl.set(i + 1, key.as_str())?;
+                    }
+                    Ok(tbl)
+                })?;
+            ctx_table.set("blackboard_keys", f)?;
+        }
+
+        // -------------------------------------------------------------------
+        // Budget introspection
+        // -------------------------------------------------------------------
+
+        // ctx:remaining_budget()
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, _self: LuaValue| {
+                    let ctx = cell.borrow();
+                    Ok(ctx.remaining_budget())
+                })?;
+            ctx_table.set("remaining_budget", f)?;
+        }
+
+        // -------------------------------------------------------------------
+        // Economy analysis bindings
+        // -------------------------------------------------------------------
+
+        // ctx:income_rate()
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, _self: LuaValue| {
+                    let mut ctx = cell.borrow_mut();
+                    let income = ctx.income_rate();
+                    let tbl = lua.create_table()?;
+                    tbl.set("food_per_tick", income.food_per_tick)?;
+                    tbl.set("gpu_per_tick", income.gpu_per_tick)?;
+                    Ok(tbl)
+                })?;
+            ctx_table.set("income_rate", f)?;
+        }
+
+        // ctx:can_afford(kind_str) — tries UnitKind first, then BuildingKind
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, (_self, kind_str): (LuaValue, String)| {
+                    let ctx = cell.borrow();
+                    if let Ok(unit_kind) = kind_str.parse::<UnitKind>() {
+                        Ok(ctx.can_afford_unit(unit_kind))
+                    } else if let Ok(building_kind) = kind_str.parse::<BuildingKind>() {
+                        Ok(ctx.can_afford_building(building_kind))
+                    } else {
+                        Ok(false) // Unknown kind
+                    }
+                })?;
+            ctx_table.set("can_afford", f)?;
+        }
+
+        // ctx:time_until_afford(kind_str)
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|_, (_self, kind_str): (LuaValue, String)| {
+                    let mut ctx = cell.borrow_mut();
+                    let result = if let Ok(unit_kind) = kind_str.parse::<UnitKind>() {
+                        ctx.time_until_afford_unit(unit_kind)
+                    } else if let Ok(building_kind) = kind_str.parse::<BuildingKind>() {
+                        ctx.time_until_afford_building(building_kind)
+                    } else {
+                        None
+                    };
+                    match result {
+                        Some(ticks) => Ok(LuaValue::Integer(ticks as i32)),
+                        None => Ok(LuaValue::Nil),
+                    }
+                })?;
+            ctx_table.set("time_until_afford", f)?;
+        }
+
+        // ctx:army_composition()
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, _self: LuaValue| {
+                    let mut ctx = cell.borrow_mut();
+                    let comp = ctx.army_composition();
+                    let tbl = lua.create_table()?;
+                    for (kind, count) in &comp {
+                        tbl.set(kind.as_str(), *count)?;
+                    }
+                    Ok(tbl)
+                })?;
+            ctx_table.set("army_composition", f)?;
+        }
+
+        // ctx:enemy_composition()
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, _self: LuaValue| {
+                    let mut ctx = cell.borrow_mut();
+                    let comp = ctx.enemy_composition();
+                    let tbl = lua.create_table()?;
+                    for (kind, count) in &comp {
+                        tbl.set(kind.as_str(), *count)?;
+                    }
+                    Ok(tbl)
+                })?;
+            ctx_table.set("enemy_composition", f)?;
+        }
+
+        // ctx:worker_saturation()
+        {
+            let cell = &ctx_cell;
+            let f = scope
+                .create_function(|lua, _self: LuaValue| {
+                    let mut ctx = cell.borrow_mut();
+                    let sat = ctx.worker_saturation();
+                    let tbl = lua.create_table()?;
+                    tbl.set("total", sat.total)?;
+                    tbl.set("gathering", sat.gathering)?;
+                    tbl.set("idle", sat.idle)?;
+                    Ok(tbl)
+                })?;
+            ctx_table.set("worker_saturation", f)?;
+        }
+
         // Set ctx as global
         lua.globals()
             .set("ctx", ctx_table)
@@ -1445,6 +1934,26 @@ fn deposit_to_lua_table(
 
 fn fixed_to_f64(v: Fixed) -> f64 {
     v.to_num::<f64>()
+}
+
+fn enemy_memory_to_lua_table(lua: &Lua, entry: &EnemyMemoryEntry) -> LuaResult<LuaTable> {
+    let tbl = lua.create_table()?;
+    tbl.set("id", entry.unit_id)?;
+    tbl.set("kind", entry.kind.clone())?;
+    tbl.set("x", entry.x)?;
+    tbl.set("y", entry.y)?;
+    tbl.set("hp_pct", entry.hp_pct)?;
+    tbl.set("tick_last_seen", entry.tick_last_seen)?;
+    tbl.set("confirmed_dead", entry.confirmed_dead)?;
+    Ok(tbl)
+}
+
+fn script_event_to_lua_table(lua: &Lua, event: &ScriptEvent) -> LuaResult<LuaTable> {
+    let tbl = lua.create_table()?;
+    tbl.set("name", event.name.clone())?;
+    tbl.set("data", event.data.clone())?;
+    tbl.set("tick", event.tick)?;
+    Ok(tbl)
 }
 
 // ---------------------------------------------------------------------------
@@ -1829,5 +2338,702 @@ mod tests {
                 other => panic!("Expected Move for ranged, got {:?}", other),
             }
         }
+    }
+
+    // -------------------------------------------------------------------
+    // Phase 1: Blackboard, budget, economy, composition, worker saturation
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn ctx_blackboard_set_and_get() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            ctx:blackboard_set("phase", "attack")
+            ctx:blackboard_set("count", 42)
+            ctx:blackboard_set("ready", true)
+            local phase = ctx:blackboard_get("phase")
+            if phase ~= "attack" then error("Expected 'attack', got: " .. tostring(phase)) end
+            local count = ctx:blackboard_get("count")
+            if count ~= 42 then error("Expected 42, got: " .. tostring(count)) end
+            local ready = ctx:blackboard_get("ready")
+            if ready ~= true then error("Expected true, got: " .. tostring(ready)) end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn ctx_blackboard_get_nil_for_missing() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            local val = ctx:blackboard_get("nonexistent")
+            if val ~= nil then error("Expected nil, got: " .. tostring(val)) end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn ctx_blackboard_set_nil_removes_key() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            ctx:blackboard_set("temp", "value")
+            local v1 = ctx:blackboard_get("temp")
+            if v1 ~= "value" then error("Expected 'value'") end
+            ctx:blackboard_set("temp", nil)
+            local v2 = ctx:blackboard_get("temp")
+            if v2 ~= nil then error("Expected nil after delete, got: " .. tostring(v2)) end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn ctx_blackboard_keys() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            ctx:blackboard_set("alpha", 1)
+            ctx:blackboard_set("beta", 2)
+            local keys = ctx:blackboard_keys()
+            if #keys ~= 2 then error("Expected 2 keys, got: " .. #keys) end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn ctx_remaining_budget() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            local b = ctx:remaining_budget()
+            if b ~= 500 then error("Expected 500, got: " .. b) end
+            -- Spend some budget with a query
+            ctx:my_units()
+            local b2 = ctx:remaining_budget()
+            if b2 ~= 499 then error("Expected 499 after query, got: " .. b2) end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn ctx_income_rate() {
+        // Create a snapshot with a gathering worker near a food deposit
+        let mut worker = make_unit(1, UnitKind::Pawdler, 3, 3, 0);
+        worker.is_gathering = true;
+        worker.is_idle = false;
+
+        let snap = GameStateSnapshot {
+            tick: 10,
+            map_width: 64,
+            map_height: 64,
+            player_id: 0,
+            my_units: vec![worker],
+            enemy_units: vec![],
+            my_buildings: vec![],
+            enemy_buildings: vec![],
+            resource_deposits: vec![
+                crate::snapshot::ResourceSnapshot {
+                    id: EntityId(100),
+                    resource_type: ResourceType::Food,
+                    pos: GridPos::new(3, 4),
+                    remaining: 200,
+                },
+            ],
+            my_resources: PlayerResourceState::default(),
+        };
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            local inc = ctx:income_rate()
+            if inc.food_per_tick <= 0 then error("Expected positive food income, got: " .. inc.food_per_tick) end
+            if inc.gpu_per_tick ~= 0 then error("Expected 0 gpu income, got: " .. inc.gpu_per_tick) end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn ctx_can_afford() {
+        // Default resources: food=300, gpu=50
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            -- Pawdler costs 50 food, 0 gpu — should be affordable
+            local can = ctx:can_afford("Pawdler")
+            if not can then error("Should afford Pawdler") end
+
+            -- MechCommander costs 400 food, 200 gpu — should NOT be affordable
+            local cant = ctx:can_afford("MechCommander")
+            if cant then error("Should not afford MechCommander") end
+
+            -- Building: LitterBox costs 75 food, 0 gpu — should be affordable
+            local can_build = ctx:can_afford("LitterBox")
+            if not can_build then error("Should afford LitterBox") end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn ctx_time_until_afford_already_affordable() {
+        // Create a snapshot with a gathering worker so income_rate > 0
+        let mut worker = make_unit(1, UnitKind::Pawdler, 3, 3, 0);
+        worker.is_gathering = true;
+        worker.is_idle = false;
+
+        let snap = GameStateSnapshot {
+            tick: 10,
+            map_width: 64,
+            map_height: 64,
+            player_id: 0,
+            my_units: vec![worker],
+            enemy_units: vec![],
+            my_buildings: vec![],
+            enemy_buildings: vec![],
+            resource_deposits: vec![
+                crate::snapshot::ResourceSnapshot {
+                    id: EntityId(100),
+                    resource_type: ResourceType::Food,
+                    pos: GridPos::new(3, 4),
+                    remaining: 200,
+                },
+            ],
+            my_resources: PlayerResourceState::default(),
+        };
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            -- Pawdler costs 50 food — we have 300 — should return 0
+            local t = ctx:time_until_afford("Pawdler")
+            if t ~= 0 then error("Expected 0 ticks, got: " .. tostring(t)) end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn ctx_army_composition() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            local comp = ctx:army_composition()
+            -- Test snapshot has 2 Hissers and 1 Chonk
+            if comp.Hisser ~= 2 then error("Expected 2 Hissers, got: " .. tostring(comp.Hisser)) end
+            if comp.Chonk ~= 1 then error("Expected 1 Chonk, got: " .. tostring(comp.Chonk)) end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn ctx_enemy_composition() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            local comp = ctx:enemy_composition()
+            -- Test snapshot has 1 Nuisance and 1 Chonk as enemies
+            if comp.Nuisance ~= 1 then error("Expected 1 Nuisance, got: " .. tostring(comp.Nuisance)) end
+            if comp.Chonk ~= 1 then error("Expected 1 Chonk, got: " .. tostring(comp.Chonk)) end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn ctx_worker_saturation() {
+        // Create snapshot with workers in different states
+        let mut gathering_worker = make_unit(1, UnitKind::Pawdler, 3, 3, 0);
+        gathering_worker.is_gathering = true;
+        gathering_worker.is_idle = false;
+
+        let idle_worker = make_unit(2, UnitKind::Pawdler, 5, 5, 0);
+        // default is_idle = true from make_unit
+
+        let combat_unit = make_unit(3, UnitKind::Hisser, 10, 10, 0);
+
+        let snap = GameStateSnapshot {
+            tick: 10,
+            map_width: 64,
+            map_height: 64,
+            player_id: 0,
+            my_units: vec![gathering_worker, idle_worker, combat_unit],
+            enemy_units: vec![],
+            my_buildings: vec![],
+            enemy_buildings: vec![],
+            resource_deposits: vec![],
+            my_resources: PlayerResourceState::default(),
+        };
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            local sat = ctx:worker_saturation()
+            if sat.total ~= 2 then error("Expected 2 total workers, got: " .. sat.total) end
+            if sat.gathering ~= 1 then error("Expected 1 gathering, got: " .. sat.gathering) end
+            if sat.idle ~= 1 then error("Expected 1 idle, got: " .. sat.idle) end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn ctx_blackboard_persists_via_take() {
+        // Test that blackboard can be taken and re-injected for persistence
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+
+        // First script invocation: set a value
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+        let script1 = r#"ctx:blackboard_set("wave", 3)"#;
+        execute_script_with_context(script1, &mut ctx).unwrap();
+        let bb = ctx.take_blackboard();
+
+        // Second invocation: inject the blackboard back, verify value persisted
+        let mut ctx2 = ScriptContext::new_with_blackboard(&snap, &map, 0, FactionId::CatGPT, bb);
+        let script2 = r#"
+            local w = ctx:blackboard_get("wave")
+            if w ~= 3 then error("Expected 3, got: " .. tostring(w)) end
+        "#;
+        execute_script_with_context(script2, &mut ctx2).unwrap();
+    }
+
+    // -------------------------------------------------------------------
+    // Phase 2: Vision, Memory, Threats, Events — Lua integration tests
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn lua_is_visible_and_fog_state() {
+        let snap = make_test_snapshot(); // unit at (5,5), (10,10), (15,15)
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            -- Unit at (5,5) has sight range 8, so (5,5) is visible
+            if not ctx:is_visible(5, 5) then
+                error("Expected (5,5) to be visible")
+            end
+            if ctx:fog_state(5, 5) ~= "visible" then
+                error("Expected fog_state 'visible' at (5,5)")
+            end
+            -- Far tile should be in fog
+            if ctx:is_visible(60, 60) then
+                error("Expected (60,60) to be in fog")
+            end
+            if ctx:fog_state(60, 60) ~= "fog" then
+                error("Expected fog_state 'fog' at (60,60)")
+            end
+        "#;
+        let cmds = execute_script_with_context(script, &mut ctx).unwrap();
+        assert!(cmds.is_empty());
+    }
+
+    #[test]
+    fn lua_threat_level() {
+        let snap = make_test_snapshot(); // enemies at (7,5) and (50,50)
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            -- Enemy at (7,5) has damage=10, within Chebyshev radius 5 from (5,5)
+            local threat = ctx:threat_level(5, 5, 5)
+            if threat < 9 or threat > 11 then
+                error("Expected threat ~10 near enemy, got " .. threat)
+            end
+
+            -- Far from enemies
+            local far_threat = ctx:threat_level(60, 60, 3)
+            if far_threat ~= 0 then
+                error("Expected 0 threat far from enemies, got " .. far_threat)
+            end
+        "#;
+        let cmds = execute_script_with_context(script, &mut ctx).unwrap();
+        assert!(cmds.is_empty());
+    }
+
+    #[test]
+    fn lua_army_strength() {
+        let snap = make_test_snapshot(); // 3 own units
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            local str = ctx:army_strength()
+            if str.unit_count ~= 3 then
+                error("Expected 3 units, got " .. str.unit_count)
+            end
+            if str.total_hp < 299 then
+                error("Expected ~300 total HP, got " .. str.total_hp)
+            end
+            if str.total_dps < 29 then
+                error("Expected ~30 total DPS, got " .. str.total_dps)
+            end
+        "#;
+        let cmds = execute_script_with_context(script, &mut ctx).unwrap();
+        assert!(cmds.is_empty());
+    }
+
+    #[test]
+    fn lua_last_seen_enemies_with_memory() {
+        use std::collections::HashMap;
+
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut memory = HashMap::new();
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
+            .with_enemy_memory(&mut memory);
+        ctx.update_enemy_memory();
+
+        let script = r#"
+            local enemies = ctx:last_seen_enemies()
+            if #enemies ~= 2 then
+                error("Expected 2 remembered enemies, got " .. #enemies)
+            end
+            -- Check fields on first entry
+            local e = enemies[1]
+            if e.id == nil then error("Missing id") end
+            if e.kind == nil then error("Missing kind") end
+            if e.x == nil then error("Missing x") end
+            if e.y == nil then error("Missing y") end
+            if e.hp_pct == nil then error("Missing hp_pct") end
+            if e.tick_last_seen == nil then error("Missing tick_last_seen") end
+            if e.confirmed_dead ~= false then error("Should not be dead") end
+        "#;
+        let cmds = execute_script_with_context(script, &mut ctx).unwrap();
+        assert!(cmds.is_empty());
+    }
+
+    #[test]
+    fn lua_last_seen_at_specific_enemy() {
+        use std::collections::HashMap;
+
+        let snap = make_test_snapshot(); // enemies: id=10 at (7,5), id=11 at (50,50)
+        let map = GameMap::new(64, 64);
+        let mut memory = HashMap::new();
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
+            .with_enemy_memory(&mut memory);
+        ctx.update_enemy_memory();
+
+        let script = r#"
+            local e = ctx:last_seen_at(10)
+            if e == nil then
+                error("Expected to find enemy 10")
+            end
+            if e.x ~= 7 then
+                error("Expected x=7 got " .. e.x)
+            end
+            if e.y ~= 5 then
+                error("Expected y=5 got " .. e.y)
+            end
+            -- Nonexistent enemy
+            local missing = ctx:last_seen_at(999)
+            if missing ~= nil then
+                error("Expected nil for missing enemy")
+            end
+        "#;
+        let cmds = execute_script_with_context(script, &mut ctx).unwrap();
+        assert!(cmds.is_empty());
+    }
+
+    #[test]
+    fn lua_emit_and_poll_events() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut event_bus = Vec::new();
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
+            .with_events(&mut event_bus);
+
+        let script = r#"
+            -- Emit events
+            ctx:emit_event("attack", "go_north")
+            ctx:emit_event("retreat", "fallback")
+            ctx:emit_event("attack", "charge")
+
+            -- Poll attack events (should not remove)
+            local attacks = ctx:poll_events("attack")
+            if #attacks ~= 2 then
+                error("Expected 2 attack events, got " .. #attacks)
+            end
+            if attacks[1].name ~= "attack" then
+                error("Wrong name: " .. attacks[1].name)
+            end
+            if attacks[1].data ~= "go_north" then
+                error("Wrong data: " .. attacks[1].data)
+            end
+
+            -- Poll again — still there
+            local still = ctx:poll_events("attack")
+            if #still ~= 2 then
+                error("Events should not be consumed by poll, got " .. #still)
+            end
+        "#;
+        let cmds = execute_script_with_context(script, &mut ctx).unwrap();
+        assert!(cmds.is_empty());
+    }
+
+    #[test]
+    fn lua_drain_events_removes() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut event_bus = Vec::new();
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
+            .with_events(&mut event_bus);
+
+        let script = r#"
+            ctx:emit_event("attack", "go")
+            ctx:emit_event("retreat", "now")
+            ctx:emit_event("attack", "charge")
+
+            -- Drain attack events
+            local attacks = ctx:drain_events("attack")
+            if #attacks ~= 2 then
+                error("Expected 2 drained attack events, got " .. #attacks)
+            end
+
+            -- Attack events should be gone
+            local empty = ctx:poll_events("attack")
+            if #empty ~= 0 then
+                error("Expected 0 attack events after drain, got " .. #empty)
+            end
+
+            -- Retreat event should remain
+            local retreats = ctx:poll_events("retreat")
+            if #retreats ~= 1 then
+                error("Expected 1 retreat event, got " .. #retreats)
+            end
+        "#;
+        let cmds = execute_script_with_context(script, &mut ctx).unwrap();
+        assert!(cmds.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // Phase 3 Lua integration tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn lua_game_phase_returns_early() {
+        let snap = make_test_snapshot(); // tick=42, small army, no buildings
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            local phase = ctx:game_phase()
+            if phase ~= "early" then
+                error("Expected 'early', got '" .. phase .. "'")
+            end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn lua_expansion_sites_returns_table() {
+        use crate::snapshot::{BuildingSnapshot, ResourceSnapshot};
+        use cc_core::math::fixed_from_i32;
+
+        let snap = GameStateSnapshot {
+            tick: 0,
+            map_width: 64,
+            map_height: 64,
+            player_id: 0,
+            my_units: vec![],
+            enemy_units: vec![],
+            my_buildings: vec![BuildingSnapshot {
+                id: EntityId(100),
+                kind: BuildingKind::TheBox,
+                pos: GridPos::new(10, 10),
+                owner: 0,
+                health_current: fixed_from_i32(500),
+                health_max: fixed_from_i32(500),
+                under_construction: false,
+                construction_progress: 1.0,
+                production_queue: vec![],
+                research_queue: vec![],
+            }],
+            enemy_buildings: vec![],
+            resource_deposits: vec![
+                ResourceSnapshot {
+                    id: EntityId(200),
+                    resource_type: ResourceType::Food,
+                    pos: GridPos::new(40, 40),
+                    remaining: 200,
+                },
+            ],
+            my_resources: PlayerResourceState::default(),
+        };
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            local sites = ctx:expansion_sites()
+            if #sites ~= 1 then
+                error("Expected 1 site, got " .. #sites)
+            end
+            local s = sites[1]
+            if s.deposit_id ~= 200 then
+                error("Wrong deposit_id: " .. s.deposit_id)
+            end
+            if s.x ~= 40 or s.y ~= 40 then
+                error("Wrong position")
+            end
+            if s.remaining ~= 200 then
+                error("Wrong remaining: " .. s.remaining)
+            end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn lua_predict_engagement_returns_result() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        // My units: ids 1, 2, 3. Enemy: ids 10, 11.
+        // My: 3 units (100hp each, 10dmg/10ticks = 1 DPS each) = 300hp, 3 DPS
+        // Enemy: 2 units (100hp each, 10dmg/10ticks = 1 DPS each) = 200hp, 2 DPS
+        // I should win
+        let script = r#"
+            local result = ctx:predict_engagement({1, 2, 3}, {10, 11})
+            if result.winner ~= "self" then
+                error("Expected 'self', got '" .. result.winner .. "'")
+            end
+            if result.confidence <= 0 then
+                error("Expected positive confidence")
+            end
+            if result.my_survivors <= 0 then
+                error("Expected some survivors")
+            end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn lua_squad_create_and_units() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut squads = std::collections::HashMap::new();
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
+            .with_squads(&mut squads);
+
+        let script = r#"
+            ctx:squad_create("alpha", {1, 2})
+            local units = ctx:squad_units("alpha")
+            if #units ~= 2 then
+                error("Expected 2 units, got " .. #units)
+            end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn lua_squad_centroid_returns_coords() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut squads = std::collections::HashMap::new();
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
+            .with_squads(&mut squads);
+
+        // Units 1 at (5,5) and 2 at (10,10). Centroid = (7, 7)
+        let script = r#"
+            ctx:squad_create("alpha", {1, 2})
+            local x, y = ctx:squad_centroid("alpha")
+            if x == nil then
+                error("Expected centroid, got nil")
+            end
+            if x ~= 7 or y ~= 7 then
+                error("Expected (7, 7), got (" .. x .. ", " .. y .. ")")
+            end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn lua_squad_disband_removes_squad() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut squads = std::collections::HashMap::new();
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
+            .with_squads(&mut squads);
+
+        let script = r#"
+            ctx:squad_create("alpha", {1, 2})
+            ctx:squad_disband("alpha")
+            local units = ctx:squad_units("alpha")
+            if #units ~= 0 then
+                error("Expected 0 units after disband, got " .. #units)
+            end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn lua_squad_list_returns_names() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut squads = std::collections::HashMap::new();
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
+            .with_squads(&mut squads);
+
+        let script = r#"
+            ctx:squad_create("alpha", {1})
+            ctx:squad_create("bravo", {2})
+            local names = ctx:squad_list()
+            if #names ~= 2 then
+                error("Expected 2 squads, got " .. #names)
+            end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn lua_squad_add_and_remove() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut squads = std::collections::HashMap::new();
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT)
+            .with_squads(&mut squads);
+
+        let script = r#"
+            ctx:squad_create("alpha", {1})
+            ctx:squad_add("alpha", {2, 3})
+            local units = ctx:squad_units("alpha")
+            if #units ~= 3 then
+                error("Expected 3 after add, got " .. #units)
+            end
+            ctx:squad_remove("alpha", {2})
+            local units2 = ctx:squad_units("alpha")
+            if #units2 ~= 2 then
+                error("Expected 2 after remove, got " .. #units2)
+            end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    #[test]
+    fn lua_game_score_returns_number() {
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let script = r#"
+            local score = ctx:game_score()
+            -- Should be a number (positive since we have more army)
+            if type(score) ~= "number" then
+                error("Expected number, got " .. type(score))
+            end
+        "#;
+        execute_script_with_context(script, &mut ctx).unwrap();
     }
 }
