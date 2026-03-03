@@ -1,10 +1,10 @@
--- @name: combat_micro_hold_ranged
+-- @name: combat_micro_road_push
 -- @events: on_tick
 -- @interval: 3
 
--- Gen 72: Gen 063 base with hold-position ranged in formation.
--- Hypothesis: ranged units hold position behind tanks instead of chasing.
--- Creates disciplined turret line behind tank wall.
+-- Gen 69: Gen 063 base with road-aware push pathing.
+-- Hypothesis: route push through map center road tiles (0.7x cost = 30% faster).
+-- Gets to enemy base faster than Gen 063's straight-line push.
 
 local my_units = ctx:my_units()
 if not my_units then return end
@@ -161,14 +161,7 @@ if enemies and #enemies > 0 and not outnumbered and not late_game then
             local ry = math.floor(army_cy - ny * 2)
             rx = math.max(0, math.min(map_w - 1, rx))
             ry = math.max(0, math.min(map_h - 1, ry))
-            -- Move to position, then hold once close enough
-            local dx_r = r.x - rx
-            local dy_r = r.y - ry
-            if dx_r * dx_r + dy_r * dy_r < 2 * 2 then
-                ctx:hold({r.id})
-            else
-                ctx:move_units({r.id}, rx, ry)
-            end
+            ctx:move_units({r.id}, rx, ry)
         end
     end
 end
@@ -198,7 +191,7 @@ if not late_game and outnumbered and enemies and #ranged_attackers > 0 then
     end
 end
 
--- === PUSH (forced after tick 4000) ===
+-- === PUSH (forced after tick 4000) — ROAD-AWARE PATHING ===
 local should_push = (enemy_count == 0 and my_combat_count >= 2)
     or strong_advantage
     or late_game
@@ -243,7 +236,30 @@ if should_push then
 
         local target = prod_target or hq or nearest
         if target then
-            ctx:attack_move(all_combat_ids, target.x, target.y)
+            -- Road-aware: check if midpoint is slow, route through map center
+            local mid_x = math.floor((army_cx + target.x) / 2)
+            local mid_y = math.floor((army_cy + target.y) / 2)
+            local mid_cost = ctx:movement_cost(mid_x, mid_y)
+
+            if mid_cost and mid_cost > 0.9 then
+                local center_x = math.floor(map_w / 2)
+                local center_y = math.floor(map_h / 2)
+                local center_cost = ctx:movement_cost(center_x, center_y)
+                if center_cost and center_cost <= 0.75 then
+                    -- Route through center road if army is far from it
+                    local dx_c = army_cx - center_x
+                    local dy_c = army_cy - center_y
+                    if dx_c * dx_c + dy_c * dy_c > 5 * 5 then
+                        ctx:attack_move(all_combat_ids, center_x, center_y)
+                    else
+                        ctx:attack_move(all_combat_ids, target.x, target.y)
+                    end
+                else
+                    ctx:attack_move(all_combat_ids, target.x, target.y)
+                end
+            else
+                ctx:attack_move(all_combat_ids, target.x, target.y)
+            end
         end
     end
 end

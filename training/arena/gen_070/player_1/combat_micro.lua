@@ -1,10 +1,10 @@
--- @name: combat_micro_hold_ranged
+-- @name: combat_micro_highground_formation
 -- @events: on_tick
 -- @interval: 3
 
--- Gen 72: Gen 063 base with hold-position ranged in formation.
--- Hypothesis: ranged units hold position behind tanks instead of chasing.
--- Creates disciplined turret line behind tank wall.
+-- Gen 70: Gen 063 base with elevation-aware formation.
+-- Hypothesis: tanks only advance forward if target pos is same/higher elevation.
+-- Prevents walking downhill into -15% damage disadvantage.
 
 local my_units = ctx:my_units()
 if not my_units then return end
@@ -153,7 +153,12 @@ if enemies and #enemies > 0 and not outnumbered and not late_game then
             local ty = math.floor(army_cy + ny * 3)
             tx = math.max(0, math.min(map_w - 1, tx))
             ty = math.max(0, math.min(map_h - 1, ty))
-            ctx:attack_move({t.id}, tx, ty)
+            -- Only advance if not moving to lower ground
+            local tank_elev = ctx:elevation_at(t.x, t.y)
+            local target_elev = ctx:elevation_at(tx, ty)
+            if tank_elev and target_elev and target_elev >= tank_elev then
+                ctx:attack_move({t.id}, tx, ty)
+            end
         end
 
         for _, r in ipairs(idle_ranged) do
@@ -161,14 +166,7 @@ if enemies and #enemies > 0 and not outnumbered and not late_game then
             local ry = math.floor(army_cy - ny * 2)
             rx = math.max(0, math.min(map_w - 1, rx))
             ry = math.max(0, math.min(map_h - 1, ry))
-            -- Move to position, then hold once close enough
-            local dx_r = r.x - rx
-            local dy_r = r.y - ry
-            if dx_r * dx_r + dy_r * dy_r < 2 * 2 then
-                ctx:hold({r.id})
-            else
-                ctx:move_units({r.id}, rx, ry)
-            end
+            ctx:move_units({r.id}, rx, ry)
         end
     end
 end

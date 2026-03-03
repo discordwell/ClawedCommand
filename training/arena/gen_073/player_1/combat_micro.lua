@@ -1,10 +1,10 @@
--- @name: combat_micro_hold_ranged
+-- @name: combat_micro_wide_focus
 -- @events: on_tick
 -- @interval: 3
 
--- Gen 72: Gen 063 base with hold-position ranged in formation.
--- Hypothesis: ranged units hold position behind tanks instead of chasing.
--- Creates disciplined turret line behind tank wall.
+-- Gen 73: Gen 063 base with wider focus fire radius (18 vs 12 tiles).
+-- Hypothesis: ensures entire army focuses same target during spread-out pushes.
+-- Catches stragglers beyond 12-tile default radius.
 
 local my_units = ctx:my_units()
 if not my_units then return end
@@ -105,7 +105,7 @@ if #attackers >= 2 and enemies and #enemies > 0 then
     cy = cy / #attackers
 
     local best_target = nil
-    local best_dist = 12 * 12
+    local best_dist = 18 * 18
     for _, e in ipairs(enemies) do
         local dx = e.x - cx
         local dy = e.y - cy
@@ -161,14 +161,7 @@ if enemies and #enemies > 0 and not outnumbered and not late_game then
             local ry = math.floor(army_cy - ny * 2)
             rx = math.max(0, math.min(map_w - 1, rx))
             ry = math.max(0, math.min(map_h - 1, ry))
-            -- Move to position, then hold once close enough
-            local dx_r = r.x - rx
-            local dy_r = r.y - ry
-            if dx_r * dx_r + dy_r * dy_r < 2 * 2 then
-                ctx:hold({r.id})
-            else
-                ctx:move_units({r.id}, rx, ry)
-            end
+            ctx:move_units({r.id}, rx, ry)
         end
     end
 end

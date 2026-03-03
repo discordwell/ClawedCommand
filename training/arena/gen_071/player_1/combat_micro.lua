@@ -1,10 +1,10 @@
--- @name: combat_micro_hold_ranged
+-- @name: combat_micro_terrain_kite
 -- @events: on_tick
 -- @interval: 3
 
--- Gen 72: Gen 063 base with hold-position ranged in formation.
--- Hypothesis: ranged units hold position behind tanks instead of chasing.
--- Creates disciplined turret line behind tank wall.
+-- Gen 71: Gen 063 base with terrain-aware kiting from Gen 042.
+-- Hypothesis: perpendicular flee when path blocked/slow is proven +15% vs naive kite.
+-- Re-adding Gen 042's best feature into Gen 063's framework.
 
 local my_units = ctx:my_units()
 if not my_units then return end
@@ -161,19 +161,12 @@ if enemies and #enemies > 0 and not outnumbered and not late_game then
             local ry = math.floor(army_cy - ny * 2)
             rx = math.max(0, math.min(map_w - 1, rx))
             ry = math.max(0, math.min(map_h - 1, ry))
-            -- Move to position, then hold once close enough
-            local dx_r = r.x - rx
-            local dy_r = r.y - ry
-            if dx_r * dx_r + dy_r * dy_r < 2 * 2 then
-                ctx:hold({r.id})
-            else
-                ctx:move_units({r.id}, rx, ry)
-            end
+            ctx:move_units({r.id}, rx, ry)
         end
     end
 end
 
--- === KITE when outnumbered (disabled in late game) ===
+-- === TERRAIN-AWARE KITING (from Gen 042) — disabled in late game ===
 if not late_game and outnumbered and enemies and #ranged_attackers > 0 then
     for _, r in ipairs(ranged_attackers) do
         local closest_dist = 999999
@@ -189,10 +182,46 @@ if not late_game and outnumbered and enemies and #ranged_attackers > 0 then
             end
         end
         if closest_dist < 5 then
-            local flee_x = r.x - (closest_ex - r.x)
-            local flee_y = r.y - (closest_ey - r.y)
+            -- Direction away from enemy (normalized * 3 tiles)
+            local flee_dx = r.x - closest_ex
+            local flee_dy = r.y - closest_ey
+            local mag = math.sqrt(flee_dx * flee_dx + flee_dy * flee_dy)
+            if mag > 0 then
+                flee_dx = flee_dx / mag * 3
+                flee_dy = flee_dy / mag * 3
+            end
+
+            local flee_x = math.floor(r.x + flee_dx)
+            local flee_y = math.floor(r.y + flee_dy)
             flee_x = math.max(0, math.min(map_w - 1, flee_x))
             flee_y = math.max(0, math.min(map_h - 1, flee_y))
+
+            -- Check if flee position is passable and fast enough
+            local cost = ctx:movement_cost(flee_x, flee_y)
+            if cost == nil or cost >= 1.3 then
+                -- Try perpendicular directions
+                local perp1_x = math.floor(r.x + flee_dy)
+                local perp1_y = math.floor(r.y - flee_dx)
+                perp1_x = math.max(0, math.min(map_w - 1, perp1_x))
+                perp1_y = math.max(0, math.min(map_h - 1, perp1_y))
+
+                local perp2_x = math.floor(r.x - flee_dy)
+                local perp2_y = math.floor(r.y + flee_dx)
+                perp2_x = math.max(0, math.min(map_w - 1, perp2_x))
+                perp2_y = math.max(0, math.min(map_h - 1, perp2_y))
+
+                local c1 = ctx:movement_cost(perp1_x, perp1_y)
+                local c2 = ctx:movement_cost(perp2_x, perp2_y)
+
+                if c1 and c1 < 1.3 then
+                    flee_x = perp1_x
+                    flee_y = perp1_y
+                elseif c2 and c2 < 1.3 then
+                    flee_x = perp2_x
+                    flee_y = perp2_y
+                end
+            end
+
             ctx:move_units({r.id}, flee_x, flee_y)
         end
     end

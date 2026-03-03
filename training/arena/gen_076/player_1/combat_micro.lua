@@ -1,10 +1,10 @@
--- @name: combat_micro_hold_ranged
+-- @name: combat_micro_hold_ranged_wide_focus
 -- @events: on_tick
 -- @interval: 3
 
--- Gen 72: Gen 063 base with hold-position ranged in formation.
--- Hypothesis: ranged units hold position behind tanks instead of chasing.
--- Creates disciplined turret line behind tank wall.
+-- Gen 76: Gen 072 (hold ranged) + Gen 073 (wider focus fire 18 tiles).
+-- Combines disciplined ranged + wider focus fire radius.
+-- Ensures entire army targets same enemy even when spread out.
 
 local my_units = ctx:my_units()
 if not my_units then return end
@@ -105,7 +105,7 @@ if #attackers >= 2 and enemies and #enemies > 0 then
     cy = cy / #attackers
 
     local best_target = nil
-    local best_dist = 12 * 12
+    local best_dist = 18 * 18
     for _, e in ipairs(enemies) do
         local dx = e.x - cx
         local dy = e.y - cy

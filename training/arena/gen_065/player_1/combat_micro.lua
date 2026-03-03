@@ -1,10 +1,10 @@
--- @name: combat_micro_hold_ranged
+-- @name: combat_micro_timed_push_formation
 -- @events: on_tick
 -- @interval: 3
 
--- Gen 72: Gen 063 base with hold-position ranged in formation.
--- Hypothesis: ranged units hold position behind tanks instead of chasing.
--- Creates disciplined turret line behind tank wall.
+-- Gen 63: Gen 060 (timed push) + Gen 053 (inline formation).
+-- Combines timed push with formation positioning (tanks forward, ranged back).
+-- Formation only active pre-combat when not outnumbered.
 
 local my_units = ctx:my_units()
 if not my_units then return end
@@ -161,14 +161,7 @@ if enemies and #enemies > 0 and not outnumbered and not late_game then
             local ry = math.floor(army_cy - ny * 2)
             rx = math.max(0, math.min(map_w - 1, rx))
             ry = math.max(0, math.min(map_h - 1, ry))
-            -- Move to position, then hold once close enough
-            local dx_r = r.x - rx
-            local dy_r = r.y - ry
-            if dx_r * dx_r + dy_r * dy_r < 2 * 2 then
-                ctx:hold({r.id})
-            else
-                ctx:move_units({r.id}, rx, ry)
-            end
+            ctx:move_units({r.id}, rx, ry)
         end
     end
 end

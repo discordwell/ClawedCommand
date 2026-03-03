@@ -1,10 +1,10 @@
--- @name: combat_micro_hold_ranged
+-- @name: combat_micro_early_push_3000
 -- @events: on_tick
 -- @interval: 3
 
--- Gen 72: Gen 063 base with hold-position ranged in formation.
--- Hypothesis: ranged units hold position behind tanks instead of chasing.
--- Creates disciplined turret line behind tank wall.
+-- Gen 66: Gen 063 base with earlier push at tick 3000 (was 4000).
+-- Hypothesis: catches Gen 063 in defensive mode (kiting/retreating).
+-- Its defensive behaviors work AGAINST it when we push early.
 
 local my_units = ctx:my_units()
 if not my_units then return end
@@ -78,7 +78,7 @@ if enemies then enemy_count = #enemies end
 
 local outnumbered = my_combat_count < enemy_count
 local strong_advantage = my_combat_count >= enemy_count + 3
-local late_game = current_tick >= 4000
+local late_game = current_tick >= 3000
 
 -- === RETREAT (disabled in late game) ===
 if not late_game then
@@ -161,14 +161,7 @@ if enemies and #enemies > 0 and not outnumbered and not late_game then
             local ry = math.floor(army_cy - ny * 2)
             rx = math.max(0, math.min(map_w - 1, rx))
             ry = math.max(0, math.min(map_h - 1, ry))
-            -- Move to position, then hold once close enough
-            local dx_r = r.x - rx
-            local dy_r = r.y - ry
-            if dx_r * dx_r + dy_r * dy_r < 2 * 2 then
-                ctx:hold({r.id})
-            else
-                ctx:move_units({r.id}, rx, ry)
-            end
+            ctx:move_units({r.id}, rx, ry)
         end
     end
 end

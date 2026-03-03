@@ -1,10 +1,10 @@
--- @name: combat_micro_hold_ranged
+-- @name: combat_micro_hold_ranged_momentum
 -- @events: on_tick
 -- @interval: 3
 
--- Gen 72: Gen 063 base with hold-position ranged in formation.
--- Hypothesis: ranged units hold position behind tanks instead of chasing.
--- Creates disciplined turret line behind tank wall.
+-- Gen 75: Gen 072 (hold ranged) + Gen 068 (momentum push).
+-- Combines the two best improvements: disciplined ranged + aggressive push trigger.
+-- Push when ANY army lead AND enemies visible, fallback tick 5000.
 
 local my_units = ctx:my_units()
 if not my_units then return end
@@ -78,7 +78,7 @@ if enemies then enemy_count = #enemies end
 
 local outnumbered = my_combat_count < enemy_count
 local strong_advantage = my_combat_count >= enemy_count + 3
-local late_game = current_tick >= 4000
+local late_game = (my_combat_count > enemy_count and enemies and #enemies > 0) or current_tick >= 5000
 
 -- === RETREAT (disabled in late game) ===
 if not late_game then

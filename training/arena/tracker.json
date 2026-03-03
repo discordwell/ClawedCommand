@@ -411,12 +411,133 @@
       "p1_win_rate": 0.70,
       "scripts": ["combat_micro_triple_combo"],
       "notes": "Gen 060 + Gen 059 + Gen 053 (all three). REGRESSION — HP kite again conflicts with timed push, causing 5 timeouts. Less is more: formation + timed push without extra kiting is optimal."
+    },
+    {
+      "id": "P1_gen65",
+      "timestamp": "2026-03-03T00:00:00Z",
+      "scripted_player": 1,
+      "opponent": "P0_gen63",
+      "matches_20": {"p0_wins": 2, "p1_wins": 14, "timeouts": 4},
+      "p1_win_rate": 0.70,
+      "scripts": ["combat_micro_timed_push_formation (mirror)"],
+      "notes": "MIRROR BASELINE. Gen 063 vs Gen 063. Establishes P0 structural win rate vs new champion. P1 wins 70% even in mirror — script specifically benefits underdog position."
+    },
+    {
+      "id": "P1_gen66",
+      "timestamp": "2026-03-03T00:00:00Z",
+      "scripted_player": 1,
+      "opponent": "P0_gen63",
+      "matches_20": {"p0_wins": 1, "p1_wins": 15, "timeouts": 4},
+      "p1_win_rate": 0.75,
+      "scripts": ["combat_micro_early_push_3000"],
+      "notes": "Early push at tick 3000 (vs 4000). +1 over mirror. Converted seeds 5,12,13,18,19 to P1 wins but lost seeds 1,7,14 to timeouts. Modest improvement."
+    },
+    {
+      "id": "P1_gen67",
+      "timestamp": "2026-03-03T00:00:00Z",
+      "scripted_player": 1,
+      "opponent": "P0_gen63",
+      "matches_20": {"p0_wins": 3, "p1_wins": 14, "timeouts": 3},
+      "p1_win_rate": 0.70,
+      "scripts": ["combat_micro_adaptive_push"],
+      "notes": "Adaptive push (+2 units OR tick 5000). Neutral — same as mirror. Won seed 6 but lost seeds 10,13,18."
+    },
+    {
+      "id": "P1_gen68",
+      "timestamp": "2026-03-03T00:00:00Z",
+      "scripted_player": 1,
+      "opponent": "P0_gen63",
+      "matches_20": {"p0_wins": 2, "p1_wins": 18, "timeouts": 0},
+      "p1_win_rate": 0.90,
+      "scripts": ["combat_micro_momentum_push"],
+      "notes": "Momentum push (+1 lead AND enemies visible, tick 5000 fallback). +4 over mirror, 0 timeouts. Very aggressive — pushes immediately when winning. 2nd best single improvement."
+    },
+    {
+      "id": "P1_gen69",
+      "timestamp": "2026-03-03T00:00:00Z",
+      "scripted_player": 1,
+      "opponent": "P0_gen63",
+      "matches_20": {"p0_wins": 3, "p1_wins": 16, "timeouts": 1},
+      "p1_win_rate": 0.80,
+      "scripts": ["combat_micro_road_push"],
+      "notes": "Road-aware push pathing through map center. +2 over mirror. Faster arrival at enemy base but waypoint detour costs some seeds."
+    },
+    {
+      "id": "P1_gen70",
+      "timestamp": "2026-03-03T00:00:00Z",
+      "scripted_player": 1,
+      "opponent": "P0_gen63",
+      "matches_20": {"p0_wins": 2, "p1_wins": 17, "timeouts": 1},
+      "p1_win_rate": 0.85,
+      "scripts": ["combat_micro_highground_formation"],
+      "notes": "High-ground formation (tanks only advance if target pos is same/higher elevation). +3 over mirror. Prevents tanks from walking downhill into disadvantage."
+    },
+    {
+      "id": "P1_gen71",
+      "timestamp": "2026-03-03T00:00:00Z",
+      "scripted_player": 1,
+      "opponent": "P0_gen63",
+      "matches_20": {"p0_wins": 4, "p1_wins": 14, "timeouts": 2},
+      "p1_win_rate": 0.70,
+      "scripts": ["combat_micro_terrain_kite"],
+      "notes": "Terrain-aware kiting from Gen 042 transplant. NEUTRAL vs Gen 063 opponent — terrain kite helped vs Gen 034 but not vs the timed push meta. 4 P0 wins worst of the wave."
+    },
+    {
+      "id": "P1_gen72",
+      "timestamp": "2026-03-03T00:00:00Z",
+      "scripted_player": 1,
+      "opponent": "P0_gen63",
+      "matches_20": {"p0_wins": 0, "p1_wins": 20, "timeouts": 0},
+      "p1_win_rate": 1.00,
+      "reverse_test": {"p0_wins": 3, "p1_wins": 14, "timeouts": 3},
+      "scripts": ["combat_micro_hold_ranged"],
+      "notes": "NEW ALL-TIME BEST. PERFECT 20/20. Hold-position ranged in formation (ctx:hold instead of move_units for ranged at formation position). Ranged units stay behind tanks as turret line instead of chasing. Single most impactful behavioral change ever discovered. Reverse test: P0 3, P1 14, TO 3 — hold specifically benefits P1 (underdog)."
+    },
+    {
+      "id": "P1_gen73",
+      "timestamp": "2026-03-03T00:00:00Z",
+      "scripted_player": 1,
+      "opponent": "P0_gen63",
+      "matches_20": {"p0_wins": 1, "p1_wins": 18, "timeouts": 1},
+      "p1_win_rate": 0.90,
+      "scripts": ["combat_micro_wide_focus"],
+      "notes": "Wider focus fire radius (18 tiles vs 12). +4 over mirror. Catches stragglers during spread-out pushes. Tied 2nd best single improvement with Gen 068."
+    },
+    {
+      "id": "P1_gen74",
+      "timestamp": "2026-03-03T00:00:00Z",
+      "scripted_player": 1,
+      "opponent": "P0_gen63",
+      "matches_20": {"p0_wins": 4, "p1_wins": 12, "timeouts": 4},
+      "p1_win_rate": 0.60,
+      "scripts": ["combat_micro_fast_interval"],
+      "notes": "Faster interval (2 ticks vs 3). REGRESSION — command thrashing. Units constantly changing orders, 4 P0 wins and 4 timeouts. 3-tick interval is optimal."
+    },
+    {
+      "id": "P1_gen75",
+      "timestamp": "2026-03-03T00:00:00Z",
+      "scripted_player": 1,
+      "opponent": "P0_gen63",
+      "matches_20": {"p0_wins": 4, "p1_wins": 15, "timeouts": 1},
+      "p1_win_rate": 0.75,
+      "scripts": ["combat_micro_hold_ranged_momentum"],
+      "notes": "Gen 072 + Gen 068 (hold ranged + momentum push). REGRESSION from Gen 072 (20→15). Momentum push conflicts with hold discipline — pushing too early breaks formation."
+    },
+    {
+      "id": "P1_gen76",
+      "timestamp": "2026-03-03T00:00:00Z",
+      "scripted_player": 1,
+      "opponent": "P0_gen63",
+      "matches_20": {"p0_wins": 4, "p1_wins": 14, "timeouts": 2},
+      "p1_win_rate": 0.70,
+      "scripts": ["combat_micro_hold_ranged_wide_focus"],
+      "notes": "Gen 072 + Gen 073 (hold ranged + wider focus fire). REGRESSION from Gen 072 (20→14). Wider focus fire causes units to target distant enemies, pulling them away from the hold formation. Less is more: hold ranged alone is perfect."
     }
   ],
-  "best_generation": "P1_gen63",
-  "best_p1_win_rate": 0.95,
-  "best_p1_effective_dominance": 0.95,
-  "best_scripts": ["combat_micro_timed_push_formation"],
+  "best_generation": "P1_gen72",
+  "best_p1_win_rate": 1.00,
+  "best_p1_effective_dominance": 1.00,
+  "best_scripts": ["combat_micro_hold_ranged"],
   "key_insights": [
     "CLOSEST-ENEMY focus fire (target nearest to centroid, not weakest) is the best targeting — kills immediate threats, prevents chasing distant low-HP units.",
     "Production building targeting (barracks/tech first) during push is a major improvement — starves enemy reinforcements.",
@@ -445,7 +566,18 @@
     "Worker spawn offset was a major asymmetry source (fixed). Remaining asymmetry is map-gen level.",
     "Map has ~80% P0 baseline advantage after all fixes — caused by even-grid rotational symmetry off-by-one.",
     "Previously 'structural' P0 seeds (9, 11) were conquered by Gen 63. Only seed 8 remains as P0 win. Timeouts eliminated.",
-    "Less is more in script combinations — adding HP kite to timed push hurts. The best combo is exactly 2 features: formation + timed push."
+    "Less is more in script combinations — adding HP kite to timed push hurts. The best combo is exactly 2 features: formation + timed push.",
+    "HOLD-POSITION RANGED is the single most impactful behavioral change ever (Gen 072: PERFECT 20/20 vs Gen 063). ctx:hold() prevents ranged from chasing enemies, creating a turret line behind tanks.",
+    "Hold ranged is so dominant that adding ANY other feature degrades it: momentum push (20→15), wider focus fire (20→14). Purity of formation discipline is key.",
+    "Hold ranged specifically benefits the underdog (P1): 20/20 from P1 but only 3/20 from P0. The disciplined defense compensates for positional disadvantage.",
+    "Momentum push (+1 lead AND enemies visible) is the 2nd best timing improvement (18/20, 0 timeouts). More reactive than fixed tick timer.",
+    "Wider focus fire (18 tiles vs 12) is tied 2nd best (18/20, 1 timeout). Catches stragglers during spread-out pushes.",
+    "High-ground formation (tanks only advance uphill) is a solid terrain improvement (17/20). Prevents walking into elevation disadvantage.",
+    "Faster script interval (2 ticks vs 3) is CATASTROPHIC (12/20). Command thrashing — units constantly changing orders. 3-tick interval is optimal.",
+    "Terrain-aware kiting (from Gen 042) helped vs Gen 034 but NOT vs Gen 063. The timed push meta makes kite improvements irrelevant since kiting is disabled at tick 4000.",
+    "Adaptive push (+2 units OR tick 5000) is neutral. Too conservative — waits too long to push. Momentum push (+1 lead) is the better reactive approach.",
+    "Gen 063 mirror baseline: P1 wins 70% even when scripts are identical. Script design specifically benefits the underdog position.",
+    "Counter-meta training against Gen 063 discovered that formation discipline (hold) matters more than timing, terrain, or targeting improvements."
   ],
   "seeds_20": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 }
