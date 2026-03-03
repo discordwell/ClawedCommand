@@ -19,8 +19,8 @@ local function detect_faction(buildings)
                 barracks_cost = 150, barracks_gpu = 0,
                 supply_cost = 75, supply_gpu = 0,
                 tech_cost = 100, tech_gpu = 75,
-                -- Weighted unit roster: {kind, weight} from barracks
                 army = {{"Nuisance", 3}, {"Hisser", 2}, {"Chonk", 1}},
+                tech_army = {{"FlyingFox", 2}, {"Catnapper", 1}, {"Mouser", 1}},
             }
         end
         if b.kind == "TheBurrow" then
@@ -31,6 +31,7 @@ local function detect_faction(buildings)
                 supply_cost = 50, supply_gpu = 0,
                 tech_cost = 75, tech_gpu = 50,
                 army = {{"Swarmer", 3}, {"Gnawer", 2}, {"Plaguetail", 1}},
+                tech_army = {{"Quillback", 2}, {"Shrieker", 1}, {"Whiskerwitch", 1}},
             }
         end
         if b.kind == "TheGrotto" then
@@ -41,6 +42,7 @@ local function detect_faction(buildings)
                 supply_cost = 75, supply_gpu = 0,
                 tech_cost = 100, tech_gpu = 75,
                 army = {{"Regeneron", 3}, {"Croaker", 2}, {"Gulper", 1}},
+                tech_army = {{"Shellwarden", 2}, {"Eftsaber", 1}, {"Broodmother", 1}},
             }
         end
         if b.kind == "TheParliament" then
@@ -51,6 +53,7 @@ local function detect_faction(buildings)
                 supply_cost = 75, supply_gpu = 0,
                 tech_cost = 100, tech_gpu = 75,
                 army = {{"Rookclaw", 3}, {"Sentinel", 2}, {"Magpike", 1}},
+                tech_army = {{"Dusktalon", 2}, {"Hootseer", 1}, {"Magpyre", 1}},
             }
         end
         if b.kind == "TheSett" then
@@ -61,6 +64,7 @@ local function detect_faction(buildings)
                 supply_cost = 80, supply_gpu = 0,
                 tech_cost = 125, tech_gpu = 100,
                 army = {{"Sapjaw", 3}, {"Dustclaw", 2}, {"Ironhide", 1}},
+                tech_army = {{"Cragback", 2}, {"Embermaw", 1}, {"SeekerTunneler", 1}},
             }
         end
         if b.kind == "TheDumpster" then
@@ -71,6 +75,7 @@ local function detect_faction(buildings)
                 supply_cost = 70, supply_gpu = 0,
                 tech_cost = 90, tech_gpu = 65,
                 army = {{"Bandit", 3}, {"GreaseMonkey", 2}, {"Wrecker", 1}},
+                tech_army = {{"GlitchRat", 2}, {"PatchPossum", 2}},
             }
         end
     end
@@ -124,7 +129,8 @@ local res = ctx:get_resources()
 local hq_x, hq_y = 0, 0
 local has_barracks = false
 local has_tech = false
-local production_buildings = {}
+local barracks_buildings = {}
+local tech_buildings = {}
 
 for _, b in ipairs(buildings) do
     if b.kind == faction.hq then
@@ -134,12 +140,14 @@ for _, b in ipairs(buildings) do
     if b.kind == faction.barracks then
         has_barracks = true
         if not b.under_construction then
-            table.insert(production_buildings, b)
+            table.insert(barracks_buildings, b)
         end
     end
     if b.kind == faction.tech then
         has_tech = true
-        -- Tech buildings produce different units; don't add to barracks production pool
+        if not b.under_construction then
+            table.insert(tech_buildings, b)
+        end
     end
 end
 
@@ -197,30 +205,37 @@ end
 -- === TRAIN UNITS from production buildings ===
 if res.supply >= res.supply_cap then return end -- supply blocked
 
--- Round-robin with weighted composition
-local total_weight = 0
-for _, entry in ipairs(faction.army) do
-    total_weight = total_weight + entry[2]
+local tick = ctx:tick()
+
+-- Helper: pick a unit kind from a weighted roster using tick-based rotation
+local function pick_unit(roster)
+    local total = 0
+    for _, entry in ipairs(roster) do
+        total = total + entry[2]
+    end
+    local idx = (math.floor(tick / 5) % total) + 1
+    local cumulative = 0
+    for _, entry in ipairs(roster) do
+        cumulative = cumulative + entry[2]
+        if idx <= cumulative then
+            return entry[1]
+        end
+    end
+    return roster[1][1]
 end
 
--- Count existing combat units to determine what to train next
-local tick = ctx:tick()
--- Use tick-based rotation to distribute production across unit types
-local weight_idx = (math.floor(tick / 5) % total_weight) + 1
-local chosen_kind = faction.army[1][1] -- fallback
-local cumulative = 0
-for _, entry in ipairs(faction.army) do
-    cumulative = cumulative + entry[2]
-    if weight_idx <= cumulative then
-        chosen_kind = entry[1]
+-- Train from barracks
+for _, pb in ipairs(barracks_buildings) do
+    if not pb.producing and res.food >= 50 then
+        ctx:train(pb.id, pick_unit(faction.army))
         break
     end
 end
 
--- Train from first available non-busy production building
-for _, pb in ipairs(production_buildings) do
-    if not pb.producing and res.food >= 50 then
-        ctx:train(pb.id, chosen_kind)
+-- Train from tech buildings (require gpu_cores since tech units tend to cost gpu)
+for _, tb in ipairs(tech_buildings) do
+    if not tb.producing and res.food >= 75 and res.gpu_cores >= 25 then
+        ctx:train(tb.id, pick_unit(faction.tech_army))
         break
     end
 end
