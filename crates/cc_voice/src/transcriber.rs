@@ -46,10 +46,13 @@ impl WhisperTranscriber {
         params.set_suppress_blank(true);
         params.set_no_context(true);
 
-        let mut state = self.ctx.create_state()
+        let mut state = self
+            .ctx
+            .create_state()
             .map_err(|e| format!("Failed to create Whisper state: {e}"))?;
 
-        state.full(params, audio)
+        state
+            .full(params, audio)
             .map_err(|e| format!("Whisper inference failed: {e}"))?;
 
         let n_segments = state.full_n_segments();

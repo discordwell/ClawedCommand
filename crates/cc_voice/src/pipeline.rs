@@ -16,15 +16,15 @@ use ringbuf::traits::Consumer;
 
 use bevy::prelude::*;
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc,
+    atomic::{AtomicBool, Ordering},
 };
 
 #[cfg(feature = "voice")]
 use crate::events::VoiceCommandEvent;
 use crate::events::VoiceStateChanged;
-use crate::{VoiceConfig, VoiceState};
 use crate::vad::VAD_CHUNK_SAMPLES;
+use crate::{VoiceConfig, VoiceState};
 
 /// Resource holding the channel receiver for transcribed voice text.
 #[cfg(feature = "voice")]
@@ -159,8 +159,7 @@ impl VadStateMachine {
                             self.silence_chunks
                         );
                         // Trim trailing silence (remove the silent chunks)
-                        let trim_samples =
-                            self.silence_chunks as usize * VAD_CHUNK_SAMPLES;
+                        let trim_samples = self.silence_chunks as usize * VAD_CHUNK_SAMPLES;
                         let keep = self.accumulator.len().saturating_sub(trim_samples);
                         self.accumulator.truncate(keep);
                         self.emit()
@@ -181,7 +180,10 @@ impl VadStateMachine {
 
         if audio.len() >= self.min_samples {
             let duration_ms = audio.len() * 1000 / 16000;
-            log::info!("VAD: emitting {duration_ms}ms speech ({} samples)", audio.len());
+            log::info!(
+                "VAD: emitting {duration_ms}ms speech ({} samples)",
+                audio.len()
+            );
             Some(audio)
         } else {
             log::debug!(

@@ -11,9 +11,11 @@ use bevy::ecs::world::EntityWorldMut;
 use bevy::prelude::*;
 
 use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::{Building, CursorGridPos, Dead, Faction, Owner, Position, StatModifiers, UnitKind, VoiceBuffed};
-use cc_core::status_effects::{StatusEffectId, StatusEffects, StatusInstance};
+use cc_core::components::{
+    Building, CursorGridPos, Dead, Faction, Owner, Position, StatModifiers, UnitKind, VoiceBuffed,
+};
 use cc_core::coords::GridPos;
+use cc_core::status_effects::{StatusEffectId, StatusEffects, StatusInstance};
 use cc_sim::ai::fsm::{FactionMap, faction_map};
 use cc_sim::resources::MapResource;
 
@@ -158,38 +160,36 @@ pub fn classify_keyword(keyword: &str) -> KeywordRole {
 
         // The Clawed units (+ abbreviations)
         // Not yet in UnitKind enum — log and ignore for now
-        "nibblet" | "swarmer" | "gnawer" | "shrieker" | "tunneler" | "sparks"
-        | "quillback" | "whiskerwitch" | "witch" | "plaguetail" | "plague"
-        | "marshal" => {
+        "nibblet" | "swarmer" | "gnawer" | "shrieker" | "tunneler" | "sparks" | "quillback"
+        | "whiskerwitch" | "witch" | "plaguetail" | "plague" | "marshal" => {
             log::debug!("Clawed unit '{keyword}' recognized but not yet in UnitKind");
             KeywordRole::Ignored
         }
 
         // Seekers units
-        "delver" | "ironhide" | "cragback" | "warden" | "sapjaw"
-        | "wardenmother" | "embermaw" | "dustclaw" | "gutripper" => {
+        "delver" | "ironhide" | "cragback" | "warden" | "sapjaw" | "wardenmother" | "embermaw"
+        | "dustclaw" | "gutripper" => {
             log::debug!("Seekers unit '{keyword}' recognized but not yet in UnitKind");
             KeywordRole::Ignored
         }
 
         // The Murder units
-        "scrounger" | "sentinel" | "rookclaw" | "magpike" | "magpyre"
-        | "jaycaller" | "jayflicker" | "dusktalon" | "hootseer" | "corvus" => {
+        "scrounger" | "sentinel" | "rookclaw" | "magpike" | "magpyre" | "jaycaller"
+        | "jayflicker" | "dusktalon" | "hootseer" | "corvus" => {
             log::debug!("Murder unit '{keyword}' recognized but not yet in UnitKind");
             KeywordRole::Ignored
         }
 
         // Croak units (+ abbreviations)
-        "ponderer" | "regeneron" | "regen" | "broodmother" | "brood"
-        | "gulper" | "eftsaber" | "croaker" | "leapfrog" | "shellwarden"
-        | "shell" | "bogwhisper" | "bog" | "murk" => {
+        "ponderer" | "regeneron" | "regen" | "broodmother" | "brood" | "gulper" | "eftsaber"
+        | "croaker" | "leapfrog" | "shellwarden" | "shell" | "bogwhisper" | "bog" | "murk" => {
             log::debug!("Croak unit '{keyword}' recognized but not yet in UnitKind");
             KeywordRole::Ignored
         }
 
         // LLAMA units
-        "bandit" | "titan" | "glitch" | "patch" | "grease"
-        | "drop" | "wrecker" | "diver" | "junkyard" => {
+        "bandit" | "titan" | "glitch" | "patch" | "grease" | "drop" | "wrecker" | "diver"
+        | "junkyard" => {
             log::debug!("LLAMA unit '{keyword}' recognized but not yet in UnitKind");
             KeywordRole::Ignored
         }
@@ -329,10 +329,7 @@ pub fn parse_voice_text(text: &str) -> ParsedVoiceCommand {
 /// For commands that need a position target (move, patrol, attack-move),
 /// we use the cursor grid position or a direction offset.
 /// Commands that don't need a target (stop, hold) resolve immediately.
-pub fn resolve_agent_command(
-    action: AgentAction,
-    unit_ids: &[EntityId],
-) -> Option<GameCommand> {
+pub fn resolve_agent_command(action: AgentAction, unit_ids: &[EntityId]) -> Option<GameCommand> {
     if unit_ids.is_empty() {
         return None;
     }
@@ -535,11 +532,7 @@ pub fn apply_voice_buff_to_entities(
     for &entity in entities {
         commands.entity(entity).insert(VoiceBuffed);
 
-        let has_status = status_query
-            .get(entity)
-            .ok()
-            .flatten()
-            .is_some();
+        let has_status = status_query.get(entity).ok().flatten().is_some();
 
         let buff = StatusInstance {
             effect: StatusEffectId::SpeedBuff,
@@ -549,18 +542,22 @@ pub fn apply_voice_buff_to_entities(
         };
 
         if has_status {
-            commands.entity(entity).queue(move |mut entity_world: EntityWorldMut| {
-                if let Some(mut se) = entity_world.get_mut::<StatusEffects>() {
-                    se.effects.push(buff);
-                }
-                if entity_world.get::<StatModifiers>().is_none() {
-                    entity_world.insert(StatModifiers::default());
-                }
-            });
+            commands
+                .entity(entity)
+                .queue(move |mut entity_world: EntityWorldMut| {
+                    if let Some(mut se) = entity_world.get_mut::<StatusEffects>() {
+                        se.effects.push(buff);
+                    }
+                    if entity_world.get::<StatModifiers>().is_none() {
+                        entity_world.insert(StatModifiers::default());
+                    }
+                });
         } else {
             let mut effects = StatusEffects::default();
             effects.effects.push(buff);
-            commands.entity(entity).insert((effects, StatModifiers::default()));
+            commands
+                .entity(entity)
+                .insert((effects, StatModifiers::default()));
         }
     }
 }
@@ -575,7 +572,13 @@ pub fn voice_intent_system(
     // All living units — filter by owner.player_id in code
     all_units: Query<(Entity, &cc_core::components::UnitType, &Position, &Owner), Without<Dead>>,
     // Selected units (fallback when "selected" keyword used)
-    selected_units: Query<Entity, (With<cc_core::components::UnitType>, With<cc_core::components::Selected>)>,
+    selected_units: Query<
+        Entity,
+        (
+            With<cc_core::components::UnitType>,
+            With<cc_core::components::Selected>,
+        ),
+    >,
     // Player buildings for retreat, build-site occupation, and rally
     player_buildings: Query<(Entity, &Position, &Owner, &Building)>,
     map_res: Res<MapResource>,
@@ -603,25 +606,24 @@ pub fn voice_intent_system(
         // Resolve target unit IDs based on parsed selector/filter
         // Filter to player's own living units only
         let own_units = || {
-            all_units.iter().filter(|(_, _, _, owner)| owner.player_id == 0)
+            all_units
+                .iter()
+                .filter(|(_, _, _, owner)| owner.player_id == 0)
         };
 
         let (entities, unit_ids): (Vec<Entity>, Vec<EntityId>) = match parsed.selector {
-            Some(SelectorKind::Selected) => {
-                selected_units.iter().map(|e| (e, EntityId(e.to_bits()))).unzip()
-            }
-            Some(SelectorKind::Workers) => {
-                own_units()
-                    .filter(|(_, ut, _, _)| ut.kind == UnitKind::Pawdler)
-                    .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
-                    .unzip()
-            }
-            Some(SelectorKind::Army) => {
-                own_units()
-                    .filter(|(_, ut, _, _)| ut.kind != UnitKind::Pawdler)
-                    .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
-                    .unzip()
-            }
+            Some(SelectorKind::Selected) => selected_units
+                .iter()
+                .map(|e| (e, EntityId(e.to_bits())))
+                .unzip(),
+            Some(SelectorKind::Workers) => own_units()
+                .filter(|(_, ut, _, _)| ut.kind == UnitKind::Pawdler)
+                .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
+                .unzip(),
+            Some(SelectorKind::Army) => own_units()
+                .filter(|(_, ut, _, _)| ut.kind != UnitKind::Pawdler)
+                .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
+                .unzip(),
             Some(SelectorKind::Nearby) => {
                 // Filter to own units within 10 tiles (Chebyshev) of cursor
                 if let Some(cursor) = cursor_grid.pos {
@@ -644,17 +646,13 @@ pub fn voice_intent_system(
             _ => {
                 // Default: filter by unit kind if specified, else all own units
                 match parsed.unit_filter {
-                    Some(kind) => {
-                        own_units()
-                            .filter(|(_, ut, _, _)| ut.kind == kind)
-                            .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
-                            .unzip()
-                    }
-                    None => {
-                        own_units()
-                            .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
-                            .unzip()
-                    }
+                    Some(kind) => own_units()
+                        .filter(|(_, ut, _, _)| ut.kind == kind)
+                        .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
+                        .unzip(),
+                    None => own_units()
+                        .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
+                        .unzip(),
                 }
             }
         };
@@ -670,17 +668,10 @@ pub fn voice_intent_system(
                 resolve_voice_attack(&unit_ids, &all_units, &map_res)
             }
             // Retreat → move to base
-            AgentAction::Retreat => {
-                resolve_voice_retreat(&unit_ids, &player_buildings)
-            }
+            AgentAction::Retreat => resolve_voice_retreat(&unit_ids, &player_buildings),
             // Charge → attack-move toward direction or enemy centroid
             AgentAction::Charge => {
-                let target = resolve_move_target(
-                    parsed.direction,
-                    enemy_centroid,
-                    mw,
-                    mh,
-                );
+                let target = resolve_move_target(parsed.direction, enemy_centroid, mw, mh);
                 if !unit_ids.is_empty() {
                     Some(GameCommand::AttackMove {
                         unit_ids: unit_ids.clone(),
@@ -692,32 +683,15 @@ pub fn voice_intent_system(
             }
             // Flank → move perpendicular to enemy direction
             AgentAction::Flank => {
-                resolve_voice_flank(
-                    &unit_ids,
-                    parsed.direction,
-                    enemy_centroid,
-                    mw,
-                    mh,
-                )
+                resolve_voice_flank(&unit_ids, parsed.direction, enemy_centroid, mw, mh)
             }
             // Move/Patrol/Scout → move in direction or toward enemy
             AgentAction::Move | AgentAction::Patrol | AgentAction::Scout => {
-                resolve_voice_move(
-                    &unit_ids,
-                    parsed.direction,
-                    enemy_centroid,
-                    mw,
-                    mh,
-                )
+                resolve_voice_move(&unit_ids, parsed.direction, enemy_centroid, mw, mh)
             }
             // Rally → set rally point on first owned building
             AgentAction::Rally => {
-                let target = resolve_move_target(
-                    parsed.direction,
-                    cursor_grid.pos,
-                    mw,
-                    mh,
-                );
+                let target = resolve_move_target(parsed.direction, cursor_grid.pos, mw, mh);
                 // Find first owned building
                 let mut rally_cmd = None;
                 for (entity, _, owner, _) in player_buildings.iter() {
@@ -737,20 +711,16 @@ pub fn voice_intent_system(
                     // Infer faction from player's HQ building
                     let player_faction = player_buildings
                         .iter()
-                        .find(|(_, _, owner, b)| {
-                            owner.player_id == 0 && b.kind.is_hq()
-                        })
+                        .find(|(_, _, owner, b)| owner.player_id == 0 && b.kind.is_hq())
                         .map(|(_, _, _, b)| infer_faction_from_hq(b.kind))
                         .unwrap_or(Faction::CatGpt);
 
                     let fmap = faction_map(player_faction);
-                    let game_bk =
-                        voice_building_to_game_building(voice_bk, &fmap);
+                    let game_bk = voice_building_to_game_building(voice_bk, &fmap);
 
-                    let center = cursor_grid.pos.unwrap_or(GridPos::new(
-                        mw as i32 / 2,
-                        mh as i32 / 2,
-                    ));
+                    let center = cursor_grid
+                        .pos
+                        .unwrap_or(GridPos::new(mw as i32 / 2, mh as i32 / 2));
 
                     // Collect all building positions (all players)
                     let occupied: Vec<GridPos> = player_buildings
@@ -759,12 +729,7 @@ pub fn voice_intent_system(
                         .collect();
 
                     // Find a valid build site
-                    let build_pos = find_voice_build_position(
-                        center,
-                        &map_res.map,
-                        &occupied,
-                        20,
-                    );
+                    let build_pos = find_voice_build_position(center, &map_res.map, &occupied, 20);
 
                     // Find nearest own worker (any faction's worker type)
                     let builder = own_units()
@@ -782,16 +747,12 @@ pub fn voice_intent_system(
                             position: bp,
                         }),
                         _ => {
-                            log::debug!(
-                                "Voice build: no builder or build site found"
-                            );
+                            log::debug!("Voice build: no builder or build site found");
                             None
                         }
                     }
                 } else {
-                    log::debug!(
-                        "Voice 'build' without a building keyword — ignoring"
-                    );
+                    log::debug!("Voice 'build' without a building keyword — ignoring");
                     None
                 }
             }
@@ -807,7 +768,10 @@ pub fn voice_intent_system(
             voice_override.set(&unit_ids);
 
             // Apply golden speed buff for combat commands
-            if matches!(action, AgentAction::Attack | AgentAction::Charge | AgentAction::Siege) {
+            if matches!(
+                action,
+                AgentAction::Attack | AgentAction::Charge | AgentAction::Siege
+            ) {
                 apply_voice_buff_to_entities(&mut commands, &entities, &status_query);
             }
         }
@@ -816,10 +780,7 @@ pub fn voice_intent_system(
 
 /// Compute the centroid of all enemy (non-player-0) units.
 fn compute_enemy_centroid(
-    all_units: &Query<
-        (Entity, &cc_core::components::UnitType, &Position, &Owner),
-        Without<Dead>,
-    >,
+    all_units: &Query<(Entity, &cc_core::components::UnitType, &Position, &Owner), Without<Dead>>,
 ) -> Option<GridPos> {
     let mut sum_x: i64 = 0;
     let mut sum_y: i64 = 0;
@@ -834,10 +795,7 @@ fn compute_enemy_centroid(
         count += 1;
     }
     if count > 0 {
-        Some(GridPos::new(
-            (sum_x / count) as i32,
-            (sum_y / count) as i32,
-        ))
+        Some(GridPos::new((sum_x / count) as i32, (sum_y / count) as i32))
     } else {
         None
     }
@@ -869,10 +827,7 @@ fn resolve_move_target(
 /// Falls back to map center if no enemies are visible.
 fn resolve_voice_attack(
     unit_ids: &[EntityId],
-    all_units: &Query<
-        (Entity, &cc_core::components::UnitType, &Position, &Owner),
-        Without<Dead>,
-    >,
+    all_units: &Query<(Entity, &cc_core::components::UnitType, &Position, &Owner), Without<Dead>>,
     map_res: &MapResource,
 ) -> Option<GameCommand> {
     if unit_ids.is_empty() {
@@ -979,27 +934,63 @@ mod tests {
 
     #[test]
     fn test_classify_agent_commands() {
-        assert_eq!(classify_keyword("attack"), KeywordRole::Agent(AgentAction::Attack));
-        assert_eq!(classify_keyword("retreat"), KeywordRole::Agent(AgentAction::Retreat));
-        assert_eq!(classify_keyword("stop"), KeywordRole::Agent(AgentAction::Stop));
-        assert_eq!(classify_keyword("rally"), KeywordRole::Agent(AgentAction::Rally));
+        assert_eq!(
+            classify_keyword("attack"),
+            KeywordRole::Agent(AgentAction::Attack)
+        );
+        assert_eq!(
+            classify_keyword("retreat"),
+            KeywordRole::Agent(AgentAction::Retreat)
+        );
+        assert_eq!(
+            classify_keyword("stop"),
+            KeywordRole::Agent(AgentAction::Stop)
+        );
+        assert_eq!(
+            classify_keyword("rally"),
+            KeywordRole::Agent(AgentAction::Rally)
+        );
     }
 
     #[test]
     fn test_classify_catgpt_units() {
-        assert_eq!(classify_keyword("chonk"), KeywordRole::UnitName(UnitKind::Chonk));
-        assert_eq!(classify_keyword("fox"), KeywordRole::UnitName(UnitKind::FlyingFox));
-        assert_eq!(classify_keyword("sapper"), KeywordRole::UnitName(UnitKind::FerretSapper));
-        assert_eq!(classify_keyword("mech"), KeywordRole::UnitName(UnitKind::MechCommander));
+        assert_eq!(
+            classify_keyword("chonk"),
+            KeywordRole::UnitName(UnitKind::Chonk)
+        );
+        assert_eq!(
+            classify_keyword("fox"),
+            KeywordRole::UnitName(UnitKind::FlyingFox)
+        );
+        assert_eq!(
+            classify_keyword("sapper"),
+            KeywordRole::UnitName(UnitKind::FerretSapper)
+        );
+        assert_eq!(
+            classify_keyword("mech"),
+            KeywordRole::UnitName(UnitKind::MechCommander)
+        );
     }
 
     #[test]
     fn test_classify_abbreviations() {
         // Abbreviations map to same UnitKind as full name
-        assert_eq!(classify_keyword("pawds"), KeywordRole::UnitName(UnitKind::Pawdler));
-        assert_eq!(classify_keyword("pawdler"), KeywordRole::UnitName(UnitKind::Pawdler));
-        assert_eq!(classify_keyword("napper"), KeywordRole::UnitName(UnitKind::Catnapper));
-        assert_eq!(classify_keyword("catnapper"), KeywordRole::UnitName(UnitKind::Catnapper));
+        assert_eq!(
+            classify_keyword("pawds"),
+            KeywordRole::UnitName(UnitKind::Pawdler)
+        );
+        assert_eq!(
+            classify_keyword("pawdler"),
+            KeywordRole::UnitName(UnitKind::Pawdler)
+        );
+        assert_eq!(
+            classify_keyword("napper"),
+            KeywordRole::UnitName(UnitKind::Catnapper)
+        );
+        assert_eq!(
+            classify_keyword("catnapper"),
+            KeywordRole::UnitName(UnitKind::Catnapper)
+        );
     }
 
     #[test]
@@ -1013,33 +1004,66 @@ mod tests {
 
     #[test]
     fn test_classify_selectors() {
-        assert_eq!(classify_keyword("all"), KeywordRole::Selector(SelectorKind::All));
-        assert_eq!(classify_keyword("screen"), KeywordRole::Selector(SelectorKind::All));
-        assert_eq!(classify_keyword("army"), KeywordRole::Selector(SelectorKind::Army));
-        assert_eq!(classify_keyword("workers"), KeywordRole::Selector(SelectorKind::Workers));
+        assert_eq!(
+            classify_keyword("all"),
+            KeywordRole::Selector(SelectorKind::All)
+        );
+        assert_eq!(
+            classify_keyword("screen"),
+            KeywordRole::Selector(SelectorKind::All)
+        );
+        assert_eq!(
+            classify_keyword("army"),
+            KeywordRole::Selector(SelectorKind::Army)
+        );
+        assert_eq!(
+            classify_keyword("workers"),
+            KeywordRole::Selector(SelectorKind::Workers)
+        );
     }
 
     #[test]
     fn test_classify_conjunctions() {
-        assert_eq!(classify_keyword("and"), KeywordRole::Conjunction(ConjunctionKind::And));
-        assert_eq!(classify_keyword("except"), KeywordRole::Conjunction(ConjunctionKind::Except));
+        assert_eq!(
+            classify_keyword("and"),
+            KeywordRole::Conjunction(ConjunctionKind::And)
+        );
+        assert_eq!(
+            classify_keyword("except"),
+            KeywordRole::Conjunction(ConjunctionKind::Except)
+        );
     }
 
     #[test]
     fn test_classify_directions() {
-        assert_eq!(classify_keyword("north"), KeywordRole::Direction(DirectionKind::North));
-        assert_eq!(classify_keyword("west"), KeywordRole::Direction(DirectionKind::West));
+        assert_eq!(
+            classify_keyword("north"),
+            KeywordRole::Direction(DirectionKind::North)
+        );
+        assert_eq!(
+            classify_keyword("west"),
+            KeywordRole::Direction(DirectionKind::West)
+        );
     }
 
     #[test]
     fn test_classify_buildings() {
-        assert_eq!(classify_keyword("tower"), KeywordRole::Building(BuildingKind::Tower));
-        assert_eq!(classify_keyword("box"), KeywordRole::Building(BuildingKind::Box));
+        assert_eq!(
+            classify_keyword("tower"),
+            KeywordRole::Building(BuildingKind::Tower)
+        );
+        assert_eq!(
+            classify_keyword("box"),
+            KeywordRole::Building(BuildingKind::Box)
+        );
     }
 
     #[test]
     fn test_classify_meta() {
-        assert_eq!(classify_keyword("cancel"), KeywordRole::Meta(MetaAction::Cancel));
+        assert_eq!(
+            classify_keyword("cancel"),
+            KeywordRole::Meta(MetaAction::Cancel)
+        );
         assert_eq!(classify_keyword("yes"), KeywordRole::Meta(MetaAction::Yes));
     }
 
@@ -1068,14 +1092,38 @@ mod tests {
         use cc_core::components::BuildingKind as GBK;
 
         let fmap = faction_map(Faction::CatGpt);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Barracks, &fmap), GBK::CatTree);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Tree, &fmap), GBK::CatTree);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Refinery, &fmap), GBK::FishMarket);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Market, &fmap), GBK::FishMarket);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Tower, &fmap), GBK::LaserPointer);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Box, &fmap), GBK::TheBox);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Rack, &fmap), GBK::ServerRack);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Post, &fmap), GBK::ScratchingPost);
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Barracks, &fmap),
+            GBK::CatTree
+        );
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Tree, &fmap),
+            GBK::CatTree
+        );
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Refinery, &fmap),
+            GBK::FishMarket
+        );
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Market, &fmap),
+            GBK::FishMarket
+        );
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Tower, &fmap),
+            GBK::LaserPointer
+        );
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Box, &fmap),
+            GBK::TheBox
+        );
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Rack, &fmap),
+            GBK::ServerRack
+        );
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Post, &fmap),
+            GBK::ScratchingPost
+        );
     }
 
     #[test]
@@ -1084,13 +1132,25 @@ mod tests {
 
         // The Murder: "barracks" → Rookery, "tower" → Watchtower
         let murder = faction_map(Faction::TheMurder);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Barracks, &murder), GBK::Rookery);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Tower, &murder), GBK::Watchtower);
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Barracks, &murder),
+            GBK::Rookery
+        );
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Tower, &murder),
+            GBK::Watchtower
+        );
 
         // Croak: "barracks" → SpawningPools, "refinery" → LilyMarket
         let croak = faction_map(Faction::Croak);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Barracks, &croak), GBK::SpawningPools);
-        assert_eq!(voice_building_to_game_building(BuildingKind::Refinery, &croak), GBK::LilyMarket);
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Barracks, &croak),
+            GBK::SpawningPools
+        );
+        assert_eq!(
+            voice_building_to_game_building(BuildingKind::Refinery, &croak),
+            GBK::LilyMarket
+        );
     }
 
     #[test]
@@ -1099,8 +1159,14 @@ mod tests {
 
         assert_eq!(infer_faction_from_hq(GBK::TheBox), Faction::CatGpt);
         assert_eq!(infer_faction_from_hq(GBK::TheBurrow), Faction::TheClawed);
-        assert_eq!(infer_faction_from_hq(GBK::TheSett), Faction::SeekersOfTheDeep);
-        assert_eq!(infer_faction_from_hq(GBK::TheParliament), Faction::TheMurder);
+        assert_eq!(
+            infer_faction_from_hq(GBK::TheSett),
+            Faction::SeekersOfTheDeep
+        );
+        assert_eq!(
+            infer_faction_from_hq(GBK::TheParliament),
+            Faction::TheMurder
+        );
         assert_eq!(infer_faction_from_hq(GBK::TheDumpster), Faction::Llama);
         assert_eq!(infer_faction_from_hq(GBK::TheGrotto), Faction::Croak);
         // Non-HQ falls back to CatGpt
@@ -1183,7 +1249,10 @@ mod tests {
         let p = pos.unwrap();
         assert_ne!(p, GridPos::new(8, 8));
         let dist = (p.x - 8).abs().max((p.y - 8).abs());
-        assert!(dist <= 1, "should find a tile at ring 1, got distance {dist}");
+        assert!(
+            dist <= 1,
+            "should find a tile at ring 1, got distance {dist}"
+        );
     }
 
     #[test]
@@ -1192,7 +1261,11 @@ mod tests {
         // This catches drift between config.yaml/labels.txt and classify_keyword.
         let labels_text = include_str!("../../../assets/voice/labels.txt");
         let labels: Vec<&str> = labels_text.lines().filter(|l| !l.is_empty()).collect();
-        assert_eq!(labels.len(), 119, "labels.txt should have exactly 119 entries");
+        assert_eq!(
+            labels.len(),
+            119,
+            "labels.txt should have exactly 119 entries"
+        );
 
         for label in &labels {
             let role = classify_keyword(label);
@@ -1219,27 +1292,46 @@ mod tests {
 
         // Run the buff application via a one-shot system
         let entities_clone = entities.clone();
-        let _ = world.run_system_once(move |mut commands: Commands, status_q: Query<Option<&StatusEffects>, Without<Dead>>| {
-            apply_voice_buff_to_entities(&mut commands, &entities_clone, &status_q);
-        });
+        let _ = world.run_system_once(
+            move |mut commands: Commands,
+                  status_q: Query<Option<&StatusEffects>, Without<Dead>>| {
+                apply_voice_buff_to_entities(&mut commands, &entities_clone, &status_q);
+            },
+        );
 
         // Both should have VoiceBuffed marker
-        assert!(world.get::<VoiceBuffed>(e1).is_some(), "e1 should have VoiceBuffed");
-        assert!(world.get::<VoiceBuffed>(e2).is_some(), "e2 should have VoiceBuffed");
+        assert!(
+            world.get::<VoiceBuffed>(e1).is_some(),
+            "e1 should have VoiceBuffed"
+        );
+        assert!(
+            world.get::<VoiceBuffed>(e2).is_some(),
+            "e2 should have VoiceBuffed"
+        );
 
         // Both should have StatusEffects with SpeedBuff
-        let se1 = world.get::<StatusEffects>(e1).expect("e1 should have StatusEffects");
+        let se1 = world
+            .get::<StatusEffects>(e1)
+            .expect("e1 should have StatusEffects");
         assert_eq!(se1.effects.len(), 1);
         assert_eq!(se1.effects[0].effect, StatusEffectId::SpeedBuff);
         assert_eq!(se1.effects[0].remaining_ticks, VOICE_BUFF_DURATION);
 
-        let se2 = world.get::<StatusEffects>(e2).expect("e2 should have StatusEffects");
+        let se2 = world
+            .get::<StatusEffects>(e2)
+            .expect("e2 should have StatusEffects");
         assert_eq!(se2.effects.len(), 1);
         assert_eq!(se2.effects[0].effect, StatusEffectId::SpeedBuff);
 
         // Both should have StatModifiers
-        assert!(world.get::<StatModifiers>(e1).is_some(), "e1 should have StatModifiers");
-        assert!(world.get::<StatModifiers>(e2).is_some(), "e2 should have StatModifiers");
+        assert!(
+            world.get::<StatModifiers>(e1).is_some(),
+            "e1 should have StatModifiers"
+        );
+        assert!(
+            world.get::<StatModifiers>(e2).is_some(),
+            "e2 should have StatModifiers"
+        );
     }
 
     // parse_voice_text tests

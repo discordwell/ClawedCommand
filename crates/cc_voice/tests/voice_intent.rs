@@ -53,12 +53,7 @@ fn make_voice_sim(map: GameMap) -> (World, Schedule) {
     (world, schedule)
 }
 
-fn spawn_owned_unit(
-    world: &mut World,
-    grid: GridPos,
-    player_id: u8,
-    kind: UnitKind,
-) -> Entity {
+fn spawn_owned_unit(world: &mut World, grid: GridPos, player_id: u8, kind: UnitKind) -> Entity {
     let stats = base_stats(kind);
     world
         .spawn((
@@ -88,12 +83,7 @@ fn spawn_owned_unit(
         .id()
 }
 
-fn spawn_building(
-    world: &mut World,
-    grid: GridPos,
-    player_id: u8,
-    kind: BuildingKind,
-) -> Entity {
+fn spawn_building(world: &mut World, grid: GridPos, player_id: u8, kind: BuildingKind) -> Entity {
     world
         .spawn((
             Position {
@@ -315,7 +305,11 @@ fn voice_nearby_boundary_distance_10_included() {
     assert_eq!(cmds.len(), 1);
     match &cmds[0] {
         GameCommand::Stop { unit_ids } => {
-            assert_eq!(unit_ids.len(), 1, "distance 10 included, distance 11 excluded");
+            assert_eq!(
+                unit_ids.len(),
+                1,
+                "distance 10 included, distance 11 excluded"
+            );
         }
         other => panic!("expected Stop, got: {other:?}"),
     }
@@ -365,7 +359,11 @@ fn voice_attack_targets_enemy_centroid() {
     match &cmds[0] {
         GameCommand::AttackMove { unit_ids, target } => {
             assert_eq!(unit_ids.len(), 1);
-            assert_eq!(*target, GridPos::new(45, 45), "should target enemy centroid");
+            assert_eq!(
+                *target,
+                GridPos::new(45, 45),
+                "should target enemy centroid"
+            );
         }
         other => panic!("expected AttackMove, got: {other:?}"),
     }
@@ -427,7 +425,11 @@ fn voice_retreat_targets_non_catgpt_hq() {
     assert_eq!(cmds.len(), 1);
     match &cmds[0] {
         GameCommand::Move { target, .. } => {
-            assert_eq!(*target, GridPos::new(5, 5), "should retreat to TheGrotto HQ, not CatTree");
+            assert_eq!(
+                *target,
+                GridPos::new(5, 5),
+                "should retreat to TheGrotto HQ, not CatTree"
+            );
         }
         other => panic!("expected Move, got: {other:?}"),
     }
@@ -567,7 +569,10 @@ fn voice_build_tower_finds_worker_and_site() {
             );
             // Should be near cursor (10,10)
             let dist = (position.x - 10).abs().max((position.y - 10).abs());
-            assert!(dist <= 1, "build site should be near cursor, got {position:?}");
+            assert!(
+                dist <= 1,
+                "build site should be near cursor, got {position:?}"
+            );
         }
         other => panic!("expected Build, got: {other:?}"),
     }
@@ -584,7 +589,10 @@ fn voice_build_without_building_keyword_is_ignored() {
     tick(&mut world, &mut schedule);
 
     let cmds = drain_commands(&mut world);
-    assert!(cmds.is_empty(), "build without building keyword should produce no command");
+    assert!(
+        cmds.is_empty(),
+        "build without building keyword should produce no command"
+    );
 }
 
 #[test]
