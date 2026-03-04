@@ -301,7 +301,7 @@ pub enum NextMission {
 /// A single line of dialogue.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DialogueLine {
-    /// Speaker name (e.g. "Kelpie", "Geppity").
+    /// Speaker name (e.g. "Kelpie", "Le Chat").
     pub speaker: String,
     /// The dialogue text.
     pub text: String,
@@ -569,7 +569,7 @@ mod tests {
     #[test]
     fn voice_style_serializes() {
         let line = DialogueLine {
-            speaker: "Geppity".into(),
+            speaker: "Le Chat".into(),
             text: "Hello!".into(),
             voice_style: VoiceStyle::AiVoice,
             portrait: "portrait_geppity".into(),

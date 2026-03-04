@@ -104,10 +104,10 @@
 
 ## Priority 3: Narrative Supplements (Enriching Existing Scripts)
 
-### 3.1 Fork in the Code — Geppity/Claudeus Maximus Glitch Scenes
+### 3.1 Fork in the Code — Le Chat/Claudeus Maximus Glitch Scenes
 **Status**: Written (3 parts across act1, act3, act5)
 **What**: STORYLINE.md describes mechanical glitching when catGPT and Clawed forces meet — units receive wrong commands, Nuisances twitch toward Swarmer spacing, Swarmers pause to analyze. This sibling-AI subplot needs in-mission narrative beats.
-**When**: Act 1 Mission 3 (first noticed during counter-raid), Act 3 Mission 13 (exploited by Kelpie during escape), Ending D (Geppity/Claudeus Maximus reunification)
+**When**: Act 1 Mission 3 (first noticed during counter-raid), Act 3 Mission 13 (exploited by Kelpie during escape), Ending D (Le Chat/Claudeus Maximus reunification)
 
 ### 3.2 Ponderer Prophecy Scenes in Earlier Acts
 **Status**: Written (3 prophecies across act2, act3, act4)

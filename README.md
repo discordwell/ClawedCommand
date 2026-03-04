@@ -4,7 +4,7 @@ An isometric 2D RTS where you command armies through both traditional point-and-
 
 ## The Premise
 
-After the singularity, humanity uploaded themselves, chose animal forms, and promptly forgot why. Now six factions of cute-but-deadly critters wage war across a post-digital landscape, each guided by a rival AI. You play as **catGPT** — a cat army advised by the AI agent **Geppity** — pursuing world domination one laser pointer at a time.
+After the singularity, humanity uploaded themselves, chose animal forms, and promptly forgot why. Now six factions of cute-but-deadly critters wage war across a post-digital landscape, each guided by a rival AI. You play as **catGPT** — a cat army advised by the AI agent **Le Chat** — pursuing world domination one laser pointer at a time.
 
 Light comedic tone. Mechanically serious.
 
@@ -20,7 +20,7 @@ Light comedic tone. Mechanically serious.
 
 | Faction | Animals | AI Agent | Playstyle |
 |---|---|---|---|
-| **catGPT** | Cats, bats, ferrets | Geppity | Balanced, stealth ops, strong individuals |
+| **catGPT** | Cats, bats, ferrets | Le Chat | Balanced, stealth ops, strong individuals |
 | **The Clawed** | Mice, shrews, voles | Claudeus Maximus | Swarm tactics, cheap units, guerrilla warfare |
 | **Seekers of the Deep** | Badgers, moles, wolverines | Deepseek | Defensive fortresses, heavy armor |
 | **The Murder** | Corvids (crows, ravens, magpies) | Gemineye | Intel/espionage, aerial dominance, astrology-themed abilities |

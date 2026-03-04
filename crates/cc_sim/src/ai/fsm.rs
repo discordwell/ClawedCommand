@@ -158,7 +158,7 @@ impl AiDifficulty {
 /// `AiPersonalityProfile` (rich struct). All AI agents now use this single type.
 #[derive(Debug, Clone)]
 pub struct AiPersonalityProfile {
-    /// Display name (e.g. "Geppity", "Balanced").
+    /// Display name (e.g. "Le Chat", "Balanced").
     pub name: String,
     /// Army size before transitioning to Attack phase.
     pub attack_threshold: u32,
@@ -240,7 +240,7 @@ impl Default for AiPersonalityProfile {
 pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
     match faction {
         Faction::CatGpt => AiPersonalityProfile {
-            name: "Geppity".into(),
+            name: "Le Chat".into(),
             attack_threshold: 8,
             unit_preferences: vec![
                 (UnitKind::Nuisance, 3),
