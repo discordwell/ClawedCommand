@@ -1,4 +1,11 @@
-//! Unit & Building Viewer — browse all 60 unit sprites and 48 building sprites.
+//! Unit & Building Viewer — browse all 60 unit sprites and 48 building sprites
+//! with live Bevy animation pipeline.
+//!
+//! NOTE: For quick asset browsing, prefer the HTML viewer instead:
+//!   python3 -m http.server 8899 && open http://127.0.0.1:8899/tools/asset_pipeline/gallery.html
+//! The HTML viewer covers ALL 144 assets (units, buildings, terrain, resources,
+//! projectiles, portraits) with animation, search, and filtering — no compilation needed.
+//! This Rust viewer is for testing animations through the actual Bevy pipeline.
 //!
 //! Controls:
 //!   Left/Right — navigate items (pauses auto-cycle 5s)

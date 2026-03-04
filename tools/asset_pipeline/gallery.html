@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ClawedCommand Asset Viewer</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0d0d1a; color: #ddd; font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; }
+
+/* ---------- top bar ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: #13132a; border-bottom: 1px solid #2a2a4a;
+  padding: 10px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.topbar h1 { font-size: 16px; color: #fff; white-space: nowrap; }
+.topbar h1 span { color: #666; font-weight: 400; }
+.search {
+  background: #1a1a35; border: 1px solid #333; border-radius: 4px;
+  color: #eee; padding: 6px 10px; font-size: 13px; width: 200px; font-family: inherit;
+}
+.search:focus { outline: none; border-color: #5577cc; }
+.filter-group { display: flex; gap: 4px; flex-wrap: wrap; }
+.filter-btn {
+  background: #1a1a35; border: 1px solid #333; border-radius: 4px;
+  color: #aaa; padding: 4px 10px; font-size: 11px; cursor: pointer; font-family: inherit;
+  transition: all 0.15s;
+}
+.filter-btn:hover { border-color: #555; color: #ddd; }
+.filter-btn.active { background: #2a2a55; border-color: #5577cc; color: #fff; }
+.stats { color: #555; font-size: 11px; margin-left: auto; white-space: nowrap; }
+
+/* ---------- layout ---------- */
+.content { padding: 16px 20px 60px; }
+
+.faction-section { margin-bottom: 32px; }
+.faction-header {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #222;
+}
+.faction-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.faction-name { font-size: 15px; font-weight: 600; }
+.faction-desc { font-size: 11px; color: #666; }
+.faction-count { font-size: 11px; color: #555; margin-left: auto; }
+
+.type-label {
+  font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 1px;
+  margin: 12px 0 8px 2px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
+  gap: 10px;
+}
+
+/* ---------- card ---------- */
+.card {
+  background: #151530; border: 1px solid #222; border-radius: 6px;
+  padding: 8px; text-align: center; cursor: default;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.card:hover { border-color: #444; transform: translateY(-1px); }
+.card.hidden { display: none; }
+
+.sprite-wrap {
+  width: 128px; height: 128px; margin: 0 auto;
+  background: repeating-conic-gradient(#1a1a30 0% 25%, #151528 0% 50%) 50% / 16px 16px;
+  border-radius: 4px; overflow: hidden; position: relative;
+  image-rendering: pixelated;
+}
+.sprite-wrap img {
+  width: 128px; height: 128px; image-rendering: pixelated;
+  display: block;
+}
+.sprite-wrap .sheet {
+  width: 512px; height: 128px; image-rendering: pixelated;
+  position: absolute; top: 0; left: 0;
+}
+
+.card-name {
+  font-size: 11px; color: #bbb; margin-top: 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.card-tag {
+  font-size: 9px; padding: 1px 6px; border-radius: 3px;
+  display: inline-block; margin-top: 3px;
+}
+
+/* unit phase tabs */
+.phase-tabs {
+  display: flex; gap: 2px; margin-top: 5px; justify-content: center;
+}
+.phase-tab {
+  font-size: 9px; padding: 2px 6px; border-radius: 3px;
+  background: #1a1a35; color: #666; cursor: pointer; border: none; font-family: inherit;
+  transition: all 0.15s;
+}
+.phase-tab:hover { color: #aaa; }
+.phase-tab.active { background: #2a2a55; color: #ddd; }
+
+/* ---------- faction colors ---------- */
+.fc-catgpt { color: #88aaff; }
+.fc-clawed { color: #88cc77; }
+.fc-murder { color: #bb88ee; }
+.fc-seekers { color: #eebb55; }
+.fc-croak { color: #55ccbb; }
+.fc-llama { color: #ff9955; }
+.fc-general { color: #888; }
+
+.dot-catgpt { background: #88aaff; }
+.dot-clawed { background: #88cc77; }
+.dot-murder { background: #bb88ee; }
+.dot-seekers { background: #eebb55; }
+.dot-croak { background: #55ccbb; }
+.dot-llama { background: #ff9955; }
+.dot-general { background: #888; }
+
+.tag-catgpt { background: #283060; color: #aaccff; }
+.tag-clawed { background: #1d3a1d; color: #aaeeaa; }
+.tag-murder { background: #2d1d3d; color: #ccaaee; }
+.tag-seekers { background: #3a3010; color: #eedd88; }
+.tag-croak { background: #103a35; color: #88ddcc; }
+.tag-llama { background: #3a2510; color: #ffbb88; }
+.tag-general { background: #252525; color: #aaa; }
+
+/* ---------- empty state ---------- */
+.empty-state {
+  text-align: center; padding: 60px 20px; color: #444;
+}
+.empty-state p { font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>ClawedCommand <span>Asset Viewer</span></h1>
+  <input type="text" class="search" id="search" placeholder="Search assets..." autocomplete="off">
+  <div class="filter-group" id="type-filters">
+    <button class="filter-btn active" data-type="all">All</button>
+    <button class="filter-btn" data-type="unit">Units</button>
+    <button class="filter-btn" data-type="building">Buildings</button>
+    <button class="filter-btn" data-type="terrain">Terrain</button>
+    <button class="filter-btn" data-type="resource">Resources</button>
+    <button class="filter-btn" data-type="projectile">Projectiles</button>
+    <button class="filter-btn" data-type="portrait">Portraits</button>
+  </div>
+  <div class="filter-group" id="faction-filters">
+    <button class="filter-btn active" data-faction="all">All Factions</button>
+    <button class="filter-btn" data-faction="catgpt">catGPT</button>
+    <button class="filter-btn" data-faction="clawed">Clawed</button>
+    <button class="filter-btn" data-faction="murder">Murder</button>
+    <button class="filter-btn" data-faction="seekers">Seekers</button>
+    <button class="filter-btn" data-faction="croak">Croak</button>
+    <button class="filter-btn" data-faction="llama">LLAMA</button>
+  </div>
+  <div class="stats" id="stats"></div>
+</div>
+
+<div class="content" id="content"></div>
+
+<script>
+// ── Asset Data ──────────────────────────────────────────────────
+// All paths relative to project root (serve with: python3 -m http.server -d ../..)
+const BASE = '../../assets/sprites';
+
+const FACTIONS = [
+  { id: 'catgpt',  name: 'catGPT',             desc: 'Cats — Le Chat',                 dot: 'dot-catgpt',  fc: 'fc-catgpt',  tag: 'tag-catgpt' },
+  { id: 'clawed',  name: 'The Clawed',         desc: 'Mice — Claudeus Maximus',        dot: 'dot-clawed',  fc: 'fc-clawed',  tag: 'tag-clawed' },
+  { id: 'murder',  name: 'The Murder',         desc: 'Corvids — Gemineye',             dot: 'dot-murder',  fc: 'fc-murder',  tag: 'tag-murder' },
+  { id: 'seekers', name: 'Seekers of the Deep',desc: 'Badgers — Deepseek',             dot: 'dot-seekers', fc: 'fc-seekers', tag: 'tag-seekers' },
+  { id: 'croak',   name: 'Croak',              desc: 'Axolotls — Grok',                dot: 'dot-croak',   fc: 'fc-croak',   tag: 'tag-croak' },
+  { id: 'llama',   name: 'LLAMA',              desc: 'Raccoons — Llhama',              dot: 'dot-llama',   fc: 'fc-llama',   tag: 'tag-llama' },
+];
+
+// Units: 10 per faction, ordered to match the Rust kind_index
+const UNITS = {
+  catgpt:  ['pawdler','nuisance','chonk','flying_fox','hisser','yowler','mouser','catnapper','ferret_sapper','mech_commander'],
+  clawed:  ['nibblet','swarmer','gnawer','shrieker','tunneler','sparks','quillback','whiskerwitch','plaguetail','warren_marshal'],
+  murder:  ['murder_scrounger','sentinel','rookclaw','magpike','magpyre','jaycaller','jayflicker','dusktalon','hootseer','corvus_rex'],
+  seekers: ['delver','ironhide','cragback','warden','sapjaw','wardenmother','seeker_tunneler','embermaw','dustclaw','gutripper'],
+  croak:   ['ponderer','regeneron','broodmother','gulper','eftsaber','croaker','leapfrog','shellwarden','bogwhisper','murk_commander'],
+  llama:   ['scrounger','bandit','heap_titan','glitch_rat','patch_possum','grease_monkey','dead_drop_unit','wrecker','dumpster_diver','junkyard_king'],
+};
+
+// Buildings: 8 per faction
+const BUILDINGS = {
+  catgpt:  ['the_box','cat_tree','fish_market','litter_box','server_rack','scratching_post','cat_flap','laser_pointer'],
+  murder:  ['the_parliament','rookery','carrion_cache','antenna_array','panopticon','nest_box','thorn_hedge','watchtower'],
+  clawed:  ['the_burrow','nesting_box','seed_vault','junk_transmitter','gnaw_lab','warren_expansion','mousehole','squeak_tower'],
+  seekers: ['the_sett','war_hollow','burrow_depot','core_tap','claw_marks','deep_warren','bulwark_gate','slag_thrower'],
+  croak:   ['the_grotto','spawning_pools','lily_market','sunken_server','fossil_stones','reed_bed','tidal_gate','spore_tower'],
+  llama:   ['the_dumpster','scrap_heap','chop_shop','junk_server','tinker_bench','trash_pile','dumpster_relay','tetanus_tower'],
+};
+
+const TERRAIN = ['grass_base','dirt_base','sand_base','forest_base','water_base','road_base','rock_base','shallows_base','ramp_base','tech_ruins_base'];
+const RESOURCES = ['berry_bush','fish_pond','gpu_deposit','monkey_mine'];
+const PROJECTILES = ['explosive','generic','laser_beam','mech_shot','sonic_wave','spit'];
+const PORTRAITS = [
+  'ai_geppity','ai_claudeus_maximus','ai_gemineye','ai_deepseek','ai_grok','ai_llhama',
+  'hero_felix_nine','hero_kelpie','hero_king_ringtail','hero_mother_granite',
+  'hero_patches','hero_rex_solstice','hero_the_eternal','hero_thimble'
+];
+const HEROES = ['king_ringtail','the_eternal'];
+
+// ── Helpers ─────────────────────────────────────────────────────
+function slugToName(s) {
+  return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// ── State ───────────────────────────────────────────────────────
+let activeType = 'all';
+let activeFaction = 'all';
+let searchTerm = '';
+const animTimers = []; // track intervals for cleanup
+
+// ── Render ──────────────────────────────────────────────────────
+function render() {
+  // Clear animation timers
+  animTimers.forEach(id => clearInterval(id));
+  animTimers.length = 0;
+
+  const container = document.getElementById('content');
+  let html = '';
+  let totalShown = 0;
+  let totalAssets = 0;
+
+  // Render faction sections
+  for (const faction of FACTIONS) {
+    let sectionHtml = '';
+    let sectionCount = 0;
+
+    // Units
+    if (activeType === 'all' || activeType === 'unit') {
+      if (activeFaction === 'all' || activeFaction === faction.id) {
+        const units = UNITS[faction.id] || [];
+        const cards = units.map(slug => {
+          totalAssets++;
+          if (searchTerm && !slug.includes(searchTerm) && !slugToName(slug).toLowerCase().includes(searchTerm)) return '';
+          totalShown++;
+          sectionCount++;
+          return unitCard(slug, faction);
+        }).join('');
+        if (cards.replace(/\s/g, '')) {
+          sectionHtml += `<div class="type-label">Units (${units.length})</div><div class="grid">${cards}</div>`;
+        }
+      }
+    }
+
+    // Buildings
+    if (activeType === 'all' || activeType === 'building') {
+      if (activeFaction === 'all' || activeFaction === faction.id) {
+        const buildings = BUILDINGS[faction.id] || [];
+        const cards = buildings.map(slug => {
+          totalAssets++;
+          if (searchTerm && !slug.includes(searchTerm) && !slugToName(slug).toLowerCase().includes(searchTerm)) return '';
+          totalShown++;
+          sectionCount++;
+          return staticCard(slug, `${BASE}/buildings/${slug}.png`, 'building', faction);
+        }).join('');
+        if (cards.replace(/\s/g, '')) {
+          sectionHtml += `<div class="type-label">Buildings (${buildings.length})</div><div class="grid">${cards}</div>`;
+        }
+      }
+    }
+
+    if (sectionHtml) {
+      html += `<div class="faction-section">
+        <div class="faction-header">
+          <div class="faction-dot ${faction.dot}"></div>
+          <div class="faction-name ${faction.fc}">${faction.name}</div>
+          <div class="faction-desc">${faction.desc}</div>
+          <div class="faction-count">${sectionCount} shown</div>
+        </div>
+        ${sectionHtml}
+      </div>`;
+    }
+  }
+
+  // General assets (no faction)
+  let generalHtml = '';
+  let generalCount = 0;
+
+  if (activeType === 'all' || activeType === 'terrain') {
+    if (activeFaction === 'all') {
+      const cards = TERRAIN.map(slug => {
+        totalAssets++;
+        if (searchTerm && !slug.includes(searchTerm) && !slugToName(slug).toLowerCase().includes(searchTerm)) return '';
+        totalShown++;
+        generalCount++;
+        return staticCard(slug, `${BASE}/terrain/${slug}.png`, 'terrain', null);
+      }).join('');
+      if (cards.replace(/\s/g, '')) {
+        generalHtml += `<div class="type-label">Terrain (${TERRAIN.length})</div><div class="grid">${cards}</div>`;
+      }
+    }
+  }
+
+  if (activeType === 'all' || activeType === 'resource') {
+    if (activeFaction === 'all') {
+      const cards = RESOURCES.map(slug => {
+        totalAssets++;
+        if (searchTerm && !slug.includes(searchTerm) && !slugToName(slug).toLowerCase().includes(searchTerm)) return '';
+        totalShown++;
+        generalCount++;
+        return staticCard(slug, `${BASE}/resources/${slug}.png`, 'resource', null);
+      }).join('');
+      if (cards.replace(/\s/g, '')) {
+        generalHtml += `<div class="type-label">Resources (${RESOURCES.length})</div><div class="grid">${cards}</div>`;
+      }
+    }
+  }
+
+  if (activeType === 'all' || activeType === 'projectile') {
+    if (activeFaction === 'all') {
+      const cards = PROJECTILES.map(slug => {
+        totalAssets++;
+        if (searchTerm && !slug.includes(searchTerm) && !slugToName(slug).toLowerCase().includes(searchTerm)) return '';
+        totalShown++;
+        generalCount++;
+        return staticCard(slug, `${BASE}/projectiles/${slug}.png`, 'projectile', null);
+      }).join('');
+      if (cards.replace(/\s/g, '')) {
+        generalHtml += `<div class="type-label">Projectiles (${PROJECTILES.length})</div><div class="grid">${cards}</div>`;
+      }
+    }
+  }
+
+  if (activeType === 'all' || activeType === 'portrait') {
+    if (activeFaction === 'all') {
+      const cards = PORTRAITS.map(slug => {
+        totalAssets++;
+        if (searchTerm && !slug.includes(searchTerm) && !slugToName(slug).toLowerCase().includes(searchTerm)) return '';
+        totalShown++;
+        generalCount++;
+        return staticCard(slug, `${BASE}/portraits/${slug}.png`, 'portrait', null);
+      }).join('');
+      if (cards.replace(/\s/g, '')) {
+        generalHtml += `<div class="type-label">Portraits (${PORTRAITS.length})</div><div class="grid">${cards}</div>`;
+      }
+    }
+
+    // Heroes
+    if (activeFaction === 'all') {
+      const cards = HEROES.map(slug => {
+        totalAssets++;
+        if (searchTerm && !slug.includes(searchTerm) && !slugToName(slug).toLowerCase().includes(searchTerm)) return '';
+        totalShown++;
+        generalCount++;
+        return unitCard(slug, null, 'hero');
+      }).join('');
+      if (cards.replace(/\s/g, '')) {
+        generalHtml += `<div class="type-label">Heroes (${HEROES.length})</div><div class="grid">${cards}</div>`;
+      }
+    }
+  }
+
+  if (generalHtml) {
+    html += `<div class="faction-section">
+      <div class="faction-header">
+        <div class="faction-dot dot-general"></div>
+        <div class="faction-name fc-general">General</div>
+        <div class="faction-desc">Shared assets</div>
+        <div class="faction-count">${generalCount} shown</div>
+      </div>
+      ${generalHtml}
+    </div>`;
+  }
+
+  if (!html) {
+    html = '<div class="empty-state"><p>No assets match your filters.</p></div>';
+  }
+
+  container.innerHTML = html;
+  document.getElementById('stats').textContent = `${totalShown} / ${totalAssets} assets`;
+
+  // Wire up phase tabs and start animations
+  setupPhaseTabs();
+}
+
+function unitCard(slug, faction, subdir) {
+  const dir = subdir === 'hero' ? 'heroes' : 'units';
+  const fid = faction ? faction.id : 'general';
+  const tagClass = faction ? faction.tag : 'tag-general';
+  const idleUrl = `${BASE}/${dir}/${slug}_idle.png`;
+  const walkUrl = `${BASE}/${dir}/${slug}_walk.png`;
+  const attackUrl = `${BASE}/${dir}/${slug}_attack.png`;
+
+  return `<div class="card" data-slug="${slug}" data-faction="${fid}" data-type="unit">
+    <div class="sprite-wrap" data-idle="${idleUrl}" data-walk="${walkUrl}" data-attack="${attackUrl}">
+      <img src="${idleUrl}" alt="${slug}">
+    </div>
+    <div class="card-name" title="${slug}">${slugToName(slug)}</div>
+    <div class="card-tag ${tagClass}">${subdir === 'hero' ? 'hero' : 'unit'}</div>
+    <div class="phase-tabs">
+      <button class="phase-tab active" data-phase="idle">Idle</button>
+      <button class="phase-tab" data-phase="walk">Walk</button>
+      <button class="phase-tab" data-phase="attack">Atk</button>
+    </div>
+  </div>`;
+}
+
+function staticCard(slug, imgUrl, type, faction) {
+  const fid = faction ? faction.id : 'general';
+  const tagClass = faction ? faction.tag : 'tag-general';
+  return `<div class="card" data-slug="${slug}" data-faction="${fid}" data-type="${type}">
+    <div class="sprite-wrap">
+      <img src="${imgUrl}" alt="${slug}">
+    </div>
+    <div class="card-name" title="${slug}">${slugToName(slug)}</div>
+    <div class="card-tag ${tagClass}">${type}</div>
+  </div>`;
+}
+
+// ── Animation ───────────────────────────────────────────────────
+function setupPhaseTabs() {
+  document.querySelectorAll('.phase-tabs').forEach(tabs => {
+    tabs.querySelectorAll('.phase-tab').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const phase = btn.dataset.phase;
+        const card = btn.closest('.card');
+        const wrap = card.querySelector('.sprite-wrap');
+
+        // Update active tab
+        tabs.querySelectorAll('.phase-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Clear existing animation on this wrap
+        if (wrap._animId) { clearInterval(wrap._animId); wrap._animId = null; }
+
+        if (phase === 'idle') {
+          wrap.innerHTML = `<img src="${wrap.dataset.idle}" alt="">`;
+        } else {
+          const url = phase === 'walk' ? wrap.dataset.walk : wrap.dataset.attack;
+          const speed = phase === 'walk' ? 150 : 100;
+          startSheetAnim(wrap, url, speed);
+        }
+      });
+    });
+  });
+}
+
+function startSheetAnim(wrap, url, frameMs) {
+  // Use a div with background-image for frame stepping
+  wrap.innerHTML = '';
+  const el = document.createElement('div');
+  el.style.cssText = `width:128px;height:128px;background:url('${url}') 0 0/512px 128px no-repeat;image-rendering:pixelated;`;
+  wrap.appendChild(el);
+
+  let frame = 0;
+  const id = setInterval(() => {
+    frame = (frame + 1) % 4;
+    el.style.backgroundPosition = `${-frame * 128}px 0`;
+  }, frameMs);
+  wrap._animId = id;
+  animTimers.push(id);
+}
+
+// ── Filter handlers ─────────────────────────────────────────────
+document.getElementById('type-filters').addEventListener('click', (e) => {
+  if (!e.target.classList.contains('filter-btn')) return;
+  document.querySelectorAll('#type-filters .filter-btn').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  activeType = e.target.dataset.type;
+  render();
+});
+
+document.getElementById('faction-filters').addEventListener('click', (e) => {
+  if (!e.target.classList.contains('filter-btn')) return;
+  document.querySelectorAll('#faction-filters .filter-btn').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  activeFaction = e.target.dataset.faction;
+  render();
+});
+
+document.getElementById('search').addEventListener('input', (e) => {
+  searchTerm = e.target.value.toLowerCase().trim();
+  render();
+});
+
+// ── Init ────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
