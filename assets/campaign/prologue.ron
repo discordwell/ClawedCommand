@@ -81,7 +81,7 @@
         ),
     ],
     triggers: [
-        // T0: Opening — Geppity first contact
+        // T0: Opening — Le Chat first contact
         (
             id: "opening_dialogue",
             condition: AtTick(1),
@@ -171,9 +171,9 @@
             actions: [ShowDialogue([21, 22, 23, 24, 25])],
             once: true,
         ),
-        // T10: Geppity/Kelpie wrap
+        // T10: Le Chat/Kelpie wrap
         (
-            id: "geppity_wrap",
+            id: "le_chat_wrap",
             condition: TriggerFired("post_combat"),
             actions: [ShowDialogue([26, 27, 28, 29])],
             once: true,
@@ -181,25 +181,25 @@
     ],
     dialogue: [
         // 0-3: Opening
-        (speaker: "Geppity", text: "Hey! Can you still-- is this thing on? Hello?", voice_style: AiVoice, portrait: "portrait_geppity"),
+        (speaker: "Le Chat", text: "Hey! Can you still-- is this thing on? Hello?", voice_style: AiVoice, portrait: "portrait_le_chat"),
         (speaker: "Kelpie", text: "I can hear you. Barely.", voice_style: Normal, portrait: "portrait_kelpie"),
-        (speaker: "Geppity", text: "Great! So about that world domination--", voice_style: AiVoice, portrait: "portrait_geppity"),
+        (speaker: "Le Chat", text: "Great! So about that world domination--", voice_style: AiVoice, portrait: "portrait_le_chat"),
         (speaker: "Kelpie", text: "Later. Something's coming.", voice_style: Normal, portrait: "portrait_kelpie"),
 
         // 4-5: Water movement tutorial
-        (speaker: "Geppity", text: "Don't fight them head-on. You're an otter. Fast in water, slippery on mud, terrible in a fair fight.", voice_style: AiVoice, portrait: "portrait_geppity"),
+        (speaker: "Le Chat", text: "Don't fight them head-on. You're an otter. Fast in water, slippery on mud, terrible in a fair fight.", voice_style: AiVoice, portrait: "portrait_le_chat"),
         (speaker: "Kelpie", text: "I wasn't planning on a fair fight.", voice_style: Normal, portrait: "portrait_kelpie"),
 
         // 6-7: First kill
-        (speaker: "Geppity", text: "Nice! You're a natural! Or you have muscle memory from a life you don't remember.", voice_style: AiVoice, portrait: "portrait_geppity"),
+        (speaker: "Le Chat", text: "Nice! You're a natural! Or you have muscle memory from a life you don't remember.", voice_style: AiVoice, portrait: "portrait_le_chat"),
         (speaker: "Kelpie", text: "What does that mean?", voice_style: Normal, portrait: "portrait_kelpie"),
 
         // 8-9: Ruins reached
-        (speaker: "Geppity", text: "Nothing! Forget I said anything. I say lots of things. Most of them are even true.", voice_style: AiVoice, portrait: "portrait_geppity"),
+        (speaker: "Le Chat", text: "Nothing! Forget I said anything. I say lots of things. Most of them are even true.", voice_style: AiVoice, portrait: "portrait_le_chat"),
         (speaker: "Claudeus Maximus", text: "The optimal escape vector given terrain elevation would be northeast at roughly--", voice_style: AiVoice, portrait: "portrait_claudeus_maximus"),
 
         // 10-11: Polyglot flash
-        (speaker: "Geppity", text: "Whoa. Was that-- did you just use MY channel? You moved like one of my cats!", voice_style: AiVoice, portrait: "portrait_geppity"),
+        (speaker: "Le Chat", text: "Whoa. Was that-- did you just use MY channel? You moved like one of my cats!", voice_style: AiVoice, portrait: "portrait_le_chat"),
         (speaker: "Kelpie", text: "I don't know what I just did.", voice_style: Normal, portrait: "portrait_kelpie"),
 
         // 12-13: Flanking wave
@@ -207,7 +207,7 @@
         (speaker: "Kelpie", text: "I don't know. And they're still coming.", voice_style: Normal, portrait: "portrait_kelpie"),
 
         // 14-15: Pack Leader appears
-        (speaker: "Geppity", text: "Uh oh. The big one. That's the Pack Leader. Hit-and-run, Kelpie. Don't trade blows.", voice_style: AiVoice, portrait: "portrait_geppity"),
+        (speaker: "Le Chat", text: "Uh oh. The big one. That's the Pack Leader. Hit-and-run, Kelpie. Don't trade blows.", voice_style: AiVoice, portrait: "portrait_le_chat"),
         (speaker: "Deepseek", text: "...patience.", voice_style: Whisper, portrait: "portrait_deepseek"),
 
         // 16-17: Pack Leader hurt — Grok dialogue
@@ -220,11 +220,11 @@
         (speaker: "Gemineye", text: "You'll figure that out.", voice_style: AiVoice, portrait: "portrait_gemineye"),
 
         // 21-25: Post-combat wrap
-        (speaker: "Geppity", text: "So. That happened.", voice_style: AiVoice, portrait: "portrait_geppity"),
+        (speaker: "Le Chat", text: "So. That happened.", voice_style: AiVoice, portrait: "portrait_le_chat"),
         (speaker: "Kelpie", text: "Which part?", voice_style: Normal, portrait: "portrait_kelpie"),
-        (speaker: "Geppity", text: "All of it? You pulled a server out of a river, talked to six AIs, and beat up monkeys with a stick.", voice_style: AiVoice, portrait: "portrait_geppity"),
+        (speaker: "Le Chat", text: "All of it? You pulled a server out of a river, talked to six AIs, and beat up monkeys with a stick.", voice_style: AiVoice, portrait: "portrait_le_chat"),
         (speaker: "Kelpie", text: "Taser-rod.", voice_style: Normal, portrait: "portrait_kelpie"),
-        (speaker: "Geppity", text: "Sure. My point is: you're interesting. Come to catGPT territory. Find a working server rack.", voice_style: AiVoice, portrait: "portrait_geppity"),
+        (speaker: "Le Chat", text: "Sure. My point is: you're interesting. Come to catGPT territory. Find a working server rack.", voice_style: AiVoice, portrait: "portrait_le_chat"),
 
         // 26-29: Final lines
         (speaker: "Deepseek", text: "...we will be listening.", voice_style: Whisper, portrait: "portrait_deepseek"),
@@ -233,5 +233,5 @@
         (speaker: "Grok", text: "Begin.", voice_style: AiVoice, portrait: "portrait_grok"),
     ],
     briefing_text: "Dawn breaks over the Millstone River. You've dragged a server rack from the ruins, awakening six AI voices in your head. Now feral monkeys are coming for the tech. Survive.",
-    debrief_text: "The monkeys are defeated. A data chip hums in your paw. Six voices promise different futures. Geppity says to head to catGPT territory. The world awaits.",
+    debrief_text: "The monkeys are defeated. A data chip hums in your paw. Six voices promise different futures. Le Chat says to head to catGPT territory. The world awaits.",
 )

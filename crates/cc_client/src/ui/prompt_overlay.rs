@@ -62,7 +62,7 @@ pub fn spawn_prompt_overlay(mut commands: Commands) {
         .with_children(|parent| {
             // Title bar
             parent.spawn((
-                Text::new("MINSTRAL PROMPT  [/ to open]"),
+                Text::new("LE CHAT PROMPT  [/ to open]"),
                 TextColor(Color::srgb(0.95, 0.8, 0.3)),
                 TextFont {
                     font_size: 16.0,

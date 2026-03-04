@@ -308,11 +308,11 @@ Style requirements (apply to ALL assets):
 
 ---
 
-## 9. Geppity (ai_geppity)
+## 9. Le Chat (ai_le_chat)
 
 Create a character portrait for a 2D RTS game with a Redwall-meets-Into-the-Breach art style.
 
-Character: Geppity
+Character: Le Chat
 Animal: cat-themed AI avatar
 Faction: catGPT
 Role: catGPT faction AI — eager, slightly unreliable, always says yes

@@ -125,9 +125,9 @@
             actions: [ShowDialogue([8, 9])],
             once: true,
         ),
-        // Geppity encouragement
+        // Le Chat encouragement
         (
-            id: "geppity_tip",
+            id: "le_chat_tip",
             condition: EnemyKillCount(5),
             actions: [ShowDialogue([10, 11])],
             once: true,
@@ -159,36 +159,36 @@
     ],
     dialogue: [
         // 0-3: Opening
-        (speaker: "Geppity", text: "Three fish ponds. North, East, and Lily. The Clawed have been raiding all week.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Le Chat", text: "Three fish ponds. North, East, and Lily. The Clawed have been raiding all week.", voice_style: AiVoice, portrait: ""),
         (speaker: "Kelpie", text: "How many?", voice_style: Normal, portrait: ""),
-        (speaker: "Geppity", text: "Eight to twelve per raid. Fast little mice with sharp things. Very stabby.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Le Chat", text: "Eight to twelve per raid. Fast little mice with sharp things. Very stabby.", voice_style: AiVoice, portrait: ""),
         (speaker: "Patches", text: "Stay close to me. Don't split the group unless you have to.", voice_style: Normal, portrait: ""),
 
         // 4-5: First contact
-        (speaker: "Geppity", text: "Nice! First blood! That's one less Swarmer to worry about.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Le Chat", text: "Nice! First blood! That's one less Swarmer to worry about.", voice_style: AiVoice, portrait: ""),
         (speaker: "Kelpie", text: "Keep focus. More coming.", voice_style: Normal, portrait: ""),
 
         // 6-7: Wave 2 warning
-        (speaker: "Geppity", text: "I'm reading movement signatures from the east. More incoming!", voice_style: AiVoice, portrait: ""),
+        (speaker: "Le Chat", text: "I'm reading movement signatures from the east. More incoming!", voice_style: AiVoice, portrait: ""),
         (speaker: "Patches", text: "Second wave. Bigger. They're bringing ranged support.", voice_style: Normal, portrait: ""),
 
         // 8-9: Wave 2 arrives
-        (speaker: "Geppity", text: "Contact! East pond under attack! Hissers spotted in their ranks!", voice_style: AiVoice, portrait: ""),
+        (speaker: "Le Chat", text: "Contact! East pond under attack! Hissers spotted in their ranks!", voice_style: AiVoice, portrait: ""),
         (speaker: "Kelpie", text: "Hissers focus on their ranged. Nuisances screen.", voice_style: Normal, portrait: ""),
 
-        // 10-11: Geppity encouragement
-        (speaker: "Geppity", text: "You're doing great! I'm filing a positive performance review!", voice_style: AiVoice, portrait: ""),
+        // 10-11: Le Chat encouragement
+        (speaker: "Le Chat", text: "You're doing great! I'm filing a positive performance review!", voice_style: AiVoice, portrait: ""),
         (speaker: "Patches", text: "Save the paperwork. This isn't over.", voice_style: Normal, portrait: ""),
 
         // 12-13: Wave 3 warning
-        (speaker: "Geppity", text: "Big movement signatures from the south. This is the main push. They're bringing heavy.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Le Chat", text: "Big movement signatures from the south. This is the main push. They're bringing heavy.", voice_style: AiVoice, portrait: ""),
         (speaker: "Patches", text: "A Chonk-class. They have a Warren Marshal coordinating.", voice_style: Normal, portrait: ""),
 
         // 14: Wave 3 arrives
         (speaker: "Kelpie", text: "All units converge. Everything we have. NOW.", voice_style: Normal, portrait: ""),
 
         // 15-17: Victory
-        (speaker: "Geppity", text: "They're retreating! All three ponds held! I'm SO pleased!", voice_style: AiVoice, portrait: ""),
+        (speaker: "Le Chat", text: "They're retreating! All three ponds held! I'm SO pleased!", voice_style: AiVoice, portrait: ""),
         (speaker: "Kelpie", text: "Report to Felix. Ponds secured. Casualties minimal.", voice_style: Normal, portrait: ""),
         (speaker: "Patches", text: "Felix will want details. Especially about how you knew where they'd hit.", voice_style: Normal, portrait: ""),
     ],

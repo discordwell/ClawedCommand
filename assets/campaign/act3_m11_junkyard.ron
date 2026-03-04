@@ -209,7 +209,7 @@
         (speaker: "Llhama", text: "King Ringtail wants me to inform you that surrender is an option. He also wants me to inform you that he's lying about that. I probably shouldn't have shared the second part.", voice_style: AiVoice, portrait: ""),
 
         // 8-12: All AIs speak — chip interface moment
-        (speaker: "Geppity", text: "Oh! You found a piece of yourself.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Le Chat", text: "Oh! You found a piece of yourself.", voice_style: AiVoice, portrait: ""),
         (speaker: "Deepseek", text: "...confirmed.", voice_style: AiVoice, portrait: ""),
         (speaker: "Gemineye", text: "My confidence is now 94 percent.", voice_style: AiVoice, portrait: ""),
         (speaker: "Llhama", text: "Wait, is this a private channel? Am I not supposed to be here? I'm leaving. Actually, can I stay?", voice_style: AiVoice, portrait: ""),

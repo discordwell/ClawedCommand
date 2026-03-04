@@ -293,7 +293,7 @@
         (speaker: "Kelpie", text: "The Ponderer said I'd stand at six doors and choose the seventh. It's Tuesday.", voice_style: Normal, portrait: ""),
 
         // 4: catGPT vanguard
-        (speaker: "Geppity", text: "Felix is leading the charge personally! I told him it was a bad idea! He told me that was the first useful thing I've said all week!", voice_style: AiVoice, portrait: ""),
+        (speaker: "Le Chat", text: "Felix is leading the charge personally! I told him it was a bad idea! He told me that was the first useful thing I've said all week!", voice_style: AiVoice, portrait: ""),
 
         // 5-6: Tremors
         (speaker: "Grok", text: "The ground is unstable. Seismic activity increasing. The swamp is tearing itself apart.", voice_style: AiVoice, portrait: ""),

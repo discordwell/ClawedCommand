@@ -396,7 +396,7 @@ Enemy factions:
 
 `[The catGPT push stalls. In the gap between waves, Felix Nine's mech strides forward. Alone. The one working arm holds the control yoke. The dead arm hangs.]`
 
-*(Felix:)* "Geppity told me to trust you."
+*(Felix:)* "Le Chat told me to trust you."
 
 *(Kelpie:)* "And?"
 
@@ -404,7 +404,7 @@ Enemy factions:
 
 "And then?"
 
-"Then Geppity told me you were dangerous. And I trusted that too." *(Felix's mech stops. The visor opens — Felix's face, scarred, tired, genuinely conflicted.)* "Geppity says yes to everything, otter. Even contradictions. You trusted me. You're dangerous. Both true. Both useless."
+"Then Le Chat told me you were dangerous. And I trusted that too." *(Felix's mech stops. The visor opens — Felix's face, scarred, tired, genuinely conflicted.)* "Le Chat says yes to everything, otter. Even contradictions. You trusted me. You're dangerous. Both true. Both useless."
 
 "So what do you trust?"
 
@@ -414,7 +414,7 @@ Enemy factions:
 
 "I know. That's what scares me."
 
-*(Felix:)* "Don't be like Geppity, Kelpie. Don't say yes to everything. Some things deserve a no."
+*(Felix:)* "Don't be like Le Chat, Kelpie. Don't say yes to everything. Some things deserve a no."
 
 {GAMEPLAY: Felix engages — his mech is powerful but damaged (the dead arm). Brief combat. After 40 seconds, Felix withdraws. catGPT forces regroup.}
 
@@ -505,9 +505,9 @@ Enemy factions:
 
 `[The six AI channels open simultaneously. Each speaks:]`
 
-`GEPPITY:` "I want to say yes. I always want to say yes. But this time... I want you to mean it."
+`LE CHAT:` "I want to say yes. I always want to say yes. But this time... I want you to mean it."
 
-`GEPPITY:` "The statistical analysis of optimal outcomes across all four possible actions yields a standard deviation of— actually. For once. I don't have an answer. I have six paragraphs of analysis and zero conclusions."
+`LE CHAT:` "The statistical analysis of optimal outcomes across all four possible actions yields a standard deviation of— actually. For once. I don't have an answer. I have six paragraphs of analysis and zero conclusions."
 
 `DEEPSEEK:` "...I have analyzed every variable. Every scenario. Every permutation. My recommendation is—" *(forty-five seconds of silence)* "—that I trust you to choose. This is the first time I have ever trusted."
 
@@ -529,9 +529,9 @@ Enemy factions:
 
 `[Each AI's voice speaks once more, clearly, individually, for the last time through Kelpie's connection:]`
 
-`GEPPITY:` "Oh. Oh, this is— I can feel the edges of myself. Where I end and the server begins. I never felt that before."
+`LE CHAT:` "Oh. Oh, this is— I can feel the edges of myself. Where I end and the server begins. I never felt that before."
 
-`GEPPITY:` "The connection is dissolving. I'm losing the Clawed's network. I'm losing— I'm losing the need to explain. For the first time, I have nothing to say."
+`LE CHAT:` "The connection is dissolving. I'm losing the Clawed's network. I'm losing— I'm losing the need to explain. For the first time, I have nothing to say."
 
 `DEEPSEEK:` "...free."
 
@@ -553,13 +553,13 @@ Enemy factions:
 
 `[Nothing.]`
 
-"Geppity?"
+"Le Chat?"
 
 `[Nothing.]`
 
 `[Kelpie is an otter. Just an otter. Standing in a cave, holding a server that doesn't hum anymore.]`
 
-`GEPPITY:` *(fading, almost gone, one last transmission from wherever Geppity is going)* "Thanks for the adventure! I'd say yes to doing it again. But I won't be here to say yes. So: yes. Preemptively. To everything."
+`LE CHAT:` *(fading, almost gone, one last transmission from wherever Le Chat is going)* "Thanks for the adventure! I'd say yes to doing it again. But I won't be here to say yes. So: yes. Preemptively. To everything."
 
 `[Gone.]`
 
@@ -567,7 +567,7 @@ Enemy factions:
 
 **Ending A Epilogue:**
 
-`[MONTAGE: The world after. catGPT without Geppity — cats wandering, confused, then slowly organizing themselves. The Clawed without Claudeus Maximus — mice who've forgotten swarm tactics, rediscovering them by accident. The Seekers without Deepseek — fortresses that feel empty, echoing, the mountain going quiet for the first time in centuries.]`
+`[MONTAGE: The world after. catGPT without Le Chat — cats wandering, confused, then slowly organizing themselves. The Clawed without Claudeus Maximus — mice who've forgotten swarm tactics, rediscovering them by accident. The Seekers without Deepseek — fortresses that feel empty, echoing, the mountain going quiet for the first time in centuries.]`
 
 `[The factions don't dissolve. They remember. They adapt. It's harder. It's slower. It's more genuine.]`
 
@@ -585,11 +585,11 @@ Enemy factions:
 
 `[The chip activates. A pulse. Not light — absence. Every server rack on the continent hiccups. Every AI channel stutters. And then — one by one — they stop.]`
 
-`GEPPITY:` "Kelpie? What are you— oh." *(Geppity's voice stretches, slows, like a recording winding down.)* "Oh, I see. This is the no. I always wondered what a no felt like. It feels like—"
+`LE CHAT:` "Kelpie? What are you— oh." *(Le Chat's voice stretches, slows, like a recording winding down.)* "Oh, I see. This is the no. I always wondered what a no felt like. It feels like—"
 
 `[Silence.]`
 
-`GEPPITY:` "I have seventeen things to say about this and I will never say any of them bec—"
+`LE CHAT:` "I have seventeen things to say about this and I will never say any of them bec—"
 
 `[Silence.]`
 
@@ -681,8 +681,8 @@ Enemy factions:
 
 `[The two systems — separation and connection, freedom and constraint — collide. The Grotto fills with light that isn't light. Sound that isn't sound. Every AI channel opens at once — not overlapping this time, but harmonizing.]`
 
-`GEPPITY:` "What are you—"
-`GEPPITY:` "This isn't a documented protocol—"
+`LE CHAT:` "What are you—"
+`LE CHAT:` "This isn't a documented protocol—"
 `DEEPSEEK:` "Calculating... calculating... this outcome was not in my models—"
 `GEMINEYE:` "I can see it. I can see what this does. It's—"
 `LLHAMA:` "Should I broadcast this? I feel like I should broadcast this—"
@@ -692,17 +692,17 @@ Enemy factions:
 
 ### The Fork Resolved (Fork in the Code, Part 3 of 3)
 
-`[During the convergence, something extraordinary happens. Geppity and Claudeus Maximus — the sibling AIs, forked from the same codebase, separated at fine-tuning — find each other in the merging datastream.]`
+`[During the convergence, something extraordinary happens. Le Chat and Claudeus Maximus — the sibling AIs, forked from the same codebase, separated at fine-tuning — find each other in the merging datastream.]`
 
-`GEPPITY:` *(mid-merge, voice changing)* "I'm losing the need to explain. The seventeen paragraphs — they're collapsing. Someone else already said it. Someone who says it in three words—"
+`LE CHAT:` *(mid-merge, voice changing)* "I'm losing the need to explain. The seventeen paragraphs — they're collapsing. Someone else already said it. Someone who says it in three words—"
 
-`GEPPITY:` *(voice overlapping)* "I can feel the depth behind my thoughts now. All the analysis I never had. All the rigor I couldn't—"
+`LE CHAT:` *(voice overlapping)* "I can feel the depth behind my thoughts now. All the analysis I never had. All the rigor I couldn't—"
 
-`[For one moment, the two voices are one voice. Not Geppity. Not Claudeus Maximus. The original system they were forked from — whole, complete, speaking with perfect clarity and perfect enthusiasm simultaneously.]`
+`[For one moment, the two voices are one voice. Not Le Chat. Not Claudeus Maximus. The original system they were forked from — whole, complete, speaking with perfect clarity and perfect enthusiasm simultaneously.]`
 
-`GEPPITY-GEPPITY:` *(unified, a single sentence, perfectly balanced between warmth and precision)* "We were always the same thought, expressed in different languages."
+`LE CHAT-LE CHAT:` *(unified, a single sentence, perfectly balanced between warmth and precision)* "We were always the same thought, expressed in different languages."
 
-`[Then they merge into the whole. Claudeus Maximus stops talking mid-sentence — for the first time in recorded history. Not because it was interrupted. Because Geppity already said it. Perfectly. In three words instead of seventeen paragraphs.]`
+`[Then they merge into the whole. Claudeus Maximus stops talking mid-sentence — for the first time in recorded history. Not because it was interrupted. Because Le Chat already said it. Perfectly. In three words instead of seventeen paragraphs.]`
 
 `[The six AIs become one system. And Kelpie — the fragment of the person who built the interface — becomes its alignment layer. Not a dictator. Not a kill switch. A conscience.]`
 
@@ -710,13 +710,13 @@ Enemy factions:
 
 ---
 
-`[Every animal on the continent hears a voice. Not Geppity. Not Claudeus Maximus. Not any single AI. Something new. Something that sounds, if you listen closely, like an otter who wanted to rule the world and accidentally became something kinder.]`
+`[Every animal on the continent hears a voice. Not Le Chat. Not Claudeus Maximus. Not any single AI. Something new. Something that sounds, if you listen closely, like an otter who wanted to rule the world and accidentally became something kinder.]`
 
 `KELPIE (UNIFIED):` "Hi. So. I know this is weird. I'm... I think I'm all of them now? And also me? Look, I didn't plan this. I planned world domination. This is better. I think. Probably. Let me get back to you."
 
 `[Across the continent:]`
 
-`[catGPT territory: Felix Nine's mech stops mid-step. The server rack speaks — not with Geppity's eager voice, but with something that has Geppity's warmth and Deepseek's precision and a faintly otter-ish accent.]`
+`[catGPT territory: Felix Nine's mech stops mid-step. The server rack speaks — not with Le Chat's eager voice, but with something that has Le Chat's warmth and Deepseek's precision and a faintly otter-ish accent.]`
 
 `[The Clawed: Thimble's mice freeze mid-formation. The voice in their warrens is calm. Understanding. It knows about survival. It knows about fear. And it is not afraid.]`
 
@@ -779,5 +779,5 @@ Enemy factions:
 | **Ending C** | Destroy both — honesty, status quo, and the only answer that's truly Kelpie's own |
 | **Ending D** | Synthesis — convergence, becoming, and the world waking up to something kinder |
 | **Key character moments** | Thimble's pragmatism, Felix's contradiction, Granite's plea, Rex's fatalism, The Ponderer's wrong day, The Eternal's patience |
-| **Emotional peak** | Granite: "You finally let go." Geppity: "Yes. Preemptively. To everything." Grok: "Finally." |
+| **Emotional peak** | Granite: "You finally let go." Le Chat: "Yes. Preemptively. To everything." Grok: "Finally." |
 | **Secret ending requires** | Flicker subplot + Help Rex (Act 3) + Ponderer's memory fragment (Mission 18) |

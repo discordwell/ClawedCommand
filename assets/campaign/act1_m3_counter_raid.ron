@@ -334,7 +334,7 @@
     dialogue: [
         // 0-3: Opening — Felix briefs the assault
         (speaker: "Felix", text: "We hit the Darkhollow staging area at dawn. Full committed assault.", voice_style: Normal, portrait: ""),
-        (speaker: "Geppity", text: "With the otter: 68% success probability! Without: 41%! I like the first number better.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Le Chat", text: "With the otter: 68% success probability! Without: 41%! I like the first number better.", voice_style: AiVoice, portrait: ""),
         (speaker: "Felix", text: "Chonks lead. Hissers behind. Nuisances screen flanks. Kelpie has operational discretion.", voice_style: Normal, portrait: ""),
         (speaker: "Kelpie", text: "Patches, circle east. Find their tunnel exits.", voice_style: Normal, portrait: ""),
 
@@ -343,39 +343,39 @@
         (speaker: "Kelpie", text: "You too.", voice_style: Normal, portrait: ""),
 
         // 6-7: First contact with garrison
-        (speaker: "Geppity", text: "Contact! The garrison is dug in. Gnawer barricades and Swarmer defenders!", voice_style: AiVoice, portrait: ""),
+        (speaker: "Le Chat", text: "Contact! The garrison is dug in. Gnawer barricades and Swarmer defenders!", voice_style: AiVoice, portrait: ""),
         (speaker: "Kelpie", text: "Hissers focus fire. Chonks push through.", voice_style: Normal, portrait: ""),
 
         // 8-9: Flanking ambush
-        (speaker: "Geppity", text: "BEHIND US! Flanking force from a concealed tunnel! I did NOT predict this!", voice_style: AiVoice, portrait: ""),
+        (speaker: "Le Chat", text: "BEHIND US! Flanking force from a concealed tunnel! I did NOT predict this!", voice_style: AiVoice, portrait: ""),
         (speaker: "Patches", text: "Twenty-plus from the rear! We're sandwiched!", voice_style: Normal, portrait: ""),
 
         // 10-11: Kelpie takes charge
         (speaker: "Kelpie", text: "I see them. Hold the line. I have an idea.", voice_style: Normal, portrait: ""),
-        (speaker: "Geppity", text: "Whatever idea you have, NOW would be a great time!", voice_style: AiVoice, portrait: ""),
+        (speaker: "Le Chat", text: "Whatever idea you have, NOW would be a great time!", voice_style: AiVoice, portrait: ""),
 
         // 12-14: Glitch event — AI crosstalk
         (speaker: "Patches", text: "Kelpie. Did you see that? The Nuisance on the left twitched. Moved like a mouse.", voice_style: Normal, portrait: ""),
-        (speaker: "Geppity", text: "I had a thought that wasn't mine. Something about formation density. That's not how I think.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Le Chat", text: "I had a thought that wasn't mine. Something about formation density. That's not how I think.", voice_style: AiVoice, portrait: ""),
         (speaker: "Kelpie", text: "Crosstalk between the AIs. File it away. Focus on the fight.", voice_style: Normal, portrait: ""),
 
         // 15-16: Reinforcements
         (speaker: "Felix", text: "Reinforcements arriving. Hold your positions.", voice_style: Normal, portrait: ""),
-        (speaker: "Geppity", text: "Felix's Chonks incoming! The cavalry is here!", voice_style: AiVoice, portrait: ""),
+        (speaker: "Le Chat", text: "Felix's Chonks incoming! The cavalry is here!", voice_style: AiVoice, portrait: ""),
 
         // 17-19: Kelpie manipulates Claudeus Maximus
         (speaker: "Kelpie", text: "Claudeus Maximus. Listen to me. Revised topology data. Canyon formation bearing zero-seven-zero.", voice_style: Normal, portrait: ""),
-        (speaker: "Geppity", text: "What did you just DO?", voice_style: AiVoice, portrait: ""),
+        (speaker: "Le Chat", text: "What did you just DO?", voice_style: AiVoice, portrait: ""),
         (speaker: "Kelpie", text: "Later. Hissers -- the canyon. All of them. Now.", voice_style: Normal, portrait: ""),
 
         // 20-22: Garrison cleared
-        (speaker: "Geppity", text: "The garrison is collapsing! They're routing!", voice_style: AiVoice, portrait: ""),
+        (speaker: "Le Chat", text: "The garrison is collapsing! They're routing!", voice_style: AiVoice, portrait: ""),
         (speaker: "Felix", text: "Staging area destroyed. Tunneler rigs wrecked. Well done, otter.", voice_style: Normal, portrait: ""),
         (speaker: "Patches", text: "The flanking force ended up in a canyon. All of them. Like they received new orders.", voice_style: Normal, portrait: ""),
 
         // 23-24: Victory wrap
-        (speaker: "Geppity", text: "You did great today. I mean it.", voice_style: AiVoice, portrait: ""),
-        (speaker: "Kelpie", text: "Good night, Geppity.", voice_style: Normal, portrait: ""),
+        (speaker: "Le Chat", text: "You did great today. I mean it.", voice_style: AiVoice, portrait: ""),
+        (speaker: "Kelpie", text: "Good night, Le Chat.", voice_style: Normal, portrait: ""),
     ],
     briefing_text: "Full assault on the Clawed staging area in the Darkhollow. Destroy the garrison and Tunneler rigs before Thimble can launch his invasion.",
     debrief_text: "The Darkhollow burns. catGPT victorious. But Felix saw what Kelpie did to the flanking force. Questions are coming.",

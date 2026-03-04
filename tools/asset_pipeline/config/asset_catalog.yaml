@@ -2506,11 +2506,11 @@ portraits:
       type: single
       game_path: assets/sprites/portraits/hero_patches.png
   # ── AI Faction Avatar Portraits (6) ─────────────────────
-  ai_geppity:
+  ai_le_chat:
     template: portrait
     status: planned
     params:
-      name: Geppity
+      name: Le Chat
       animal: cat-themed AI avatar
       faction: catGPT
       role: catGPT faction AI — eager, slightly unreliable, always says yes
@@ -2524,7 +2524,7 @@ portraits:
       extra_notes: "AI avatar, not a real cat — digital/holographic feel. Blue glow dominant. Geometric simplification of cat features. Eager, helpful expression. Subtle glitch artifacts."
     output:
       type: single
-      game_path: assets/sprites/portraits/ai_geppity.png
+      game_path: assets/sprites/portraits/ai_le_chat.png
   ai_claudeus_maximus:
     template: portrait
     status: planned

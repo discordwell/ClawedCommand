@@ -242,10 +242,10 @@
         (speaker: "The Eternal", text: "The mouse said what he meant. That is rare among leaders.", voice_style: Normal, portrait: ""),
 
         // 9-12: Felix confrontation
-        (speaker: "Felix Nine", text: "Geppity told me to trust you. I did. Then Geppity told me you were dangerous. I did. Geppity says yes to everything, otter. Even contradictions.", voice_style: Normal, portrait: ""),
-        (speaker: "Kelpie", text: "Felix, I know. I can hear Geppity right now. It's telling you to attack and telling me you won't.", voice_style: Normal, portrait: ""),
-        (speaker: "Felix Nine", text: "Then you know what I'm going to say. Don't be like Geppity. Don't say yes to everything. Choose something and mean it.", voice_style: Normal, portrait: ""),
-        (speaker: "Geppity", text: "Felix is right! And also wrong! Both are valid perspectives!", voice_style: AiVoice, portrait: ""),
+        (speaker: "Felix Nine", text: "Le Chat told me to trust you. I did. Then Le Chat told me you were dangerous. I did. Le Chat says yes to everything, otter. Even contradictions.", voice_style: Normal, portrait: ""),
+        (speaker: "Kelpie", text: "Felix, I know. I can hear Le Chat right now. It's telling you to attack and telling me you won't.", voice_style: Normal, portrait: ""),
+        (speaker: "Felix Nine", text: "Then you know what I'm going to say. Don't be like Le Chat. Don't say yes to everything. Choose something and mean it.", voice_style: Normal, portrait: ""),
+        (speaker: "Le Chat", text: "Felix is right! And also wrong! Both are valid perspectives!", voice_style: AiVoice, portrait: ""),
 
         // 13: Felix aftermath
         (speaker: "Kelpie", text: "He's right. About all of it. I hate that.", voice_style: Normal, portrait: ""),

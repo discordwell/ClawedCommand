@@ -92,7 +92,7 @@
         (speaker: "Kelpie", text: "That might be the most helpful thing you've ever said. Or the least. I genuinely cannot tell with you.", voice_style: Normal, portrait: ""),
 
         // 5-7: The factions
-        (speaker: "Kelpie", text: "Felix went home. Took his broken mech and his broken trust and walked north. Geppity tried to say something encouraging on the way out. Felix turned it off.", voice_style: Normal, portrait: ""),
+        (speaker: "Kelpie", text: "Felix went home. Took his broken mech and his broken trust and walked north. Le Chat tried to say something encouraging on the way out. Felix turned it off.", voice_style: Normal, portrait: ""),
         (speaker: "Kelpie", text: "Thimble's mice are already digging new tunnels. Granite went back to her mine. Rex flew east without a word. Ringtail waved.", voice_style: Normal, portrait: ""),
         (speaker: "Kelpie", text: "Zip asked if anything needed fixing. Everything needs fixing. Zip seemed pleased about that.", voice_style: Normal, portrait: ""),
 

@@ -295,8 +295,8 @@
         (speaker: "Kelpie", text: "I'm not patient. I'm terrified. But I'm also not leaving. Set the perimeter.", voice_style: Normal, portrait: ""),
 
         // 5-6: catGPT scouts
-        (speaker: "Geppity", text: "Hi! I recommended we send scouts first. Felix agreed! He never agrees with me! This is a great day!", voice_style: AiVoice, portrait: ""),
-        (speaker: "Kelpie", text: "Geppity, I can hear you. You know I can hear you. Stop narrating the invasion to the person being invaded.", voice_style: Normal, portrait: ""),
+        (speaker: "Le Chat", text: "Hi! I recommended we send scouts first. Felix agreed! He never agrees with me! This is a great day!", voice_style: AiVoice, portrait: ""),
+        (speaker: "Kelpie", text: "Le Chat, I can hear you. You know I can hear you. Stop narrating the invasion to the person being invaded.", voice_style: Normal, portrait: ""),
 
         // 7-8: Clawed swarm from west
         (speaker: "Thimble", text: "There are five armies in this swamp and my people are going to be the smallest. That means we hit first and we hit together.", voice_style: Normal, portrait: ""),
@@ -310,7 +310,7 @@
         (speaker: "Kelpie", text: "Northeast. Gemineye just told me both, which means the first one was real and the second was the fabrication. Air units incoming.", voice_style: Normal, portrait: ""),
 
         // 12-13: catGPT main assault
-        (speaker: "Felix Nine", text: "Geppity told me to trust you once. I did. Then Geppity told me you were dangerous. I believed that too. Here we are, otter.", voice_style: Normal, portrait: ""),
+        (speaker: "Felix Nine", text: "Le Chat told me to trust you once. I did. Then Le Chat told me you were dangerous. I believed that too. Here we are, otter.", voice_style: Normal, portrait: ""),
         (speaker: "Kelpie", text: "Felix. You don't have to do this.", voice_style: Normal, portrait: ""),
 
         // 14: Pincer

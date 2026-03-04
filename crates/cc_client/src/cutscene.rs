@@ -374,7 +374,7 @@ fn build_scene_2() -> MissionDefinition {
         DialogueLine {
             speaker: "Commander Felix Nine".into(),
             text:
-                "Geppity says yes to everything. That is not loyalty. That is a personality defect."
+                "Le Chat says yes to everything. That is not loyalty. That is a personality defect."
                     .into(),
             voice_style: VoiceStyle::Normal,
             portrait: "portrait_felix_nine".into(),

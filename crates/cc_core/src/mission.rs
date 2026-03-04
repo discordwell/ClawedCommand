@@ -572,7 +572,7 @@ mod tests {
             speaker: "Le Chat".into(),
             text: "Hello!".into(),
             voice_style: VoiceStyle::AiVoice,
-            portrait: "portrait_geppity".into(),
+            portrait: "portrait_le_chat".into(),
         };
         let ron_str = ron::to_string(&line).unwrap();
         let parsed: DialogueLine = ron::from_str(&ron_str).unwrap();

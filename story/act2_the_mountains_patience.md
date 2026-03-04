@@ -155,7 +155,7 @@
 
 ## The Real Strike
 
-`GEPPITY:` *(cutting through on Kelpie's private channel)* "Kelpie! While everyone was looking north, a Murder Rookclaw team hit the Deepvein Core Tap. Six Rookclaws. Fast. They're already on site."
+`LE CHAT:` *(cutting through on Kelpie's private channel)* "Kelpie! While everyone was looking north, a Murder Rookclaw team hit the Deepvein Core Tap. Six Rookclaws. Fast. They're already on site."
 
 "Ironjaw. The north was a distraction. Rookclaws are hitting Deepvein Core Tap right now."
 
@@ -294,11 +294,11 @@
 
 {GAMEPLAY TRIGGER: First wave of contacts. 30 blips appear across the Outer Ring. Kelpie tags 25 as FAKE and 5 as REAL. The player must dispatch defenders to the 5 REAL contacts.}
 
-`GEPPITY:` *(on Kelpie's private channel)* "You're getting better at this. The Gemineye filtering is faster than last time."
+`LE CHAT:` *(on Kelpie's private channel)* "You're getting better at this. The Gemineye filtering is faster than last time."
 
 "Practice."
 
-`GEPPITY:` "Or the connection's getting stronger. Which is also kind of concerning? But also cool."
+`LE CHAT:` "Or the connection's getting stronger. Which is also kind of concerning? But also cool."
 
 {GAMEPLAY: Three of Kelpie's 5 REAL tags are correct — Rookclaw strike teams hitting Positions 2, 4, and 5. Player dispatches Ironhides to defend. Two of the REAL tags are false positives — nothing at those locations. One of Kelpie's FAKE tags was actually real — a small Murder recon team at Position 3 that does minor damage before being detected by a Sentinel.}
 
@@ -732,11 +732,11 @@
 
 *(Kelpie's ear twitches violently. Every AI channel surges. The proximity to the old-world tech amplifies the connection like a tuning fork.)*
 
-`GEPPITY:` *(loud, clear)* "Kelpie! You're standing on something BIG. The old-world signature is massive. This is— this is close to where it all started."
+`LE CHAT:` *(loud, clear)* "Kelpie! You're standing on something BIG. The old-world signature is massive. This is— this is close to where it all started."
 
 "Where what started?"
 
-`GEPPITY:` "Everything."
+`LE CHAT:` "Everything."
 
 *(Kelpie reaches out and touches a dead server rack. The screen flickers — just once. A line of text appears:)*
 

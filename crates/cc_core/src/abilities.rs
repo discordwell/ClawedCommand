@@ -44,7 +44,7 @@ pub enum AbilityId {
     // MechCommander (hero)
     TacticalUplink,
     Override,
-    GeppityUplink,
+    LeChatUplink,
     // --- Seekers of the Deep (Badgers) ---
     SubterraneanHaul,
     Earthsense,
@@ -544,7 +544,7 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
             range: Fixed::from_bits(6 << 16),
             max_charges: 0,
         },
-        AbilityId::GeppityUplink => AbilityDef {
+        AbilityId::LeChatUplink => AbilityDef {
             id,
             activation: Activated,
             cooldown_ticks: 300,
@@ -2105,7 +2105,7 @@ pub fn unit_abilities(kind: UnitKind) -> [AbilityId; 3] {
         UnitKind::MechCommander => [
             AbilityId::TacticalUplink,
             AbilityId::Override,
-            AbilityId::GeppityUplink,
+            AbilityId::LeChatUplink,
         ],
         // --- LLAMA (Raccoons) ---
         UnitKind::Scrounger => [
@@ -2399,7 +2399,7 @@ mod tests {
             AbilityId::TunnelNetwork,
             AbilityId::TacticalUplink,
             AbilityId::Override,
-            AbilityId::GeppityUplink,
+            AbilityId::LeChatUplink,
             // LLAMA (30)
             AbilityId::DumpsterDiveAbility,
             AbilityId::PocketStash,

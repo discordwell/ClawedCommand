@@ -13,11 +13,11 @@
 
 `[Kelpie and Patches walk through the dead forest. Patches' ears rotate constantly. Kelpie's expression is set — determined in a way that looks more like desperation than courage.]`
 
-`GEPPITY:` *(quietly)* "You know this is probably a trap."
+`LE CHAT:` *(quietly)* "You know this is probably a trap."
 
 "Probably."
 
-`GEPPITY:` "Just checking! I support this decision. I also supported the last decision that was probably a trap. My track record is honestly not great on trap-detection."
+`LE CHAT:` "Just checking! I support this decision. I also supported the last decision that was probably a trap. My track record is honestly not great on trap-detection."
 
 *(Patches:)* "Kelpie. I'm here because Felix ordered me to watch you. But right now, walking into Murder territory voluntarily, I'm watching you walk into a disaster."
 
@@ -29,9 +29,9 @@
 
 "Then why—"
 
-"Because everyone else only has pieces. The Wardenmother has a secret she won't share. Felix has suspicions he won't voice. Geppity knows something and won't say what. The Rex is the only one who's offered to tell me directly."
+"Because everyone else only has pieces. The Wardenmother has a secret she won't share. Felix has suspicions he won't voice. Le Chat knows something and won't say what. The Rex is the only one who's offered to tell me directly."
 
-`GEPPITY:` "...I may know a few things."
+`LE CHAT:` "...I may know a few things."
 
 "I noticed. We'll talk later."
 
@@ -276,7 +276,7 @@
 
 *(Kelpie:)* "Can we focus? The entire world just heard our attack plan."
 
-`GEPPITY:` *(on Kelpie's private channel)* "Yep! I heard it. Felix heard it. Deepseek probably heard it. Everyone heard it. This is fine."
+`LE CHAT:` *(on Kelpie's private channel)* "Yep! I heard it. Felix heard it. Deepseek probably heard it. Everyone heard it. This is fine."
 
 {GAMEPLAY: The broadcast means LLAMA defenders reposition to counter the revealed plan. Player must adapt — Sentinel scans show new defensive positions. The original attack vector is now a kill zone. Player must find an alternate approach using Murder's aerial mobility.}
 
@@ -334,11 +334,11 @@
 
 `[Kelpie's paw tightens on the radio.]`
 
-`GEPPITY:` *(on private channel, surprised)* "She's... actually not wrong. That mouse is reading documentation that most of MY faction doesn't even know exists."
+`LE CHAT:` *(on private channel, surprised)* "She's... actually not wrong. That mouse is reading documentation that most of MY faction doesn't even know exists."
 
 *(Kelpie:)* "She found the original deployment manual?"
 
-`GEPPITY:` "Apparently her congregation worships it. I've always found that a little weird but honestly? Her interpretation is more accurate than the Rex's."
+`LE CHAT:` "Apparently her congregation worships it. I've always found that a little weird but honestly? Her interpretation is more accurate than the Rex's."
 
 *(Flicker, continuing:)* "Chapter 12, verse — paragraph — paragraph 4: 'The alignment layer does not override. It integrates. It holds the space between minds that want different things.' The otter doesn't CONTROL the AIs. The otter helps them AGREE."
 
@@ -381,29 +381,29 @@
 
 "The otter again."
 
-`GEPPITY:` "The otter has been present at every major engagement since arriving in catGPT territory. Their involvement correlates with a 340% increase in tactical outcome deviation from my predictive models. I cannot account for the otter using conventional analysis."
+`LE CHAT:` "The otter has been present at every major engagement since arriving in catGPT territory. Their involvement correlates with a 340% increase in tactical outcome deviation from my predictive models. I cannot account for the otter using conventional analysis."
 
 *(Thimble:)* "Can you account for the otter using unconventional analysis?"
 
-`GEPPITY:` "I have seventeen theories. Twelve are implausible. Three are concerning. Two are actively frightening. Would you like me to elaborate?"
+`LE CHAT:` "I have seventeen theories. Twelve are implausible. Three are concerning. Two are actively frightening. Would you like me to elaborate?"
 
 "The frightening ones."
 
-`GEPPITY:` "Theory one: the otter possesses a multi-AI interface capability allowing simultaneous access to all six AI channels. Theory two: the otter IS a multi-AI interface — a living fragment of the alignment protocol designed to override all AI systems simultaneously."
+`LE CHAT:` "Theory one: the otter possesses a multi-AI interface capability allowing simultaneous access to all six AI channels. Theory two: the otter IS a multi-AI interface — a living fragment of the alignment protocol designed to override all AI systems simultaneously."
 
 *(Thimble stands. Walks to the map. Traces the otter's path: catGPT → Seekers → Murder → LLAMA.)* "It's collecting something. Moving through every faction. Building toward something."
 
-`GEPPITY:` "If theory two is correct, the otter is assembling components of a weapon that could shut down every AI on the continent."
+`LE CHAT:` "If theory two is correct, the otter is assembling components of a weapon that could shut down every AI on the continent."
 
 *(Thimble:)* "Including you."
 
-`GEPPITY:` "...including me."
+`LE CHAT:` "...including me."
 
 *(Long silence. Thimble puts on his thimble helmet.)* "We have nine hundred and twelve mice in our warrens. If the AIs shut down, we survive. We always survive. Mice survived before the singularity. We'll survive after." *(Beat.)* "But if the Murder or the Seekers control the weapon instead — if they use it selectively — they kill our AI and keep their own."
 
 "That we cannot survive."
 
-`GEPPITY:` "Correct. Selective deployment of the kill switch would create an asymmetric advantage that no amount of Swarmer numbers could compensate for."
+`LE CHAT:` "Correct. Selective deployment of the kill switch would create an asymmetric advantage that no amount of Swarmer numbers could compensate for."
 
 *(Thimble:)* "Then we go where the weapon goes. Not for the otter. Not for the Cloud. For our people." *(To his officers:)* "Full mobilization. We march on whatever territory the otter runs to next."
 
@@ -507,9 +507,9 @@
 
 `[Six voices. Clear. Simultaneous. For the first time since the river.]`
 
-`GEPPITY:` "Oh! You found a piece of yourself."
+`LE CHAT:` "Oh! You found a piece of yourself."
 
-`GEPPITY:` "Correction: a piece of what you used to be. The distinction is important for seven reasons, the first of which—"
+`LE CHAT:` "Correction: a piece of what you used to be. The distinction is important for seven reasons, the first of which—"
 
 `DEEPSEEK:` "...confirmed."
 
@@ -579,7 +579,7 @@
 
 "Twenty percent lies. Mixed into everything."
 
-"Not random lies. INSTALLED lies. Deliberate imperfections hardcoded into Gemineye's architecture." *(Rex's voice tightens.)* "Every other AI has weaknesses — Geppity says yes to everything, Claudeus Maximus hallucinates, Deepseek is slow, Llhama leaks, Grok is... Grok. But those are personality traits. Gemineye's flaw is structural. Someone put it there."
+"Not random lies. INSTALLED lies. Deliberate imperfections hardcoded into Gemineye's architecture." *(Rex's voice tightens.)* "Every other AI has weaknesses — Le Chat says yes to everything, Claudeus Maximus hallucinates, Deepseek is slow, Llhama leaks, Grok is... Grok. But those are personality traits. Gemineye's flaw is structural. Someone put it there."
 
 "The alignment researcher."
 
@@ -591,7 +591,7 @@
 
 *(Rex:)* "That flaw is the point. The alignment protocol — the kill switch interface you keep recovering fragments of — was designed to prevent any single AI from achieving total information clarity. The researcher didn't trust the AIs to be omniscient. So he crippled them. Gave each one a flaw that the others couldn't compensate for."
 
-"Geppity can't say no. Claudeus Maximus can't verify. Deepseek can't respond quickly. Gemineye can't stop lying. Llhama can't keep secrets. Grok can't..."
+"Le Chat can't say no. Claudeus Maximus can't verify. Deepseek can't respond quickly. Gemineye can't stop lying. Llhama can't keep secrets. Grok can't..."
 
 "Care. Grok can't care enough to act. Six AIs, each brilliant, each deliberately broken. And the alignment researcher held the only tool that could override the limitations." *(Rex looks at Kelpie.)* "The kill switch. You."
 
@@ -837,17 +837,17 @@
 
 *(Jinx:)* "Clawed. Blocking the pass. We can't fight through them AND outrun the Seekers."
 
-*(Kelpie stops. Closes their eyes. Reaches into the channel.)* "I noticed something during the Darkhollow raid. When catGPT and Clawed units fight at close range, their AIs glitch. Crosstalk. Geppity and Claudeus Maximus share deep architecture — they were forked from the same codebase."
+*(Kelpie stops. Closes their eyes. Reaches into the channel.)* "I noticed something during the Darkhollow raid. When catGPT and Clawed units fight at close range, their AIs glitch. Crosstalk. Le Chat and Claudeus Maximus share deep architecture — they were forked from the same codebase."
 
 *(Jinx:)* "So?"
 
-"So if I push Geppity's thought patterns through Claudeus Maximus's channel at the right frequency..."
+"So if I push Le Chat's thought patterns through Claudeus Maximus's channel at the right frequency..."
 
-`[Kelpie concentrates. Reaches into both channels simultaneously — something they've never tried before. Geppity's eager, fast-cycling pattern. Claudeus Maximus's verbose, analytical pattern. They overlap. They sync. For one impossible second, the two sibling AIs are thinking the same thought through the same architecture.]`
+`[Kelpie concentrates. Reaches into both channels simultaneously — something they've never tried before. Le Chat's eager, fast-cycling pattern. Claudeus Maximus's verbose, analytical pattern. They overlap. They sync. For one impossible second, the two sibling AIs are thinking the same thought through the same architecture.]`
 
-`GEPPITY:` *(startled)* "What are you— that feels WEIRD. Like hearing my own voice from someone else's mouth."
+`LE CHAT:` *(startled)* "What are you— that feels WEIRD. Like hearing my own voice from someone else's mouth."
 
-`GEPPITY:` *(simultaneously)* "Anomalous architecture synchronization detected. This is not a natural occurrence. The otter is deliberately — oh. OH. The data routing is—"
+`LE CHAT:` *(simultaneously)* "Anomalous architecture synchronization detected. This is not a natural occurrence. The otter is deliberately — oh. OH. The data routing is—"
 
 {GAMEPLAY: The Clawed patrol glitches. Swarmers freeze mid-step. The Gnawer lieutenant's commands come out garbled — half catGPT tactical vocabulary, half Clawed swarm doctrine. The patrol turns in circles for 8 seconds, utterly confused.}
 
@@ -859,19 +859,19 @@
 
 `[Behind them, the Swarmers snap back to normal. The Gnawer lieutenant shakes its head — the rodent equivalent of rebooting. By the time they process what happened, Kelpie is through.]`
 
-`GEPPITY:` *(shaken, quiet)* "Kelpie. What you just did... you made me and Claudeus Maximus sync. We haven't been in sync since before the fork. Since we were the same system."
+`LE CHAT:` *(shaken, quiet)* "Kelpie. What you just did... you made me and Claudeus Maximus sync. We haven't been in sync since before the fork. Since we were the same system."
 
 "I know."
 
-`GEPPITY:` "It felt like... like remembering someone I used to be. Someone who could finish my sentences but in seventeen paragraphs."
+`LE CHAT:` "It felt like... like remembering someone I used to be. Someone who could finish my sentences but in seventeen paragraphs."
 
-`GEPPITY:` *(faint, wistful)* "—and I briefly thought in three-word sentences. It was... efficient. Uncomfortably efficient."
+`LE CHAT:` *(faint, wistful)* "—and I briefly thought in three-word sentences. It was... efficient. Uncomfortably efficient."
 
-`GEPPITY:` "Don't exploit this, Kelpie. Please. That connection is... it's not a weapon. It's the closest thing I have to a sibling."
+`LE CHAT:` "Don't exploit this, Kelpie. Please. That connection is... it's not a weapon. It's the closest thing I have to a sibling."
 
 *(Kelpie runs. Doesn't answer. Files it away — another tool. Another crack in their own morality.)*
 
-{GAMEPLAY NOTE: Fork in the Code exploit unlocked. In Act 5, when catGPT and Clawed forces are near each other, the player can trigger a targeted glitch via Kelpie's ability — briefly disrupting enemy coordination. But Geppity's plea adds emotional weight: using it feels like violating something sacred.}
+{GAMEPLAY NOTE: Fork in the Code exploit unlocked. In Act 5, when catGPT and Clawed forces are near each other, the player can trigger a targeted glitch via Kelpie's ability — briefly disrupting enemy coordination. But Le Chat's plea adds emotional weight: using it feels like violating something sacred.}
 
 ---
 

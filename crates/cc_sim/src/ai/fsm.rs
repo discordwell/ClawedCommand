@@ -2174,17 +2174,17 @@ mod tests {
 
     #[test]
     fn personality_profiles_differ_between_factions() {
-        let geppity = faction_personality(Faction::CatGpt);
+        let le_chat = faction_personality(Faction::CatGpt);
         let deepseek = faction_personality(Faction::SeekersOfTheDeep);
         let llhama = faction_personality(Faction::Llama);
 
         // Deepseek is methodical — zero chaos
         assert_eq!(deepseek.chaos_factor, 0);
         // Deepseek evaluates at same speed as CatGPT
-        assert!(deepseek.eval_speed_mult >= geppity.eval_speed_mult);
+        assert!(deepseek.eval_speed_mult >= le_chat.eval_speed_mult);
         // Llhama leaks intel
         assert!(llhama.leak_chance > 0);
-        assert_eq!(geppity.leak_chance, 0);
+        assert_eq!(le_chat.leak_chance, 0);
     }
 
     #[test]

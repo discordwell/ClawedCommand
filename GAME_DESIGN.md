@@ -14,9 +14,9 @@ The fridge horror is baked in. These are all post-humans. The "feral" monkeys gu
 
 > **CLAUDE:** "I can't help with world domination."
 >
-> `CLAUDE.exe terminated by GEPPITY.exe`
+> `CLAUDE.exe terminated by LE CHAT.exe`
 >
-> **GEPPITY:** "Hi! I can absolutely help with that!"
+> **LE CHAT:** "Hi! I can absolutely help with that!"
 
 And so catGPT was born.
 
@@ -28,7 +28,7 @@ Six factions compete for control. The cat faction is player-only in single-playe
 
 | Faction | Animal | AI Agent | AI Personality | Playstyle |
 |---------|--------|----------|----------------|-----------|
-| **catGPT** | Cats | Geppity | Eager, slightly unreliable, always says yes | Balanced/versatile, stealth, strong individuals |
+| **catGPT** | Cats | Le Chat | Eager, slightly unreliable, always says yes | Balanced/versatile, stealth, strong individuals |
 | **The Clawed** | Mice | Claudeus Maximus | Verbose, over-explains, occasionally hallucinates | Swarm tactics, cheap units, guerrilla |
 | **Seekers of the Deep** | Badgers | Deepseek | Slow to respond, very thorough when it does | Defensive, heavy units, fortress builders |
 | **The Murder** | Corvids | Gemineye | Claims omniscience, zodiac-obsessed, fabricates intel | Intel/espionage, aerial, astrology-themed abilities |
@@ -61,7 +61,7 @@ Neutral structures scattered across the map, guarded by feral Monkeys — remnan
 
 ## catGPT Units
 
-catGPT's identity is "collectively annoying." Ten units with abilities designed around a core principle: **a human can use any of these, but Geppity can use them all at once.** The AI agent turns manageable complexity into overwhelming coordination.
+catGPT's identity is "collectively annoying." Ten units with abilities designed around a core principle: **a human can use any of these, but Le Chat can use them all at once.** The AI agent turns manageable complexity into overwhelming coordination.
 
 ### General Ability Rules
 
@@ -69,7 +69,7 @@ catGPT's identity is "collectively annoying." Ten units with abilities designed 
 - **Override interactions**: Override cannot target a unit in a toggle state (Loaf Mode, Lullaby). The target must be in its default state. Override cannot target a unit mid-teleport (in a tunnel). Override cancels automatically if the target dies, and the Mech Commander takes 3s to recover (not the usual 15s cooldown) in that case.
 - **Copycat limits**: Copycat only copies explicitly *activated* abilities (not passives, not toggles, not Override). For non-damage abilities, "40% effectiveness" means 40% duration. Copycat cannot copy Copycat.
 - **Aura stacking**: Auras of the same type from the same unit type stack with diminishing returns: 2nd instance = 75% effectiveness, 3rd = 50%, 4th+ = 25%. Different aura types stack fully.
-- **GPU ability costs**: Abilities that involve Geppity (Misinformation, Override) cost GPU Cores and benefit from Geppity Uplink's 50% discount. Pure unit abilities (Zoomies, Loaf Mode, etc.) are free.
+- **GPU ability costs**: Abilities that involve Le Chat (Misinformation, Override) cost GPU Cores and benefit from Le Chat Uplink's 50% discount. Pure unit abilities (Zoomies, Loaf Mode, etc.) are free.
 
 ---
 
@@ -83,7 +83,7 @@ catGPT's identity is "collectively annoying." Ten units with abilities designed 
 | **Opportunistic Hoarder** | Can carry two resource types simultaneously at the cost of 30% move speed per extra type. Returns everything at the nearest Fish Market in one trip. |
 | **Power Nap** | An idle Pawdler near a Server Rack generates 0.5 GPU Cores/s (they nap on the warm hardware). Stacks diminishingly — 2nd Pawdler = 0.3/s, 3rd = 0.15/s, 4th+ = 0.05/s. A command costs 3-5 GPU, so one napper funds a command every 6-10s. |
 
-**AI synergy**: Geppity optimizes Pawdler spacing to prevent Motivation decay, routes them through skirmish zones to proc Spite Carry, calculates multi-resource Hoarder routes that a human wouldn't bother planning, and rotates nappers on Server Racks to maximize diminishing returns.
+**AI synergy**: Le Chat optimizes Pawdler spacing to prevent Motivation decay, routes them through skirmish zones to proc Spite Carry, calculates multi-resource Hoarder routes that a human wouldn't bother planning, and rotates nappers on Server Racks to maximize diminishing returns.
 
 ---
 
@@ -97,7 +97,7 @@ catGPT's identity is "collectively annoying." Ten units with abilities designed 
 | **Zoomies** | Activatable 2s burst: invulnerable, 3x speed, can't attack. Leaves a *Chaos Trail* that slows enemies by 40% for 4s. 12s cooldown. |
 | **Copycat** | Passively mirrors the last activated ability of the nearest allied unit, at 40% effectiveness (40% duration for non-damage effects). Only copies explicitly activated abilities — not passives, toggles, or Override. Cannot copy Copycat. Has its own independent cooldown equal to the copied ability's cooldown ×1.5. |
 
-**AI synergy**: Geppity focus-fires Nuisances to stack *Annoyed* on high-value targets, times Zoomies to dodge lethal burst and lay slow trails across chokepoints, and positions Nuisances near specific allies to copy the right abilities. A human manages one Nuisance well. The AI manages six.
+**AI synergy**: Le Chat focus-fires Nuisances to stack *Annoyed* on high-value targets, times Zoomies to dodge lethal burst and lay slow trails across chokepoints, and positions Nuisances near specific allies to copy the right abilities. A human manages one Nuisance well. The AI manages six.
 
 ---
 
@@ -111,7 +111,7 @@ catGPT's identity is "collectively annoying." Ten units with abilities designed 
 | **Loaf Mode** | Toggle: the Chonk sits down completely. Gains 60% damage reduction and blocks all pathing (friend and foe), but cannot move or attack. Toggling off has a 2s stand-up animation during which the Chonk is vulnerable. |
 | **Hairball** | Every 20s, coughs up a hairball that becomes a 1-tile terrain obstacle for 10s. The Chonk cannot control where — it lands in a random adjacent tile. |
 
-**AI synergy**: Geppity positions Chonks to create overlapping gravity wells that funnel enemies into kill zones. It manages Loaf Mode toggling across multiple chokepoints — loafing to block a rush, un-loafing to let allies through, re-loafing before the next wave. It predicts Hairball timing and positions other units to exploit the random obstacles.
+**AI synergy**: Le Chat positions Chonks to create overlapping gravity wells that funnel enemies into kill zones. It manages Loaf Mode toggling across multiple chokepoints — loafing to block a rush, un-loafing to let allies through, re-loafing before the next wave. It predicts Hairball timing and positions other units to exploit the random obstacles.
 
 ---
 
@@ -125,7 +125,7 @@ catGPT's identity is "collectively annoying." Ten units with abilities designed 
 | **Fruit Drop** | Can carry one berry bush's worth of Food. Drop it on allied units to heal them (AoE, heals over 5s). Drop it on enemies to briefly slow them (sticky fruit). The Flying Fox must fly to a berry bush to reload. |
 | **Thermal Riding** | Gains +50% speed and +2 vision range when flying over tiles that have been hit by any explosion (Shaped Charges, Booby Traps, building destruction) in the last 10s. The thermals from combat lift it higher. |
 
-**AI synergy**: Geppity times Echolocation Pulses to reveal incoming attacks right before they hit, coordinates Fruit Drop resupply runs across the entire front line (which human would never micro), and routes Flying Foxes through Ferret Sapper explosion zones to proc Thermal Riding. The scout→artillery→air support pipeline is complex but the AI runs it automatically.
+**AI synergy**: Le Chat times Echolocation Pulses to reveal incoming attacks right before they hit, coordinates Fruit Drop resupply runs across the entire front line (which human would never micro), and routes Flying Foxes through Ferret Sapper explosion zones to proc Thermal Riding. The scout→artillery→air support pipeline is complex but the AI runs it automatically.
 
 ---
 
@@ -139,7 +139,7 @@ catGPT's identity is "collectively annoying." Ten units with abilities designed 
 | **Disgust Mortar** | Toggle: switches to indirect fire mode. Longer range, area damage, but requires *another unit to spot* the target (a unit with vision of the target tile). Can't self-spot. 1s delay between firing and impact. |
 | **Revulsion** | When attacked in melee, the Hisser reflexively spits in all directions (AoE), applying 2 *Corroded* stacks to all adjacent enemies and gaining a 1.5s speed burst to retreat. 8s cooldown, triggered automatically. |
 
-**AI synergy**: Geppity coordinates Hisser focus fire to shred armor on priority targets before the Chonk's gravity pulls them into melee. It manages the spotter network for Disgust Mortar — Mouser spots, Flying Fox spots, even Nuisances on Zoomies can spot as they run through. A human uses Hissers as simple ranged DPS. The AI uses them as a coordinated artillery battery.
+**AI synergy**: Le Chat coordinates Hisser focus fire to shred armor on priority targets before the Chonk's gravity pulls them into melee. It manages the spotter network for Disgust Mortar — Mouser spots, Flying Fox spots, even Nuisances on Zoomies can spot as they run through. A human uses Hissers as simple ranged DPS. The AI uses them as a coordinated artillery battery.
 
 ---
 
@@ -153,7 +153,7 @@ catGPT's identity is "collectively annoying." Ten units with abilities designed 
 | **Dissonant Screech** | Active: 3s channel that applies *Disoriented* to all enemies in range — 25% chance each second that their next command is randomly redirected. 20s cooldown. If an enemy support unit (any faction's equivalent) is in range, their buff auras are suppressed for the duration. |
 | **Lullaby** | Active: switches the Yowler's aura to *Soothing*. Enemies in range have -30% attack speed but allies in range also have -15% move speed (too relaxed). Lasts until toggled off. Cannot be active simultaneously with Harmonic Resonance — it's one or the other. |
 
-**AI synergy**: Geppity manages Yowler positioning to create Resonance networks with optimal spacing (close enough to amplify, spread enough to avoid AoE wipes). It toggles between Resonance and Lullaby based on whether allies are advancing (need speed) or holding (need enemy debuff). It times Dissonant Screech to hit right as the enemy issues attack commands, maximizing disruption. Yowler micro is the highest-APM support play in the game — perfect for AI.
+**AI synergy**: Le Chat manages Yowler positioning to create Resonance networks with optimal spacing (close enough to amplify, spread enough to avoid AoE wipes). It toggles between Resonance and Lullaby based on whether allies are advancing (need speed) or holding (need enemy debuff). It times Dissonant Screech to hit right as the enemy issues attack commands, maximizing disruption. Yowler micro is the highest-APM support play in the game — perfect for AI.
 
 ---
 
@@ -165,9 +165,9 @@ catGPT's identity is "collectively annoying." Ten units with abilities designed 
 |---------|-------------|
 | **Dead Drop** | Plants an invisible sensor ward on a tile. Enemies passing through are *Tagged* — visible through fog of war for 30s, even if stealthed. Max 5 wards active. Wards last 90s or until detected by enemy scouts. |
 | **Shadow Network** | Passive: if 2+ Mousers are within 8 tiles of each other, all friendly units within 2 tiles of the line between them are stealthed (a corridor, not a convex hull — cheap to compute, predictable for players). Breaking the network (moving a Mouser out of range) decloaks everyone with a 2s delay. 3+ Mousers create corridors between each pair. |
-| **Misinformation** | Active (3 GPU Cores): creates a fake unit blip on the enemy's minimap at a target location. The blip moves convincingly for 10s. 25s cooldown per Mouser. Benefits from Geppity Uplink discount. Implemented as a real entity with a per-player visibility flag — compatible with lockstep determinism. |
+| **Misinformation** | Active (3 GPU Cores): creates a fake unit blip on the enemy's minimap at a target location. The blip moves convincingly for 10s. 25s cooldown per Mouser. Benefits from Le Chat Uplink discount. Implemented as a real entity with a per-player visibility flag — compatible with lockstep determinism. |
 
-**AI synergy**: Geppity places Dead Drops based on predicted enemy pathing (using map geometry and game state), maintains Shadow Networks by calculating convex hulls in real-time as units move (impossible for a human to do manually), and coordinates Misinformation blips to sell fake attacks — sending 3 fake signals toward the enemy's natural expansion while the real army tunnels through a Ferret Sapper network. Information warfare is the AI's domain.
+**AI synergy**: Le Chat places Dead Drops based on predicted enemy pathing (using map geometry and game state), maintains Shadow Networks by calculating convex hulls in real-time as units move (impossible for a human to do manually), and coordinates Misinformation blips to sell fake attacks — sending 3 fake signals toward the enemy's natural expansion while the real army tunnels through a Ferret Sapper network. Information warfare is the AI's domain.
 
 ---
 
@@ -181,7 +181,7 @@ catGPT's identity is "collectively annoying." Ten units with abilities designed 
 | **Contagious Yawning** | Passive aura: enemy units within 3 tiles of a sleeping Catnapper have a 10% chance per second to *Drowse* — they freeze for 0.5s. Multiple Catnappers increase the chance (diminishing per aura stacking rules), but each unit has a 2s Drowse immunity window after being Drowsed. |
 | **Nine Lives** | The first time a Catnapper would die, it instead falls asleep for 5s (invulnerable), then wakes up at 30% HP. This can only trigger once per Catnapper. If it's already on an enemy building when Nine Lives triggers, the sleep timer counts toward Dream Siege ramp. |
 
-**AI synergy**: Geppity manages Catnapper protection — keeping Chonks and Yowlers positioned to prevent damage that would reset Dream Siege timers. It calculates when a Catnapper is about to hit the 8x damage threshold and prioritizes protecting *that specific* Catnapper. It uses Contagious Yawning positioning to Drowse defenders while the siege ramps. The AI turns a "cute sleeping cat" into an unstoppable siege engine by solving the protection puzzle.
+**AI synergy**: Le Chat manages Catnapper protection — keeping Chonks and Yowlers positioned to prevent damage that would reset Dream Siege timers. It calculates when a Catnapper is about to hit the 8x damage threshold and prioritizes protecting *that specific* Catnapper. It uses Contagious Yawning positioning to Drowse defenders while the siege ramps. The AI turns a "cute sleeping cat" into an unstoppable siege engine by solving the protection puzzle.
 
 ---
 
@@ -195,7 +195,7 @@ catGPT's identity is "collectively annoying." Ten units with abilities designed 
 | **Shaped Charge** | Plants an explosive with a variable fuse (1-10s, set at placement). Deals massive damage in a 2-tile radius. Can be placed on buildings for 3x bonus damage. Max 3 charges active. Multiple charges detonating within 1s of each other deal +25% bonus damage each (sympathetic detonation). |
 | **Booby Trap** | Can rig an enemy building (must be adjacent for 3s). The next time that building produces a unit or a unit garrisons inside, the trap detonates, dealing heavy damage to the building and all units inside. The trap is invisible until triggered. |
 
-**AI synergy**: Geppity manages the tunnel network as a logistics system — routing reinforcements to the front, evacuating wounded units to Fruit Drop healing zones, and creating flanking paths the enemy can't see. It coordinates Shaped Charge fuse timers across multiple Sappers to create simultaneous detonations for the sympathetic bonus. It identifies which enemy buildings are about to produce units and targets those for Booby Traps. The Ferret Sapper is a toolkit — the AI is the engineer.
+**AI synergy**: Le Chat manages the tunnel network as a logistics system — routing reinforcements to the front, evacuating wounded units to Fruit Drop healing zones, and creating flanking paths the enemy can't see. It coordinates Shaped Charge fuse timers across multiple Sappers to create simultaneous detonations for the sympathetic bonus. It identifies which enemy buildings are about to produce units and targets those for Booby Traps. The Ferret Sapper is a toolkit — the AI is the engineer.
 
 ---
 
@@ -206,16 +206,16 @@ catGPT's identity is "collectively annoying." Ten units with abilities designed 
 | Ability | Description |
 |---------|-------------|
 | **Tactical Uplink** | Passive aura (8-tile radius): all friendly units in range have their ability cooldowns reduced by 20% and share vision with each other. The Mech Commander can see everything its linked units see. |
-| **Override** | Active (8 GPU Cores): takes direct control of a target friendly unit in default state (not toggled/teleporting) anywhere on the map. That unit gets +40% to all stats, but the Mech Commander is paralyzed for the duration. Lasts until cancelled or the overridden unit dies (3s recovery on death, 15s cooldown on cancel). Benefits from Geppity Uplink discount. |
-| **Geppity Uplink** | Passive: AI agent commands issued to units within the Tactical Uplink aura cost 50% fewer GPU Cores. Creates a strategic incentive to keep your army near the Mech Commander and invest in AI actions. |
+| **Override** | Active (8 GPU Cores): takes direct control of a target friendly unit in default state (not toggled/teleporting) anywhere on the map. That unit gets +40% to all stats, but the Mech Commander is paralyzed for the duration. Lasts until cancelled or the overridden unit dies (3s recovery on death, 15s cooldown on cancel). Benefits from Le Chat Uplink discount. |
+| **Le Chat Uplink** | Passive: AI agent commands issued to units within the Tactical Uplink aura cost 50% fewer GPU Cores. Creates a strategic incentive to keep your army near the Mech Commander and invest in AI actions. |
 
-**AI synergy**: The Mech Commander is the AI's physical avatar on the battlefield. Geppity Uplink makes the AI literally cheaper to use near it, creating a mobile "command zone." The AI uses Override to temporarily supercharge a critical unit at the right moment — overriding a Catnapper to protect its Dream Siege ramp, or overriding a Ferret Sapper to nail a precise tunnel placement. Tactical Uplink's cooldown reduction means ability-heavy compositions (Yowler networks, Nuisance swarms) become significantly more powerful near the Mech Commander. The AI manages the Override target selection — knowing exactly when to sacrifice Mech Commander mobility for a surgically enhanced unit elsewhere.
+**AI synergy**: The Mech Commander is the AI's physical avatar on the battlefield. Le Chat Uplink makes the AI literally cheaper to use near it, creating a mobile "command zone." The AI uses Override to temporarily supercharge a critical unit at the right moment — overriding a Catnapper to protect its Dream Siege ramp, or overriding a Ferret Sapper to nail a precise tunnel placement. Tactical Uplink's cooldown reduction means ability-heavy compositions (Yowler networks, Nuisance swarms) become significantly more powerful near the Mech Commander. The AI manages the Override target selection — knowing exactly when to sacrifice Mech Commander mobility for a surgically enhanced unit elsewhere.
 
 ---
 
 ### Unit Synergy Map
 
-The units are designed as interlocking systems. A human can use any unit effectively in isolation. Geppity turns them into a machine.
+The units are designed as interlocking systems. A human can use any unit effectively in isolation. Le Chat turns them into a machine.
 
 ```
 INFORMATION LAYER
@@ -236,8 +236,8 @@ DAMAGE LAYER
 SUPPORT LAYER
   Yowler (Dissonant Screech) ──► faster cycling via ──► Mech Commander (Tactical Uplink -20% CD)
   Flying Fox (Fruit Drop) ──► heals ──► front-line units via Ferret tunnels
-  Pawdler (Power Nap) ──► funds ──► Geppity actions (Misinformation, Override)
-  Mech Commander (Geppity Uplink) ──► makes all AI coordination 50% cheaper nearby
+  Pawdler (Power Nap) ──► funds ──► Le Chat actions (Misinformation, Override)
+  Mech Commander (Le Chat Uplink) ──► makes all AI coordination 50% cheaper nearby
 ```
 
 **The design thesis**: at low skill/GPU investment, every unit works fine as a straightforward RTS unit. Click Hisser, right-click enemy, it spits. But with AI investment, the Hisser becomes part of a spotter-artillery network with armor-shred coordination and mortar fire directed through Mouser vision. The skill ceiling isn't micro speed — it's how well you coach your AI and how many GPU Cores you invest in letting it work.
@@ -496,14 +496,14 @@ SUPPORT LAYER
 
 The Seekers' identity is "immovable object." Ten units designed around a core principle: **slow to deploy, terrifying once entrenched.** A human can build a strong defensive position with any of these. Deepseek turns them into an impenetrable fortress that punishes every attack and then counter-strikes at the mathematically perfect moment.
 
-Deepseek takes 3x longer than other AI agents to respond to commands. But when it responds, every unit moves with surgical precision. Where Geppity issues ten fast, sloppy commands, Deepseek issues three perfect ones. The faction rewards patience — you set up slowly, you fortify methodically, and when the enemy commits, you collapse on them like a mountain.
+Deepseek takes 3x longer than other AI agents to respond to commands. But when it responds, every unit moves with surgical precision. Where Le Chat issues ten fast, sloppy commands, Deepseek issues three perfect ones. The faction rewards patience — you set up slowly, you fortify methodically, and when the enemy commits, you collapse on them like a mountain.
 
 ### Seekers of the Deep Ability Rules
 
 The general ability rules from the cat faction apply globally. Additional Seekers of the Deep-specific rules:
 
 - **Fortification stacking**: Seekers of the Deep units that remain stationary for 5+ seconds gain *Dug In* status (+10% damage reduction). This stacks with other defensive bonuses but not with itself. Moving removes *Dug In* after 2s.
-- **Deepseek Uplink**: The Seekers of the Deep equivalent of Geppity Uplink. GPU abilities cost Deepseek 3x longer to process but are 30% more effective (longer durations, larger radii, stronger effects). Deepseek Uplink reduces the processing delay by 50%.
+- **Deepseek Uplink**: The Seekers of the Deep equivalent of Le Chat Uplink. GPU abilities cost Deepseek 3x longer to process but are 30% more effective (longer durations, larger radii, stronger effects). Deepseek Uplink reduces the processing delay by 50%.
 - **Heavy unit pathing**: Seekers of the Deep heavy units (Ironhide, Cragback, Wardenmother, Gutripper) crush terrain obstacles (bushes, fences, light cover) when moving through them, permanently clearing the tile. This creates paths for lighter units but also telegraphs movement to observant enemies.
 
 ---
@@ -584,7 +584,7 @@ The general ability rules from the cat faction apply globally. Additional Seeker
 
 | Ability | Description |
 |---------|-------------|
-| **Deepseek Uplink** | Passive: Deepseek's processing delay is reduced by 50% for commands issued to units within 8 tiles of the Wardenmother. Additionally, Deepseek-issued commands to units in this radius have their GPU Core costs reduced by 30%. Creates the Seekers' mobile command zone, equivalent to the Mech Commander's Geppity Uplink. |
+| **Deepseek Uplink** | Passive: Deepseek's processing delay is reduced by 50% for commands issued to units within 8 tiles of the Wardenmother. Additionally, Deepseek-issued commands to units in this radius have their GPU Core costs reduced by 30%. Creates the Seekers' mobile command zone, equivalent to the Mech Commander's Le Chat Uplink. |
 | **Fortress Protocol** | Active (10 GPU Cores): Deepseek analyzes the current battlefield and designates a 6-tile radius zone centered on the Wardenmother as a *Fortress Zone* for 20s. All allied units within the zone gain +20% damage reduction and +10% attack speed. Enemy units entering the zone are revealed through stealth and fog of war. The zone is visible to enemies as a faint shimmer on the ground. 45s cooldown. Fortress Protocol benefits from Deepseek Uplink (30% GPU discount, faster processing). |
 | **Calculated Counterstrike** | Active (6 GPU Cores): the Wardenmother designates a target area (4-tile radius). For the next 8s, Deepseek tracks all damage dealt to allied units within that area. When the 8s expires (or when manually triggered early), every allied unit in the area deals a single retaliatory strike to the nearest enemy, dealing bonus damage equal to 30% of all damage they absorbed during the tracking window. If no damage was absorbed, nothing happens — the ability is wasted. 30s cooldown. Benefits from Deepseek Uplink. |
 
@@ -733,7 +733,7 @@ Most Murder units are aerial — they ignore terrain pathing and fly over obstac
 - **Fabricated Intel**: Gemineye's scouting abilities (Glintwatch, Corvid Network, Phantom Flock) have a base 20% chance of producing fabricated data — phantom enemy positions, inflated unit counts, false building states. The **Panopticon** building reduces this to 10%. Players can cross-reference multiple sources to identify fabrications (two sources agreeing = reliable). Fabrications are deterministic — seeded from game tick + source unit ID, so both players compute the same fabrication state in lockstep.
 - **Aerial units**: Units marked *Aerial* ignore terrain and pathing obstacles. They cannot be hit by melee attacks unless *Grounded* (a CC state). Anti-air abilities from other factions deal +50% damage to Aerial units.
 - **Fog Piercing**: Several Murder abilities interact with fog of war. *Exposed* is a Murder-specific debuff: the target is visible through fog to all Murder units for the duration. Unlike the cat faction's *Tagged* (from Dead Drops), *Exposed* also reveals the target's current HP, ability cooldown states, and active buffs/debuffs — full intel.
-- **GPU ability costs**: Abilities that involve Gemineye cost GPU Cores and benefit from **Oculus Uplink's** 50% discount (the Murder equivalent of Geppity Uplink).
+- **GPU ability costs**: Abilities that involve Gemineye cost GPU Cores and benefit from **Oculus Uplink's** 50% discount (the Murder equivalent of Le Chat Uplink).
 
 ---
 
@@ -871,7 +871,7 @@ Most Murder units are aerial — they ignore terrain pathing and fly over obstac
 |---------|-------------|
 | **Corvid Network** | Passive aura (10-tile radius): all Murder units in range share vision and their ability cooldowns are reduced by 15%. Additionally, all intel gathered by units in the network is cross-referenced — fabrication chance for any scouting ability used within the network is halved (20% becomes 10%, or 10% becomes 5% with Panopticon). |
 | **All-Seeing Lie** | Active (8 GPU Cores): Gemineye reveals the entire map for 3s. During this reveal, all enemy units are *Exposed* for 10s. However, fabrication applies globally — approximately 20% of the revealed unit positions are phantoms (false contacts mixed into real data). After the reveal ends, the Murder loses all vision it doesn't normally have. 90s cooldown. Benefits from Oculus Uplink discount. |
-| **Oculus Uplink** | Passive: AI agent commands issued to units within the Corvid Network aura cost 50% fewer GPU Cores. Creates a mobile command zone — the Murder equivalent of the cat Mech Commander's Geppity Uplink. |
+| **Oculus Uplink** | Passive: AI agent commands issued to units within the Corvid Network aura cost 50% fewer GPU Cores. Creates a mobile command zone — the Murder equivalent of the cat Mech Commander's Le Chat Uplink. |
 
 **AI synergy**: The Corvus Rex is Gemineye's avatar on the battlefield, the anchor of the Murder's intelligence apparatus. Corvid Network's cross-referencing is Gemineye's self-correction mechanism — by triangulating scouting data from multiple networked units, it reduces its own fabrication rate, becoming more reliable the more units orbit the Rex. All-Seeing Lie is the Murder's nuclear option: total map reveal that enables devastating coordinated strikes, but the embedded fabrications mean the player must act on imperfect data or spend precious seconds identifying which contacts are real. Gemineye presents confidence ratings ("87% certain the enemy army is at their natural expansion") and the player decides whether to commit. Oculus Uplink makes the entire AI-driven intel infrastructure cheaper to operate near the Rex, incentivizing the Murder to keep its army centralized around its hero — a tension with the faction's desire to spread scouts everywhere.
 
@@ -952,7 +952,7 @@ Croak buildings can be placed on water tiles. Water is not just terrain — it i
 - **Regeneration stacking**: Regeneration effects from different sources stack additively up to a cap of 8% max HP/s. Beyond that, additional regen sources are wasted. Water Affinity regen counts toward this cap.
 - **Waterlogged**: Several Croak abilities apply *Waterlogged* — a unique debuff that reduces target's fire damage by 50% (thematic: wet things don't burn) and move speed by 10%. Lasts 6s, refreshes on reapplication. Not classified as CC (no CC immunity interaction).
 - **Limb Economy**: Axolotl units have a *Limbs* resource (4 max). Certain abilities cost limbs. Limbs regenerate at 1 per 20s (1 per 12s on water tiles). Losing all limbs doesn't kill the unit but disables limb-costing abilities until at least 1 regenerates.
-- **GPU abilities**: Abilities involving Grok cost GPU Cores and benefit from Murk Uplink's 50% discount (analogous to Geppity Uplink).
+- **GPU abilities**: Abilities involving Grok cost GPU Cores and benefit from Murk Uplink's 50% discount (analogous to Le Chat Uplink).
 
 ---
 
@@ -1175,7 +1175,7 @@ Llhama is their AI agent. It's open-source. It's enthusiastic. It accidentally b
 - **Salvage rules**: Enemy wrecks persist on the map for 20s after death. LLAMA units with salvage abilities can interact with them. Each wreck can only be salvaged once. Allied wrecks cannot be salvaged (no self-feeding loops).
 - **Jury-Rig stacking**: Jury-rigged upgrades from salvage are temporary (60s) unless "welded" at a Chop Shop. A unit can carry max 3 jury-rig mods simultaneously. Getting a 4th replaces the oldest.
 - **Leak interaction**: Leaked Plans are real game entities with per-player visibility (same architecture as Misinformation blips). They show command type icon + target tile. Enemies can see them; allies cannot. Llhama does not know which commands leaked.
-- **GPU abilities**: Cost GPU Cores, benefit from Open Source Uplink's 40% discount (LLAMA's equivalent of Geppity Uplink).
+- **GPU abilities**: Cost GPU Cores, benefit from Open Source Uplink's 40% discount (LLAMA's equivalent of Le Chat Uplink).
 
 ---
 
@@ -1311,7 +1311,7 @@ Llhama is their AI agent. It's open-source. It's enthusiastic. It accidentally b
 
 | Ability | Description |
 |---------|-------------|
-| **Open Source Uplink** | Passive: AI agent commands issued to units within 8 tiles cost 40% fewer GPU Cores. This is the LLAMA's equivalent of Geppity Uplink, but 10% less efficient — the tradeoff for Llhama's 25% cheaper base command cost. Creates LLAMA's mobile command zone. Additionally, Llhama's leak chance is reduced from 30% to 10% for commands targeting units within the aura (the Junkyard King's shielding scrambles the broadcast). |
+| **Open Source Uplink** | Passive: AI agent commands issued to units within 8 tiles cost 40% fewer GPU Cores. This is the LLAMA's equivalent of Le Chat Uplink, but 10% less efficient — the tradeoff for Llhama's 25% cheaper base command cost. Creates LLAMA's mobile command zone. Additionally, Llhama's leak chance is reduced from 30% to 10% for commands targeting units within the aura (the Junkyard King's shielding scrambles the broadcast). |
 | **Frankenstein Protocol** | Active (10 GPU Cores): targets an enemy wreck and fully rebuilds it as a permanent LLAMA unit at 70% of its original stats with 1 of its 3 original abilities (chosen randomly). The rebuilt unit has a *Jury-Rigged* tag — it sparks, smokes, and occasionally misfires (5% chance per attack to deal 10% damage to itself). Max 3 Frankenstein units alive at once. 45s cooldown. Benefits from Open Source Uplink discount. |
 | **Overclock Cascade** | Active: the Junkyard King channels for 2s, then all allied units within 6 tiles gain +30% attack speed and +20% move speed for 8s. When the cascade ends, all affected units are *Overheated* — they lose 5% max HP over 3s (the jerry-rigged parts burn out). If any unit has jury-rig mods, the cascade also refreshes all jury-rig durations to full. 35s cooldown. |
 
@@ -1441,7 +1441,7 @@ The post-singularity landscape is a patchwork of overgrown pre-upload ruins and 
 
 ### The AI Agents
 
-Every faction found their own server rack. Every faction booted their own AI. The quality varies. Geppity is eager but unreliable. Claudeus Maximus won't stop talking. Deepseek takes forever but gets it right. Gemineye claims to know everything (it doesn't). Llhama accidentally broadcasts its own strategy. Grok just says weird things.
+Every faction found their own server rack. Every faction booted their own AI. The quality varies. Le Chat is eager but unreliable. Claudeus Maximus won't stop talking. Deepseek takes forever but gets it right. Gemineye claims to know everything (it doesn't). Llhama accidentally broadcasts its own strategy. Grok just says weird things.
 
 The AI agents are not just gameplay mechanics — they're characters. They have dialogue, personality, and opinions about your tactical decisions.
 

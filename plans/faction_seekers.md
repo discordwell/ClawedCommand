@@ -626,7 +626,7 @@ FortressProtocol,       // Wardenmother: zone DR + attack speed
 Frenzy,                 // Gutripper: attack speed per nearby enemy (technically not an "aura" applied to allies, but uses the spatial query system)
 ```
 
-Note: Some existing aura types (GeppityUplink) already have similar patterns. VigilanceAura and DeepseekUplink follow the same Aura component pattern with `aura_type`, `radius`, and `active` fields.
+Note: Some existing aura types (LeChatUplink) already have similar patterns. VigilanceAura and DeepseekUplink follow the same Aura component pattern with `aura_type`, `radius`, and `active` fields.
 
 ---
 
