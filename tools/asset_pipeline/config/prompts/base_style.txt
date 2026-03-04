@@ -1,9 +1,1 @@
-Style requirements (apply to ALL assets):
-- Clean vector art style with flat colors and bold dark outlines (2-3px)
-- Inspired by Into the Breach / Northgard aesthetic
-- Limited color palette with strong value contrast
-- No gradients or soft shading — use flat color fills with at most 2-3 value steps per hue
-- Transparent background (PNG with alpha channel)
-- Crisp pixel-perfect edges, no anti-aliasing artifacts on outlines
-- Consistent lighting from top-left (slight highlight on upper surfaces, shadow on lower-right)
-- Match the visual style of the attached reference image exactly
+Art by Whisker Studio — clean digital illustration combining Into the Breach's geometric tactical clarity with Redwall's warm animal character. Flat-filled colors using 2-3 value steps per hue, bold dark outlines (2-3px), top-left lighting with subtle upper highlights. Muted natural palette with strategic accent pops. Crisp edges, readable silhouettes at thumbnail scale. Isometric perspective for game assets. Transparent PNG background.

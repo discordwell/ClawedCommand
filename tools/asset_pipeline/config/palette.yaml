@@ -77,5 +77,44 @@ outline:
   default: "#263238"
   heavy: "#1A1A2E"
 
+# Per-faction palettes (60/30/10 rule: primary, secondary, accent, highlight, shadow)
+factions:
+  catgpt:
+    primary: "#B0BEC5"      # cool silver
+    secondary: "#78909C"    # slate
+    accent: "#42A5F5"       # electric blue
+    highlight: "#E3F2FD"    # pale blue
+    shadow: "#37474F"       # dark blue-gray
+  clawed:
+    primary: "#8D6E63"      # warm brown
+    secondary: "#A1887F"    # light earth
+    accent: "#4CAF50"       # green
+    highlight: "#FFF8E1"    # warm cream
+    shadow: "#3E2723"       # dark earth
+  murder:
+    primary: "#37474F"      # dark obsidian
+    secondary: "#455A64"    # charcoal
+    accent: "#7E57C2"       # luminous purple
+    highlight: "#D1C4E9"    # pale lavender
+    shadow: "#1A1A2E"       # deep night
+  seekers:
+    primary: "#9E9E9E"      # warm stone
+    secondary: "#757575"    # deep gray
+    accent: "#FFB300"       # rich amber
+    highlight: "#FFF8E1"    # pale gold
+    shadow: "#424242"       # cavern dark
+  croak:
+    primary: "#66BB6A"      # moss green
+    secondary: "#4DB6AC"    # aqua
+    accent: "#26A69A"       # bright teal
+    highlight: "#E0F2F1"    # pale mint
+    shadow: "#1B5E20"       # deep swamp
+  llama:
+    primary: "#BF8B67"      # sandy rust
+    secondary: "#9E7756"    # weathered scrap
+    accent: "#FF7043"       # vibrant orange
+    highlight: "#FFF3E0"    # pale orange
+    shadow: "#4A2C1A"       # industrial dark
+
 # Tolerance for palette normalization (delta-E distance)
 match_tolerance: 15.0

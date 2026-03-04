@@ -3,13 +3,15 @@
 ClawedCommand Asset Pipeline — Main Orchestrator
 
 Usage:
-    python generate_asset.py prompt <asset_name>    Assemble and print the ChatGPT prompt
-    python generate_asset.py status                 Show catalog status overview
-    python generate_asset.py process <asset_name>   Post-process a raw asset into game-ready form
-    python generate_asset.py add <category> <name>  Add a new asset entry to the catalog
-    python generate_asset.py model-sheet <faction>  Generate faction unit model sheet
-    python generate_asset.py map-preview            Generate isometric map preview
-    python generate_asset.py qc <asset_name|--all>  Run quality checks
+    python generate_asset.py prompt <asset_name>       Assemble and print the ChatGPT prompt
+    python generate_asset.py status                    Show catalog status overview
+    python generate_asset.py process <asset_name>      Post-process a raw asset into game-ready form
+    python generate_asset.py add <category> <name>     Add a new asset entry to the catalog
+    python generate_asset.py model-sheet <faction>     Generate faction unit model sheet
+    python generate_asset.py map-preview               Generate isometric map preview
+    python generate_asset.py qc <asset_name|--all>     Run quality checks
+    python generate_asset.py batch-faction <faction>   List all assets for a faction with prompts
+    python generate_asset.py style-report              Show v1 vs v2 style version breakdown
 """
 
 import argparse
@@ -66,8 +68,49 @@ def load_base_style():
     return path.read_text() if path.exists() else ""
 
 
+# Map from descriptive faction strings in catalog to faction file IDs
+FACTION_ALIASES = {
+    "catgpt": "catgpt",
+    "catgpt (cats)": "catgpt",
+    "clawed": "clawed",
+    "the clawed": "clawed",
+    "the clawed (mice)": "clawed",
+    "murder": "murder",
+    "the murder": "murder",
+    "the murder (corvids)": "murder",
+    "seekers": "seekers",
+    "seekers of the deep": "seekers",
+    "seekers of the deep (badgers)": "seekers",
+    "croak": "croak",
+    "croak (axolotls)": "croak",
+    "llama": "llama",
+    "llama (raccoons)": "llama",
+}
+
+
+def resolve_faction_id(faction_str):
+    """Resolve a descriptive faction string to a canonical faction file ID."""
+    if not faction_str:
+        return None
+    return FACTION_ALIASES.get(faction_str.lower().strip())
+
+
+def load_faction_style(faction_id):
+    """Load a faction style overlay file. Returns empty string if not found."""
+    if not faction_id:
+        return ""
+    path = PROMPTS_DIR / f"faction_{faction_id}.txt"
+    return path.read_text() if path.exists() else ""
+
+
 def assemble_prompt(entry):
-    """Build a complete ChatGPT prompt from catalog entry + template + base style."""
+    """Build a complete ChatGPT prompt from base style + faction overlay + template.
+
+    Prompt layer order (style-first — models weight early tokens more):
+      1. base_style.txt      — identical for ALL assets
+      2. faction_*.txt        — per-faction shape/color/material (if applicable)
+      3. template + params    — category-specific content description
+    """
     template_name = entry["template"]
     params = dict(entry.get("params", {}))
 
@@ -87,6 +130,11 @@ def assemble_prompt(entry):
     template_text = load_template(template_name)
     base_style = load_base_style()
 
+    # Resolve faction overlay
+    faction_str = params.get("faction", "")
+    faction_id = resolve_faction_id(faction_str)
+    faction_style = load_faction_style(faction_id)
+
     # Fill placeholders
     try:
         filled = template_text.format(**params)
@@ -95,7 +143,12 @@ def assemble_prompt(entry):
         print(f"Available params: {list(params.keys())}", file=sys.stderr)
         sys.exit(1)
 
-    prompt = filled.strip() + "\n\n" + base_style.strip()
+    # Assemble: base style → faction overlay → content (style-first order)
+    layers = [base_style.strip()]
+    if faction_style:
+        layers.append(faction_style.strip())
+    layers.append(filled.strip())
+    prompt = "\n\n".join(layers)
     return prompt
 
 
@@ -118,6 +171,7 @@ def cmd_prompt(args):
 def cmd_status(args):
     catalog = load_catalog()
     status_counts = {"planned": 0, "generated": 0, "processed": 0, "game_ready": 0}
+    style_counts = {1: 0, 2: 0}
     rows = []
 
     for category, assets in catalog.items():
@@ -126,6 +180,8 @@ def cmd_status(args):
         for name, entry in assets.items():
             status = entry.get("status", "planned")
             status_counts[status] = status_counts.get(status, 0) + 1
+            sv = entry.get("style_version", 1)
+            style_counts[sv] = style_counts.get(sv, 0) + 1
             output = entry.get("output", {})
             game_path = output.get("game_path", "—")
             rows.append((category, name, status, game_path))
@@ -136,6 +192,12 @@ def cmd_status(args):
     for s, c in status_counts.items():
         bar = "█" * c + "░" * (total - c)
         print(f"  {s:12s}  {c:3d}  {bar}")
+    print()
+
+    # Style version summary
+    print(f"Style versions:")
+    print(f"  v1 (legacy):  {style_counts.get(1, 0):3d}")
+    print(f"  v2 (layered): {style_counts.get(2, 0):3d}")
     print()
 
     # Table
@@ -280,10 +342,11 @@ def cmd_process(args):
         shutil.copy2(processed_path, final_path)
         print(f"  Copied to: {final_path}")
 
-    # Update catalog status
+    # Update catalog status and stamp style version
     catalog[category][key]["status"] = "game_ready"
+    catalog[category][key]["style_version"] = 2
     save_catalog(catalog)
-    print(f"  Status: game_ready")
+    print(f"  Status: game_ready (style_version: 2)")
     print("Done.")
 
     # Auto-trigger QC and review sheets
@@ -469,6 +532,100 @@ def cmd_qc(args):
     sys.exit(result.returncode)
 
 
+def cmd_batch_faction(args):
+    """List all catalog entries for a faction with assembled prompts."""
+    catalog = load_catalog()
+    target = args.faction.lower().strip()
+    target_id = FACTION_ALIASES.get(target, target)
+
+    entries = []
+    for category, assets in catalog.items():
+        if not isinstance(assets, dict):
+            continue
+        for name, entry in assets.items():
+            faction_str = entry.get("params", {}).get("faction", "")
+            fid = resolve_faction_id(faction_str)
+            if fid == target_id:
+                sv = entry.get("style_version", 1)
+                status = entry.get("status", "planned")
+                entries.append((category, name, entry, sv, status))
+
+    if not entries:
+        print(f"No assets found for faction '{args.faction}'.", file=sys.stderr)
+        print(f"Valid factions: {', '.join(sorted(set(FACTION_ALIASES.values())))}", file=sys.stderr)
+        sys.exit(1)
+
+    v1_count = sum(1 for e in entries if e[3] == 1)
+    v2_count = sum(1 for e in entries if e[3] == 2)
+    print(f"── Batch: {args.faction} ({len(entries)} assets, v1: {v1_count}, v2: {v2_count}) ──\n")
+
+    for i, (category, name, entry, sv, status) in enumerate(entries, 1):
+        version_tag = "\033[33mv1\033[0m" if sv == 1 else "\033[32mv2\033[0m"
+        print(f"  [{i:2d}] {name:<30s}  {category:<12s}  {status:<10s}  {version_tag}")
+
+    if not args.show_prompts:
+        print(f"\nAdd --prompts to show assembled prompts for each asset.")
+        return
+
+    print("\n" + "=" * 60)
+    for i, (category, name, entry, sv, status) in enumerate(entries, 1):
+        prompt = assemble_prompt(entry)
+        print(f"\n── [{i}] {name} ({category}) ──\n")
+        print(prompt)
+        print(f"\n── End ({len(prompt)} chars) ──")
+
+
+def cmd_style_report(args):
+    """Show v1 vs v2 style version breakdown per faction."""
+    catalog = load_catalog()
+    faction_assets = {}
+    unfactioned = {"v1": [], "v2": []}
+
+    for category, assets in catalog.items():
+        if not isinstance(assets, dict):
+            continue
+        for name, entry in assets.items():
+            faction_str = entry.get("params", {}).get("faction", "")
+            fid = resolve_faction_id(faction_str)
+            sv = entry.get("style_version", 1)
+            status = entry.get("status", "planned")
+
+            if fid:
+                if fid not in faction_assets:
+                    faction_assets[fid] = {"v1": [], "v2": []}
+                faction_assets[fid][f"v{sv}"].append((name, category, status))
+            else:
+                unfactioned[f"v{sv}"].append((name, category, status))
+
+    print("── Style Version Report ──\n")
+
+    for fid in sorted(faction_assets.keys()):
+        fa = faction_assets[fid]
+        v1 = len(fa["v1"])
+        v2 = len(fa["v2"])
+        total = v1 + v2
+        pct = (v2 / total * 100) if total > 0 else 0
+        bar = "\033[32m█\033[0m" * v2 + "\033[33m░\033[0m" * v1
+        print(f"  {fid:<12s}  {v2:3d}/{total:3d} v2 ({pct:5.1f}%)  {bar}")
+        if args.verbose and fa["v1"]:
+            for name, cat, status in fa["v1"]:
+                print(f"    v1: {name} ({cat}, {status})")
+
+    # Unfactioned assets
+    v1 = len(unfactioned["v1"])
+    v2 = len(unfactioned["v2"])
+    total = v1 + v2
+    if total > 0:
+        pct = (v2 / total * 100) if total > 0 else 0
+        bar = "\033[32m█\033[0m" * v2 + "\033[33m░\033[0m" * v1
+        print(f"  {'(none)':<12s}  {v2:3d}/{total:3d} v2 ({pct:5.1f}%)  {bar}")
+        if args.verbose and unfactioned["v1"]:
+            for name, cat, status in unfactioned["v1"]:
+                print(f"    v1: {name} ({cat}, {status})")
+
+    print()
+
+
 # ── Main ────────────────────────────────────────────────────
 
 
@@ -508,6 +665,16 @@ def main():
     p_qc.add_argument("--category", type=str, help="Check all assets in a category")
     p_qc.add_argument("--include-planned", action="store_true", help="Also check planned assets")
 
+    # batch-faction
+    p_bf = subparsers.add_parser("batch-faction", help="List all assets for a faction with prompts")
+    p_bf.add_argument("faction", help="Faction ID (catgpt, clawed, murder, seekers, croak, llama)")
+    p_bf.add_argument("--prompts", dest="show_prompts", action="store_true",
+                       help="Show assembled prompts for each asset")
+
+    # style-report
+    p_sr = subparsers.add_parser("style-report", help="Show v1 vs v2 style version breakdown")
+    p_sr.add_argument("--verbose", "-v", action="store_true", help="List individual v1 assets")
+
     args = parser.parse_args()
 
     if args.command == "prompt":
@@ -524,6 +691,10 @@ def main():
         cmd_map_preview(args)
     elif args.command == "qc":
         cmd_qc(args)
+    elif args.command == "batch-faction":
+        cmd_batch_faction(args)
+    elif args.command == "style-report":
+        cmd_style_report(args)
     else:
         parser.print_help()
 

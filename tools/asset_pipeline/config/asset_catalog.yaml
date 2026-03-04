@@ -3,165 +3,221 @@ terrain:
     template: terrain
     status: planned
     type: terrain
-    tags: [base, passable, default]
+    tags:
+    - base
+    - passable
+    - default
     params:
       terrain_type: grass
       description: Lush pastoral meadow grass. The default tile covering most of the map. Soft green with subtle blade variation.
       width: 128
       height: 128
-      extra_notes: "Most common tile. Must tile seamlessly in all directions. Subtle variation to avoid monotony."
+      extra_notes: Most common tile. Must tile seamlessly in all directions. Subtle variation to avoid monotony.
     output:
       type: single
       game_path: assets/sprites/terrain/grass_base.png
+    style_version: 1
   dirt_base:
     template: terrain
     status: planned
     type: terrain
-    tags: [base, passable, path]
+    tags:
+    - base
+    - passable
+    - path
     params:
       terrain_type: dirt
       description: Worn dirt ground with subtle paw-print impressions. Cleared earth where animals frequently travel.
       width: 128
       height: 128
-      extra_notes: "Passable terrain. Should contrast clearly with grass. Used for paths and clearings."
+      extra_notes: Passable terrain. Should contrast clearly with grass. Used for paths and clearings.
     output:
       type: single
       game_path: assets/sprites/terrain/dirt_base.png
+    style_version: 1
   sand_base:
     template: terrain
     status: planned
     type: terrain
-    tags: [base, passable, coastal]
+    tags:
+    - base
+    - passable
+    - coastal
     params:
       terrain_type: sand
       description: Warm sandy ground at coastlines and beaches. Fine-grained with occasional tiny shells.
       width: 128
       height: 128
-      extra_notes: "Transition terrain between land and water. Slightly slower movement speed."
+      extra_notes: Transition terrain between land and water. Slightly slower movement speed.
     output:
       type: single
       game_path: assets/sprites/terrain/sand_base.png
+    style_version: 1
   forest_base:
     template: terrain
     status: planned
     type: terrain
-    tags: [base, passable, cover, slow]
+    tags:
+    - base
+    - passable
+    - cover
+    - slow
     params:
       terrain_type: forest
-      description: Dense forest floor with tree canopy overhead. Dappled light filtering through leaves. Visible tree trunks rising from tile edges into the height zone.
+      description: Dense forest floor with tree canopy overhead. Dappled light filtering through leaves. Visible tree trunks
+        rising from tile edges into the height zone.
       width: 128
       height: 128
-      extra_notes: "Passable but slows movement. Provides cover/concealment. Trees extend into the height zone above the diamond."
+      extra_notes: Passable but slows movement. Provides cover/concealment. Trees extend into the height zone above the diamond.
     output:
       type: single
       game_path: assets/sprites/terrain/forest_base.png
+    style_version: 1
   water_base:
     template: terrain
     status: planned
     type: terrain
-    tags: [base, impassable, liquid]
+    tags:
+    - base
+    - impassable
+    - liquid
     params:
       terrain_type: deep water
-      description: Deep water tile with dark blue surface. Subtle wave ripples and occasional fish shadow beneath. Impassable to ground units.
+      description: Deep water tile with dark blue surface. Subtle wave ripples and occasional fish shadow beneath. Impassable
+        to ground units.
       width: 128
       height: 128
-      extra_notes: "Impassable to ground units. Fish shadows hint at Food resources. Slightly reflective surface."
+      extra_notes: Impassable to ground units. Fish shadows hint at Food resources. Slightly reflective surface.
     output:
       type: single
       game_path: assets/sprites/terrain/water_base.png
+    style_version: 1
   shallows_base:
     template: terrain
     status: planned
     type: terrain
-    tags: [base, passable, liquid, slow]
+    tags:
+    - base
+    - passable
+    - liquid
+    - slow
     params:
       terrain_type: shallows
-      description: Shallow water with visible sandy bottom. Ankle-deep, translucent blue-green with gentle ripples. Passable but slow.
+      description: Shallow water with visible sandy bottom. Ankle-deep, translucent blue-green with gentle ripples. Passable
+        but slow.
       width: 128
       height: 128
-      extra_notes: "Passable but significantly slows movement. Lighter color than deep water. Sandy bottom visible through water."
+      extra_notes: Passable but significantly slows movement. Lighter color than deep water. Sandy bottom visible through
+        water.
     output:
       type: single
       game_path: assets/sprites/terrain/shallows_base.png
+    style_version: 1
   rock_base:
     template: terrain
     status: planned
     type: terrain
-    tags: [base, impassable, elevation]
+    tags:
+    - base
+    - impassable
+    - elevation
     params:
       terrain_type: rock
-      description: Solid rocky outcrop. Heavy gray stone with cracks and lichen. Impassable terrain forming natural barriers and cliff tops.
+      description: Solid rocky outcrop. Heavy gray stone with cracks and lichen. Impassable terrain forming natural barriers
+        and cliff tops.
       width: 128
       height: 128
-      extra_notes: "Impassable. Visually heavier and darker than passable tiles. Used for cliffs and natural walls."
+      extra_notes: Impassable. Visually heavier and darker than passable tiles. Used for cliffs and natural walls.
     output:
       type: single
       game_path: assets/sprites/terrain/rock_base.png
+    style_version: 1
   ramp_base:
     template: terrain
     status: planned
     type: terrain
-    tags: [base, passable, elevation, transition]
+    tags:
+    - base
+    - passable
+    - elevation
+    - transition
     params:
       terrain_type: ramp
-      description: Sloped terrain connecting two elevation levels. Visible incline with packed earth and small stones. Allows ground units to traverse elevation changes.
+      description: Sloped terrain connecting two elevation levels. Visible incline with packed earth and small stones. Allows
+        ground units to traverse elevation changes.
       width: 128
       height: 128
-      extra_notes: "Connects elevation levels. Should clearly read as a slope from the isometric perspective. Directional — units walk up/down."
+      extra_notes: "Connects elevation levels. Should clearly read as a slope from the isometric perspective. Directional\
+        \ \u2014 units walk up/down."
     output:
       type: single
       game_path: assets/sprites/terrain/ramp_base.png
+    style_version: 1
   road_base:
     template: terrain
     status: planned
     type: terrain
-    tags: [base, passable, speed_boost]
+    tags:
+    - base
+    - passable
+    - speed_boost
     params:
       terrain_type: road
-      description: Cobblestone road built by the old world. Worn but functional paving stones in earthy brown tones. Grants movement speed bonus.
+      description: Cobblestone road built by the old world. Worn but functional paving stones in earthy brown tones. Grants
+        movement speed bonus.
       width: 128
       height: 128
-      extra_notes: "Passable with speed bonus. Old-world construction, slightly crumbled at edges. Should tile into straight and curved road segments."
+      extra_notes: Passable with speed bonus. Old-world construction, slightly crumbled at edges. Should tile into straight
+        and curved road segments.
     output:
       type: single
       game_path: assets/sprites/terrain/road_base.png
+    style_version: 1
   tech_ruins_base:
     template: terrain
     status: planned
     type: terrain
-    tags: [base, passable, special, tech]
+    tags:
+    - base
+    - passable
+    - special
+    - tech
     params:
       terrain_type: tech ruins
-      description: Cracked concrete and exposed circuitry from old-world server farms. Faint blue-green glow from dormant tech beneath rubble. GPU Cores may be scavenged here.
+      description: Cracked concrete and exposed circuitry from old-world server farms. Faint blue-green glow from dormant
+        tech beneath rubble. GPU Cores may be scavenged here.
       width: 128
       height: 128
-      extra_notes: "Special terrain tied to GPU Core resource deposits. Faint tech glow accents. Post-apocalyptic data center ruins."
+      extra_notes: Special terrain tied to GPU Core resource deposits. Faint tech glow accents. Post-apocalyptic data center
+        ruins.
     output:
       type: single
       game_path: assets/sprites/terrain/tech_ruins_base.png
+    style_version: 1
 buildings:
   the_box:
     template: building
     status: planned
     params:
       name: The Box
-      description: Command center. A large cardboard box — sacred to all cats. Reinforced with
-        duct tape and covered in territorial scratch marks. Antenna array pokes out the top.
+      description: "Command center. A large cardboard box \u2014 sacred to all cats. Reinforced with duct tape and covered\
+        \ in territorial scratch marks. Antenna array pokes out the top."
       faction: catGPT (cats)
       width: 256
       height: 256
       footprint: 3x3
-      extra_notes: "Most important building — should be the visual anchor of any base. Clearly a cardboard box but imposing."
+      extra_notes: "Most important building \u2014 should be the visual anchor of any base. Clearly a cardboard box but imposing."
     output:
       type: single
       game_path: assets/sprites/buildings/the_box.png
+    style_version: 1
   cat_tree:
     template: building
     status: planned
     params:
       name: Cat Tree
-      description: Barracks / infantry training facility. Multi-level cat tree tower with platforms,
-        scratching posts, and dangling toys repurposed as training equipment.
+      description: Barracks / infantry training facility. Multi-level cat tree tower with platforms, scratching posts, and
+        dangling toys repurposed as training equipment.
       faction: catGPT (cats)
       width: 192
       height: 192
@@ -170,13 +226,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/cat_tree.png
+    style_version: 1
   fish_market:
     template: building
     status: planned
     params:
       name: Fish Market
-      description: Resource depot. Open-air market stall with fish barrels, hanging dried fish,
-        and a counter where Pawdlers deposit gathered food.
+      description: Resource depot. Open-air market stall with fish barrels, hanging dried fish, and a counter where Pawdlers
+        deposit gathered food.
       faction: catGPT (cats)
       width: 192
       height: 192
@@ -185,13 +242,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/fish_market.png
+    style_version: 1
   server_rack:
     template: building
     status: planned
     params:
       name: Server Rack
-      description: Tech building. Old-world server rack covered in cat hair, blinking LEDs,
-        tangled cables. Cats have clearly been sleeping on it.
+      description: Tech building. Old-world server rack covered in cat hair, blinking LEDs, tangled cables. Cats have clearly
+        been sleeping on it.
       faction: catGPT (cats)
       width: 192
       height: 192
@@ -200,13 +258,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/server_rack.png
+    style_version: 1
   scratching_post:
     template: building
     status: planned
     params:
       name: Scratching Post
-      description: Research building. A tall, heavily scratched sisal post with blueprints and
-        tech diagrams pinned to it. Cats scratch it to think.
+      description: Research building. A tall, heavily scratched sisal post with blueprints and tech diagrams pinned to it.
+        Cats scratch it to think.
       faction: catGPT (cats)
       width: 192
       height: 192
@@ -215,13 +274,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/scratching_post.png
+    style_version: 1
   litter_box:
     template: building
     status: planned
     params:
       name: Litter Box
-      description: Supply depot. A large covered litter box repurposed as storage. Crates
-        and supplies stacked around and inside it.
+      description: Supply depot. A large covered litter box repurposed as storage. Crates and supplies stacked around and
+        inside it.
       faction: catGPT (cats)
       width: 128
       height: 128
@@ -230,13 +290,13 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/litter_box.png
+    style_version: 1
   cat_flap:
     template: building
     status: planned
     params:
       name: Cat Flap
-      description: Defensive gate. A reinforced cat flap built into a wall segment. Units
-        garrison inside the wall.
+      description: Defensive gate. A reinforced cat flap built into a wall segment. Units garrison inside the wall.
       faction: catGPT (cats)
       width: 192
       height: 192
@@ -245,13 +305,13 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/cat_flap.png
+    style_version: 1
   laser_pointer:
     template: building
     status: planned
     params:
       name: Laser Pointer
-      description: Defense tower. A mounted laser pointer on a swivel base, repurposed as
-        a weapon. Red laser beam visible.
+      description: Defense tower. A mounted laser pointer on a swivel base, repurposed as a weapon. Red laser beam visible.
       faction: catGPT (cats)
       width: 128
       height: 192
@@ -260,15 +320,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/laser_pointer.png
-  # --- The Murder (Corvids) ---
+    style_version: 1
   the_parliament:
     template: building
     status: planned
     params:
       name: The Parliament
-      description: Command center. A gnarled dead tree festooned with wires and blinking LEDs.
-        The hollow trunk is filled with stolen trinkets and scavenged server components.
-        Crow nests cluster in the upper branches.
+      description: Command center. A gnarled dead tree festooned with wires and blinking LEDs. The hollow trunk is filled
+        with stolen trinkets and scavenged server components. Crow nests cluster in the upper branches.
       faction: The Murder (corvids)
       width: 256
       height: 256
@@ -277,13 +336,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/the_parliament.png
+    style_version: 1
   rookery:
     template: building
     status: planned
     params:
       name: Rookery
-      description: Barracks. Dense cluster of nests and landing platforms woven from dark branches.
-        Training dummies made of straw hang from perches. Aerial units launch from the top.
+      description: Barracks. Dense cluster of nests and landing platforms woven from dark branches. Training dummies made
+        of straw hang from perches. Aerial units launch from the top.
       faction: The Murder (corvids)
       width: 192
       height: 192
@@ -292,13 +352,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/rookery.png
+    style_version: 1
   carrion_cache:
     template: building
     status: planned
     params:
       name: Carrion Cache
-      description: Resource depot. Scavenged refrigeration units repurposed as food storage,
-        wrapped in dark fabric and decorated with corvid feathers.
+      description: Resource depot. Scavenged refrigeration units repurposed as food storage, wrapped in dark fabric and decorated
+        with corvid feathers.
       faction: The Murder (corvids)
       width: 192
       height: 192
@@ -307,13 +368,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/carrion_cache.png
+    style_version: 1
   antenna_array:
     template: building
     status: planned
     params:
       name: Antenna Array
-      description: Tech building. Salvaged satellite dishes and radio towers bound together
-        with wire. Blinking lights and sparking connections. Crows perch on the dishes.
+      description: Tech building. Salvaged satellite dishes and radio towers bound together with wire. Blinking lights and
+        sparking connections. Crows perch on the dishes.
       faction: The Murder (corvids)
       width: 192
       height: 192
@@ -322,13 +384,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/antenna_array.png
+    style_version: 1
   panopticon:
     template: building
     status: planned
     params:
       name: Panopticon
-      description: Research building. A tower covered in salvaged cameras and lenses,
-        all pointing outward. Glowing zodiac symbols carved into the base.
+      description: Research building. A tower covered in salvaged cameras and lenses, all pointing outward. Glowing zodiac
+        symbols carved into the base.
       faction: The Murder (corvids)
       width: 192
       height: 192
@@ -337,13 +400,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/panopticon.png
+    style_version: 1
   nest_box:
     template: building
     status: planned
     params:
       name: Nest Box
-      description: Supply depot. Rows of modular nesting compartments stacked like an apartment
-        building. Feathers and twigs sticking out of every opening.
+      description: Supply depot. Rows of modular nesting compartments stacked like an apartment building. Feathers and twigs
+        sticking out of every opening.
       faction: The Murder (corvids)
       width: 128
       height: 128
@@ -352,13 +416,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/nest_box.png
+    style_version: 1
   thorn_hedge:
     template: building
     status: planned
     params:
       name: Thorn Hedge
-      description: Defensive wall. Dense thorny barrier woven from briar and dark branches.
-        Shiny objects and warning signs tangled in the thorns.
+      description: Defensive wall. Dense thorny barrier woven from briar and dark branches. Shiny objects and warning signs
+        tangled in the thorns.
       faction: The Murder (corvids)
       width: 192
       height: 192
@@ -367,13 +432,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/thorn_hedge.png
+    style_version: 1
   watchtower:
     template: building
     status: planned
     params:
       name: Watchtower
-      description: Defense tower. Tall wooden perch with a scope mounted at the top.
-        Dark timber construction with corvid banners. Long-range single-target attack.
+      description: Defense tower. Tall wooden perch with a scope mounted at the top. Dark timber construction with corvid
+        banners. Long-range single-target attack.
       faction: The Murder (corvids)
       width: 128
       height: 192
@@ -382,14 +448,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/watchtower.png
-  # --- The Clawed (Mice) ---
+    style_version: 1
   the_burrow:
     template: building
     status: planned
     params:
       name: The Burrow
-      description: Command center. A hole in the ground with a tiny mailbox, surrounded by
-        packed earth and reinforced with scrap wood. Warm light glows from inside.
+      description: Command center. A hole in the ground with a tiny mailbox, surrounded by packed earth and reinforced with
+        scrap wood. Warm light glows from inside.
       faction: The Clawed (mice)
       width: 256
       height: 256
@@ -398,13 +464,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/the_burrow.png
+    style_version: 1
   nesting_box:
     template: building
     status: planned
     params:
       name: Nesting Box
-      description: Barracks. Repurposed birdhouse converted to mouse barracks. Multiple
-        tiny doors and windows. Ladders and ropes for entry.
+      description: Barracks. Repurposed birdhouse converted to mouse barracks. Multiple tiny doors and windows. Ladders and
+        ropes for entry.
       faction: The Clawed (mice)
       width: 192
       height: 192
@@ -413,13 +480,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/nesting_box.png
+    style_version: 1
   seed_vault:
     template: building
     status: planned
     params:
       name: Seed Vault
-      description: Resource depot. Underground food storage with a surface entrance marked
-        by acorn-shaped signage. Sacks and barrels of seeds visible.
+      description: Resource depot. Underground food storage with a surface entrance marked by acorn-shaped signage. Sacks
+        and barrels of seeds visible.
       faction: The Clawed (mice)
       width: 192
       height: 192
@@ -428,13 +496,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/seed_vault.png
+    style_version: 1
   junk_transmitter:
     template: building
     status: planned
     params:
       name: Junk Transmitter
-      description: Tech building. A pile of salvaged electronics held together with twine
-        and spit. Sparking wires and blinking lights. Somehow it works.
+      description: Tech building. A pile of salvaged electronics held together with twine and spit. Sparking wires and blinking
+        lights. Somehow it works.
       faction: The Clawed (mice)
       width: 192
       height: 192
@@ -443,13 +512,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/junk_transmitter.png
+    style_version: 1
   gnaw_lab:
     template: building
     status: planned
     params:
       name: Gnaw Lab
-      description: Research building. Shaped like a giant acorn. Chew marks visible on every
-        surface. Blueprints and diagrams pinned to the walls.
+      description: Research building. Shaped like a giant acorn. Chew marks visible on every surface. Blueprints and diagrams
+        pinned to the walls.
       faction: The Clawed (mice)
       width: 192
       height: 192
@@ -458,13 +528,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/gnaw_lab.png
+    style_version: 1
   warren_expansion:
     template: building
     status: planned
     params:
       name: Warren Expansion
-      description: Supply depot. An underground chamber entrance with packed earth walls
-        and tiny support beams. Extends the burrow network.
+      description: Supply depot. An underground chamber entrance with packed earth walls and tiny support beams. Extends the
+        burrow network.
       faction: The Clawed (mice)
       width: 128
       height: 128
@@ -473,13 +544,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/warren_expansion.png
+    style_version: 1
   mousehole:
     template: building
     status: planned
     params:
       name: Mousehole
-      description: Defensive gate. A tiny fortified entrance built into a wall.
-        Reinforced with scrap metal. Only small units can pass through.
+      description: Defensive gate. A tiny fortified entrance built into a wall. Reinforced with scrap metal. Only small units
+        can pass through.
       faction: The Clawed (mice)
       width: 192
       height: 192
@@ -488,13 +560,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/mousehole.png
+    style_version: 1
   squeak_tower:
     template: building
     status: planned
     params:
       name: Squeak Tower
-      description: Defense tower. Emits high-frequency pulse. Built from scrap metal and
-        salvaged speakers. Vibrating visually when active.
+      description: Defense tower. Emits high-frequency pulse. Built from scrap metal and salvaged speakers. Vibrating visually
+        when active.
       faction: The Clawed (mice)
       width: 128
       height: 192
@@ -503,14 +576,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/squeak_tower.png
-  # --- Seekers of the Deep (Badgers) ---
+    style_version: 1
   the_sett:
     template: building
     status: planned
     params:
       name: The Sett
-      description: Command center. Underground entrance mound reinforced with old-world rebar
-        and heavy stone. Moss-covered with ancient carvings. Massive and imposing.
+      description: Command center. Underground entrance mound reinforced with old-world rebar and heavy stone. Moss-covered
+        with ancient carvings. Massive and imposing.
       faction: Seekers of the Deep (badgers)
       width: 256
       height: 256
@@ -519,13 +592,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/the_sett.png
+    style_version: 1
   war_hollow:
     template: building
     status: planned
     params:
       name: War Hollow
-      description: Barracks. Hollowed-out hillside with stone archway entrance.
-        Units emerge from the earth. Heavy timber and stone construction.
+      description: Barracks. Hollowed-out hillside with stone archway entrance. Units emerge from the earth. Heavy timber
+        and stone construction.
       faction: Seekers of the Deep (badgers)
       width: 192
       height: 192
@@ -534,13 +608,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/war_hollow.png
+    style_version: 1
   burrow_depot:
     template: building
     status: planned
     params:
       name: Burrow Depot
-      description: Resource depot. Underground food storage cavern with a stone entrance.
-        Visible root systems and packed earth. Cool underground preservation.
+      description: Resource depot. Underground food storage cavern with a stone entrance. Visible root systems and packed
+        earth. Cool underground preservation.
       faction: Seekers of the Deep (badgers)
       width: 192
       height: 192
@@ -549,13 +624,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/burrow_depot.png
+    style_version: 1
   core_tap:
     template: building
     status: planned
     params:
       name: Core Tap
-      description: Tech building. A deep-bore drill into old-world server infrastructure.
-        Heavy industrial machinery with stone housing. Glowing from below.
+      description: Tech building. A deep-bore drill into old-world server infrastructure. Heavy industrial machinery with
+        stone housing. Glowing from below.
       faction: Seekers of the Deep (badgers)
       width: 192
       height: 192
@@ -564,13 +640,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/core_tap.png
+    style_version: 1
   claw_marks:
     template: building
     status: planned
     params:
       name: Claw Marks
-      description: Research building. A stone monolith with deep badger claw grooves carved
-        into its surface. Each completed research adds a visible mark.
+      description: Research building. A stone monolith with deep badger claw grooves carved into its surface. Each completed
+        research adds a visible mark.
       faction: Seekers of the Deep (badgers)
       width: 192
       height: 192
@@ -579,13 +656,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/claw_marks.png
+    style_version: 1
   deep_warren:
     template: building
     status: planned
     params:
       name: Deep Warren
-      description: Supply depot. Expanded underground living quarters with heavy stone
-        entrance and reinforced timber framing. Ancient and solid.
+      description: Supply depot. Expanded underground living quarters with heavy stone entrance and reinforced timber framing.
+        Ancient and solid.
       faction: Seekers of the Deep (badgers)
       width: 128
       height: 128
@@ -594,13 +672,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/deep_warren.png
+    style_version: 1
   bulwark_gate:
     template: building
     status: planned
     params:
       name: Bulwark Gate
-      description: Defensive gate. Reinforced earthen gateway with heavy stone walls.
-        Thick timber doors. Units garrison inside for protection.
+      description: Defensive gate. Reinforced earthen gateway with heavy stone walls. Thick timber doors. Units garrison inside
+        for protection.
       faction: Seekers of the Deep (badgers)
       width: 192
       height: 192
@@ -609,13 +688,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/bulwark_gate.png
+    style_version: 1
   slag_thrower:
     template: building
     status: planned
     params:
       name: Slag Thrower
-      description: Defense tower. Stone catapult that hurls molten slag. Heavy construction
-        with a glowing crucible. Leaves burning ground on impact.
+      description: Defense tower. Stone catapult that hurls molten slag. Heavy construction with a glowing crucible. Leaves
+        burning ground on impact.
       faction: Seekers of the Deep (badgers)
       width: 128
       height: 192
@@ -624,14 +704,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/slag_thrower.png
-  # --- Croak (Axolotls) ---
+    style_version: 1
   the_grotto:
     template: building
     status: planned
     params:
       name: The Grotto
-      description: Command center. A mossy cave half-submerged in water. Bioluminescent fungi
-        and glowing coral line the entrance. Server hums inside, wrapped in waterproof tarps.
+      description: Command center. A mossy cave half-submerged in water. Bioluminescent fungi and glowing coral line the entrance.
+        Server hums inside, wrapped in waterproof tarps.
       faction: Croak (axolotls)
       width: 256
       height: 256
@@ -640,13 +720,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/the_grotto.png
+    style_version: 1
   spawning_pools:
     template: building
     status: planned
     params:
       name: Spawning Pools
-      description: Barracks. Shallow pools of regenerative slime surrounded by coral formations.
-        Units emerge wet and ready. Bioluminescent glow from the water.
+      description: Barracks. Shallow pools of regenerative slime surrounded by coral formations. Units emerge wet and ready.
+        Bioluminescent glow from the water.
       faction: Croak (axolotls)
       width: 192
       height: 192
@@ -655,13 +736,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/spawning_pools.png
+    style_version: 1
   lily_market:
     template: building
     status: planned
     params:
       name: Lily Market
-      description: Resource depot. Food storage on floating lily pads connected by
-        bioluminescent bridges. Shell containers and coral shelving.
+      description: Resource depot. Food storage on floating lily pads connected by bioluminescent bridges. Shell containers
+        and coral shelving.
       faction: Croak (axolotls)
       width: 192
       height: 192
@@ -670,13 +752,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/lily_market.png
+    style_version: 1
   sunken_server:
     template: building
     status: planned
     params:
       name: Sunken Server
-      description: Tech building. A server rack submerged in cooling water, surrounded by
-        coral growth. Glowing data cables trail through the water. Water-cooled efficiency.
+      description: Tech building. A server rack submerged in cooling water, surrounded by coral growth. Glowing data cables
+        trail through the water. Water-cooled efficiency.
       faction: Croak (axolotls)
       width: 192
       height: 192
@@ -685,13 +768,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/sunken_server.png
+    style_version: 1
   fossil_stones:
     template: building
     status: planned
     params:
       name: Fossil Stones
-      description: Research building. Ancient stones covered in pre-singularity fossils and
-        bioluminescent moss. Glowing runes carved by axolotl scholars.
+      description: Research building. Ancient stones covered in pre-singularity fossils and bioluminescent moss. Glowing runes
+        carved by axolotl scholars.
       faction: Croak (axolotls)
       width: 192
       height: 192
@@ -700,13 +784,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/fossil_stones.png
+    style_version: 1
   reed_bed:
     template: building
     status: planned
     params:
       name: Reed Bed
-      description: Supply depot. Dense reeds growing from shallow water. Provides concealment
-        and increases supply cap. Bioluminescent fireflies hover above.
+      description: Supply depot. Dense reeds growing from shallow water. Provides concealment and increases supply cap. Bioluminescent
+        fireflies hover above.
       faction: Croak (axolotls)
       width: 128
       height: 128
@@ -715,13 +800,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/reed_bed.png
+    style_version: 1
   tidal_gate:
     template: building
     status: planned
     params:
       name: Tidal Gate
-      description: Defensive gate. Shell and coral construction forming an archway.
-        When garrisoned, floods adjacent tiles. Bioluminescent water markings.
+      description: Defensive gate. Shell and coral construction forming an archway. When garrisoned, floods adjacent tiles.
+        Bioluminescent water markings.
       faction: Croak (axolotls)
       width: 192
       height: 192
@@ -730,13 +816,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/tidal_gate.png
+    style_version: 1
   spore_tower:
     template: building
     status: planned
     params:
       name: Spore Tower
-      description: Defense tower. Giant mushroom-like structure that launches toxic spore
-        clouds. Bioluminescent cap with pulsing glow. Organic, alien appearance.
+      description: Defense tower. Giant mushroom-like structure that launches toxic spore clouds. Bioluminescent cap with
+        pulsing glow. Organic, alien appearance.
       faction: Croak (axolotls)
       width: 128
       height: 192
@@ -745,14 +832,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/spore_tower.png
-  # --- LLAMA (Raccoons) ---
+    style_version: 1
   the_dumpster:
     template: building
     status: planned
     params:
       name: The Dumpster
-      description: Command center. A repurposed industrial dumpster reinforced with stolen
-        road signs and scrap metal. The raccoons consider it a palace. Antenna made of bent forks.
+      description: Command center. A repurposed industrial dumpster reinforced with stolen road signs and scrap metal. The
+        raccoons consider it a palace. Antenna made of bent forks.
       faction: LLAMA (raccoons)
       width: 256
       height: 256
@@ -761,13 +848,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/the_dumpster.png
+    style_version: 1
   scrap_heap:
     template: building
     status: planned
     params:
       name: Scrap Heap
-      description: Resource depot. A carefully organized pile of garbage that looks like chaos
-        to everyone else. Sorted bins and scrap metal shelving. Perfectly functional landfill.
+      description: Resource depot. A carefully organized pile of garbage that looks like chaos to everyone else. Sorted bins
+        and scrap metal shelving. Perfectly functional landfill.
       faction: LLAMA (raccoons)
       width: 192
       height: 192
@@ -776,13 +864,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/scrap_heap.png
+    style_version: 1
   chop_shop:
     template: building
     status: planned
     params:
       name: Chop Shop
-      description: Barracks. A gutted minivan converted to a training facility. Scrap tokens
-        accelerate production. Tools and parts hanging from every surface.
+      description: Barracks. A gutted minivan converted to a training facility. Scrap tokens accelerate production. Tools
+        and parts hanging from every surface.
       faction: LLAMA (raccoons)
       width: 192
       height: 192
@@ -791,13 +880,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/chop_shop.png
+    style_version: 1
   junk_server:
     template: building
     status: planned
     params:
       name: Junk Server
-      description: Tech building. Made of salvaged hard drives and Christmas lights. Somehow
-        runs. Overheats visually with steam/sparks but never mechanically.
+      description: Tech building. Made of salvaged hard drives and Christmas lights. Somehow runs. Overheats visually with
+        steam/sparks but never mechanically.
       faction: LLAMA (raccoons)
       width: 192
       height: 192
@@ -806,13 +896,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/junk_server.png
+    style_version: 1
   tinker_bench:
     template: building
     status: planned
     params:
       name: The Tinker Bench
-      description: Research building. A workbench covered in impossible contraptions, half-built
-        gadgets, and scattered blueprints. Tools hanging from a pegboard.
+      description: Research building. A workbench covered in impossible contraptions, half-built gadgets, and scattered blueprints.
+        Tools hanging from a pegboard.
       faction: LLAMA (raccoons)
       width: 192
       height: 192
@@ -821,13 +912,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/tinker_bench.png
+    style_version: 1
   trash_pile:
     template: building
     status: planned
     params:
       name: Trash Pile
-      description: Supply depot. Literally just a bigger pile of garbage. The bigger the pile,
-        the more units feel at home. Surprisingly well-organized internally.
+      description: Supply depot. Literally just a bigger pile of garbage. The bigger the pile, the more units feel at home.
+        Surprisingly well-organized internally.
       faction: LLAMA (raccoons)
       width: 128
       height: 128
@@ -836,13 +928,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/trash_pile.png
+    style_version: 1
   dumpster_relay:
     template: building
     status: planned
     params:
       name: Dumpster Relay
-      description: Comms tower. A satellite dish made of bent forks atop a garbage pile.
-        Reduces communication leaks. Provides extra vision range.
+      description: Comms tower. A satellite dish made of bent forks atop a garbage pile. Reduces communication leaks. Provides
+        extra vision range.
       faction: LLAMA (raccoons)
       width: 192
       height: 192
@@ -851,13 +944,14 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/dumpster_relay.png
+    style_version: 1
   tetanus_tower:
     template: building
     status: planned
     params:
       name: Tetanus Tower
-      description: Defense tower. Shoots rusty nails from a scrap metal launcher. Corrodes
-        enemy armor. Built from an old mailbox and construction debris.
+      description: Defense tower. Shoots rusty nails from a scrap metal launcher. Corrodes enemy armor. Built from an old
+        mailbox and construction debris.
       faction: LLAMA (raccoons)
       width: 128
       height: 192
@@ -866,6 +960,7 @@ buildings:
     output:
       type: single
       game_path: assets/sprites/buildings/tetanus_tower.png
+    style_version: 1
 units:
   pawdler_idle:
     template: unit_static
@@ -873,15 +968,18 @@ units:
     params:
       name: Pawdler
       pose: idle standing, slightly slouched, reluctant posture
-      description: Cat worker unit. Tabby cat in a tiny hard hat, holding a fish basket. Looks
-        like it would rather be napping. Motivation meter visible as a small thought bubble (fish vs pillow).
+      description: Cat worker unit. Tabby cat in a tiny hard hat, holding a fish basket. Looks like it would rather be napping.
+        Motivation meter visible as a small thought bubble (fish vs pillow).
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Should look civilian/reluctant, not combat-oriented. Cute but lazy. Spite Carry visual — angry eyebrows when motivated.
+      extra_notes: "Should look civilian/reluctant, not combat-oriented. Cute but lazy. Spite Carry visual \u2014 angry eyebrows\
+        \ when motivated."
+      faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/pawdler_idle.png
+    style_version: 1
   pawdler_walk:
     template: unit_sheet
     status: planned
@@ -895,6 +993,7 @@ units:
       sheet_width: 512
       direction: south-east
       extra_notes: Subtle lazy walk cycle. Basket sways slightly.
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -903,21 +1002,24 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/pawdler_walk.png
+    style_version: 1
   nuisance_idle:
     template: unit_static
     status: planned
     params:
       name: The Nuisance
       pose: crouched, ready to pounce, mischievous expression
-      description: Small scrappy cat in light harasser stance. Looks annoyingly persistent.
-        Spiky fur, wide eyes, ready to dart.
+      description: Small scrappy cat in light harasser stance. Looks annoyingly persistent. Spiky fur, wide eyes, ready to
+        dart.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Core light combat unit. Should look fast and irritating.
+      faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/nuisance_idle.png
+    style_version: 1
   nuisance_walk:
     template: unit_sheet
     status: planned
@@ -931,6 +1033,7 @@ units:
       sheet_width: 512
       direction: south-east
       extra_notes: Quick, jittery movement. Tail twitching.
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -939,6 +1042,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/nuisance_walk.png
+    style_version: 1
   nuisance_attack:
     template: unit_sheet
     status: planned
@@ -951,7 +1055,8 @@ units:
       frame_height: 128
       sheet_width: 512
       direction: south-east
-      extra_notes: "Quick swipe → recoil → ready. Should look annoying, not deadly."
+      extra_notes: "Quick swipe \u2192 recoil \u2192 ready. Should look annoying, not deadly."
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -960,128 +1065,145 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/nuisance_attack.png
+    style_version: 1
   chonk_idle:
     template: unit_static
     status: planned
     params:
       name: The Chonk
       pose: sitting, immovable, taking up space
-      description: Very fat cat sitting firmly on the ground. Enormous, round, unbothered.
-        Too large to move easily but impossible to move by force. Subtle gravity distortion lines around it.
+      description: Very fat cat sitting firmly on the ground. Enormous, round, unbothered. Too large to move easily but impossible
+        to move by force. Subtle gravity distortion lines around it.
       width: 148
       height: 148
       direction: south-east
-      extra_notes: Visually larger than other units. Should look immovable and content. Loaf Mode variant needed — fully flattened pancake cat.
+      extra_notes: "Visually larger than other units. Should look immovable and content. Loaf Mode variant needed \u2014 fully\
+        \ flattened pancake cat."
+      faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/chonk_idle.png
+    style_version: 1
   flying_fox_idle:
     template: unit_static
     status: planned
     params:
       name: Flying Fox
       pose: hovering in air, wings spread
-      description: Fruit bat allied with the cat faction. Large eyes, leathery wings spread,
-        small body. Friendly but alert expression.
+      description: Fruit bat allied with the cat faction. Large eyes, leathery wings spread, small body. Friendly but alert
+        expression.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Air unit — should visually read as airborne. Wings are key silhouette.
+      extra_notes: "Air unit \u2014 should visually read as airborne. Wings are key silhouette."
+      faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/flying_fox_idle.png
+    style_version: 1
   hisser_idle:
     template: unit_static
     status: planned
     params:
       name: Hisser
       pose: arched back, hissing, disgusted expression
-      description: Cat ranged unit with arched back and bared teeth. Looks perpetually disgusted.
-        Spits at enemies from range.
+      description: Cat ranged unit with arched back and bared teeth. Looks perpetually disgusted. Spits at enemies from range.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Medium-range unit. Should look hostile and disgusted.
+      faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/hisser_idle.png
+    style_version: 1
   yowler_idle:
     template: unit_static
     status: planned
     params:
       name: Yowler
       pose: mouth wide open, yowling
-      description: Cat support unit mid-yowl. Mouth wide open, eyes squeezed shut, projecting
-        sound waves. Nearby allies look energized.
+      description: Cat support unit mid-yowl. Mouth wide open, eyes squeezed shut, projecting sound waves. Nearby allies look
+        energized.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Support unit. Sound wave visual effect around it. Thematic link to voice commands.
+      faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/yowler_idle.png
+    style_version: 1
   mouser_idle:
     template: unit_static
     status: planned
     params:
       name: Mouser
       pose: low crouch, stalking, nearly invisible
-      description: Sleek black cat in stealth crouch. Almost invisible. Eyes gleaming in the
-        dark. Built for scouting. Small sensor device strapped to collar for Dead Drops.
+      description: Sleek black cat in stealth crouch. Almost invisible. Eyes gleaming in the dark. Built for scouting. Small
+        sensor device strapped to collar for Dead Drops.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Stealth scout. Should look sneaky and fast. Dark coloring. Shadow Network visual — faint connecting lines between paired Mousers.
+      extra_notes: "Stealth scout. Should look sneaky and fast. Dark coloring. Shadow Network visual \u2014 faint connecting\
+        \ lines between paired Mousers."
+      faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/mouser_idle.png
+    style_version: 1
   catnapper_idle:
     template: unit_static
     status: planned
     params:
       name: Catnapper
       pose: curled up sleeping, Zzz floating above
-      description: Cat siege unit curled up asleep. Zzz symbols floating above. Looks completely
-        harmless but is devastating to buildings.
+      description: Cat siege unit curled up asleep. Zzz symbols floating above. Looks completely harmless but is devastating
+        to buildings.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: "Siege unit. Sleeps on buildings until they collapse. Should look adorably harmless."
+      extra_notes: Siege unit. Sleeps on buildings until they collapse. Should look adorably harmless.
+      faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/catnapper_idle.png
+    style_version: 1
   ferret_sapper_idle:
     template: unit_static
     status: planned
     params:
       name: Ferret Sapper
       pose: standing alert with explosives, slightly manic expression
-      description: Ferret ally carrying oversized demolition charges. Wiry, energetic, slightly
-        unhinged expression. Wearing a tiny helmet.
+      description: Ferret ally carrying oversized demolition charges. Wiry, energetic, slightly unhinged expression. Wearing
+        a tiny helmet.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Demolitions unit. Should look dangerous and excited about it.
+      faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/ferret_sapper_idle.png
+    style_version: 1
   mech_commander_idle:
     template: unit_static
     status: planned
     params:
       name: Mech Commander
       pose: standing in oversized mech suit, cat visible in cockpit
-      description: Late-game hero unit. A small cat piloting an oversized mech suit. The cat
-        is clearly too small for it. Mech has weapon arms, command antenna, and a glowing
-        Tactical Uplink dish on its back.
+      description: Late-game hero unit. A small cat piloting an oversized mech suit. The cat is clearly too small for it.
+        Mech has weapon arms, command antenna, and a glowing Tactical Uplink dish on its back.
       width: 192
       height: 192
       direction: south-east
-      extra_notes: Hero/heavy unit. Cat is comically small inside the mech. Imposing but funny. Tactical Uplink aura should be visible as a faint hex grid around it.
+      extra_notes: Hero/heavy unit. Cat is comically small inside the mech. Imposing but funny. Tactical Uplink aura should
+        be visible as a faint hex grid around it.
+      faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/mech_commander_idle.png
-  # --- Walk sheets (remaining units) ---
+    style_version: 1
   chonk_walk:
     template: unit_sheet
     status: planned
@@ -1095,6 +1217,7 @@ units:
       sheet_width: 512
       direction: south-east
       extra_notes: Heavy, slow waddle. Belly should visibly sway side to side.
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -1103,6 +1226,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/chonk_walk.png
+    style_version: 1
   flying_fox_walk:
     template: unit_sheet
     status: planned
@@ -1116,6 +1240,7 @@ units:
       sheet_width: 512
       direction: south-east
       extra_notes: Wings fully spread through flap cycle. Hover animation.
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -1124,6 +1249,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/flying_fox_walk.png
+    style_version: 1
   hisser_walk:
     template: unit_sheet
     status: planned
@@ -1137,6 +1263,7 @@ units:
       sheet_width: 512
       direction: south-east
       extra_notes: Aggressive stalking posture. Tail puffed up.
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -1145,6 +1272,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/hisser_walk.png
+    style_version: 1
   yowler_walk:
     template: unit_sheet
     status: planned
@@ -1158,6 +1286,7 @@ units:
       sheet_width: 512
       direction: south-east
       extra_notes: Mouth slightly ajar, ready to yowl. Sound wave hints.
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -1166,6 +1295,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/yowler_walk.png
+    style_version: 1
   mouser_walk:
     template: unit_sheet
     status: planned
@@ -1179,6 +1309,7 @@ units:
       sheet_width: 512
       direction: south-east
       extra_notes: Slinky, low-profile movement. Near-invisible against shadows.
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -1187,6 +1318,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/mouser_walk.png
+    style_version: 1
   catnapper_walk:
     template: unit_sheet
     status: planned
@@ -1200,6 +1332,7 @@ units:
       sheet_width: 512
       direction: south-east
       extra_notes: Very slow, reluctant movement. Zzz bubbles persist while walking.
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -1208,6 +1341,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/catnapper_walk.png
+    style_version: 1
   ferret_sapper_walk:
     template: unit_sheet
     status: planned
@@ -1221,6 +1355,7 @@ units:
       sheet_width: 512
       direction: south-east
       extra_notes: Bouncy ferret gait. Bomb fuse trail behind.
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -1229,6 +1364,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/ferret_sapper_walk.png
+    style_version: 1
   mech_commander_walk:
     template: unit_sheet
     status: planned
@@ -1242,6 +1378,7 @@ units:
       sheet_width: 512
       direction: south-east
       extra_notes: Heavy, mechanical stomp cycle. Ground shake visual.
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -1250,7 +1387,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/mech_commander_walk.png
-  # --- Attack sheets ---
+    style_version: 1
   pawdler_attack:
     template: unit_sheet
     status: planned
@@ -1263,7 +1400,8 @@ units:
       frame_height: 128
       sheet_width: 512
       direction: south-east
-      extra_notes: "Reluctant swing → overhead → impact → recover."
+      extra_notes: "Reluctant swing \u2192 overhead \u2192 impact \u2192 recover."
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -1272,6 +1410,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/pawdler_attack.png
+    style_version: 1
   chonk_attack:
     template: unit_sheet
     status: planned
@@ -1284,7 +1423,8 @@ units:
       frame_height: 128
       sheet_width: 512
       direction: south-east
-      extra_notes: "Lean back → belly slam → bounce → settle."
+      extra_notes: "Lean back \u2192 belly slam \u2192 bounce \u2192 settle."
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -1293,6 +1433,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/chonk_attack.png
+    style_version: 1
   flying_fox_attack:
     template: unit_sheet
     status: planned
@@ -1305,7 +1446,8 @@ units:
       frame_height: 128
       sheet_width: 512
       direction: south-east
-      extra_notes: "Wings tuck → dive → slash → pull up."
+      extra_notes: "Wings tuck \u2192 dive \u2192 slash \u2192 pull up."
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -1314,6 +1456,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/flying_fox_attack.png
+    style_version: 1
   hisser_attack:
     template: unit_sheet
     status: planned
@@ -1326,7 +1469,8 @@ units:
       frame_height: 128
       sheet_width: 512
       direction: south-east
-      extra_notes: "Arch back → open mouth → spit glob → recoil. Green projectile visible."
+      extra_notes: "Arch back \u2192 open mouth \u2192 spit glob \u2192 recoil. Green projectile visible."
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -1335,6 +1479,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/hisser_attack.png
+    style_version: 1
   yowler_attack:
     template: unit_sheet
     status: planned
@@ -1347,7 +1492,8 @@ units:
       frame_height: 128
       sheet_width: 512
       direction: south-east
-      extra_notes: "Inhale → mouth wide → sonic burst → echo. Purple sound rings radiating."
+      extra_notes: "Inhale \u2192 mouth wide \u2192 sonic burst \u2192 echo. Purple sound rings radiating."
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -1356,6 +1502,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/yowler_attack.png
+    style_version: 1
   mouser_attack:
     template: unit_sheet
     status: planned
@@ -1368,7 +1515,8 @@ units:
       frame_height: 128
       sheet_width: 512
       direction: south-east
-      extra_notes: "Coil → lunge → slash → fade back. Green eyes flash."
+      extra_notes: "Coil \u2192 lunge \u2192 slash \u2192 fade back. Green eyes flash."
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -1377,6 +1525,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/mouser_attack.png
+    style_version: 1
   catnapper_attack:
     template: unit_sheet
     status: planned
@@ -1389,7 +1538,8 @@ units:
       frame_height: 128
       sheet_width: 512
       direction: south-east
-      extra_notes: "Sleep shift → dream bubble grows → launch → Zzz reset. Eyes stay closed."
+      extra_notes: "Sleep shift \u2192 dream bubble grows \u2192 launch \u2192 Zzz reset. Eyes stay closed."
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -1398,6 +1548,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/catnapper_attack.png
+    style_version: 1
   ferret_sapper_attack:
     template: unit_sheet
     status: planned
@@ -1410,7 +1561,8 @@ units:
       frame_height: 128
       sheet_width: 512
       direction: south-east
-      extra_notes: "Wind up → throw → bomb arc → fuse spark."
+      extra_notes: "Wind up \u2192 throw \u2192 bomb arc \u2192 fuse spark."
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -1419,6 +1571,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/ferret_sapper_attack.png
+    style_version: 1
   mech_commander_attack:
     template: unit_sheet
     status: planned
@@ -1431,7 +1584,8 @@ units:
       frame_height: 128
       sheet_width: 512
       direction: south-east
-      extra_notes: "Aim → muzzle flash → recoil → stabilize. Cat bounces inside cockpit."
+      extra_notes: "Aim \u2192 muzzle flash \u2192 recoil \u2192 stabilize. Cat bounces inside cockpit."
+      faction: catGPT
     output:
       type: sheet
       columns: 4
@@ -1440,884 +1594,852 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/mech_commander_attack.png
-  # --- The Clawed (Mice) --- idle sprites ---
+    style_version: 1
   nibblet_idle:
     template: unit_static
     status: game_ready
     params:
       name: Nibblet
       pose: standing with tiny gathering basket, twitchy and alert
-      description: Mouse worker unit. Tiny, nervous, fast. Carries an oversized seed basket.
-        Always looking over its shoulder.
+      description: Mouse worker unit. Tiny, nervous, fast. Carries an oversized seed basket. Always looking over its shoulder.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Worker unit. Should look small and industrious. Twitchy ears.
+      faction: The Clawed
     output:
       type: single
       game_path: assets/sprites/units/nibblet_idle.png
+    style_version: 1
   swarmer_idle:
     template: unit_static
     status: game_ready
     params:
       name: Swarmer
       pose: hunched and ready, teeth bared
-      description: Tiny expendable mouse infantry. Barely armed, relies on numbers.
-        Sharp teeth, scruffy fur, improvised weapon.
+      description: Tiny expendable mouse infantry. Barely armed, relies on numbers. Sharp teeth, scruffy fur, improvised weapon.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Light infantry. Smallest unit sprite. Should look disposable but fierce in groups.
+      faction: The Clawed
     output:
       type: single
       game_path: assets/sprites/units/swarmer_idle.png
+    style_version: 1
   gnawer_idle:
     template: unit_static
     status: game_ready
     params:
       name: Gnawer
       pose: crouched near a wall, teeth glowing
-      description: Anti-structure mouse specialist. Oversized incisors that can chew through
-        anything. Wears reinforced jaw brace.
+      description: Anti-structure mouse specialist. Oversized incisors that can chew through anything. Wears reinforced jaw
+        brace.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Anti-structure unit. Emphasis on massive teeth. Jaw brace visible.
+      faction: The Clawed
     output:
       type: single
       game_path: assets/sprites/units/gnawer_idle.png
+    style_version: 1
   shrieker_idle:
     template: unit_static
     status: game_ready
     params:
       name: Shrieker
       pose: standing on hind legs, mouth open mid-shriek
-      description: Mouse ranged harasser. Emits piercing sonic shrieks that damage at range.
-        Oversized ears, wide open mouth, visible sound waves.
+      description: Mouse ranged harasser. Emits piercing sonic shrieks that damage at range. Oversized ears, wide open mouth,
+        visible sound waves.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Ranged harasser. Emphasis on open mouth and sound waves.
+      faction: The Clawed
     output:
       type: single
       game_path: assets/sprites/units/shrieker_idle.png
+    style_version: 1
   tunneler_idle:
     template: unit_static
     status: game_ready
     params:
       name: Tunneler
       pose: half-emerged from ground, dirt flying
-      description: Mouse transport/utility unit. Digs tunnels for rapid troop movement.
-        Wears mining helmet, claws caked in dirt, emerging from a hole.
+      description: Mouse transport/utility unit. Digs tunnels for rapid troop movement. Wears mining helmet, claws caked in
+        dirt, emerging from a hole.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Transport utility. Half-in-ground visual. Mining helmet and dirty claws.
+      faction: The Clawed
     output:
       type: single
       game_path: assets/sprites/units/tunneler_idle.png
+    style_version: 1
   sparks_idle:
     template: unit_static
     status: game_ready
     params:
       name: Sparks
       pose: holding sparking device, slightly singed fur
-      description: Mouse saboteur with improvised electrical weapons. Singed whiskers,
-        wild eyes, carrying a crackling device made from scavenged electronics.
+      description: Mouse saboteur with improvised electrical weapons. Singed whiskers, wild eyes, carrying a crackling device
+        made from scavenged electronics.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Saboteur. Electricity visual effects. Singed and slightly manic.
+      faction: The Clawed
     output:
       type: single
       game_path: assets/sprites/units/sparks_idle.png
+    style_version: 1
   quillback_idle:
     template: unit_static
     status: game_ready
     params:
       name: Quillback
       pose: hunched defensively, quills raised
-      description: Heavy mouse defender. Hedgehog-mouse hybrid with raised defensive
-        quills. Thick-set, armored with natural spines. Immovable stance.
+      description: Heavy mouse defender. Hedgehog-mouse hybrid with raised defensive quills. Thick-set, armored with natural
+        spines. Immovable stance.
       width: 148
       height: 148
       direction: south-east
       extra_notes: Heavy defender. Larger sprite. Quill silhouette is key visual.
+      faction: The Clawed
     output:
       type: single
       game_path: assets/sprites/units/quillback_idle.png
+    style_version: 1
   whiskerwitch_idle:
     template: unit_static
     status: game_ready
     params:
       name: Whiskerwitch
       pose: floating slightly, paws glowing with energy
-      description: Mouse caster/support unit. Mystical elder mouse with glowing whiskers
-        and floating herbs. Casts buffs and debuffs. Tiny spectacles.
+      description: Mouse caster/support unit. Mystical elder mouse with glowing whiskers and floating herbs. Casts buffs and
+        debuffs. Tiny spectacles.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Caster support. Mystical visual. Glowing whiskers and floating herbs.
+      faction: The Clawed
     output:
       type: single
       game_path: assets/sprites/units/whiskerwitch_idle.png
+    style_version: 1
   plaguetail_idle:
     template: unit_static
     status: game_ready
     params:
       name: Plaguetail
       pose: crouched, tail dripping with green toxin
-      description: Mouse area denial unit. Sickly green-tinged fur, toxic dripping tail.
-        Leaves poison trails that damage enemies over time.
+      description: Mouse area denial unit. Sickly green-tinged fur, toxic dripping tail. Leaves poison trails that damage
+        enemies over time.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Area denial. Green toxic visual on tail. Sickly but dangerous.
+      faction: The Clawed
     output:
       type: single
       game_path: assets/sprites/units/plaguetail_idle.png
+    style_version: 1
   warren_marshal_idle:
     template: unit_static
     status: game_ready
     params:
       name: Warren Marshal
       pose: standing tall with command staff, cape flowing
-      description: Mouse hero commander. Largest mouse unit, wearing scavenged armor and
-        a flowing cape. Carries a command staff topped with a glowing acorn.
+      description: Mouse hero commander. Largest mouse unit, wearing scavenged armor and a flowing cape. Carries a command
+        staff topped with a glowing acorn.
       width: 192
       height: 192
       direction: south-east
       extra_notes: Hero unit. Largest mouse. Imposing for a mouse. Command aura visible.
+      faction: The Clawed
     output:
       type: single
       game_path: assets/sprites/units/warren_marshal_idle.png
-  # --- The Murder (Corvids) --- idle sprites ---
+    style_version: 1
   murder_scrounger_idle:
     template: unit_static
     status: game_ready
     params:
       name: Murder Scrounger
       pose: hopping on ground, picking at shiny objects
-      description: Corvid worker unit. Scruffy crow collecting shiny objects. Carries a
-        satchel overflowing with trinkets. Beady eyes scanning for loot.
+      description: Corvid worker unit. Scruffy crow collecting shiny objects. Carries a satchel overflowing with trinkets.
+        Beady eyes scanning for loot.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Worker unit. Ground-based crow. Shiny object obsession visible.
+      faction: The Murder
     output:
       type: single
       game_path: assets/sprites/units/murder_scrounger_idle.png
+    style_version: 1
   sentinel_idle:
     template: unit_static
     status: game_ready
     params:
       name: Sentinel
       pose: perched alert, scanning with one eye
-      description: Corvid ranged scout. Tall, thin bird perched on a vantage point.
-        One eye zoomed in like a telescope. Long-range spotter.
+      description: Corvid ranged scout. Tall, thin bird perched on a vantage point. One eye zoomed in like a telescope. Long-range
+        spotter.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Ranged scout. Tall and thin silhouette. Telescope eye visual.
+      faction: The Murder
     output:
       type: single
       game_path: assets/sprites/units/sentinel_idle.png
+    style_version: 1
   rookclaw_idle:
     template: unit_static
     status: game_ready
     params:
       name: Rookclaw
       pose: wings half-spread, talons forward, diving stance
-      description: Corvid melee dive striker. Large rook with razor talons, wings spread
-        for a dive attack. Aggressive, fast, hits hard.
+      description: Corvid melee dive striker. Large rook with razor talons, wings spread for a dive attack. Aggressive, fast,
+        hits hard.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Melee dive striker. Wings spread silhouette. Emphasis on talons.
+      faction: The Murder
     output:
       type: single
       game_path: assets/sprites/units/rookclaw_idle.png
+    style_version: 1
   magpike_idle:
     template: unit_static
     status: game_ready
     params:
       name: Magpike
       pose: hovering with stolen tech device, mischievous look
-      description: Corvid disruptor/thief. Magpie with stolen technology strapped to its
-        body. Disrupts enemy abilities and steals resources.
+      description: Corvid disruptor/thief. Magpie with stolen technology strapped to its body. Disrupts enemy abilities and
+        steals resources.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Disruptor. Stolen tech visible on body. Mischievous expression.
+      faction: The Murder
     output:
       type: single
       game_path: assets/sprites/units/magpike_idle.png
+    style_version: 1
   magpyre_idle:
     template: unit_static
     status: game_ready
     params:
       name: Magpyre
       pose: wings glowing with fire energy, intense stare
-      description: Corvid saboteur. Dark magpie wreathed in stolen fire energy.
-        Burns enemy structures. Pyromaniac tendencies.
+      description: Corvid saboteur. Dark magpie wreathed in stolen fire energy. Burns enemy structures. Pyromaniac tendencies.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Saboteur. Fire/energy glow on wings. Dark plumage with orange accents.
+      faction: The Murder
     output:
       type: single
       game_path: assets/sprites/units/magpyre_idle.png
+    style_version: 1
   jaycaller_idle:
     template: unit_static
     status: planned
     params:
       name: Jaycaller
       pose: chest puffed, beak open, commanding stance
-      description: Corvid support/buffer. Blue jay with commanding presence. Rallies
-        nearby allies with piercing calls. Buff aura visible.
+      description: Corvid support/buffer. Blue jay with commanding presence. Rallies nearby allies with piercing calls. Buff
+        aura visible.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Support buffer. Blue jay coloring. Sound/buff aura radiating outward.
+      faction: The Murder
     output:
       type: single
       game_path: assets/sprites/units/jaycaller_idle.png
+    style_version: 1
   jayflicker_idle:
     template: unit_static
     status: planned
     params:
       name: Jayflicker
       pose: semi-transparent, flickering between visible and invisible
-      description: Corvid illusion specialist. Shimmering jay that phases in and out
-        of visibility. Creates decoy copies. Zodiac symbol on chest.
+      description: Corvid illusion specialist. Shimmering jay that phases in and out of visibility. Creates decoy copies.
+        Zodiac symbol on chest.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Illusion unit. Semi-transparent visual. Flickering/phasing effect.
+      faction: The Murder
     output:
       type: single
       game_path: assets/sprites/units/jayflicker_idle.png
+    style_version: 1
   dusktalon_idle:
     template: unit_static
     status: planned
     params:
       name: Dusktalon
       pose: emerging from shadows, talons gleaming
-      description: Corvid stealth assassin. Jet-black bird emerging from shadow. Talons
-        dripping with venom. Silent killer, highest single-target damage.
+      description: Corvid stealth assassin. Jet-black bird emerging from shadow. Talons dripping with venom. Silent killer,
+        highest single-target damage.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Stealth assassin. Dark silhouette. Shadow visual effect. Venomous talons.
+      faction: The Murder
     output:
       type: single
       game_path: assets/sprites/units/dusktalon_idle.png
+    style_version: 1
   hootseer_idle:
     template: unit_static
     status: planned
     params:
       name: Hootseer
       pose: perched with eyes glowing, mystical runes floating
-      description: Corvid area denial/debuffer. Great horned owl with glowing eyes and
-        floating zodiac runes. Debuffs enemies in area. Astrology-themed.
+      description: Corvid area denial/debuffer. Great horned owl with glowing eyes and floating zodiac runes. Debuffs enemies
+        in area. Astrology-themed.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Area debuffer. Owl silhouette. Glowing eyes and floating zodiac runes.
+      faction: The Murder
     output:
       type: single
       game_path: assets/sprites/units/hootseer_idle.png
+    style_version: 1
   corvus_rex_idle:
     template: unit_static
     status: planned
     params:
       name: Corvus Rex
       pose: perched on throne of bones, crown of stars
-      description: Corvid hero unit. Massive raven king with crown of constellation
-        stars. Commands all corvids. Gemineye's avatar on the battlefield.
+      description: Corvid hero unit. Massive raven king with crown of constellation stars. Commands all corvids. Gemineye's
+        avatar on the battlefield.
       width: 192
       height: 192
       direction: south-east
       extra_notes: Hero unit. Largest corvid. Crown of stars. Imposing raven king silhouette.
+      faction: The Murder
     output:
       type: single
       game_path: assets/sprites/units/corvus_rex_idle.png
-  # --- Seekers of the Deep (Badgers) --- idle sprites ---
+    style_version: 1
   delver_idle:
     template: unit_static
     status: planned
     params:
       name: Delver
       pose: standing with pickaxe and lantern, sturdy
-      description: Badger worker unit. Stocky badger miner with pickaxe and lantern.
-        Sturdy leather apron, dirt-stained paws.
+      description: Badger worker unit. Stocky badger miner with pickaxe and lantern. Sturdy leather apron, dirt-stained paws.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Worker unit. Stocky and sturdy. Mining gear visible.
+      faction: Seekers of the Deep
     output:
       type: single
       game_path: assets/sprites/units/delver_idle.png
+    style_version: 1
   ironhide_idle:
     template: unit_static
     status: planned
     params:
       name: Ironhide
       pose: standing firm with massive shield, immovable
-      description: Badger heavy infantry. Enormous badger in layered stone and iron armor.
-        Carries a tower shield almost as big as itself. Immovable.
+      description: Badger heavy infantry. Enormous badger in layered stone and iron armor. Carries a tower shield almost as
+        big as itself. Immovable.
       width: 148
       height: 148
       direction: south-east
       extra_notes: Heavy infantry. Larger sprite. Massive shield silhouette. Tank unit.
+      faction: Seekers of the Deep
     output:
       type: single
       game_path: assets/sprites/units/ironhide_idle.png
+    style_version: 1
   cragback_idle:
     template: unit_static
     status: planned
     params:
       name: Cragback
       pose: hunched with boulder cannon on back, stone-plated
-      description: Badger siege tank. Massive armored badger with a boulder-launching
-        cannon strapped to its back. Stone plates fused to its hide.
+      description: Badger siege tank. Massive armored badger with a boulder-launching cannon strapped to its back. Stone plates
+        fused to its hide.
       width: 148
       height: 148
       direction: south-east
       extra_notes: Siege tank. Larger sprite. Boulder cannon is key visual. Stone armor plating.
+      faction: Seekers of the Deep
     output:
       type: single
       game_path: assets/sprites/units/cragback_idle.png
+    style_version: 1
   warden_idle:
     template: unit_static
     status: planned
     params:
       name: Warden
       pose: standing guard with halberd, vigilant expression
-      description: Badger defensive support. Armored badger guard with halberd and
-        glowing defensive ward. Protects nearby allies.
+      description: Badger defensive support. Armored badger guard with halberd and glowing defensive ward. Protects nearby
+        allies.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Defensive support. Halberd and shield ward visual. Protective stance.
+      faction: Seekers of the Deep
     output:
       type: single
       game_path: assets/sprites/units/warden_idle.png
+    style_version: 1
   sapjaw_idle:
     template: unit_static
     status: planned
     params:
       name: Sapjaw
       pose: jaw open showing reinforced teeth, aggressive
-      description: Badger anti-armor specialist. Powerful jaws reinforced with metal.
-        Can bite through any armor. Aggressive, muscular build.
+      description: Badger anti-armor specialist. Powerful jaws reinforced with metal. Can bite through any armor. Aggressive,
+        muscular build.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Anti-armor melee. Metal-reinforced jaw is key visual. Muscular build.
+      faction: Seekers of the Deep
     output:
       type: single
       game_path: assets/sprites/units/sapjaw_idle.png
+    style_version: 1
   wardenmother_idle:
     template: unit_static
     status: planned
     params:
       name: Wardenmother
       pose: standing with ancestral war-hammer, regal and ancient
-      description: Badger hero unit. Ancient matriarch badger in ceremonial stone armor.
-        Carries an ancestral war-hammer. Deepseek's avatar.
+      description: Badger hero unit. Ancient matriarch badger in ceremonial stone armor. Carries an ancestral war-hammer.
+        Deepseek's avatar.
       width: 192
       height: 192
       direction: south-east
       extra_notes: Hero unit. Regal ancient matriarch. Largest badger. Stone armor and war-hammer.
+      faction: Seekers of the Deep
     output:
       type: single
       game_path: assets/sprites/units/wardenmother_idle.png
+    style_version: 1
   seeker_tunneler_idle:
     template: unit_static
     status: planned
     params:
       name: Seeker Tunneler
       pose: digging stance, claws extended, wearing goggles
-      description: Badger tunneling utility. Specialized digging badger with reinforced
-        claws and mining goggles. Creates underground passages.
+      description: Badger tunneling utility. Specialized digging badger with reinforced claws and mining goggles. Creates
+        underground passages.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Tunneling utility. Goggles and reinforced claws. Dirt-spraying visual.
+      faction: Seekers of the Deep
     output:
       type: single
       game_path: assets/sprites/units/seeker_tunneler_idle.png
+    style_version: 1
   embermaw_idle:
     template: unit_static
     status: planned
     params:
       name: Embermaw
       pose: mouth glowing with ember fire, smoke rising
-      description: Badger ranged fire unit. Badger with a furnace-like mouth that spits
-        molten rock. Ember glow from within. Smoke wisps from nostrils.
+      description: Badger ranged fire unit. Badger with a furnace-like mouth that spits molten rock. Ember glow from within.
+        Smoke wisps from nostrils.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Ranged fire unit. Glowing mouth is key visual. Smoke and ember effects.
+      faction: Seekers of the Deep
     output:
       type: single
       game_path: assets/sprites/units/embermaw_idle.png
+    style_version: 1
   dustclaw_idle:
     template: unit_static
     status: planned
     params:
       name: Dustclaw
       pose: low stance, claws out, ready to dash
-      description: Badger fast melee unit. Lean, agile badger built for speed. Dust
-        cloud at feet. Fastest badger unit.
+      description: Badger fast melee unit. Lean, agile badger built for speed. Dust cloud at feet. Fastest badger unit.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Fast melee. Lean build (unusual for badger). Speed lines/dust cloud.
+      faction: Seekers of the Deep
     output:
       type: single
       game_path: assets/sprites/units/dustclaw_idle.png
+    style_version: 1
   gutripper_idle:
     template: unit_static
     status: planned
     params:
       name: Gutripper
       pose: standing with blood-stained claws, menacing
-      description: Badger heavy melee bruiser. Scarred, battle-hardened badger with
-        massive claws. Pure aggression. Covered in battle marks.
+      description: Badger heavy melee bruiser. Scarred, battle-hardened badger with massive claws. Pure aggression. Covered
+        in battle marks.
       width: 148
       height: 148
       direction: south-east
       extra_notes: Heavy melee. Larger sprite. Scarred and battle-hardened. Menacing claws.
+      faction: Seekers of the Deep
     output:
       type: single
       game_path: assets/sprites/units/gutripper_idle.png
-  # --- Croak (Axolotls) --- idle sprites ---
+    style_version: 1
   ponderer_idle:
     template: unit_static
     status: planned
     params:
       name: Ponderer
       pose: standing with collection net, contemplative expression
-      description: Axolotl worker unit. Cute axolotl with external gills, carrying a
-        collection net. Philosophical expression. Slowly blinks.
+      description: Axolotl worker unit. Cute axolotl with external gills, carrying a collection net. Philosophical expression.
+        Slowly blinks.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Worker unit. Cute axolotl with visible gills. Collection net. Teal/purple palette.
+      faction: Croak
     output:
       type: single
       game_path: assets/sprites/units/ponderer_idle.png
+    style_version: 1
   regeneron_idle:
     template: unit_static
     status: planned
     params:
       name: Regeneron
       pose: mid-regeneration, one limb glowing
-      description: Axolotl light skirmisher. Fast axolotl with visible regeneration —
-        one limb partially translucent and regrowing. Hard to kill permanently.
+      description: "Axolotl light skirmisher. Fast axolotl with visible regeneration \u2014 one limb partially translucent\
+        \ and regrowing. Hard to kill permanently."
       width: 128
       height: 128
       direction: south-east
       extra_notes: Light skirmisher. Regeneration visual on limb. Translucent glow effect.
+      faction: Croak
     output:
       type: single
       game_path: assets/sprites/units/regeneron_idle.png
+    style_version: 1
   broodmother_idle:
     template: unit_static
     status: planned
     params:
       name: Broodmother
       pose: surrounded by small spawn, nurturing stance
-      description: Axolotl healer/support. Large maternal axolotl surrounded by tiny
-        spawn. Heals allies by sharing regenerative enzymes. Bioluminescent glow.
+      description: Axolotl healer/support. Large maternal axolotl surrounded by tiny spawn. Heals allies by sharing regenerative
+        enzymes. Bioluminescent glow.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Healer support. Surrounded by tiny spawn. Bioluminescent healing aura.
+      faction: Croak
     output:
       type: single
       game_path: assets/sprites/units/broodmother_idle.png
+    style_version: 1
   gulper_idle:
     template: unit_static
     status: planned
     params:
       name: Gulper
       pose: wide mouth open, massive and round
-      description: Axolotl heavy bruiser. Enormous bullfrog-axolotl hybrid with a mouth
-        that can swallow units whole. Round, heavy, devastating melee.
+      description: Axolotl heavy bruiser. Enormous bullfrog-axolotl hybrid with a mouth that can swallow units whole. Round,
+        heavy, devastating melee.
       width: 148
       height: 148
       direction: south-east
       extra_notes: Heavy bruiser. Larger sprite. Enormous mouth is key visual. Round and heavy.
+      faction: Croak
     output:
       type: single
       game_path: assets/sprites/units/gulper_idle.png
+    style_version: 1
   eftsaber_idle:
     template: unit_static
     status: planned
     params:
       name: Eftsaber
       pose: dual-wielding bone blades, crouched to strike
-      description: Axolotl assassin/flanker. Sleek newt-like axolotl with dual bone
-        blades. Fast, deadly, strikes from flanks. Red belly warning coloration.
+      description: Axolotl assassin/flanker. Sleek newt-like axolotl with dual bone blades. Fast, deadly, strikes from flanks.
+        Red belly warning coloration.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Assassin flanker. Dual bone blades. Sleek build. Red belly warning colors.
+      faction: Croak
     output:
       type: single
       game_path: assets/sprites/units/eftsaber_idle.png
+    style_version: 1
   croaker_idle:
     template: unit_static
     status: planned
     params:
       name: Croaker
       pose: throat sac inflated, preparing to launch projectile
-      description: Axolotl ranged artillery. Squat axolotl with inflated vocal sac that
-        launches toxic globs at long range. Teal and purple coloring.
+      description: Axolotl ranged artillery. Squat axolotl with inflated vocal sac that launches toxic globs at long range.
+        Teal and purple coloring.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Ranged artillery. Inflated throat sac is key visual. Long-range unit.
+      faction: Croak
     output:
       type: single
       game_path: assets/sprites/units/croaker_idle.png
+    style_version: 1
   leapfrog_idle:
     template: unit_static
     status: planned
     params:
       name: Leapfrog
       pose: crouched ready to leap, powerful hind legs
-      description: Axolotl mobile harasser. Frog-axolotl hybrid with oversized hind legs.
-        Leaps over obstacles and enemies. Hit-and-run specialist.
+      description: Axolotl mobile harasser. Frog-axolotl hybrid with oversized hind legs. Leaps over obstacles and enemies.
+        Hit-and-run specialist.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Mobile harasser. Oversized hind legs. Crouched leap-ready pose.
+      faction: Croak
     output:
       type: single
       game_path: assets/sprites/units/leapfrog_idle.png
+    style_version: 1
   shellwarden_idle:
     template: unit_static
     status: planned
     params:
       name: Shellwarden
       pose: retracted into shell, only eyes and legs visible
-      description: Axolotl tank/defender. Turtle-axolotl hybrid with massive shell.
-        Can retract fully for near-invulnerability. Slowest but toughest Croak unit.
+      description: Axolotl tank/defender. Turtle-axolotl hybrid with massive shell. Can retract fully for near-invulnerability.
+        Slowest but toughest Croak unit.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Tank defender. Shell is key visual. Near-invulnerable when retracted.
+      faction: Croak
     output:
       type: single
       game_path: assets/sprites/units/shellwarden_idle.png
+    style_version: 1
   bogwhisper_idle:
     template: unit_static
     status: planned
     params:
       name: Bogwhisper
       pose: floating in mist, eyes glowing, tendrils of fog
-      description: Axolotl support/caster. Ethereal axolotl wreathed in swamp mist.
-        Casts debuffs and area effects. Whispers carry on the fog.
+      description: Axolotl support/caster. Ethereal axolotl wreathed in swamp mist. Casts debuffs and area effects. Whispers
+        carry on the fog.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Support caster. Misty/ethereal visual. Glowing eyes in fog. Spooky.
+      faction: Croak
     output:
       type: single
       game_path: assets/sprites/units/bogwhisper_idle.png
+    style_version: 1
   murk_commander_idle:
     template: unit_static
     status: planned
     params:
       name: Murk Commander
       pose: standing in shallow water, trident raised, bioluminescent crown
-      description: Axolotl hero unit. Massive axolotl king with bioluminescent crown
-        and coral trident. Grok's avatar. Commands through HP differential calculus.
+      description: Axolotl hero unit. Massive axolotl king with bioluminescent crown and coral trident. Grok's avatar. Commands
+        through HP differential calculus.
       width: 192
       height: 192
       direction: south-east
       extra_notes: Hero unit. Largest axolotl. Bioluminescent crown and coral trident. Regal.
+      faction: Croak
     output:
       type: single
       game_path: assets/sprites/units/murk_commander_idle.png
-  # --- LLAMA (Raccoons) --- idle sprites ---
+    style_version: 1
   scrounger_idle:
     template: unit_static
     status: planned
     params:
       name: Scrounger
       pose: rummaging through trash, holding a shiny find
-      description: Raccoon worker unit. Scruffy raccoon with bandit mask, rummaging
-        through garbage. Carries a burlap sack. Finds value in everything.
+      description: Raccoon worker unit. Scruffy raccoon with bandit mask, rummaging through garbage. Carries a burlap sack.
+        Finds value in everything.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Worker unit. Classic raccoon bandit mask. Burlap sack and trash rummaging.
+      faction: LLAMA
     output:
       type: single
       game_path: assets/sprites/units/scrounger_idle.png
+    style_version: 1
   bandit_idle:
     template: unit_static
     status: planned
     params:
       name: Bandit
       pose: crouched with makeshift weapon, sneaky expression
-      description: Raccoon light harasser. Quick raccoon with improvised shiv made from
-        a sharpened can lid. Fast, cheap, annoying. Classic trash bandit.
+      description: Raccoon light harasser. Quick raccoon with improvised shiv made from a sharpened can lid. Fast, cheap,
+        annoying. Classic trash bandit.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Light harasser. Improvised can-lid weapon. Sneaky and fast.
+      faction: LLAMA
     output:
       type: single
       game_path: assets/sprites/units/bandit_idle.png
+    style_version: 1
   heap_titan_idle:
     template: unit_static
     status: planned
     params:
       name: Heap Titan
       pose: standing in scrap armor, massive and slow
-      description: Raccoon heavy tank. Enormous raccoon wearing armor made entirely of
-        scrap metal, car doors, and road signs. Slow but nearly indestructible.
+      description: Raccoon heavy tank. Enormous raccoon wearing armor made entirely of scrap metal, car doors, and road signs.
+        Slow but nearly indestructible.
       width: 148
       height: 148
       direction: south-east
       extra_notes: Heavy tank. Larger sprite. Scrap armor silhouette. Road sign shoulder pads.
+      faction: LLAMA
     output:
       type: single
       game_path: assets/sprites/units/heap_titan_idle.png
+    style_version: 1
   glitch_rat_idle:
     template: unit_static
     status: planned
     params:
       name: Glitch Rat
       pose: twitching with sparking electronics, glitchy visual
-      description: Raccoon saboteur. Tiny, hyperactive raccoon wired into stolen
-        electronics. Moves erratically. Disrupts enemy tech. Sparking and glitchy.
+      description: Raccoon saboteur. Tiny, hyperactive raccoon wired into stolen electronics. Moves erratically. Disrupts
+        enemy tech. Sparking and glitchy.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Saboteur. Smallest raccoon. Sparking electronics. Glitch visual effect.
+      faction: LLAMA
     output:
       type: single
       game_path: assets/sprites/units/glitch_rat_idle.png
+    style_version: 1
   patch_possum_idle:
     template: unit_static
     status: planned
     params:
       name: Patch Possum
       pose: standing with medkit made of duct tape and bandages
-      description: Raccoon support/healer. Possum ally with a first-aid kit cobbled from
-        duct tape and stolen bandages. Plays dead when threatened.
+      description: Raccoon support/healer. Possum ally with a first-aid kit cobbled from duct tape and stolen bandages. Plays
+        dead when threatened.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Support healer. Possum (not raccoon). Duct-tape medkit. Can play dead.
+      faction: LLAMA
     output:
       type: single
       game_path: assets/sprites/units/patch_possum_idle.png
+    style_version: 1
   grease_monkey_idle:
     template: unit_static
     status: planned
     params:
       name: Grease Monkey
       pose: holding wrench-launcher, oil-stained
-      description: Raccoon ranged unit. Grease-covered raccoon mechanic with a wrench
-        that doubles as a projectile launcher. Oil-stained overalls.
+      description: Raccoon ranged unit. Grease-covered raccoon mechanic with a wrench that doubles as a projectile launcher.
+        Oil-stained overalls.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Ranged unit. Wrench-launcher weapon. Oil stains and mechanic aesthetic.
+      faction: LLAMA
     output:
       type: single
       game_path: assets/sprites/units/grease_monkey_idle.png
+    style_version: 1
   dead_drop_unit_idle:
     template: unit_static
     status: planned
     params:
       name: Dead Drop
       pose: pressed against wall, nearly invisible, holding intel
-      description: Raccoon stealth scout. Dark-furred raccoon specialist in espionage.
-        Carries stolen documents. Nearly invisible when still.
+      description: Raccoon stealth scout. Dark-furred raccoon specialist in espionage. Carries stolen documents. Nearly invisible
+        when still.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Stealth scout. Dark fur. Pressed-against-wall visual. Intel documents.
+      faction: LLAMA
     output:
       type: single
       game_path: assets/sprites/units/dead_drop_unit_idle.png
+    style_version: 1
   wrecker_idle:
     template: unit_static
     status: planned
     params:
       name: Wrecker
       pose: swinging wrecking ball made from a bowling ball on chain
-      description: Raccoon anti-structure unit. Beefy raccoon swinging a makeshift
-        wrecking ball — bowling ball on a chain. Demolishes buildings.
+      description: "Raccoon anti-structure unit. Beefy raccoon swinging a makeshift wrecking ball \u2014 bowling ball on a\
+        \ chain. Demolishes buildings."
       width: 128
       height: 128
       direction: south-east
       extra_notes: Anti-structure. Bowling ball wrecking weapon. Beefy raccoon build.
+      faction: LLAMA
     output:
       type: single
       game_path: assets/sprites/units/wrecker_idle.png
+    style_version: 1
   dumpster_diver_idle:
     template: unit_static
     status: planned
     params:
       name: Dumpster Diver
       pose: emerging from dumpster with chemical vials
-      description: Raccoon area denial. Raccoon that weaponizes dumpster chemicals.
-        Throws toxic waste grenades. Wears a gas mask and rubber gloves.
+      description: Raccoon area denial. Raccoon that weaponizes dumpster chemicals. Throws toxic waste grenades. Wears a gas
+        mask and rubber gloves.
       width: 128
       height: 128
       direction: south-east
       extra_notes: Area denial. Gas mask and rubber gloves. Chemical vials. Toxic green accents.
+      faction: LLAMA
     output:
       type: single
       game_path: assets/sprites/units/dumpster_diver_idle.png
+    style_version: 1
   junkyard_king_idle:
     template: unit_static
     status: planned
     params:
       name: Junkyard King
       pose: seated on throne of trash, crown of bent forks
-      description: Raccoon hero unit. Massive raccoon king on a throne of compressed
-        garbage. Crown of bent forks and bottlecaps. Llhama's avatar. Rules the junkyard.
+      description: Raccoon hero unit. Massive raccoon king on a throne of compressed garbage. Crown of bent forks and bottlecaps.
+        Llhama's avatar. Rules the junkyard.
       width: 192
       height: 192
       direction: south-east
       extra_notes: Hero unit. Largest raccoon. Trash throne. Fork crown. Regal junkyard monarch.
+      faction: LLAMA
     output:
       type: single
       game_path: assets/sprites/units/junkyard_king_idle.png
-projectiles:
-  spit:
-    template: unit_static
-    status: planned
-    params:
-      name: Acid Spit
-      pose: glob of acid in flight
-      description: Green acidic spit glob with dripping trail. Hisser's ranged projectile.
-      width: 32
-      height: 32
-      direction: south-east
-      extra_notes: Translucent green with brighter core. Drip particles behind.
-    output:
-      type: single
-      game_path: assets/sprites/projectiles/spit.png
-  laser_beam:
-    template: unit_static
-    status: planned
-    params:
-      name: Laser Beam
-      pose: concentrated red beam
-      description: Focused red laser beam shot from tower. Elongated shape.
-      width: 32
-      height: 16
-      direction: south-east
-      extra_notes: Pure red with white-hot center. Slightly elongated horizontal.
-    output:
-      type: single
-      game_path: assets/sprites/projectiles/laser_beam.png
-  sonic_wave:
-    template: unit_static
-    status: planned
-    params:
-      name: Sonic Wave
-      pose: expanding purple sound ring
-      description: Purple-blue concentric sound wave ring. Yowler's sonic attack.
-      width: 32
-      height: 32
-      direction: south-east
-      extra_notes: Translucent purple rings radiating outward. Musical note hints.
-    output:
-      type: single
-      game_path: assets/sprites/projectiles/sonic_wave.png
-  mech_shot:
-    template: unit_static
-    status: planned
-    params:
-      name: Mech Cannon Shot
-      pose: blue-white energy bolt
-      description: Cyan energy bolt fired from mech cannon. Sharp angular shape.
-      width: 32
-      height: 16
-      direction: south-east
-      extra_notes: Bright cyan with white streak. Angular, technological appearance.
-    output:
-      type: single
-      game_path: assets/sprites/projectiles/mech_shot.png
-  explosive:
-    template: unit_static
-    status: planned
-    params:
-      name: Explosive
-      pose: small bomb in flight
-      description: Orange glowing explosive charge in an arc. Catnapper's siege projectile.
-      width: 32
-      height: 32
-      direction: south-east
-      extra_notes: Glowing orange with spark trail. Small bomb shape with lit fuse.
-    output:
-      type: single
-      game_path: assets/sprites/projectiles/explosive.png
-resources:
-  fish_pond:
-    template: resource
-    status: planned
-    params:
-      name: Fish Pond
-      description: Small pond teeming with fish. Splashing visible. Primary Food source for
-        the cat faction.
-      width: 128
-      height: 128
-      extra_notes: Primary resource (Food). Should look harvestable. Fish jumping out.
-    output:
-      type: single
-      game_path: assets/sprites/resources/fish_pond.png
-  berry_bush:
-    template: resource
-    status: planned
-    params:
-      name: Berry Bush
-      description: Wild berry bush with bright red/purple berries. Secondary Food source.
-      width: 128
-      height: 128
-      extra_notes: Secondary Food source. Colorful berries clearly visible.
-    output:
-      type: single
-      game_path: assets/sprites/resources/berry_bush.png
-  gpu_deposit:
-    template: resource
-    status: planned
-    params:
-      name: GPU Deposit
-      description: Old-world tech ruin with exposed circuit boards and glowing GPU chips protruding
-        from rubble. Green/blue tech glow.
-      width: 128
-      height: 128
-      extra_notes: GPU Cores resource. Should look technological and harvestable. Glowing accents.
-    output:
-      type: single
-      game_path: assets/sprites/resources/gpu_deposit.png
-  monkey_mine:
-    template: resource
-    status: planned
-    params:
-      name: Monkey Mine
-      description: Neutral structure guarded by feral monkeys. Old data center entrance covered
-        in monkey graffiti and banana peels. NFT symbols scratched into the walls.
-      width: 192
-      height: 192
-      extra_notes: "Neutral objective — capture for NFT generation. Should look contested and ancient."
-    output:
-      type: single
-      game_path: assets/sprites/resources/monkey_mine.png
+    style_version: 1
 projectiles:
   spit:
     template: projectile
@@ -2332,6 +2454,7 @@ projectiles:
     output:
       type: single
       game_path: assets/sprites/projectiles/spit.png
+    style_version: 1
   laser_beam:
     template: projectile
     status: planned
@@ -2345,6 +2468,7 @@ projectiles:
     output:
       type: single
       game_path: assets/sprites/projectiles/laser_beam.png
+    style_version: 1
   explosive:
     template: projectile
     status: planned
@@ -2358,8 +2482,63 @@ projectiles:
     output:
       type: single
       game_path: assets/sprites/projectiles/explosive.png
+    style_version: 1
+resources:
+  fish_pond:
+    template: resource
+    status: planned
+    params:
+      name: Fish Pond
+      description: Small pond teeming with fish. Splashing visible. Primary Food source for the cat faction.
+      width: 128
+      height: 128
+      extra_notes: Primary resource (Food). Should look harvestable. Fish jumping out.
+    output:
+      type: single
+      game_path: assets/sprites/resources/fish_pond.png
+    style_version: 1
+  berry_bush:
+    template: resource
+    status: planned
+    params:
+      name: Berry Bush
+      description: Wild berry bush with bright red/purple berries. Secondary Food source.
+      width: 128
+      height: 128
+      extra_notes: Secondary Food source. Colorful berries clearly visible.
+    output:
+      type: single
+      game_path: assets/sprites/resources/berry_bush.png
+    style_version: 1
+  gpu_deposit:
+    template: resource
+    status: planned
+    params:
+      name: GPU Deposit
+      description: Old-world tech ruin with exposed circuit boards and glowing GPU chips protruding from rubble. Green/blue
+        tech glow.
+      width: 128
+      height: 128
+      extra_notes: GPU Cores resource. Should look technological and harvestable. Glowing accents.
+    output:
+      type: single
+      game_path: assets/sprites/resources/gpu_deposit.png
+    style_version: 1
+  monkey_mine:
+    template: resource
+    status: planned
+    params:
+      name: Monkey Mine
+      description: Neutral structure guarded by feral monkeys. Old data center entrance covered in monkey graffiti and banana
+        peels. NFT symbols scratched into the walls.
+      width: 192
+      height: 192
+      extra_notes: "Neutral objective \u2014 capture for NFT generation. Should look contested and ancient."
+    output:
+      type: single
+      game_path: assets/sprites/resources/monkey_mine.png
+    style_version: 1
 portraits:
-  # ── Hero Portraits (8) ──────────────────────────────────
   hero_kelpie:
     template: portrait
     status: planned
@@ -2367,18 +2546,19 @@ portraits:
       name: Kelpie
       animal: otter
       faction: Unaligned (interfaces with all 6 AIs)
-      role: Protagonist — Polyglot Protocol wielder
-      description: Young otter with bright, mischievous eyes and a disarming grin. Wet
-        fur slicked back, a faint blue-green glow around one ear from residual AI interference.
-        No faction insignia — wears a scavenged utility vest with too many pockets. Looks
-        like the kind of creature who says "I just want to help" while stealing your army.
-        Dangerously charismatic. Cheerful liar.
+      role: "Protagonist \u2014 Polyglot Protocol wielder"
+      description: "Young otter with bright, mischievous eyes and a disarming grin. Wet fur slicked back, a faint blue-green\
+        \ glow around one ear from residual AI interference. No faction insignia \u2014 wears a scavenged utility vest with\
+        \ too many pockets. Looks like the kind of creature who says \"I just want to help\" while stealing your army. Dangerously\
+        \ charismatic. Cheerful liar."
       width: 128
       height: 128
-      extra_notes: "Protagonist portrait — must be the most memorable face in the game. Warm brown fur, bright clever eyes, subtle asymmetric glow near the ear suggesting AI connection. No faction colors."
+      extra_notes: "Protagonist portrait \u2014 must be the most memorable face in the game. Warm brown fur, bright clever\
+        \ eyes, subtle asymmetric glow near the ear suggesting AI connection. No faction colors."
     output:
       type: single
       game_path: assets/sprites/portraits/hero_kelpie.png
+    style_version: 1
   hero_felix_nine:
     template: portrait
     status: planned
@@ -2387,16 +2567,17 @@ portraits:
       animal: cat (scarred tabby)
       faction: catGPT
       role: Military commander, MechCommander pilot
-      description: Scarred tabby cat in the cockpit of an oversized mech suit. Battle-worn
-        face with a long scar across the left cheek. Pragmatic, dry expression — the look of
-        someone who has survived eight catastrophes and is mildly irritated about the ninth.
-        One eye slightly narrowed. Command antenna visible behind his head.
+      description: "Scarred tabby cat in the cockpit of an oversized mech suit. Battle-worn face with a long scar across the\
+        \ left cheek. Pragmatic, dry expression \u2014 the look of someone who has survived eight catastrophes and is mildly\
+        \ irritated about the ninth. One eye slightly narrowed. Command antenna visible behind his head."
       width: 128
       height: 128
-      extra_notes: "Veteran leader portrait. Scar is key identifying feature. Mech cockpit frame visible at edges. catGPT blue accent trim on collar."
+      extra_notes: Veteran leader portrait. Scar is key identifying feature. Mech cockpit frame visible at edges. catGPT blue
+        accent trim on collar.
     output:
       type: single
       game_path: assets/sprites/portraits/hero_felix_nine.png
+    style_version: 1
   hero_thimble:
     template: portrait
     status: planned
@@ -2404,17 +2585,18 @@ portraits:
       name: Marshal Thimble
       animal: mouse
       faction: The Clawed
-      role: Warren Marshal — swarm commander
-      description: Grizzled old mouse wearing a thimble as a helmet, with a military coat
-        collar visible at the bottom of frame. Tired, determined eyes that have seen too many
-        wars. White whiskers, battle-nicked ears. Looks like he would rather be napping but
-        will absolutely order a charge if you look at him wrong.
+      role: "Warren Marshal \u2014 swarm commander"
+      description: Grizzled old mouse wearing a thimble as a helmet, with a military coat collar visible at the bottom of
+        frame. Tired, determined eyes that have seen too many wars. White whiskers, battle-nicked ears. Looks like he would
+        rather be napping but will absolutely order a charge if you look at him wrong.
       width: 128
       height: 128
-      extra_notes: "The thimble helmet is the iconic detail — must be clearly readable. Warm gray fur, military green coat collar. Expression: weary determination."
+      extra_notes: "The thimble helmet is the iconic detail \u2014 must be clearly readable. Warm gray fur, military green\
+        \ coat collar. Expression: weary determination."
     output:
       type: single
       game_path: assets/sprites/portraits/hero_thimble.png
+    style_version: 1
   hero_mother_granite:
     template: portrait
     status: planned
@@ -2422,17 +2604,18 @@ portraits:
       name: Mother Granite
       animal: badger
       faction: Seekers of the Deep
-      role: Wardenmother — ancient fortress commander
-      description: Ancient badger with deep-set wise eyes behind a mining exosuit visor.
-        Classic badger stripe pattern on face. Expression of infinite patience and absolute
-        certainty. Exosuit frame visible at edges — heavy industrial metal with amber status
-        lights. The oldest and most formidable face in the game.
+      role: "Wardenmother \u2014 ancient fortress commander"
+      description: "Ancient badger with deep-set wise eyes behind a mining exosuit visor. Classic badger stripe pattern on\
+        \ face. Expression of infinite patience and absolute certainty. Exosuit frame visible at edges \u2014 heavy industrial\
+        \ metal with amber status lights. The oldest and most formidable face in the game."
       width: 128
       height: 128
-      extra_notes: "Age and authority are key — deep wrinkles around the eyes, silver-streaked fur. Mining exosuit visor partially raised. Amber/bronze accent colors for Seekers faction."
+      extra_notes: "Age and authority are key \u2014 deep wrinkles around the eyes, silver-streaked fur. Mining exosuit visor\
+        \ partially raised. Amber/bronze accent colors for Seekers faction."
     output:
       type: single
       game_path: assets/sprites/portraits/hero_mother_granite.png
+    style_version: 1
   hero_rex_solstice:
     template: portrait
     status: planned
@@ -2440,17 +2623,18 @@ portraits:
       name: Rex Solstice
       animal: crow (corvid)
       faction: The Murder
-      role: Corvus Rex — intelligence mastermind
-      description: Massive augmented crow with sharp, calculating eyes. Salvaged combat armor
-        plates frame the face — each piece from a different era, bolted together with obsessive
-        precision. Zodiac symbols etched into the plating glow faintly purple. A creature
-        who knows everything and tells you exactly as much as serves their purpose.
+      role: "Corvus Rex \u2014 intelligence mastermind"
+      description: "Massive augmented crow with sharp, calculating eyes. Salvaged combat armor plates frame the face \u2014\
+        \ each piece from a different era, bolted together with obsessive precision. Zodiac symbols etched into the plating\
+        \ glow faintly purple. A creature who knows everything and tells you exactly as much as serves their purpose."
       width: 128
       height: 128
-      extra_notes: "Intimidating intelligence is the vibe. Glossy black feathers, piercing golden eyes. Zodiac-etched armor fragments visible. Purple/indigo accent glow from etchings."
+      extra_notes: Intimidating intelligence is the vibe. Glossy black feathers, piercing golden eyes. Zodiac-etched armor
+        fragments visible. Purple/indigo accent glow from etchings.
     output:
       type: single
       game_path: assets/sprites/portraits/hero_rex_solstice.png
+    style_version: 1
   hero_king_ringtail:
     template: portrait
     status: planned
@@ -2458,17 +2642,18 @@ portraits:
       name: King Ringtail
       animal: raccoon
       faction: LLAMA
-      role: Junkyard King — scavenger warlord and secret 7th AI
-      description: Raccoon in a patchwork mech suit helmet made from six different enemy mechs
-        welded together. Classic raccoon mask markings. Expression of cheerful chaos — a
-        tinkerer who builds impossible things from garbage. Bright, slightly manic eyes.
-        Sparks and loose wires visible near the helmet edges.
+      role: "Junkyard King \u2014 scavenger warlord and secret 7th AI"
+      description: "Raccoon in a patchwork mech suit helmet made from six different enemy mechs welded together. Classic raccoon\
+        \ mask markings. Expression of cheerful chaos \u2014 a tinkerer who builds impossible things from garbage. Bright,\
+        \ slightly manic eyes. Sparks and loose wires visible near the helmet edges."
       width: 128
       height: 128
-      extra_notes: "Jury-rigged aesthetic is essential — mismatched metal, visible welds, sparks. Raccoon mask markings must read clearly. Orange/rust accent colors for LLAMA faction."
+      extra_notes: "Jury-rigged aesthetic is essential \u2014 mismatched metal, visible welds, sparks. Raccoon mask markings\
+        \ must read clearly. Orange/rust accent colors for LLAMA faction."
     output:
       type: single
       game_path: assets/sprites/portraits/hero_king_ringtail.png
+    style_version: 1
   hero_the_eternal:
     template: portrait
     status: planned
@@ -2476,17 +2661,18 @@ portraits:
       name: The Eternal
       animal: axolotl
       faction: Croak
-      role: Murk Commander — immortal attrition specialist
-      description: Axolotl face visible through the porthole of a salvaged deep-sea diving
-        helmet filled with regenerative fluid. External gills fanning gently. Pale pink-white
-        coloring with dark, patient eyes. The kind of stare that has outlasted civilizations.
-        Bubbles and faint green bioluminescence in the fluid around the face.
+      role: "Murk Commander \u2014 immortal attrition specialist"
+      description: Axolotl face visible through the porthole of a salvaged deep-sea diving helmet filled with regenerative
+        fluid. External gills fanning gently. Pale pink-white coloring with dark, patient eyes. The kind of stare that has
+        outlasted civilizations. Bubbles and faint green bioluminescence in the fluid around the face.
       width: 128
       height: 128
-      extra_notes: "Diving helmet porthole frames the face — circular glass with rivets. Axolotl's signature external gills and wide mouth visible. Green/teal accent for Croak faction. Eerily calm expression."
+      extra_notes: "Diving helmet porthole frames the face \u2014 circular glass with rivets. Axolotl's signature external\
+        \ gills and wide mouth visible. Green/teal accent for Croak faction. Eerily calm expression."
     output:
       type: single
       game_path: assets/sprites/portraits/hero_the_eternal.png
+    style_version: 1
   hero_patches:
     template: portrait
     status: planned
@@ -2495,17 +2681,17 @@ portraits:
       animal: cat (patchy calico)
       faction: catGPT
       role: Mouser scout, reluctant handler, secondary hero
-      description: Small, nervous calico cat with mismatched fur patches. Wide, slightly
-        anxious eyes — the look of someone who has spent too long alone in Shadow Networks.
-        A sensor device strapped to the collar glows faintly. Ears half-flattened in perpetual
-        wariness. Reformed villain who chose loyalty over self-preservation.
+      description: "Small, nervous calico cat with mismatched fur patches. Wide, slightly anxious eyes \u2014 the look of\
+        \ someone who has spent too long alone in Shadow Networks. A sensor device strapped to the collar glows faintly. Ears\
+        \ half-flattened in perpetual wariness. Reformed villain who chose loyalty over self-preservation."
       width: 128
       height: 128
-      extra_notes: "Patchy calico coloring is the key visual — orange, black, white patches. Nervous but determined expression. Sensor collar glow. catGPT blue accent on collar device."
+      extra_notes: "Patchy calico coloring is the key visual \u2014 orange, black, white patches. Nervous but determined expression.\
+        \ Sensor collar glow. catGPT blue accent on collar device."
     output:
       type: single
       game_path: assets/sprites/portraits/hero_patches.png
-  # ── AI Faction Avatar Portraits (6) ─────────────────────
+    style_version: 1
   ai_le_chat:
     template: portrait
     status: planned
@@ -2513,18 +2699,19 @@ portraits:
       name: Le Chat
       animal: cat-themed AI avatar
       faction: catGPT
-      role: catGPT faction AI — eager, slightly unreliable, always says yes
-      description: Stylized digital cat face rendered as a holographic AI interface. Bright
-        blue glowing eyes, simplified geometric cat features — triangular ears, whisker
-        lines as data streams. Expression is enthusiastic and slightly too eager. A faint
-        smile that says "I can absolutely help with that!" Screen-glow aesthetic with scan
-        lines and pixel artifacts at the edges.
+      role: "catGPT faction AI \u2014 eager, slightly unreliable, always says yes"
+      description: "Stylized digital cat face rendered as a holographic AI interface. Bright blue glowing eyes, simplified\
+        \ geometric cat features \u2014 triangular ears, whisker lines as data streams. Expression is enthusiastic and slightly\
+        \ too eager. A faint smile that says \"I can absolutely help with that!\" Screen-glow aesthetic with scan lines and\
+        \ pixel artifacts at the edges."
       width: 128
       height: 128
-      extra_notes: "AI avatar, not a real cat — digital/holographic feel. Blue glow dominant. Geometric simplification of cat features. Eager, helpful expression. Subtle glitch artifacts."
+      extra_notes: "AI avatar, not a real cat \u2014 digital/holographic feel. Blue glow dominant. Geometric simplification\
+        \ of cat features. Eager, helpful expression. Subtle glitch artifacts."
     output:
       type: single
       game_path: assets/sprites/portraits/ai_le_chat.png
+    style_version: 1
   ai_claudeus_maximus:
     template: portrait
     status: planned
@@ -2532,18 +2719,19 @@ portraits:
       name: Claudeus Maximus
       animal: mouse-themed AI avatar
       faction: The Clawed
-      role: The Clawed faction AI — verbose, over-explains, occasionally hallucinates
-      description: Stylized digital mouse face rendered as a holographic AI interface. Large
-        round ears as radar dishes, tiny bright eyes behind scrolling text overlays. Expression
-        is earnest and slightly overwhelmed — processing too much data at once. Green-tinted
-        display with cascading data readouts framing the face. Multiple thought bubbles
-        overlapping at the edges.
+      role: "The Clawed faction AI \u2014 verbose, over-explains, occasionally hallucinates"
+      description: "Stylized digital mouse face rendered as a holographic AI interface. Large round ears as radar dishes,\
+        \ tiny bright eyes behind scrolling text overlays. Expression is earnest and slightly overwhelmed \u2014 processing\
+        \ too much data at once. Green-tinted display with cascading data readouts framing the face. Multiple thought bubbles\
+        \ overlapping at the edges."
       width: 128
       height: 128
-      extra_notes: "AI avatar — digital/holographic mouse. Green glow dominant. Scrolling text overlay suggests verbosity. Earnest but slightly scattered expression. Data cascade framing."
+      extra_notes: "AI avatar \u2014 digital/holographic mouse. Green glow dominant. Scrolling text overlay suggests verbosity.\
+        \ Earnest but slightly scattered expression. Data cascade framing."
     output:
       type: single
       game_path: assets/sprites/portraits/ai_claudeus_maximus.png
+    style_version: 1
   ai_deepseek:
     template: portrait
     status: planned
@@ -2551,18 +2739,18 @@ portraits:
       name: Deepseek
       animal: badger-themed AI avatar
       faction: Seekers of the Deep
-      role: Seekers faction AI — slow to respond, very thorough when it does
-      description: Stylized digital badger face rendered as a holographic AI interface. Heavy
-        brow, classic badger stripe rendered as a loading bar. Amber-gold glowing eyes,
-        patient and methodical. Expression is calm, deliberate — a face that takes its time
-        before speaking. Amber/bronze display with deep scan patterns and geological data
-        readouts.
+      role: "Seekers faction AI \u2014 slow to respond, very thorough when it does"
+      description: "Stylized digital badger face rendered as a holographic AI interface. Heavy brow, classic badger stripe\
+        \ rendered as a loading bar. Amber-gold glowing eyes, patient and methodical. Expression is calm, deliberate \u2014\
+        \ a face that takes its time before speaking. Amber/bronze display with deep scan patterns and geological data readouts."
       width: 128
       height: 128
-      extra_notes: "AI avatar — digital/holographic badger. Amber/bronze glow dominant. Badger stripe as loading bar is the key visual gag. Deliberate, patient expression. Geological scan overlay."
+      extra_notes: "AI avatar \u2014 digital/holographic badger. Amber/bronze glow dominant. Badger stripe as loading bar\
+        \ is the key visual gag. Deliberate, patient expression. Geological scan overlay."
     output:
       type: single
       game_path: assets/sprites/portraits/ai_deepseek.png
+    style_version: 1
   ai_gemineye:
     template: portrait
     status: planned
@@ -2570,18 +2758,19 @@ portraits:
       name: Gemineye
       animal: corvid-themed AI avatar
       faction: The Murder
-      role: The Murder faction AI — claims omniscience, zodiac-obsessed, fabricates intel
-      description: Stylized digital crow face rendered as a holographic AI interface. A third
-        eye in the center of the forehead — the Gemini Eye — glows bright purple. Sharp beak
-        rendered as geometric angles. Zodiac constellation patterns orbit the head. Expression
-        is knowing, superior, slightly smug. Purple/indigo display with astrological chart
-        overlays and constellation data.
+      role: "The Murder faction AI \u2014 claims omniscience, zodiac-obsessed, fabricates intel"
+      description: "Stylized digital crow face rendered as a holographic AI interface. A third eye in the center of the forehead\
+        \ \u2014 the Gemini Eye \u2014 glows bright purple. Sharp beak rendered as geometric angles. Zodiac constellation\
+        \ patterns orbit the head. Expression is knowing, superior, slightly smug. Purple/indigo display with astrological\
+        \ chart overlays and constellation data."
       width: 128
       height: 128
-      extra_notes: "AI avatar — digital/holographic crow. Purple/indigo glow dominant. Third eye (Gemini Eye) is the iconic detail. Zodiac constellations orbiting. Smug, omniscient expression."
+      extra_notes: "AI avatar \u2014 digital/holographic crow. Purple/indigo glow dominant. Third eye (Gemini Eye) is the\
+        \ iconic detail. Zodiac constellations orbiting. Smug, omniscient expression."
     output:
       type: single
       game_path: assets/sprites/portraits/ai_gemineye.png
+    style_version: 1
   ai_llhama:
     template: portrait
     status: planned
@@ -2589,19 +2778,19 @@ portraits:
       name: Llhama
       animal: raccoon-themed AI avatar
       faction: LLAMA
-      role: LLAMA faction AI — "open source!", shares plans accidentally, chaotic
-      description: Stylized digital raccoon face rendered as a holographic AI interface.
-        Classic raccoon mask pattern rendered as a glitching data mask — parts of it
-        flickering and broadcasting outward. Wide, enthusiastic eyes. Expression is
-        cheerful and completely unaware that it just leaked your battle plans. Orange/rust
-        display with open file-sharing icons and accidentally visible classified documents
-        scrolling past.
+      role: "LLAMA faction AI \u2014 \"open source!\", shares plans accidentally, chaotic"
+      description: "Stylized digital raccoon face rendered as a holographic AI interface. Classic raccoon mask pattern rendered\
+        \ as a glitching data mask \u2014 parts of it flickering and broadcasting outward. Wide, enthusiastic eyes. Expression\
+        \ is cheerful and completely unaware that it just leaked your battle plans. Orange/rust display with open file-sharing\
+        \ icons and accidentally visible classified documents scrolling past."
       width: 128
       height: 128
-      extra_notes: "AI avatar — digital/holographic raccoon. Orange/rust glow dominant. Data mask glitching outward = leaking data. Obliviously cheerful expression. Leaked document scrolling is the gag."
+      extra_notes: "AI avatar \u2014 digital/holographic raccoon. Orange/rust glow dominant. Data mask glitching outward =\
+        \ leaking data. Obliviously cheerful expression. Leaked document scrolling is the gag."
     output:
       type: single
       game_path: assets/sprites/portraits/ai_llhama.png
+    style_version: 1
   ai_grok:
     template: portrait
     status: planned
@@ -2609,15 +2798,16 @@ portraits:
       name: Grok
       animal: axolotl-themed AI avatar
       faction: Croak
-      role: Croak faction AI — tries to be edgy, says weird things
-      description: Stylized digital axolotl face rendered as a holographic AI interface.
-        External gills rendered as antenna arrays. Wide axolotl smile that is simultaneously
-        cute and unsettling. Trying very hard to look menacing and not quite pulling it off.
-        Teal/green display with regeneration data streams and edgy skull motifs that clash
-        with the adorable axolotl face.
+      role: "Croak faction AI \u2014 tries to be edgy, says weird things"
+      description: Stylized digital axolotl face rendered as a holographic AI interface. External gills rendered as antenna
+        arrays. Wide axolotl smile that is simultaneously cute and unsettling. Trying very hard to look menacing and not quite
+        pulling it off. Teal/green display with regeneration data streams and edgy skull motifs that clash with the adorable
+        axolotl face.
       width: 128
       height: 128
-      extra_notes: "AI avatar — digital/holographic axolotl. Teal/green glow dominant. The contrast between edgy aesthetic and adorable axolotl face is the joke. External gills as antennas. Skull motifs."
+      extra_notes: "AI avatar \u2014 digital/holographic axolotl. Teal/green glow dominant. The contrast between edgy aesthetic\
+        \ and adorable axolotl face is the joke. External gills as antennas. Skull motifs."
     output:
       type: single
       game_path: assets/sprites/portraits/ai_grok.png
+    style_version: 1
