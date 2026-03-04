@@ -183,7 +183,7 @@ pub fn classify_keyword(keyword: &str) -> KeywordRole {
         "shadow" => KeywordRole::Ability(AbilityId::ShadowNetwork),
         "booby" => KeywordRole::Ability(AbilityId::BoobyTrap),
         "tunnel" => KeywordRole::Ability(AbilityId::TunnelNetwork),
-        "uplink" | "le chat" => KeywordRole::Ability(AbilityId::LeChatUplink),
+        "uplink" => KeywordRole::Ability(AbilityId::LeChatUplink),
 
         // Upgrade category keywords
         "damage" | "claws" | "fangs" | "talons" | "teeth" => {
@@ -2197,10 +2197,6 @@ mod tests {
         );
         assert_eq!(
             classify_keyword("uplink"),
-            KeywordRole::Ability(AbilityId::LeChatUplink)
-        );
-        assert_eq!(
-            classify_keyword("le chat"),
             KeywordRole::Ability(AbilityId::LeChatUplink)
         );
     }
