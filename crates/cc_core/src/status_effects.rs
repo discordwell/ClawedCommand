@@ -56,6 +56,16 @@ pub enum StatusEffectId {
     DamageBuff,
     /// Playing dead — invulnerable, immobile, can't attack/cast.
     PlayingDead,
+    /// Catnapper Siege Nap — deployed siege mode (immobilized, range ×1.43, damage reduction).
+    SiegeNapDeployed,
+    /// Grease Monkey Junk Mortar — deployed AoE siege mode (immobilized, range ×2.0, attack speed ×0.7).
+    JunkMortarDeployed,
+    /// Croaker enhanced Inflate — bombardment mode (range ×1.667, anti-static bonus).
+    InflatedBombardment,
+    /// Rattled — accuracy debuff from Shrieker Sonic Barrage.
+    Rattled,
+    /// Exposed — damage vulnerability from Hootseer Death Omen.
+    Exposed,
 }
 
 /// Returns true if this status effect is crowd control (CC).

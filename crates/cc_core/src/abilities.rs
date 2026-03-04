@@ -36,7 +36,8 @@ pub enum AbilityId {
     // Catnapper (siege)
     DreamSiege,
     ContagiousYawning,
-    PowerNap,
+    /// Siege Nap — toggle deploy mode with extended range (replaces PowerNap).
+    SiegeNap,
     // FerretSapper (demo)
     ShapedCharge,
     BoobyTrap,
@@ -94,7 +95,8 @@ pub enum AbilityId {
     FeignDeath,
     JunkLauncher,
     SalvageTurret,
-    Overcharge,
+    /// Junk Mortar Mode — toggle deploy with AoE siege range (replaces Overcharge).
+    JunkMortarMode,
     Eavesdrop,
     TrashHeapAmbush,
     LeakInjection,
@@ -143,7 +145,8 @@ pub enum AbilityId {
     // Hootseer (area denial/debuffer)
     PanopticGaze,
     DreadAuraAbility,
-    Omen,
+    /// Death Omen — long-range snipe, double damage vs stationary (replaces Omen).
+    DeathOmen,
     // CorvusRex (hero)
     CorvidNetworkAbility,
     AllSeeingLie,
@@ -205,7 +208,8 @@ pub enum AbilityId {
     // Shrieker (ranged harasser)
     SonicSpit,
     EcholocationPing,
-    FuryOfTheSmall,
+    /// Sonic Barrage — line AoE burst at range 8 (replaces FuryOfTheSmall).
+    SonicBarrage,
     // Tunneler (transport/utility)
     BurrowExpress,
     BurrowUndermine,
@@ -486,12 +490,12 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
             range: Fixed::from_bits(3 << 16),
             max_charges: 0,
         },
-        AbilityId::PowerNap => AbilityDef {
+        AbilityId::SiegeNap => AbilityDef {
             id,
-            activation: Activated,
-            cooldown_ticks: 150,
-            gpu_cost: 10,
-            duration_ticks: 40,
+            activation: Toggle,
+            cooldown_ticks: 20,
+            gpu_cost: 0,
+            duration_ticks: 0,
             range: Fixed::ZERO,
             max_charges: 0,
         },
@@ -658,13 +662,13 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
             range: Fixed::from_bits(5 << 16),
             max_charges: 0,
         },
-        AbilityId::FuryOfTheSmall => AbilityDef {
+        AbilityId::SonicBarrage => AbilityDef {
             id,
-            activation: Passive,
-            cooldown_ticks: 0,
+            activation: Activated,
+            cooldown_ticks: 150, // 15s
             gpu_cost: 0,
-            duration_ticks: 0,
-            range: Fixed::ZERO,
+            duration_ticks: 10, // 1s channel
+            range: Fixed::from_bits(8 << 16), // 8 tiles
             max_charges: 0,
         },
         // Tunneler (transport/utility)
@@ -994,12 +998,12 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
             range: Fixed::from_bits(2 << 16),
             max_charges: 1,
         },
-        AbilityId::Overcharge => AbilityDef {
+        AbilityId::JunkMortarMode => AbilityDef {
             id,
-            activation: Activated,
-            cooldown_ticks: 200,
+            activation: Toggle,
+            cooldown_ticks: 20,
             gpu_cost: 0,
-            duration_ticks: 60,
+            duration_ticks: 0,
             range: Fixed::ZERO,
             max_charges: 0,
         },
@@ -1358,13 +1362,13 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
             range: Fixed::from_bits(5 << 16),
             max_charges: 0,
         },
-        AbilityId::Omen => AbilityDef {
+        AbilityId::DeathOmen => AbilityDef {
             id,
             activation: Activated,
-            cooldown_ticks: 300,
-            gpu_cost: 3,
-            duration_ticks: 100,
-            range: Fixed::from_bits(3 << 16),
+            cooldown_ticks: 120, // 12s
+            gpu_cost: 4,
+            duration_ticks: 0, // instant
+            range: Fixed::from_bits(10 << 16), // 10 tiles
             max_charges: 0,
         },
         // --- Murder: CorvusRex ---
@@ -1960,6 +1964,7 @@ pub fn self_buff_effects(
         // --- Cat faction ---
         AbilityId::Zoomies => &[(StatusEffectId::Zoomies, true)],
         AbilityId::LoafMode => &[(StatusEffectId::LoafModeActive, false)],
+        AbilityId::SiegeNap => &[(StatusEffectId::SiegeNapDeployed, false)],
         AbilityId::SpiteCarry => &[(StatusEffectId::SpiteCarryBuff, true)],
         // --- The Clawed (Mice) ---
         AbilityId::ChewThrough => &[(StatusEffectId::DamageBuff, false)],
@@ -1999,7 +2004,7 @@ pub fn self_buff_effects(
         AbilityId::Getaway => &[(StatusEffectId::SpeedBuff, true)],
         AbilityId::JuryRig => &[(StatusEffectId::ArmorBuff, true)],
         AbilityId::DuctTapeFix => &[(StatusEffectId::ArmorBuff, true)],
-        AbilityId::Overcharge => &[(StatusEffectId::DamageBuff, true)],
+        AbilityId::JunkMortarMode => &[(StatusEffectId::JunkMortarDeployed, false)],
         AbilityId::TrashHeapAmbush => &[
             (StatusEffectId::DamageBuff, true),
             (StatusEffectId::SpeedBuff, true),
@@ -2012,7 +2017,7 @@ pub fn self_buff_effects(
         ],
         // --- Croak (Axolotls) ---
         AbilityId::HunkerAbility => &[(StatusEffectId::LoafModeActive, false)],
-        AbilityId::Inflate => &[(StatusEffectId::ArmorBuff, true)],
+        AbilityId::Inflate => &[(StatusEffectId::InflatedBombardment, true)],
         AbilityId::Hop => &[(StatusEffectId::SpeedBuff, true)],
         AbilityId::RegrowthBurst => &[(StatusEffectId::ArmorBuff, true)],
         AbilityId::PrimordialSoup => &[
@@ -2095,7 +2100,7 @@ pub fn unit_abilities(kind: UnitKind) -> [AbilityId; 3] {
         UnitKind::Catnapper => [
             AbilityId::DreamSiege,
             AbilityId::ContagiousYawning,
-            AbilityId::PowerNap,
+            AbilityId::SiegeNap,
         ],
         UnitKind::FerretSapper => [
             AbilityId::ShapedCharge,
@@ -2136,7 +2141,7 @@ pub fn unit_abilities(kind: UnitKind) -> [AbilityId; 3] {
         UnitKind::GreaseMonkey => [
             AbilityId::JunkLauncher,
             AbilityId::SalvageTurret,
-            AbilityId::Overcharge,
+            AbilityId::JunkMortarMode,
         ],
         UnitKind::DeadDropUnit => [
             AbilityId::Eavesdrop,
@@ -2202,7 +2207,7 @@ pub fn unit_abilities(kind: UnitKind) -> [AbilityId; 3] {
         UnitKind::Hootseer => [
             AbilityId::PanopticGaze,
             AbilityId::DreadAuraAbility,
-            AbilityId::Omen,
+            AbilityId::DeathOmen,
         ],
         UnitKind::CorvusRex => [
             AbilityId::CorvidNetworkAbility,
@@ -2326,7 +2331,7 @@ pub fn unit_abilities(kind: UnitKind) -> [AbilityId; 3] {
         UnitKind::Shrieker => [
             AbilityId::SonicSpit,
             AbilityId::EcholocationPing,
-            AbilityId::FuryOfTheSmall,
+            AbilityId::SonicBarrage,
         ],
         UnitKind::Tunneler => [
             AbilityId::BurrowExpress,
@@ -2393,7 +2398,7 @@ mod tests {
             AbilityId::ShadowNetwork,
             AbilityId::DreamSiege,
             AbilityId::ContagiousYawning,
-            AbilityId::PowerNap,
+            AbilityId::SiegeNap,
             AbilityId::ShapedCharge,
             AbilityId::BoobyTrap,
             AbilityId::TunnelNetwork,
@@ -2418,7 +2423,7 @@ mod tests {
             AbilityId::FeignDeath,
             AbilityId::JunkLauncher,
             AbilityId::SalvageTurret,
-            AbilityId::Overcharge,
+            AbilityId::JunkMortarMode,
             AbilityId::Eavesdrop,
             AbilityId::TrashHeapAmbush,
             AbilityId::LeakInjection,
@@ -2458,7 +2463,7 @@ mod tests {
             AbilityId::PreySense,
             AbilityId::PanopticGaze,
             AbilityId::DreadAuraAbility,
-            AbilityId::Omen,
+            AbilityId::DeathOmen,
             AbilityId::CorvidNetworkAbility,
             AbilityId::AllSeeingLie,
             AbilityId::OculusUplinkAbility,
@@ -2536,7 +2541,7 @@ mod tests {
             AbilityId::IncisorsNeverStop,
             AbilityId::SonicSpit,
             AbilityId::EcholocationPing,
-            AbilityId::FuryOfTheSmall,
+            AbilityId::SonicBarrage,
             AbilityId::BurrowExpress,
             AbilityId::BurrowUndermine,
             AbilityId::SwarmTremorSense,
@@ -2721,9 +2726,12 @@ mod tests {
             AbilityId::HarmonicResonance,
             AbilityId::Lullaby,
             AbilityId::TacticalUplink,
+            AbilityId::SiegeNap,
             // Murder
             AbilityId::Overwatch,
             AbilityId::PanopticGaze,
+            // LLAMA
+            AbilityId::JunkMortarMode,
             // Croak
             AbilityId::HunkerAbility,
         ];
@@ -2761,7 +2769,6 @@ mod tests {
             AbilityId::DuctTapeFix,
             AbilityId::SalvageResurrection,
             AbilityId::SalvageTurret,
-            AbilityId::Overcharge,
             AbilityId::TrashHeapAmbush,
             AbilityId::LeakInjection,
             AbilityId::PryBar,
@@ -2770,6 +2777,8 @@ mod tests {
             AbilityId::StenchCloudAbility,
             AbilityId::FrankensteinProtocol,
             AbilityId::OverclockCascade,
+            // Clawed
+            AbilityId::SonicBarrage,
             // Murder
             AbilityId::Scavenge,
             AbilityId::MimicCall,
@@ -2784,7 +2793,7 @@ mod tests {
             AbilityId::PhantomFlock,
             AbilityId::MirrorPosition,
             AbilityId::SilentStrike,
-            AbilityId::Omen,
+            AbilityId::DeathOmen,
             AbilityId::AllSeeingLie,
             // Croak
             AbilityId::LimbToss,
@@ -2859,7 +2868,7 @@ mod tests {
             AbilityId::PreySense,
             AbilityId::PanopticGaze,
             AbilityId::DreadAuraAbility,
-            AbilityId::Omen,
+            AbilityId::DeathOmen,
             AbilityId::CorvidNetworkAbility,
             AbilityId::AllSeeingLie,
             AbilityId::OculusUplinkAbility,

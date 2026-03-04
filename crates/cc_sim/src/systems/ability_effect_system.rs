@@ -1,15 +1,12 @@
 use bevy::prelude::*;
 
-use cc_core::abilities::{self, AbilityId};
+use cc_core::abilities;
 use cc_core::commands::EntityId;
 use cc_core::components::{AbilitySlots, Dead, DreamSiegeTimer, Health, Owner};
-use cc_core::status_effects::{StatusEffectId, StatusEffects};
-use cc_core::tuning::POWER_NAP_GPU_INTERVAL;
-
-use crate::resources::PlayerResources;
+use cc_core::status_effects::StatusEffects;
 
 /// Bridge system: reads AbilitySlots and applies/refreshes corresponding StatusEffects
-/// when abilities are active. Also handles DreamSiege damage reset and PowerNap GPU gen.
+/// when abilities are active. Also handles DreamSiege damage reset.
 pub fn ability_effect_system(
     mut query: Query<
         (
@@ -22,9 +19,8 @@ pub fn ability_effect_system(
         ),
         Without<Dead>,
     >,
-    mut player_res: ResMut<PlayerResources>,
 ) {
-    for (entity, slots, mut effects, health, dream_siege_timer, owner) in query.iter_mut() {
+    for (entity, slots, mut effects, health, dream_siege_timer, _owner) in query.iter_mut() {
         // T2 Fix: DreamSiege reset on Catnapper taking damage
         if let Some(mut siege_timer) = dream_siege_timer
             && let Some(health) = health
@@ -40,23 +36,6 @@ pub fn ability_effect_system(
 
         for slot in &slots.slots {
             if !slot.active {
-                continue;
-            }
-
-            // PowerNap is special: it generates GPU as a side-effect
-            if slot.id == AbilityId::PowerNap {
-                effects.refresh_or_insert(
-                    StatusEffectId::PowerNapping,
-                    slot.duration_remaining.max(1),
-                    EntityId::from_entity(entity),
-                );
-                if slot.duration_remaining > 0
-                    && slot.duration_remaining % POWER_NAP_GPU_INTERVAL == 0
-                    && let Some(owner) = owner
-                    && let Some(pres) = player_res.players.get_mut(owner.player_id as usize)
-                {
-                    pres.gpu_cores += 1;
-                }
                 continue;
             }
 

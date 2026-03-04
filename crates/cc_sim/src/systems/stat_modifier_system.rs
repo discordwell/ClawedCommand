@@ -123,12 +123,14 @@ pub fn stat_modifier_system(mut query: Query<(&StatusEffects, &mut StatModifiers
                     modifiers.silenced = true;
                 }
                 StatusEffectId::Entrenched => {
-                    // Immobile, 30% damage reduction, 20% damage boost
+                    // Immobile, 30% damage reduction, 20% damage boost, +50% anti-static
                     modifiers.immobilized = true;
                     modifiers.damage_reduction *=
                         Fixed::from_bits((1 << 16) - (1 << 16) * 30 / 100); // 0.70
                     modifiers.damage_multiplier *=
                         Fixed::from_bits((1 << 16) + (1 << 16) * 20 / 100); // 1.20
+                    // Patience of Stone: bonus damage vs stationary targets
+                    modifiers.anti_static_bonus += Fixed::from_bits((1 << 16) * 50 / 100); // 0.5
                 }
                 StatusEffectId::SpeedBuff => {
                     // +50% speed (no attack penalty)
@@ -151,6 +153,37 @@ pub fn stat_modifier_system(mut query: Query<(&StatusEffects, &mut StatModifiers
                     modifiers.immobilized = true;
                     modifiers.cannot_attack = true;
                     modifiers.silenced = true;
+                }
+                StatusEffectId::SiegeNapDeployed => {
+                    // Catnapper siege mode: immobilized, range ×1.43, 30% damage reduction
+                    modifiers.immobilized = true;
+                    modifiers.range_multiplier *=
+                        Fixed::from_bits((1 << 16) * 143 / 100); // 1.43
+                    modifiers.damage_reduction *=
+                        Fixed::from_bits((1 << 16) - (1 << 16) * 30 / 100); // 0.70
+                }
+                StatusEffectId::JunkMortarDeployed => {
+                    // Grease Monkey siege mode: immobilized, range ×2.0, attack speed ×0.7
+                    modifiers.immobilized = true;
+                    modifiers.range_multiplier *= Fixed::from_num(2); // 2.0
+                    modifiers.attack_speed_multiplier *=
+                        Fixed::from_bits((1 << 16) - (1 << 16) * 30 / 100); // 0.70
+                }
+                StatusEffectId::InflatedBombardment => {
+                    // Croaker inflated: range ×1.667 (6→10), anti-static +0.4
+                    modifiers.range_multiplier *=
+                        Fixed::from_bits((1 << 16) * 167 / 100); // 1.67
+                    modifiers.anti_static_bonus += Fixed::from_bits((1 << 16) * 40 / 100); // 0.4
+                }
+                StatusEffectId::Rattled => {
+                    // -10% attack speed (Shrieker Sonic Barrage debuff)
+                    modifiers.attack_speed_multiplier *=
+                        Fixed::from_bits((1 << 16) + (1 << 16) * 10 / 100); // 1.10 (slower)
+                }
+                StatusEffectId::Exposed => {
+                    // +20% damage taken (Hootseer Death Omen debuff)
+                    modifiers.damage_reduction *=
+                        Fixed::from_bits((1 << 16) + (1 << 16) * 20 / 100); // 1.20
                 }
             }
         }

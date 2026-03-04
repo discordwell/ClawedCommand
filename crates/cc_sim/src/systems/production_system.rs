@@ -443,20 +443,9 @@ pub fn production_system(
                         trinkets_collected: 0,
                     });
                 }
-                // --- Seekers of the Deep spawn-time components ---
-                if matches!(
-                    kind,
-                    UnitKind::Delver
-                        | UnitKind::Ironhide
-                        | UnitKind::Cragback
-                        | UnitKind::Warden
-                        | UnitKind::Sapjaw
-                        | UnitKind::Wardenmother
-                        | UnitKind::SeekerTunneler
-                        | UnitKind::Embermaw
-                        | UnitKind::Dustclaw
-                        | UnitKind::Gutripper
-                ) {
+                // --- StationaryTimer for all combat units ---
+                // Needed for anti-static damage bonus (targets must be trackable).
+                if !kind.is_worker() {
                     entity_cmds.insert(StationaryTimer::default());
                 }
                 if matches!(

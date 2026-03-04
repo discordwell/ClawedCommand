@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use cc_core::commands::EntityId;
 use cc_core::components::{
     AttackMoveTarget, AttackStats, AttackTarget, Building, ChasingTarget, Dead, HoldPosition,
-    MoveTarget, Owner, Path, Position, UnitType,
+    MoveTarget, Owner, Path, Position, StatModifiers, UnitType,
 };
 use cc_core::math::Fixed;
 use cc_core::tuning::ATTACK_MOVE_SIGHT_RANGE;
@@ -22,6 +22,7 @@ pub fn target_acquisition_system(
             Option<&AttackMoveTarget>,
             Option<&MoveTarget>,
             Option<&ChasingTarget>,
+            Option<&StatModifiers>,
         ),
         (With<UnitType>, Without<Dead>),
     >,
@@ -30,7 +31,7 @@ pub fn target_acquisition_system(
         (Or<(With<UnitType>, With<Building>)>, Without<Dead>),
     >,
 ) {
-    for (entity, pos, owner, stats, current_target, hold, atk_move, move_target, chasing) in
+    for (entity, pos, owner, stats, current_target, hold, atk_move, move_target, chasing, stat_mods) in
         units.iter()
     {
         // Check if current target is still alive
@@ -53,11 +54,17 @@ pub fn target_acquisition_system(
         }
 
         // Determine scan radius: weapon range for idle/hold, sight range for AttackMove
+        // Apply range_multiplier from stat modifiers (e.g. SiegeNap, JunkMortarMode)
+        let effective_range = if let Some(mods) = stat_mods {
+            stats.range * mods.range_multiplier
+        } else {
+            stats.range
+        };
         let scan_range_sq = if atk_move.is_some() && hold.is_none() {
             let sight = Fixed::from_num(ATTACK_MOVE_SIGHT_RANGE);
             sight * sight
         } else {
-            stats.range * stats.range
+            effective_range * effective_range
         };
 
         let mut best_dist_sq = scan_range_sq;

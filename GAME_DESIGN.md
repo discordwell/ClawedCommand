@@ -179,7 +179,7 @@ catGPT's identity is "collectively annoying." Ten units with abilities designed 
 |---------|-------------|
 | **Dream Siege** | The Catnapper's siege damage ramps over time: 1x at 0-5s, 2x at 5-15s, 4x at 15-30s, 8x at 30s+. Any damage to the Catnapper resets the timer. It doesn't wake up — it just gets *less comfortable* and the damage rate resets. |
 | **Contagious Yawning** | Passive aura: enemy units within 3 tiles of a sleeping Catnapper have a 10% chance per second to *Drowse* — they freeze for 0.5s. Multiple Catnappers increase the chance (diminishing per aura stacking rules), but each unit has a 2s Drowse immunity window after being Drowsed. |
-| **Nine Lives** | The first time a Catnapper would die, it instead falls asleep for 5s (invulnerable), then wakes up at 30% HP. This can only trigger once per Catnapper. If it's already on an enemy building when Nine Lives triggers, the sleep timer counts toward Dream Siege ramp. |
+| **Siege Nap** | Toggle: the Catnapper deploys into a deep nap, becoming immobile. While deployed: range increases by 43% (base 2→~2.86), gains 30% damage reduction, and Dream Siege ramp continues. Toggle off to resume moving (2s cooldown). The Catnapper trades mobility for safe siege range — outranging defenders who can't close the distance. |
 
 **AI synergy**: Le Chat manages Catnapper protection — keeping Chonks and Yowlers positioned to prevent damage that would reset Dream Siege timers. It calculates when a Catnapper is about to hit the 8x damage threshold and prioritizes protecting *that specific* Catnapper. It uses Contagious Yawning positioning to Drowse defenders while the siege ramps. The AI turns a "cute sleeping cat" into an unstoppable siege engine by solving the protection puzzle.
 
@@ -339,9 +339,9 @@ Where the catGPT fields 6-8 elite units and wins through quality, The Clawed fie
 |---------|-------------|
 | **Sonic Spit** | Primary attack. Short range (3 tiles), but hits all enemies in a narrow cone (1-tile wide at origin, 2-tiles wide at max range). Deals moderate damage and applies *Rattled*: -10% accuracy for 4s. *Rattled* from multiple Shriekers stacks additively up to -40% (4 Shriekers). |
 | **Echolocation Ping** | Active: emits a screech that reveals all units (including stealthed) in a 5-tile radius for 3s. Each revealed enemy is *Marked* — takes +8% damage from all sources for 5s. 18s cooldown. If another Shrieker Pings within 3s and overlapping radius, the Mark bonus increases to +12% for the overlap zone. |
-| **Fury of the Small** | Passive: the Shrieker deals +15% damage to any unit with a larger sprite size (medium or heavy class). Against units that are currently CC'd (*Tilted*, *Drowsed*, *Disoriented*, *Spooked*), deals +25% instead. These bonuses stack multiplicatively. |
+| **Sonic Barrage** | Active: the Shrieker unleashes a concentrated sonic blast in a line (range 8, 1-tile wide). Deals 20 damage to all enemies in the line and applies *Rattled* (-10% accuracy) for 3s. If 2+ Shriekers fire within 2s with overlapping lines, the intersection gets +50% damage (resonance). 15s cooldown, 0 GPU. |
 
-**AI synergy**: Claudeus Maximus staggers Echolocation Pings across multiple Shriekers to maintain persistent vision and overlapping Mark zones, then over-explains the timing math: "Shrieker 4 will Ping at T+2.7 seconds to maintain 94.3% uptime on the Mark debuff, which I believe is optimal, although I should note that 94.7% is theoretically achievable if—" It positions Shriekers to maximize cone overlap on clustered enemies and pairs them with CC units to proc Fury of the Small's bonus damage. A human uses Shriekers as noisy DPS. Claudeus Maximus uses them as a combined sensor-and-debuff array.
+**AI synergy**: Claudeus Maximus staggers Echolocation Pings across multiple Shriekers to maintain persistent vision and overlapping Mark zones, then over-explains the timing math: "Shrieker 4 will Ping at T+2.7 seconds to maintain 94.3% uptime on the Mark debuff, which I believe is optimal, although I should note that 94.7% is theoretically achievable if—" It positions Shriekers to maximize cone overlap on clustered enemies and pairs them with CC units to proc Sonic Barrage's bonus damage. A human uses Shriekers as noisy DPS. Claudeus Maximus uses them as a combined sensor-and-debuff array.
 
 ---
 
@@ -449,7 +449,7 @@ VISION LAYER
 CONTROL LAYER
   Quillback (Quill Burst → Spooked) ──► scatters enemies into ──► Plaguetail (Miasma Trail)
   Whiskerwitch (Whisker Weave → Spooked) ──► flees enemies through ──► Swarmer dust clouds
-  Swarmer (Pile On → slow) ──► pins targets for ──► Shrieker (Fury of the Small vs CC'd)
+  Swarmer (Pile On → slow) ──► pins targets for ──► Shrieker (Sonic Barrage vs CC'd)
   Plaguetail (Miasma Trail → slow) ──► shapes pathing into ──► Quillback (Spine Wall chokepoints)
 
 DAMAGE LAYER
@@ -543,7 +543,7 @@ The general ability rules from the cat faction apply globally. Additional Seeker
 | Ability | Description |
 |---------|-------------|
 | **Boulder Barrage** | Primary attack: lobs a boulder at long range (8 tiles) that deals heavy AoE damage in a 2-tile radius on impact. 3s between shots. The boulder leaves *Rubble* on the impact tile for 12s — rubble tiles cost 3x movement for all units (friend and foe) and block line of sight for ground-level units. Max 4 rubble piles active per Cragback. |
-| **Entrench** | Toggle: the Cragback digs its legs into the ground. Boulder Barrage range increases to 12 tiles, fire rate improves to 2s between shots, and the Cragback gains 30% damage reduction. Cannot move while entrenched. Toggling off takes 3s (digging out). While entrenched, Boulder Barrage can fire over obstacles and intervening units. |
+| **Entrench** | Toggle: the Cragback digs its legs into the ground. Boulder Barrage range increases to 12 tiles, fire rate improves to 2s between shots, and the Cragback gains 30% damage reduction. Cannot move while entrenched. Toggling off takes 3s (digging out). While entrenched, Boulder Barrage can fire over obstacles and intervening units. **Patience of Stone**: while entrenched, deals +50% bonus damage to targets that have been stationary for 3+ seconds — devastating against turtling armies. |
 | **Seismic Slam** | Active: the Cragback rears up and slams the ground. All enemies within 3 tiles take moderate damage, are *Drowsed* for 1.5s, and are pushed back 2 tiles. Allies within range are unaffected. Destroys all Rubble piles in range (clearing the terrain). 25s cooldown. Can only be used when NOT entrenched (the Cragback needs to stand to slam). |
 
 **AI synergy**: Deepseek manages Cragback entrenchment positions with obsessive precision — calculating exact tiles where Entrenched range covers the maximum number of chokepoints and approach vectors. It coordinates Boulder Barrage fire across multiple Cragbacks to create rubble walls that funnel enemy movement into kill zones, then clears those same rubble walls with Seismic Slam when friendly units need to advance. Deepseek pre-calculates rubble placement patterns that look random but form interlocking movement traps. A human entrenches a Cragback and shoots. Deepseek turns three Cragbacks into an artillery battery that reshapes the battlefield.
@@ -857,7 +857,7 @@ Most Murder units are aerial — they ignore terrain pathing and fly over obstac
 |---------|-------------|
 | **Panoptic Gaze** | Toggle: the Hootseer selects a 120-degree cone of enhanced vision (extends vision by +6 tiles in that cone). The cone can be rotated freely while toggled. Enemies in the enhanced cone are *Exposed* for as long as they remain in it plus 4s after leaving. The Hootseer's peripheral vision (outside the cone) is reduced by 3 tiles. |
 | **Dread Aura** | Passive aura: enemy units within 5 tiles of the Hootseer have -10% accuracy (attacks have a 10% chance to miss) and -10% ability effectiveness (durations, damage, and heal amounts reduced). Stacks with other Hootseers per aura diminishing rules (2nd = 75%, 3rd = 50%). Does not affect Murder units. |
-| **Omen** | Active (3 GPU Cores): targets an enemy unit within Panoptic Gaze's enhanced cone. For 10s, that unit's owner can see a ghost overlay of where Gemineye *predicts* the unit will be in 3s — but the prediction is occasionally wrong (fabrication chance applies). Correct predictions are useless to the enemy. Wrong predictions cause the enemy to mis-micro. Either way, the targeted unit is *Exposed* and takes +15% damage from all sources for the duration. Benefits from Oculus Uplink discount. |
+| **Death Omen** | Active (4 GPU Cores): the Hootseer channels a psychic bolt at a target area (range 10, 2-tile AoE). Deals 25 base damage. Targets that have been stationary for 3+ seconds take double damage (50). All targets hit are *Exposed* (take +20% damage from all sources) for 6s. 12s cooldown. The ultimate anti-turtle ability — punishes armies that sit still with devastating long-range strikes. |
 
 **AI synergy**: Gemineye rotates Panoptic Gaze cones across multiple Hootseers to create continuous 360-degree enhanced surveillance with no blind spots — a micro task that would require constant attention from a human. It overlaps Dread Aura coverage on critical chokepoints to debuff entire enemy pushes. Omen is Gemineye's psychological warfare tool: it feeds the enemy disinformation about their own unit's future position. Even when the prediction is correct, the enemy wastes attention processing it. When it's fabricated, the enemy dodges an attack that isn't coming and walks into the one that is. Gemineye uses Omen on enemy hero units during critical fights to inject maximum confusion.
 
@@ -891,7 +891,7 @@ INTELLIGENCE LAYER
 DECEPTION LAYER
   Jayflicker (Phantom Flock) + Scrounger (Mimic Call) = fake army + fake distress signals
   Magpyre (Decoy Nest) ──► wastes enemy scouting on ──► fake buildings
-  Hootseer (Omen) ──► feeds false predictions to ──► enemy micro decisions
+  Hootseer (Death Omen) ──► long-range anti-turtle siege to ──► punish stationary armies
   Corvus Rex (All-Seeing Lie) ──► global reveal mixed with ──► phantom contacts
 
 DISRUPTION LAYER
@@ -1034,7 +1034,7 @@ Croak buildings can be placed on water tiles. Water is not just terrain — it i
 |---------|-------------|
 | **Bog Mortar** | Primary attack: the Croaker inflates its vocal sac and launches a glob of swamp matter at a target area (6-tile range, 2-tile splash). Deals moderate damage and leaves a *Bog Patch* — a 1-tile puddle that counts as water terrain for 15s. Enemies on a Bog Patch are slowed by 20%. 4s between shots. |
 | **Resonance Chain** | Passive: if a Bog Mortar glob lands within 2 tiles of another Bog Patch, the patches link and all enemies standing on any connected patch take 25% bonus damage from the initial hit. Chaining 3+ patches triggers a *Bog Eruption* — all connected patches explode for burst AoE damage and the patches are consumed. Rewards careful placement over rapid fire. |
-| **Inflate** | Active: the Croaker fully inflates, becoming immobile for 3s. During Inflate, its next Bog Mortar has +50% range, +75% splash radius, and guaranteed Bog Patch creation even on non-ground tiles (bridges, rubble). 18s cooldown. While inflated, the Croaker's hitbox is 50% larger (easier to hit). |
+| **Inflate** | Active: the Croaker fully inflates, becoming immobile for 3s. During Inflate, range increases to ×1.67 (base 6→10), +75% splash radius, and guaranteed Bog Patch creation even on non-ground tiles (bridges, rubble). Additionally gains +40% bonus damage vs targets stationary for 3+ seconds — punishing turtling armies with long-range bombardment. 18s cooldown. While inflated, the Croaker's hitbox is 50% larger (easier to hit). |
 
 **AI synergy**: Grok maps the entire battlefield's Bog Patch geometry and calculates optimal mortar placement to build Resonance Chains without triggering them prematurely. It holds fire on the final chain link until maximum enemies are standing on patches, then fires the linking shot for devastating Bog Eruptions. It times Inflate for long-range snipes through terrain that normally blocks splash. A human Croaker makes puddles. Grok's Croaker turns the battlefield into a connected minefield of water terrain that simultaneously buffs allies (Water Affinity) and detonates under enemies.
 
@@ -1257,9 +1257,9 @@ Llhama is their AI agent. It's open-source. It's enthusiastic. It accidentally b
 |---------|-------------|
 | **Junk Launcher** | Primary attack: hurls random scrap at medium range. Base damage is inconsistent — each shot deals between 70% and 130% of listed damage (random per shot). Critical hits (10% chance) deal 200% damage and apply a random debuff from the Scrap Debuff Table: *Corroded* (-10% armor, 8s), *Jammed* (-20% attack speed, 6s), or *Tangled* (-25% move speed, 5s). |
 | **Salvage Turret** | Active: constructs a temporary turret from an enemy wreck (consumes the wreck). The turret inherits the dead unit's attack type at 60% damage and fires autonomously at the nearest enemy. Lasts 20s or until destroyed (HP = 40% of the original unit's max HP). Max 1 turret per Grease Monkey. 15s cooldown after the turret expires or is destroyed. |
-| **Overcharge** | Active: supercharges the Grease Monkey's next 3 attacks over 6s. These shots deal guaranteed max damage (130%), always crit, and have +3 tile range. But after the burst, the Junk Launcher *jams* — the Grease Monkey can't attack for 5s while it unjams. 20s cooldown (starts after unjamming). |
+| **Junk Mortar Mode** | Toggle: the Grease Monkey sets up shop, deploying into a stationary artillery platform. While deployed: range doubles (base 5→10), attack speed reduced by 30%, and Junk Launcher shots gain 2-tile AoE splash. Junk Launcher's signature randomness (70-130% damage variance) is kept — that's the LLAMA flavor. Toggle off to resume moving (2s cooldown). |
 
-**AI synergy**: Llhama mitigates Junk Launcher's randomness through volume — coordinating multiple Grease Monkeys to focus fire ensures that average damage converges to expected values despite per-shot variance. It builds Salvage Turrets from the highest-DPS wrecks and positions them to create crossfire zones. Llhama times Overcharge bursts across multiple Grease Monkeys to create synchronized alpha strikes, then staggers the jam windows so the squad is never fully offline. The AI smooths out the chaos into reliable damage.
+**AI synergy**: Llhama mitigates Junk Launcher's randomness through volume — coordinating multiple Grease Monkeys to focus fire ensures that average damage converges to expected values despite per-shot variance. It builds Salvage Turrets from the highest-DPS wrecks and positions them to create crossfire zones. Llhama coordinates Junk Mortar Mode deployments, creating overlapping siege coverage that denies large areas to turtling enemies. The AI smooths out the chaos into reliable damage.
 
 ---
 
@@ -1315,7 +1315,7 @@ Llhama is their AI agent. It's open-source. It's enthusiastic. It accidentally b
 | **Frankenstein Protocol** | Active (10 GPU Cores): targets an enemy wreck and fully rebuilds it as a permanent LLAMA unit at 70% of its original stats with 1 of its 3 original abilities (chosen randomly). The rebuilt unit has a *Jury-Rigged* tag — it sparks, smokes, and occasionally misfires (5% chance per attack to deal 10% damage to itself). Max 3 Frankenstein units alive at once. 45s cooldown. Benefits from Open Source Uplink discount. |
 | **Overclock Cascade** | Active: the Junkyard King channels for 2s, then all allied units within 6 tiles gain +30% attack speed and +20% move speed for 8s. When the cascade ends, all affected units are *Overheated* — they lose 5% max HP over 3s (the jerry-rigged parts burn out). If any unit has jury-rig mods, the cascade also refreshes all jury-rig durations to full. 35s cooldown. |
 
-**AI synergy**: The Junkyard King is Llhama's physical avatar and the faction's strategic anchor. Open Source Uplink makes Llhama's already-cheap commands even cheaper while suppressing plan leaks — the King's presence transforms Llhama from a chaotic liability into a cost-efficient command engine. Llhama uses Frankenstein Protocol to convert the enemy's best dead units into a secondary army, choosing high-value wrecks (enemy heroes, siege units, casters). Overclock Cascade is timed by Llhama to coincide with synchronized Grease Monkey Overcharge bursts and Wrecker pushes — the AI calculates the HP cost against the DPS gain and only cascades when the math favors it. The Junkyard King turns entropy into order.
+**AI synergy**: The Junkyard King is Llhama's physical avatar and the faction's strategic anchor. Open Source Uplink makes Llhama's already-cheap commands even cheaper while suppressing plan leaks — the King's presence transforms Llhama from a chaotic liability into a cost-efficient command engine. Llhama uses Frankenstein Protocol to convert the enemy's best dead units into a secondary army, choosing high-value wrecks (enemy heroes, siege units, casters). Overclock Cascade is timed by Llhama to coincide with Grease Monkey Junk Mortar deployments and Wrecker pushes — the AI calculates the HP cost against the DPS gain and only cascades when the math favors it. The Junkyard King turns entropy into order.
 
 ---
 
@@ -1346,7 +1346,7 @@ CONTROL LAYER
 
 DAMAGE LAYER
   Wrecker (Disassemble) ──► shreds armor for ──► Grease Monkey / Bandit
-  Grease Monkey (Overcharge) ──► alpha strike syncs with ──► Junkyard King (Overclock Cascade)
+  Grease Monkey (Junk Mortar Mode) ──► deployed AoE siege syncs with ──► Junkyard King (Overclock Cascade)
   Bandit (Sticky Fingers) ──► steals buffs that ──► Wrecker (Chain Break) severed
   Heap Titan (Wreck Ball) ──► uses wrecks as ammo + creates ──► Debris Fields for Stench Cloud
 

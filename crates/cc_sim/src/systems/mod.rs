@@ -13,6 +13,7 @@ pub mod projectile_system;
 pub mod research_system;
 pub mod resource_system;
 pub mod stat_modifier_system;
+pub mod stationary_timer_system;
 pub mod status_effect_system;
 pub mod target_acquisition_system;
 pub mod tick_system;
@@ -67,6 +68,7 @@ impl Plugin for SimSystemsPlugin {
                     tower_combat_system::tower_combat_system,
                     projectile_system::projectile_system,
                     movement_system::movement_system,
+                    stationary_timer_system::stationary_timer_system,
                     builder_system::builder_system,
                     grid_sync_system::grid_sync_system,
                     cleanup_system::cleanup_system,

@@ -20,8 +20,8 @@ use cc_core::unit_stats::base_stats;
 use cc_core::upgrade_stats::upgrade_stats;
 
 use crate::systems::damage::{
-    AoeCcCommand, AoeDamageCommand, EcholocationRevealCommand, RevulsionAoeCommand,
-    SpawnHairballCommand,
+    AoeCcCommand, AoeDamageCommand, DeathOmenDamageCommand, EcholocationRevealCommand,
+    LineAoeCcCommand, LineAoeDamageCommand, RevulsionAoeCommand, SpawnHairballCommand,
 };
 use cc_core::tuning::{
     CHAIN_BREAK_BUILDING_MULT, CHAIN_BREAK_DAMAGE, CHAIN_BREAK_RADIUS, DEEP_BORE_DAMAGE,
@@ -577,7 +577,7 @@ pub fn process_commands(
             GameCommand::ActivateAbility {
                 unit_id,
                 slot,
-                target: _ability_target,
+                target: ability_target,
             } => {
                 let entity = Entity::from_bits(unit_id.0);
 
@@ -717,7 +717,9 @@ pub fn process_commands(
                                 | AbilityId::MiasmaTrail
                                 | AbilityId::Entrench
                                 | AbilityId::Overwatch
-                                | AbilityId::HunkerAbility => {
+                                | AbilityId::HunkerAbility
+                                | AbilityId::SiegeNap
+                                | AbilityId::JunkMortarMode => {
                                     // Self-buffs: slot.active toggle is sufficient,
                                     // ability_effect_system bridges to StatusEffect
                                 }
@@ -831,6 +833,49 @@ pub fn process_commands(
                                         radius: def.range,
                                         effect: StatusEffectId::Stunned,
                                         duration: SONIC_SPIT_STUN_TICKS,
+                                        source_owner: owner_player_id,
+                                    });
+                                }
+                                AbilityId::SonicBarrage => {
+                                    // Shrieker line AoE: range 8, 1-tile wide, 20 damage + Rattled
+                                    let target_pos = match ability_target {
+                                        cc_core::commands::AbilityTarget::Position(grid) => {
+                                            WorldPos::from_grid(grid)
+                                        }
+                                        cc_core::commands::AbilityTarget::Entity(eid) => {
+                                            let e = Entity::from_bits(eid.0);
+                                            query
+                                                .get(e)
+                                                .map(|(_, p, _, _, _)| p.world)
+                                                .unwrap_or(WorldPos::zero())
+                                        }
+                                        cc_core::commands::AbilityTarget::SelfCast => {
+                                            // Fallback: fire forward (shouldn't happen for targeted ability)
+                                            WorldPos::zero()
+                                        }
+                                    };
+                                    let caster_pos = query
+                                        .get(entity)
+                                        .map(|(_, p, _, _, _)| p.world)
+                                        .unwrap_or(WorldPos::zero());
+                                    commands.queue(LineAoeDamageCommand {
+                                        source_entity: entity,
+                                        source_pos: caster_pos,
+                                        target_pos,
+                                        range: def.range,
+                                        width: FIXED_ONE, // 1-tile wide
+                                        damage: Fixed::from_num(20),
+                                        building_multiplier: FIXED_ONE,
+                                        source_owner: owner_player_id,
+                                    });
+                                    commands.queue(LineAoeCcCommand {
+                                        source_entity: entity,
+                                        source_pos: caster_pos,
+                                        target_pos,
+                                        range: def.range,
+                                        width: FIXED_ONE,
+                                        effect: StatusEffectId::Rattled,
+                                        duration: 30, // 3s
                                         source_owner: owner_player_id,
                                     });
                                 }
@@ -1002,14 +1047,40 @@ pub fn process_commands(
                                         source_owner: owner_player_id,
                                     });
                                 }
-                                AbilityId::Omen => {
-                                    // Hootseer AoE Tilted debuff
+                                AbilityId::DeathOmen => {
+                                    // Hootseer Death Omen: range-10 targeted AoE, 25 base (50 vs stationary) + Exposed
+                                    let target_pos = match ability_target {
+                                        cc_core::commands::AbilityTarget::Position(grid) => {
+                                            WorldPos::from_grid(grid)
+                                        }
+                                        cc_core::commands::AbilityTarget::Entity(eid) => {
+                                            let e = Entity::from_bits(eid.0);
+                                            query
+                                                .get(e)
+                                                .map(|(_, p, _, _, _)| p.world)
+                                                .unwrap_or(WorldPos::zero())
+                                        }
+                                        cc_core::commands::AbilityTarget::SelfCast => {
+                                            query
+                                                .get(entity)
+                                                .map(|(_, p, _, _, _)| p.world)
+                                                .unwrap_or(WorldPos::zero())
+                                        }
+                                    };
+                                    let death_omen_radius = Fixed::from_bits(2 << 16); // 2-tile AoE
+                                    commands.queue(DeathOmenDamageCommand {
+                                        source_entity: entity,
+                                        center_pos: target_pos,
+                                        radius: death_omen_radius,
+                                        damage: Fixed::from_num(25),
+                                        source_owner: owner_player_id,
+                                    });
                                     commands.queue(AoeCcCommand {
                                         source_entity: entity,
-                                        source_pos: WorldPos::zero(),
-                                        radius: def.range,
-                                        effect: StatusEffectId::Tilted,
-                                        duration: def.duration_ticks,
+                                        source_pos: target_pos,
+                                        radius: death_omen_radius,
+                                        effect: StatusEffectId::Exposed,
+                                        duration: 60, // 6s
                                         source_owner: owner_player_id,
                                     });
                                 }
@@ -1425,7 +1496,6 @@ pub fn process_commands(
                                 | AbilityId::Scavenge
                                 | AbilityId::JuryRig
                                 | AbilityId::DuctTapeFix
-                                | AbilityId::Overcharge
                                 | AbilityId::TrashHeapAmbush
                                 | AbilityId::LeakInjection
                                 | AbilityId::RefuseShield

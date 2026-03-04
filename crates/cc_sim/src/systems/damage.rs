@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use cc_core::commands::EntityId;
 use cc_core::coords::WorldPos;
-use cc_core::math::{FIXED_ZERO, Fixed};
+use cc_core::math::{FIXED_ZERO, Fixed, approx_distance};
 use cc_core::status_effects::{StatusEffectId, StatusEffects, StatusInstance, is_cc};
 
 /// Shared command to apply damage, avoiding borrow conflicts between attacker/target queries.
@@ -82,11 +82,15 @@ impl Command for AoeCcCommand {
     fn apply(self, world: &mut World) {
         let radius_sq = self.radius * self.radius;
 
-        // Fetch source position from entity (may differ from passed source_pos if default)
-        let source_pos = world
-            .get::<cc_core::components::Position>(self.source_entity)
-            .map(|p| p.world)
-            .unwrap_or(self.source_pos);
+        // Use explicit source_pos when provided (non-zero), otherwise fall back to entity position
+        let source_pos = if self.source_pos != WorldPos::zero() {
+            self.source_pos
+        } else {
+            world
+                .get::<cc_core::components::Position>(self.source_entity)
+                .map(|p| p.world)
+                .unwrap_or(self.source_pos)
+        };
 
         // Collect targets first to avoid borrow issues
         let targets: Vec<Entity> = world
@@ -254,10 +258,15 @@ impl Command for AoeDamageCommand {
     fn apply(self, world: &mut World) {
         let radius_sq = self.radius * self.radius;
 
-        let source_pos = world
-            .get::<cc_core::components::Position>(self.source_entity)
-            .map(|p| p.world)
-            .unwrap_or(self.source_pos);
+        // Use explicit source_pos when provided (non-zero), otherwise fall back to entity position
+        let source_pos = if self.source_pos != WorldPos::zero() {
+            self.source_pos
+        } else {
+            world
+                .get::<cc_core::components::Position>(self.source_entity)
+                .map(|p| p.world)
+                .unwrap_or(self.source_pos)
+        };
 
         let targets: Vec<(Entity, bool)> = world
             .query::<(
@@ -348,6 +357,206 @@ impl Command for EcholocationRevealCommand {
                 world.entity_mut(target).insert(VisibleThroughFog {
                     remaining_ticks: self.reveal_ticks,
                 });
+            }
+        }
+    }
+}
+
+/// Deferred command for Death Omen: AoE centered at target position, double damage vs stationary.
+pub struct DeathOmenDamageCommand {
+    pub source_entity: Entity,
+    pub center_pos: WorldPos,
+    pub radius: Fixed,
+    pub damage: Fixed,
+    pub source_owner: u8,
+}
+
+impl Command for DeathOmenDamageCommand {
+    fn apply(self, world: &mut World) {
+        let radius_sq = self.radius * self.radius;
+
+        // Collect targets with stationary timer info
+        let targets: Vec<(Entity, bool)> = world
+            .query::<(
+                Entity,
+                &cc_core::components::Position,
+                &cc_core::components::Owner,
+                Option<&cc_core::components::StationaryTimer>,
+            )>()
+            .iter(world)
+            .filter(|(e, pos, owner, _)| {
+                *e != self.source_entity
+                    && owner.player_id != self.source_owner
+                    && pos.world.distance_squared(self.center_pos) <= radius_sq
+            })
+            .map(|(e, _, _, st)| (e, st.is_some_and(|t| t.ticks_stationary >= 30)))
+            .collect();
+
+        for (target, is_stationary) in targets {
+            if let Some(mut health) = world.get_mut::<cc_core::components::Health>(target) {
+                // Double damage vs stationary targets (>=30 ticks = 3s)
+                let dmg = if is_stationary {
+                    self.damage * Fixed::from_num(2)
+                } else {
+                    self.damage
+                };
+                health.current -= dmg;
+                if health.current < FIXED_ZERO {
+                    health.current = FIXED_ZERO;
+                }
+            }
+        }
+    }
+}
+
+/// Deferred command for line AoE damage (e.g. Sonic Barrage).
+/// Hits enemies within `width` tiles of the line from source toward target, up to `range` tiles.
+pub struct LineAoeDamageCommand {
+    pub source_entity: Entity,
+    pub source_pos: WorldPos,
+    pub target_pos: WorldPos,
+    pub range: Fixed,
+    pub width: Fixed,
+    pub damage: Fixed,
+    pub building_multiplier: Fixed,
+    pub source_owner: u8,
+}
+
+impl Command for LineAoeDamageCommand {
+    fn apply(self, world: &mut World) {
+        let source_pos = if self.source_pos != WorldPos::zero() {
+            self.source_pos
+        } else {
+            world
+                .get::<cc_core::components::Position>(self.source_entity)
+                .map(|p| p.world)
+                .unwrap_or(self.source_pos)
+        };
+
+        let dx = self.target_pos.x - source_pos.x;
+        let dy = self.target_pos.y - source_pos.y;
+        let dir_len = approx_distance(dx, dy);
+        if dir_len <= FIXED_ZERO {
+            return;
+        }
+
+        let dir_x = dx / dir_len;
+        let dir_y = dy / dir_len;
+        let width_sq = self.width * self.width;
+
+        let targets: Vec<(Entity, bool)> = world
+            .query::<(
+                Entity,
+                &cc_core::components::Position,
+                &cc_core::components::Owner,
+                Option<&cc_core::components::Building>,
+            )>()
+            .iter(world)
+            .filter(|(e, pos, owner, _)| {
+                if *e == self.source_entity || owner.player_id == self.source_owner {
+                    return false;
+                }
+                let vx = pos.world.x - source_pos.x;
+                let vy = pos.world.y - source_pos.y;
+                // Projection along line direction
+                let along = vx * dir_x + vy * dir_y;
+                if along < FIXED_ZERO || along > self.range {
+                    return false;
+                }
+                // Perpendicular distance squared
+                let perp_x = vx - along * dir_x;
+                let perp_y = vy - along * dir_y;
+                let perp_sq = perp_x * perp_x + perp_y * perp_y;
+                perp_sq <= width_sq
+            })
+            .map(|(e, _, _, bld)| (e, bld.is_some()))
+            .collect();
+
+        for (target, is_building) in targets {
+            if let Some(mut health) = world.get_mut::<cc_core::components::Health>(target) {
+                let dmg = if is_building {
+                    self.damage * self.building_multiplier
+                } else {
+                    self.damage
+                };
+                health.current -= dmg;
+                if health.current < FIXED_ZERO {
+                    health.current = FIXED_ZERO;
+                }
+            }
+        }
+    }
+}
+
+/// Deferred command for line AoE CC (e.g. Sonic Barrage Rattled debuff).
+pub struct LineAoeCcCommand {
+    pub source_entity: Entity,
+    pub source_pos: WorldPos,
+    pub target_pos: WorldPos,
+    pub range: Fixed,
+    pub width: Fixed,
+    pub effect: StatusEffectId,
+    pub duration: u32,
+    pub source_owner: u8,
+}
+
+impl Command for LineAoeCcCommand {
+    fn apply(self, world: &mut World) {
+        let source_pos = if self.source_pos != WorldPos::zero() {
+            self.source_pos
+        } else {
+            world
+                .get::<cc_core::components::Position>(self.source_entity)
+                .map(|p| p.world)
+                .unwrap_or(self.source_pos)
+        };
+
+        let dx = self.target_pos.x - source_pos.x;
+        let dy = self.target_pos.y - source_pos.y;
+        let dir_len = approx_distance(dx, dy);
+        if dir_len <= FIXED_ZERO {
+            return;
+        }
+
+        let dir_x = dx / dir_len;
+        let dir_y = dy / dir_len;
+        let width_sq = self.width * self.width;
+
+        let targets: Vec<Entity> = world
+            .query::<(
+                Entity,
+                &cc_core::components::Position,
+                &cc_core::components::Owner,
+            )>()
+            .iter(world)
+            .filter(|(e, pos, owner)| {
+                if *e == self.source_entity || owner.player_id == self.source_owner {
+                    return false;
+                }
+                let vx = pos.world.x - source_pos.x;
+                let vy = pos.world.y - source_pos.y;
+                let along = vx * dir_x + vy * dir_y;
+                if along < FIXED_ZERO || along > self.range {
+                    return false;
+                }
+                let perp_x = vx - along * dir_x;
+                let perp_y = vy - along * dir_y;
+                let perp_sq = perp_x * perp_x + perp_y * perp_y;
+                perp_sq <= width_sq
+            })
+            .map(|(e, _, _)| e)
+            .collect();
+
+        for target in targets {
+            if let Some(mut effects) = world.get_mut::<StatusEffects>(target) {
+                if is_cc(self.effect) && effects.is_cc_immune() {
+                    continue;
+                }
+                effects.refresh_or_insert(
+                    self.effect,
+                    self.duration,
+                    EntityId::from_entity(self.source_entity),
+                );
             }
         }
     }

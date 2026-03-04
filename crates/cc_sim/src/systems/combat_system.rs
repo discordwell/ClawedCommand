@@ -9,7 +9,7 @@ use cc_core::commands::EntityId;
 use cc_core::components::{
     AttackStats, AttackTarget, AttackType, AttackTypeMarker, Building, ChasingTarget, Dead,
     DreamSiegeTimer, HoldPosition, MoveTarget, Owner, Path, Position, Projectile, ProjectileKind,
-    ProjectileTarget, StatModifiers, UnitKind, UnitType, Velocity,
+    ProjectileTarget, StatModifiers, StationaryTimer, UnitKind, UnitType, Velocity,
 };
 use cc_core::coords::WorldPos;
 use cc_core::math::{FIXED_ONE, Fixed};
@@ -38,7 +38,7 @@ pub fn combat_system(
         Without<Dead>,
     >,
     targets: Query<
-        (Entity, &Position, Option<&StatModifiers>),
+        (Entity, &Position, Option<&StatModifiers>, Option<&StationaryTimer>),
         (Or<(With<UnitType>, With<Building>)>, Without<Dead>),
     >,
 ) {
@@ -70,7 +70,8 @@ pub fn combat_system(
         };
 
         let target_entity = Entity::from_bits(target.target.0);
-        let Ok((_, target_pos, target_mods)) = targets.get(target_entity) else {
+        let Ok((_, target_pos, target_mods, target_stationary)) = targets.get(target_entity)
+        else {
             // Target doesn't exist or is dead
             continue;
         };
@@ -82,7 +83,13 @@ pub fn combat_system(
         }
 
         let dist_sq = pos.world.distance_squared(target_pos.world);
-        let range_sq = stats.range * stats.range;
+        // Apply range_multiplier from attacker's stat modifiers
+        let effective_range = if let Some(mods) = attacker_mods {
+            stats.range * mods.range_multiplier
+        } else {
+            stats.range
+        };
+        let range_sq = effective_range * effective_range;
 
         if dist_sq <= range_sq {
             // In range — attack if cooldown is ready
@@ -116,6 +123,15 @@ pub fn combat_system(
                 // Apply attacker's damage_multiplier
                 if let Some(mods) = attacker_mods {
                     final_damage *= mods.damage_multiplier;
+
+                    // Anti-static bonus: extra damage vs stationary targets (>=30 ticks = 3s)
+                    if mods.anti_static_bonus > Fixed::ZERO {
+                        let target_is_stationary = target_stationary
+                            .is_some_and(|t| t.ticks_stationary >= 30);
+                        if target_is_stationary {
+                            final_damage *= FIXED_ONE + mods.anti_static_bonus;
+                        }
+                    }
                 }
 
                 // DreamSiege passive (Catnapper): ramp damage on same target
@@ -138,6 +154,17 @@ pub fn combat_system(
                     final_damage *= mods.damage_reduction;
                 }
 
+                // JunkMortarMode: GreaseMonkey gains 2-tile AoE splash when deployed
+                let aoe_splash = if unit_type.kind == UnitKind::GreaseMonkey
+                    && attacker_mods.is_some_and(|m| m.range_multiplier > FIXED_ONE)
+                {
+                    Fixed::from_num(2) // 2-tile splash radius
+                } else {
+                    Fixed::ZERO
+                };
+
+                let owner_id = owner.map(|o| o.player_id).unwrap_or(0);
+
                 match atk_type.attack_type {
                     AttackType::Melee => {
                         commands.queue(ApplyDamageCommand {
@@ -153,6 +180,8 @@ pub fn combat_system(
                             Projectile {
                                 damage: final_damage,
                                 speed: PROJECTILE_SPEED,
+                                aoe_splash_radius: aoe_splash,
+                                source_owner: owner_id,
                             },
                             ProjectileTarget {
                                 target: EntityId::from_entity(target_entity),

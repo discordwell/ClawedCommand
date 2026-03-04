@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 
-use crate::systems::damage::ApplyDamageCommand;
+use crate::systems::damage::{AoeDamageCommand, ApplyDamageCommand};
 use cc_core::components::{Dead, Position, Projectile, ProjectileKind, ProjectileTarget, Velocity};
 use cc_core::coords::WorldPos;
-use cc_core::math::{FIXED_ZERO, approx_distance};
+use cc_core::math::{FIXED_ONE, FIXED_ZERO, Fixed, approx_distance};
 
 /// Message emitted when a projectile hits its target, for VFX.
 #[derive(Message, Debug, Clone)]
@@ -48,10 +48,22 @@ pub fn projectile_system(
             });
 
             // Arrived — apply damage and despawn
-            commands.queue(ApplyDamageCommand {
-                target: target_entity,
-                damage: proj.damage,
-            });
+            if proj.aoe_splash_radius > Fixed::ZERO {
+                // AoE splash: damage all enemies at impact point
+                commands.queue(AoeDamageCommand {
+                    source_entity: entity,
+                    source_pos: target_pos.world,
+                    radius: proj.aoe_splash_radius,
+                    damage: proj.damage,
+                    building_multiplier: FIXED_ONE,
+                    source_owner: proj.source_owner,
+                });
+            } else {
+                commands.queue(ApplyDamageCommand {
+                    target: target_entity,
+                    damage: proj.damage,
+                });
+            }
             commands.entity(entity).despawn();
         } else {
             // Homing movement using shared approx distance

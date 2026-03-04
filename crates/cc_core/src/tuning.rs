@@ -72,9 +72,6 @@ pub const NINE_LIVES_COOLDOWN_TICKS: u64 = 600;
 /// Hairball obstacle lifetime (ticks).
 pub const HAIRBALL_DURATION_TICKS: u32 = 100;
 
-/// PowerNap: generate 1 GPU every N ticks (0.5 GPU/tick average).
-pub const POWER_NAP_GPU_INTERVAL: u32 = 2;
-
 /// DisgustMortar: AoE damage.
 pub const DISGUST_MORTAR_DAMAGE: Fixed = Fixed::from_bits(15 << 16);
 

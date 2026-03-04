@@ -666,6 +666,10 @@ pub enum ProjectileKind {
 pub struct Projectile {
     pub damage: Fixed,
     pub speed: Fixed,
+    /// When > 0, projectile deals AoE splash damage on hit (radius in tiles).
+    pub aoe_splash_radius: Fixed,
+    /// Owner player ID for AoE splash friend/foe filtering.
+    pub source_owner: u8,
 }
 
 /// Which entity this projectile is homing toward.
@@ -851,6 +855,10 @@ pub struct StatModifiers {
     pub damage_reduction: Fixed,
     pub gather_speed_multiplier: Fixed,
     pub cooldown_multiplier: Fixed,
+    /// Multiplier applied to weapon range (default 1.0).
+    pub range_multiplier: Fixed,
+    /// Bonus damage multiplier vs stationary targets (default 0.0 = no bonus).
+    pub anti_static_bonus: Fixed,
     pub invulnerable: bool,
     pub immobilized: bool,
     pub silenced: bool,
@@ -866,6 +874,8 @@ impl Default for StatModifiers {
             damage_reduction: Fixed::ONE,
             gather_speed_multiplier: Fixed::ONE,
             cooldown_multiplier: Fixed::ONE,
+            range_multiplier: Fixed::ONE,
+            anti_static_bonus: Fixed::ZERO,
             invulnerable: false,
             immobilized: false,
             silenced: false,
@@ -1293,6 +1303,8 @@ pub struct UniqueBuildingLimit;
 pub struct StationaryTimer {
     pub ticks_stationary: u32,
     pub dug_in: bool,
+    /// Previous position for movement detection by stationary_timer_system.
+    pub last_pos: Option<crate::coords::WorldPos>,
 }
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]

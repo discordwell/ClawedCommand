@@ -179,7 +179,7 @@ pub fn classify_keyword(keyword: &str) -> KeywordRole {
         "zoomies" | "zoom" => KeywordRole::Ability(AbilityId::Zoomies),
         "loaf" => KeywordRole::Ability(AbilityId::LoafMode),
         "spite" => KeywordRole::Ability(AbilityId::SpiteCarry),
-        "nap" | "powernap" => KeywordRole::Ability(AbilityId::PowerNap),
+        "nap" | "powernap" => KeywordRole::Ability(AbilityId::SiegeNap),
         "shadow" => KeywordRole::Ability(AbilityId::ShadowNetwork),
         "booby" => KeywordRole::Ability(AbilityId::BoobyTrap),
         "tunnel" => KeywordRole::Ability(AbilityId::TunnelNetwork),
@@ -2177,11 +2177,11 @@ mod tests {
         );
         assert_eq!(
             classify_keyword("nap"),
-            KeywordRole::Ability(AbilityId::PowerNap)
+            KeywordRole::Ability(AbilityId::SiegeNap)
         );
         assert_eq!(
             classify_keyword("powernap"),
-            KeywordRole::Ability(AbilityId::PowerNap)
+            KeywordRole::Ability(AbilityId::SiegeNap)
         );
         assert_eq!(
             classify_keyword("shadow"),

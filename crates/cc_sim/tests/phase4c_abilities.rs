@@ -429,46 +429,23 @@ fn test_contagious_yawning_respects_cc_immunity() {
     assert!(!has_drowsed, "CC immune enemy should NOT get Drowsed");
 }
 
-/// PowerNap: generates GPU while active
+/// SiegeNap: toggle deploys with immobilize and range boost
 #[test]
-fn test_power_nap_generates_gpu() {
+fn test_siege_nap_immobilizes() {
     let (mut world, mut schedule) = make_sim();
     let catnapper = spawn_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Catnapper);
-    give_gpu(&mut world, 0, 50); // Need GPU to pay ability cost
 
-    let gpu_before = world.resource::<PlayerResources>().players[0].gpu_cores;
-
-    // Activate PowerNap (slot 2 for Catnapper)
-    issue_ability(&mut world, catnapper, 2);
-    run_ticks(&mut world, &mut schedule, 20);
-
-    let gpu_after = world.resource::<PlayerResources>().players[0].gpu_cores;
-    // PowerNap costs 10 GPU but generates 1 GPU every 2 ticks
-    // Over 20 ticks that's ~10 GPU generated, minus 10 cost = net ~0
-    // But we just need to check it generated SOME GPU beyond what was left after cost
-    let gpu_after_cost = gpu_before - 10; // 10 GPU ability cost
-    assert!(
-        gpu_after > gpu_after_cost,
-        "PowerNap should generate GPU: after_cost={}, final={}",
-        gpu_after_cost,
-        gpu_after,
-    );
-}
-
-/// PowerNap: immobilizes and prevents attack
-#[test]
-fn test_power_nap_immobilizes_and_prevents_attack() {
-    let (mut world, mut schedule) = make_sim();
-    let catnapper = spawn_unit(&mut world, GridPos::new(10, 10), 0, UnitKind::Catnapper);
-    give_gpu(&mut world, 0, 50);
-
-    // Activate PowerNap (slot 2)
+    // Activate SiegeNap (slot 2 for Catnapper, toggle)
     issue_ability(&mut world, catnapper, 2);
     run_ticks(&mut world, &mut schedule, 3);
 
     let modifiers = world.get::<StatModifiers>(catnapper).unwrap();
-    assert!(modifiers.immobilized, "PowerNap should immobilize");
-    assert!(modifiers.cannot_attack, "PowerNap should prevent attack");
+    assert!(modifiers.immobilized, "SiegeNap should immobilize");
+    // range_multiplier should be ~1.43
+    assert!(
+        modifiers.range_multiplier > Fixed::ONE,
+        "SiegeNap should increase range"
+    );
 }
 
 /// TacticalUplink: allies in range get TacticalLink (cooldown reduction)

@@ -94,6 +94,8 @@ pub fn tower_combat_system(
             Projectile {
                 damage: final_damage,
                 speed: TOWER_PROJECTILE_SPEED,
+                aoe_splash_radius: Fixed::ZERO,
+                source_owner: tower_owner.player_id,
             },
             ProjectileTarget {
                 target: EntityId::from_entity(target_entity),
