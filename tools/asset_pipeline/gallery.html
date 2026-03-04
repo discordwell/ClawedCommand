@@ -347,7 +347,7 @@ function render() {
         if (searchTerm && !slug.includes(searchTerm) && !slugToName(slug).toLowerCase().includes(searchTerm)) return '';
         totalShown++;
         generalCount++;
-        return unitCard(slug, null, 'hero');
+        return staticCard(slug, `${BASE}/heroes/${slug}_idle.png`, 'hero', null);
       }).join('');
       if (cards.replace(/\s/g, '')) {
         generalHtml += `<div class="type-label">Heroes (${HEROES.length})</div><div class="grid">${cards}</div>`;
