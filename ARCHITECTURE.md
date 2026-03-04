@@ -1,10 +1,10 @@
 # ClawedCommand Architecture
 
-> Post-singularity cat RTS where players hybrid-control cute animal armies directly and through AI agents powered by fine-tuned Mistral models. Humanity uploaded, chose animal forms, and forgot why. You're a cat with an AI named Geppity pursuing world domination. Other Redwall-esque factions oppose you with their own (worse) AI agents. Light comedic tone, mechanically serious. Full game identity in **[GAME_DESIGN.md](./GAME_DESIGN.md)**.
+> Post-singularity cat RTS where players hybrid-control cute animal armies directly and through AI agents powered by local LLMs. Humanity uploaded, chose animal forms, and forgot why. You're a cat with an AI named Le Chat pursuing world domination. Other Redwall-esque factions oppose you with their own (worse) AI agents. Light comedic tone, mechanically serious. Full game identity in **[GAME_DESIGN.md](./GAME_DESIGN.md)**.
 
 ## Vision
 
-Players command armies through a dual interface: traditional RTS point-and-click micro **and** natural language instructions to an AI commander (Geppity) that generates strategy code. The AI agent uses MCP tools to issue game commands, creating a gameplay loop where strategic thinking and AI coaching are as important as mechanical skill.
+Players command armies through a dual interface: traditional RTS point-and-click micro **and** natural language instructions to an AI commander (Le Chat) that generates strategy code. The AI agent uses MCP tools to issue game commands, creating a gameplay loop where strategic thinking and AI coaching are as important as mechanical skill.
 
 ---
 
@@ -51,7 +51,7 @@ Players command armies through a dual interface: traditional RTS point-and-click
 │                                                          │
 │  ┌─────────────────┐  ┌──────────────────────────────┐   │
 │  │  Game Server    │  │  AI Inference Service         │   │
-│  │  (Authoritative │  │  (Fine-tuned Mistral)         │   │
+│  │  (Authoritative │  │  (Local LLM via Ollama)         │   │
 │  │   Simulation)   │  │                               │   │
 │  │                 │  │  - MCP Tool Server             │   │
 │  │  - Match mgmt  │  │  - Code generation             │   │
@@ -86,7 +86,7 @@ The architecture separates into five distinct layers, each with a clear responsi
 ├─────────────────────────────────────────┤
 │  INTELLIGENCE LAYER                     │  ← creates scripts / comprehends voice
 │  Agentic builders + voice comprehension │
-│  (Fine-tuned Devstral Small 2)          │
+│  (Qwen3-Coder-30B-A3B via Ollama)      │
 ├─────────────────────────────────────────┤
 │  FINE-TUNING PIPELINE                   │  ← trains the intelligence layer
 │  (Not in-game — Brev GPU + Unsloth)    │
@@ -101,7 +101,7 @@ The architecture separates into five distinct layers, each with a clear responsi
 
 3. **Scripted AI** — Lua scripts that execute each tick via the `ScriptContext` (ctx) API. These include hand-authored starter scripts (basic_attack, basic_retreat, etc.), player-created scripts from construct mode, and the enemy AI FSM. Scripts call ctx methods like `ctx:nearest_enemy()`, `ctx:attack()`, `ctx:move_to()` to issue commands. They run inside a sandboxed Luau runtime with instruction-count limits.
 
-4. **Intelligence Layer** — The fine-tuned Devstral Small 2 model that *generates* Lua scripts on player request (the "agentic builder") and comprehends voice commands to trigger the right script. This layer does not run every tick — it activates on player interaction (chat input, voice command) and produces artifacts (Lua scripts, command triggers) that the Scripted AI layer then executes. This is the key architectural insight: the LLM is a *code generator* that sits above the runtime, not an in-loop decision maker.
+4. **Intelligence Layer** — The local LLM (Qwen3-Coder-30B-A3B via Ollama) that *generates* Lua scripts on player request (the "agentic builder") and comprehends voice commands to trigger the right script. This layer does not run every tick — it activates on player interaction (chat input, voice command) and produces artifacts (Lua scripts, command triggers) that the Scripted AI layer then executes. This is the key architectural insight: the LLM is a *code generator* that sits above the runtime, not an in-loop decision maker.
 
 5. **Fine-Tuning Pipeline** — Offline training infrastructure (Brev GPU, Unsloth, TRL) that produces the weights used by the Intelligence Layer. Not part of the running game. Consumes replay data and hand-authored examples, outputs LoRA adapters.
 
@@ -194,9 +194,9 @@ Players vibecode Lua agent scripts in **construct mode** (an in-game LLM-powered
 
 The meta-game is the vibecoding itself — players use an LLM to generate Lua scripts in construct mode, iterating on their agent loadout. Better scripts = smarter agents = competitive advantage.
 
-### 4. AI Agent Layer (MCP + Fine-tuned Mistral)
+### 4. AI Agent Layer (MCP + Local LLM)
 
-> Full technical details, code examples, and training data formats in **[MISTRAL.md](./MISTRAL.md)**.
+> Historical model integration details in **[training/MISTRAL.md](./training/MISTRAL.md)**.
 
 This is the novel core of ClawedCommand. The AI agent layer is split into three distinct sub-systems that operate at different timescales and abstraction levels:
 
@@ -220,7 +220,7 @@ Lua scripts that execute each simulation tick through the `ScriptContext` (ctx) 
 
 #### 4b. Agentic Builder — the Intelligence Layer (runs on player request)
 
-The fine-tuned Devstral model that *generates* Lua scripts and issues strategic commands. This is one layer above the scripted AI — it produces the scripts that the scripted AI then runs.
+The local LLM that *generates* Lua scripts and issues strategic commands. This is one layer above the scripted AI — it produces the scripts that the scripted AI then runs.
 
 **Architecture:**
 
@@ -228,7 +228,7 @@ The fine-tuned Devstral model that *generates* Lua scripts and issues strategic 
 Player ──(natural language)──► Agent Interface (Chat UI)
                                       │
                                       ▼
-                              Fine-tuned Devstral
+                              Local LLM (Qwen3-Coder)
                               (understands game state,
                                generates Lua scripts +
                                tool calls)
@@ -259,10 +259,10 @@ Player ──(natural language)──► Agent Interface (Chat UI)
 
 | Context | Model | Deployment | Latency Target |
 |---------|-------|------------|----------------|
-| Competitive/ranked | Devstral 2 (123B) | Mistral API (`devstral-2-2512`) | <2s per turn |
-| Single-player/practice | Devstral Small 2 (24B) | Local vLLM/Ollama, Q4_K_M ~14GB | <5s per turn |
+| Competitive/ranked | Qwen3-Coder-30B-A3B | Server-side Ollama/vLLM | <2s per turn |
+| Single-player/practice | Qwen3-Coder-30B-A3B | Local Ollama, Q4 ~19GB | <1s per turn |
 
-Both models are dense transformers (not MoE) with native tool use support and 256K context windows. The Rust client in `cc_agent` uses a single `reqwest`-based HTTP client that targets the OpenAI-compatible endpoint — identical code path for both API and local inference, just a different base URL.
+Qwen3-Coder-30B-A3B is a Mixture-of-Experts model (30B total, 3.3B active per token) with native tool-calling support and 256K context. MoE architecture gives dense-32B quality at 3-5x the speed (~80 tok/s on M4 Max). The Rust client in `cc_agent` uses a single `reqwest`-based HTTP client that targets the OpenAI-compatible endpoint — identical code path for both API and local inference, just a different base URL.
 
 **MCP Tools exposed to the model:**
 
@@ -282,21 +282,17 @@ Both models are dense transformers (not MoE) with native tool use support and 25
 | `gather_resource(workers, deposit)` | Send workers to gather |
 | `execute_strategy(code)` | Run a sandboxed strategy script |
 
-MCP tool definitions map to Mistral's function calling format with minimal conversion (`inputSchema` → `parameters`). See MISTRAL.md for full JSON schemas and conversion code.
+MCP tool definitions map to the OpenAI-compatible function calling format with minimal conversion (`inputSchema` → `parameters`).
 
 **Fine-tuning approach:**
-- **Server model**: Fine-tune `mistral-small-latest` or `codestral-latest` via Mistral API (~$5-10 per run)
-- **Local model**: Fine-tune Devstral Small 2 weights via `mistral-finetune` repo (LoRA, rank 64)
+- **Local model**: LoRA fine-tuning on Qwen3-Coder-30B-A3B (rank 32, alpha 64)
 - **Training data**: JSONL with `messages` (full tool-call conversations) + `tools` (function definitions)
 - **Data pipeline**: game replays → replay converter → (game_state, instruction, tool_calls) JSONL
 - **Data strategy**: bootstrap with 200-500 hand-authored examples → augment with self-play → enrich with human replays
-- Tool call IDs must be exactly 9 random chars; arguments must be stringified JSON
-
-**Cost estimation (competitive play):** ~$0.012 per player turn, ~$0.72 per player per game at ~60 turns.
 
 **Inference routing:**
-- **Competitive/ranked** — Mistral API, Devstral 2, server-side (fair, anti-cheat)
-- **Practice/single-player** — local vLLM or Ollama, Devstral Small 2 Q4_K_M (free, works offline, requires RTX 4090 or Mac 32GB+)
+- **Competitive/ranked** — server-side Ollama/vLLM (fair, anti-cheat)
+- **Practice/single-player** — local Ollama, Qwen3-Coder Q4 ~19GB (free, works offline, M4 Max or RTX 4090)
 
 #### 4c. Voice Comprehension (bridges voice to scripts)
 
@@ -489,7 +485,7 @@ ClawedCommand/
 │   │   ├── train.py            # Training loop (AdamW + cosine LR + ONNX export)
 │   │   └── test_model.py       # Model + pipeline tests
 │   ├── data/                   # JSONL training/eval datasets
-│   ├── configs/                # Fine-tuning YAML configs (see MISTRAL.md)
+│   ├── configs/                # Fine-tuning YAML configs
 │   └── scripts/                # Python fine-tuning job scripts
 └── assets/
     ├── sprites/
@@ -518,7 +514,7 @@ ClawedCommand/
 
 ### Phase 3: AI Agent + Voice Commands
 - MCP tool server with game-state query tools
-- Local Mistral inference integration
+- Local LLM inference integration
 - Agent chat UI panel
 - Command dispatcher (merge player + AI commands)
 - Voice input pipeline (push-to-talk, speech-to-text, intent classification)
@@ -529,15 +525,10 @@ ClawedCommand/
 - **Milestone: vibecode a Lua script, issue voice command, watch agent execute with buff**
 
 ### Phase 4: Fine-tuning Pipeline
-- **GPU platform**: [NVIDIA Brev](https://brev.nvidia.com) — $100 GPU budget, $15 Mistral API credits
-- **Strategy**: QLoRA on L40S 48GB (~$1.25/hr) for fast iteration → final full LoRA on A100 80GB (~$2.50/hr) for the winner
-- **Multi-model evaluation**: Compare Qwen2.5-Coder-32B, Devstral Small 2 (24B), Codestral (API), and xLAM-2-8B
+- **Strategy**: LoRA fine-tuning on Qwen3-Coder-30B-A3B
 - **Training data**: 50 gold hand-authored examples → 500-1000 synthetic variations via Claude → quality filtering
-- **Quick baseline**: Codestral via Mistral API fine-tuning (~30 min turnaround) to validate data quality
-- **QLoRA iteration**: Unsloth + TRL SFTTrainer with 4-bit quantized LoRA (rank 32, alpha 64) on L40S 48GB
-- **Final LoRA**: Full-precision LoRA on A100 80GB for the winning model only
-- **Budget-aware order**: Codestral API ($10) → xLAM QLoRA ($4) → Devstral QLoRA ($8) → Qwen QLoRA ($12) → eval ($8) → final LoRA ($8)
-- **Format pipeline**: Validate → convert between Mistral/Qwen/xLAM chat templates → 90/10 train/eval split
+- **QLoRA iteration**: Unsloth + TRL SFTTrainer with 4-bit quantized LoRA (rank 32, alpha 64)
+- **Format pipeline**: Validate → convert chat templates → 90/10 train/eval split
 - **Evaluation harness**: Tool call accuracy (>95%), instruction following (>85%), multi-step completion (>70%), no-tool accuracy (>90%), latency (<2s)
 - Replay recording system + replay → training data converter
 - See [training/BREV_GUIDE.md](training/BREV_GUIDE.md) for step-by-step Brev setup and training instructions
@@ -566,7 +557,7 @@ ClawedCommand/
 |------|------------|
 | Bevy pre-1.0 breaking changes | Pin Bevy version, update deliberately between milestones |
 | Deterministic simulation is hard | Use fixed-point math from day 1, test with desync detection |
-| Mistral inference latency too high for real-time | Devstral Small 2 (24B) for local at Q4_K_M; batch tool calls; cap at 10 rounds per turn |
+| LLM inference latency too high for real-time | Qwen3-Coder MoE (~80 tok/s local); batch tool calls; cap at 10 rounds per turn |
 | Fine-tuning data quality | Bootstrap with 200-500 hand-authored examples, augment with self-play, enrich with human replays |
 | Competitive play inference costs (~$0.72/player/game) | Monitor token usage, optimize system prompts, consider caching common game state queries |
 | Sandboxed code execution security | WASM sandbox for strategy scripts, strict resource limits |
@@ -591,13 +582,13 @@ ClawedCommand/
 | 3D Model Gen | Tripo API (image-to-3D GLB) |
 | Networking | Quinn (QUIC) or wtransport |
 | Serialization | bincode / serde |
-| AI Model (Server) | Devstral 2 123B via Mistral API (`devstral-2-2512`) |
-| AI Model (Local) | Devstral Small 2 24B via vLLM/Ollama (`devstral-small-2-2512`) |
-| AI Interface | MCP → Mistral function calling (OpenAI-compatible) |
-| Fine-tuning | Unsloth + TRL (Qwen/Devstral/xLAM), Mistral API (Codestral) |
+| AI Model (Server) | Qwen3-Coder-30B-A3B via Ollama/vLLM |
+| AI Model (Local) | Qwen3-Coder-30B-A3B via Ollama (`qwen3-coder:30b-a3b`), Q4 ~19GB |
+| AI Interface | MCP → OpenAI-compatible function calling |
+| Fine-tuning | Unsloth + TRL (LoRA) |
 | Voice Script Language | Lua (via `rlua`/`mlua` in WASM sandbox) |
 | Voice Keywords | TC-ResNet8 CNN via ONNX Runtime + Silero VAD (on-device, sub-10ms) |
-| Voice Scripts | Lua construct mode + Mistral agent (future, see VOICE.md) |
+| Voice Scripts | Lua construct mode + LLM agent (future, see VOICE.md) |
 | Sandbox | Wasmtime (WASM runtime for strategy scripts + Lua voice scripts) |
 | Training | Python + Unsloth + TRL + HuggingFace |
 | Asset Authoring | Aseprite (sprites), Tiled (maps) |

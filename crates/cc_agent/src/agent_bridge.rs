@@ -33,7 +33,7 @@ pub enum AgentSource {
     ConstructMode,
     /// Quick command from agent chat panel.
     QuickCommand,
-    /// `/` key prompt overlay — uses fine-tuned Devstral, auto-registers scripts.
+    /// `/` key prompt overlay — uses local LLM, auto-registers scripts.
     Prompt,
 }
 

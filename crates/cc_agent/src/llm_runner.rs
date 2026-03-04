@@ -37,7 +37,7 @@ const FINETUNE_CONSTRUCT_SYSTEM_PROMPT: &str =
     include_str!("../../../training/data/system_prompt.txt");
 
 /// System prompt for game-loop AI decisions.
-const GAME_LOOP_SYSTEM_PROMPT: &str = r#"You are Minstral, an AI commander for the catGPT faction in the RTS game ClawedCommand. You control an army of cats in a post-singularity world.
+const GAME_LOOP_SYSTEM_PROMPT: &str = r#"You are Le Chat, an AI commander for the catGPT faction in the RTS game ClawedCommand. You control an army of cats in a post-singularity world.
 
 Analyze the game state and issue tool calls to manage your army effectively. Priorities:
 1. Gather resources (food, GPU cores) to fund your army
@@ -91,7 +91,7 @@ async fn process_request(
 
     match request.source {
         AgentSource::ConstructMode | AgentSource::Prompt => {
-            // Both ConstructMode and Prompt use the fine-tuned Devstral path
+            // Both ConstructMode and Prompt use the fine-tuned Lua generation path
             if config.finetuned_lua {
                 let has_finetune_prompt = request.chat_history.as_ref().is_some_and(|h| {
                     h.iter().any(|m| {
@@ -623,7 +623,7 @@ mod tests {
     }
 
     #[test]
-    fn prompt_source_routes_to_devstral() {
+    fn prompt_source_routes_to_llm() {
         use crate::agent_bridge::AgentBridge;
 
         let config = LlmConfig::default(); // Mock backend
@@ -647,7 +647,7 @@ mod tests {
         let response = bridge
             .response_rx
             .recv_timeout(std::time::Duration::from_secs(5))
-            .expect("should receive response from Prompt/Devstral path");
+            .expect("should receive response from Prompt/LLM path");
 
         assert_eq!(response.source, AgentSource::Prompt);
         assert_eq!(response.player_id, 0);

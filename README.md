@@ -68,7 +68,7 @@ Full isometric 2D renderer with:
 The AI operates as a **code generator above the runtime**, not an in-loop decision maker:
 
 1. Player describes intent in natural language
-2. Fine-tuned LLM (Devstral Small 2, 24B, LoRA adapter) generates a Lua script
+2. Local LLM (Qwen3-Coder-30B-A3B via Ollama) generates a Lua script
 3. Script executes via `ScriptContext` with a 500-point compute budget
 4. Available primitives: 25+ query methods, 15+ command methods, 20 composable behaviors
 5. Scripts persist in a library, bindable to voice keywords
@@ -180,7 +180,7 @@ The `training/arena/` directory contains 49 generations of AI script evolution. 
 
 ### LLM Fine-Tuning
 
-Devstral Small 2 (24B) fine-tuned with LoRA (r=32, 184M trainable params) on 550 Lua script examples. The adapter lives in `training/lora_checkpoints/`. Key technical details in the codebase MEMORY files.
+Previous fine-tuning was done on Devstral Small 2 (24B) with LoRA. Now using Qwen3-Coder-30B-A3B (MoE, 3B active params) via Ollama for faster inference. Historical adapter in `training/lora_checkpoints/`.
 
 ### Voice Model
 
@@ -207,7 +207,7 @@ TC-ResNet8 trained via knowledge distillation from a larger teacher model. 2975 
 - **Engine**: Bevy 0.18 (Rust)
 - **Fixed-point math**: `fixed` crate (`FixedI32<U16>`)
 - **Scripting**: mlua (Luau sandbox)
-- **AI inference**: Devstral Small 2 (24B) via OpenAI-compatible API
+- **AI inference**: Qwen3-Coder-30B-A3B via Ollama (OpenAI-compatible API)
 - **Voice**: ONNX Runtime (Silero VAD + TC-ResNet8)
 - **Audio capture**: cpal
 - **MCP server**: rmcp 0.17

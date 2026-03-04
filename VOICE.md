@@ -32,7 +32,7 @@ The voice command system has three interlocking layers:
 │                                                      │          │
 │                              ┌────────────────────────┤          │
 │                              ▼                        ▼          │
-│                     Tier 1: Keyword Match    Tier 3: Mistral     │
+│                     Tier 1: Keyword Match    Tier 3: LLM     │
 │                     (<50ms, exact)           Agent (1-3s,        │
 │                              │               complex strategy)   │
 │                              ▼                        │          │
@@ -210,14 +210,14 @@ Synonym lists map variations to canonical intents:
 
 Catches speech recognition errors using Levenshtein distance. "Atack" → "attack", "retreet" → "retreat". Also normalizes verb forms ("attacking" → "attack") using lightweight NLP.
 
-**Tier 3 — Mistral Agent (1-3s)**
+**Tier 3 — LLM Agent (1-3s)**
 
-Unrecognized commands fall through to the existing Mistral chat agent. This handles complex, multi-step strategic instructions that don't map to a single script:
+Unrecognized commands fall through to the existing LLM chat agent. This handles complex, multi-step strategic instructions that don't map to a single script:
 
 - "Send cavalry to flank from the north while infantry holds the bridge"
 - "Set up a defensive perimeter around the refinery with overlapping fields of fire"
 
-These get processed through the full agent pipeline (Mistral → MCP tool calls → command queue) as designed in the core architecture.
+These get processed through the full agent pipeline (LLM → MCP tool calls → command queue) as designed in the core architecture.
 
 ### Contextual Narrowing
 
@@ -315,7 +315,7 @@ Construct mode extends the client UI with:
 
 ### Command Flow Integration
 
-Voice commands feed into the same `GameCommand` queue as player clicks and the Mistral agent:
+Voice commands feed into the same `GameCommand` queue as player clicks and the LLM agent:
 
 ```
 Voice Input ──► Intent Classifier ──► Lua Script ──► GameCommand queue ──► ECS
@@ -332,7 +332,7 @@ Player click commands still override voice-script commands for the same units (p
 The `voice_buff_system` slots into the existing tick order after `ai_command_system`:
 
 1. `input_system` — player commands
-2. `ai_command_system` — Mistral agent commands
+2. `ai_command_system` — LLM agent commands
 3. **`voice_script_system`** — voice-triggered Lua script commands
 4. **`voice_buff_system`** — apply/tick/expire voice command buffs
 5. `production_system` — build queues, unit spawning
@@ -345,7 +345,7 @@ The `voice_buff_system` slots into the existing tick order after `ai_command_sys
 | Component | Recommended | Fallback | Notes |
 |-----------|-------------|----------|-------|
 | Speech-to-text | Web Speech API | Whisper.js (Transformers.js) | Primary is free + fast; fallback adds ~40MB for offline/cross-browser |
-| Intent classification | Keyword/regex + fuzzy match | Mistral agent (Tier 3) | Fast path handles 80%+ of commands; Mistral handles the rest |
+| Intent classification | Keyword/regex + fuzzy match | LLM agent (Tier 3) | Fast path handles 80%+ of commands; LLM handles the rest |
 | Script language | Lua | — | LLMs generate good Lua, players can hand-edit, classic game scripting choice |
 | Lua runtime | `rlua` or `mlua` (Rust Lua bindings) in WASM sandbox | — | Integrates with existing Wasmtime sandbox architecture |
 | Audio-to-intent (production) | Picovoice Rhino | — | Evaluate once command vocab stabilizes; replaces STT + Tier 1/2 classification in one step |
@@ -364,7 +364,7 @@ The `voice_buff_system` slots into the existing tick order after `ai_command_sys
 
 ## Open Questions
 
-- **Construct mode LLM:** Does the construct mode LLM use the same Mistral model as the agent, or a separate code-generation-focused model? A code model may produce better Lua.
+- **Construct mode LLM:** Does the construct mode LLM use the same LLM model as the agent, or a separate code-generation-focused model? A code model may produce better Lua.
 - **Script sharing:** Can players share scripts? Import from a marketplace? This is listed in Phase 6 of the main architecture but has implications for the script format and sandboxing.
 - **Voice feedback:** Should the game acknowledge commands with synthesized speech (Web Speech Synthesis API)? Or is HUD text + unit response animation sufficient?
 - **Buff stacking:** Can multiple voice command buffs stack on the same unit? If so, is there a cap?

@@ -25,7 +25,7 @@ use crate::webllm_client::WebLlmClient;
 const MAX_TOOL_ROUNDS: usize = 5;
 
 /// System prompt for game-loop AI decisions (same as native llm_runner).
-const GAME_LOOP_SYSTEM_PROMPT: &str = r#"You are Minstral, an AI commander for the catGPT faction in the RTS game ClawedCommand. You control an army of cats in a post-singularity world.
+const GAME_LOOP_SYSTEM_PROMPT: &str = r#"You are Le Chat, an AI commander for the catGPT faction in the RTS game ClawedCommand. You control an army of cats in a post-singularity world.
 
 Analyze the game state and issue tool calls to manage your army effectively. Priorities:
 1. Gather resources (food, GPU cores) to fund your army
@@ -72,7 +72,7 @@ pub fn cc_connect_ai(backend: &str, model: &str, base_url: &str, api_key: &str) 
         },
         api_key: api_key.into(),
         model: if model.is_empty() {
-            "devstral-small-2-2512".into()
+            "qwen3-coder:30b-a3b".into()
         } else {
             model.into()
         },

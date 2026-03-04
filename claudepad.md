@@ -1,6 +1,7 @@
 # Claudepad - ClawedCommand
 
 ## Session Summaries
+- **2026-03-04T00:00:00Z** — ALL 120 Animation Sheets Complete: Generated walk+attack sheets for ALL 60 units (6 factions × 10 units × 2 animations). Improved walk prompt template with "CRITICAL ANIMATION RULES" (body identical, only legs change, NOT pixel art, Wargroove/Advance Wars style). Dynamic tab finding via `find_chatgpt_tab()` prevents window reorder failures. Idle detection (60s no activity → retry) prevents indefinite hangs. Split fill+send approach (separate AppleScript calls) more reliable than setTimeout. 2 rate limit events across 82 generations. All 120 sheets verified: 512×128 RGBA, >30KB, `cargo build` passes. Key script: `/tmp/batch_all_factions.py`.
 - **2026-03-03T20:00:00Z** — Voice Command Expansion: Added 7 new voice command categories to `crates/cc_voice/src/intent.rs`: Train Units, Self-Cast Abilities (8 keywords: zoomies/loaf/spite/nap/shadow/booby/tunnel/uplink), Gather Resources, Control Groups (set/recall), Cancel Production, Research Upgrades (damage/health/speed categories resolved per-faction), Select/Deselect. New enums: UpgradeCategory, 6 AgentAction variants, 2 KeywordRole variants (Ability/Upgrade). New helpers: resolve_upgrade() (matches UpgradeType variant names), infer_player_faction() (extracted from Build arm). Moved "research"/"upgrade" from Building(Post) to Agent(Research). 25 new tests, all 1004 workspace tests pass. No changes to cc_core/cc_sim — all GameCommand variants already existed.
 - **2026-03-03T14:00:00Z** — Complete Asset Pipeline: Generated ALL remaining assets via batch_remaining.py (AppleScript JS + curl). **164 total sprites on disk, 0 planned entries remain in catalog.** Breakdown: 10 terrain tiles, 48 buildings, 60 unit idles, 10 walk sheets, 10 attack sheets, 6 projectiles, 4 resources, 14 portraits (8 heroes + 6 AI avatars). Fixed catalog size mismatches (13 entries had 148/192 but actual files are 128x128). Removed duplicate projectile section. ChatGPT timeouts on ~20% of prompts — simpler shorter prompts succeed on retry. batch_remaining.py handles terrain/resources/portraits/walk/attack categories.
 - **2026-03-03T12:30:00Z** — Animation Sprite Sheet Generation COMPLETE: All 20 real walk/attack sheets (10 units × 2) generated via ChatGPT 5.2 + AppleScript+curl pipeline, replacing fake rotation-based sheets. Pipeline: MCP tab for prompt → AppleScript JS to fill/send → poll for `img[alt="Generated image"]` → curl download with cookies → clean_and_process.py (removes baked checkered bg, extracts first sprite row, scales to 128x128 frames). All sheets verified: 512x128 RGBA, 36-100KB, 4 frames with real animation. `cargo build` passes. Key scripts: `batch_sheets.py`, `clean_and_process.py`.
@@ -10,22 +11,18 @@
 - (older entries moved to oldpad.md)
 ## Key Findings
 - Player wants hybrid control: direct unit micro + AI agent delegation
-- AI agent approach: fine-tuned Mistral generates code/MCP tool calls from natural language instructions
+- AI agent approach: local LLM generates code/MCP tool calls from natural language instructions
 - Inference routing: server-side for competitive, local for practice/SP
 - Player commands override AI commands for conflict resolution
 - Must use fixed-point math from day 1 for deterministic simulation
-- **Devstral 2 (123B)** for server-side competitive ($0.40/$2.00 per 1M tokens), **Devstral Small 2 (24B)** for local SP (Q4_K_M ~15GB, Ollama on M4 Max 64GB)
-- Both models are dense transformers with native tool use, 256K context
-- MCP `inputSchema` maps directly to Mistral `parameters` (same JSON Schema)
-- Fine-tuning supports tool-use training: JSONL with messages + tools arrays, 9-char random tool call IDs, stringified JSON args
-- Fine-tune via Mistral API (~$5-10/run) or self-hosted with `mistral-finetune` repo (LoRA rank 64)
-- Competitive play cost estimate: ~$0.72 per player per game
+- **Qwen3-Coder-30B-A3B** (MoE, 3B active, ~19GB Q4) via Ollama — primary model for both local and server
+- MoE gives dense-32B quality at ~80 tok/s on M4 Max (3-5x faster than previous Devstral Small 2)
 - Rust client: single `reqwest` HTTP client works for both API and local (OpenAI-compatible endpoint)
 - **Voice Command System**: core game mechanic, not convenience. Push-to-talk → speech-to-text → intent classification → triggers player-authored Lua scripts
 - **Construct Mode**: in-game LLM-powered scripting environment where players vibecode Lua agent scripts. Can be used mid-mission.
 - **Lua scripting**: chosen for WASM sandbox scripts. LLMs generate Lua well, players can hand-edit, classic game scripting language
 - **Voice Buff Mechanic**: command-specific temporary buffs on voice-commanded units (attack→damage, retreat→speed, etc.). Intentionally exploitable — "touch all units" meta is acceptable
 - **Speech-to-Text tech**: Web Speech API primary (free, low latency, Chromium), Whisper.js fallback (cross-browser, offline, ~40MB model)
-- **Intent classification**: tiered — keyword/regex (<50ms) → fuzzy match (~100ms) → Mistral agent for complex strategy (1-3s)
+- **Intent classification**: tiered — keyword/regex (<50ms) → fuzzy match (~100ms) → LLM agent for complex strategy (1-3s)
 - **Precedents**: EndWar (70-word vocab, hierarchical commands), Radio General (errors as fiction), Warkestra (hybrid voice+mouse)
 - **Picovoice Rhino**: audio-to-intent (no transcription step), free tier 3 users, $6K/yr paid. Worth evaluating for production.

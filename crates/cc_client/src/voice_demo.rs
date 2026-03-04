@@ -201,37 +201,37 @@ pub fn build_voice_demo_mission() -> MissionDefinition {
         },
     ];
 
-    // Dialogue — Minstral (AI voice) announcing each command
+    // Dialogue — Le Chat (AI voice) announcing each command
     let dialogue = vec![
         DialogueLine {
-            speaker: "Minstral".into(),
+            speaker: "Le Chat".into(),
             text: "Hissers, fall back. Get behind the Chonks.".into(),
             voice_style: VoiceStyle::AiVoice,
-            portrait: "portrait_minstral".into(),
+            portrait: "portrait_le_chat".into(),
         },
         DialogueLine {
-            speaker: "Minstral".into(),
+            speaker: "Le Chat".into(),
             text: "Clawed incoming. All mice, charge the line.".into(),
             voice_style: VoiceStyle::AiVoice,
-            portrait: "portrait_minstral".into(),
+            portrait: "portrait_le_chat".into(),
         },
         DialogueLine {
-            speaker: "Minstral".into(),
+            speaker: "Le Chat".into(),
             text: "All cats, attack. Push them back.".into(),
             voice_style: VoiceStyle::AiVoice,
-            portrait: "portrait_minstral".into(),
+            portrait: "portrait_le_chat".into(),
         },
         DialogueLine {
-            speaker: "Minstral".into(),
+            speaker: "Le Chat".into(),
             text: "Hold the line! Don't let them through.".into(),
             voice_style: VoiceStyle::AiVoice,
-            portrait: "portrait_minstral".into(),
+            portrait: "portrait_le_chat".into(),
         },
         DialogueLine {
-            speaker: "Minstral".into(),
+            speaker: "Le Chat".into(),
             text: "Pull back! Regroup at the tree line.".into(),
             voice_style: VoiceStyle::AiVoice,
-            portrait: "portrait_minstral".into(),
+            portrait: "portrait_le_chat".into(),
         },
     ];
 
@@ -668,9 +668,9 @@ mod tests {
         assert_eq!(mission.dialogue.len(), 5, "should have 5 dialogue lines");
         assert_eq!(mission.triggers.len(), 5, "should have 5 triggers");
 
-        // All dialogue from Minstral with AiVoice style
+        // All dialogue from Le Chat with AiVoice style
         for line in &mission.dialogue {
-            assert_eq!(line.speaker, "Minstral");
+            assert_eq!(line.speaker, "Le Chat");
             assert_eq!(line.voice_style, VoiceStyle::AiVoice);
         }
     }

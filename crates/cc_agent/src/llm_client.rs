@@ -111,7 +111,7 @@ pub fn parse_openai_response(json: &serde_json::Value) -> Result<LlmResponse, Ll
     })
 }
 
-/// OpenAI-compatible client — works for Mistral API, vLLM, Ollama.
+/// OpenAI-compatible client — works for Ollama, vLLM, or any OpenAI-compatible API.
 pub struct OpenAiCompatibleClient {
     pub base_url: String,
     pub api_key: String,
@@ -385,7 +385,7 @@ impl Default for LlmConfig {
             backend: LlmBackend::Mock,
             base_url: "http://localhost:11434".into(),
             api_key: String::new(),
-            model: "devstral-small-2-2512".into(),
+            model: "qwen3-coder:30b-a3b".into(),
             temperature: 0.2,
             finetuned_lua: false,
         }
@@ -398,7 +398,7 @@ impl LlmConfig {
     /// - `CLAWED_LLM_BACKEND`: "openai" | "anthropic" | "mock" | "fallback"
     /// - `CLAWED_LLM_URL`: base URL (default: "http://localhost:11434")
     /// - `CLAWED_API_KEY`: API key (default: empty)
-    /// - `CLAWED_LLM_MODEL`: model ID (default: "devstral-small-2-2512")
+    /// - `CLAWED_LLM_MODEL`: model ID (default: "qwen3-coder:30b-a3b")
     /// - `CLAWED_LLM_TEMP`: temperature (default: 0.2)
     /// - `CLAWED_LLM_FINETUNED`: "1" or "true" to enable fine-tuned Lua mode
     pub fn from_env() -> Self {
@@ -469,7 +469,7 @@ mod tests {
         let config = LlmConfig::from_env();
         assert_eq!(config.backend, LlmBackend::Mock);
         assert_eq!(config.base_url, "http://localhost:11434");
-        assert_eq!(config.model, "devstral-small-2-2512");
+        assert_eq!(config.model, "qwen3-coder:30b-a3b");
         assert!((config.temperature - 0.2).abs() < f32::EPSILON);
         assert!(!config.finetuned_lua);
     }

@@ -350,9 +350,9 @@ Files in `crates/cc_client/src/`:
 - [ ] **Fog-of-war filtering** — query tools only return data the player can see (no cheating through the agent)
 - [ ] **Rate limiting** — cap tool calls per game tick to prevent AI from overwhelming the simulation
 
-### 3.2 Mistral Inference Client (`cc_agent`)
+### 3.2 LLM Inference Client (`cc_agent`)
 
-- [ ] **`inference.rs`** — `MistralClient` with `remote()` and `local()` constructors per MISTRAL.md
+- [ ] **`inference.rs`** — `OpenAiCompatibleClient` with configurable base URL and model
 - [ ] **Tool call loop** — send messages + tools → receive tool_calls → execute → return results → repeat up to 10 rounds
 - [ ] **Streaming** — stream partial responses for the agent chat UI
 - [ ] **Error handling** — timeout, malformed tool calls, API errors → graceful degradation with player notification
@@ -388,7 +388,7 @@ Files in `crates/cc_client/src/`:
 - [ ] **Interim results** — show partial transcription on HUD as player speaks
 - [ ] **Intent classifier — Tier 1** — keyword/regex match against registered script intents + synonym lists
 - [ ] **Intent classifier — Tier 2** — fuzzy match using Levenshtein distance for speech recognition errors
-- [ ] **Intent classifier — Tier 3** — fall through to Mistral agent for unrecognized complex commands
+- [ ] **Intent classifier — Tier 3** — fall through to LLM agent for unrecognized complex commands
 - [ ] **Contextual narrowing** — bias intent matching based on current selection (unit selected → unit commands)
 
 ### 3.7 Voice Command Buff System (`cc_voice`)
@@ -413,7 +413,7 @@ Files in `crates/cc_client/src/`:
 
 ### 3.9 Integration Testing
 
-- [ ] **End-to-end agent test** — issue natural language instruction → Mistral generates tool calls → commands execute in simulation → verify game state changed correctly
+- [ ] **End-to-end agent test** — issue natural language instruction → LLM generates tool calls → commands execute in simulation → verify game state changed correctly
 - [ ] **End-to-end voice test** — simulate speech input → intent classification → Lua script execution → commands execute → buff applied → verify
 - [ ] **Construct mode test** — generate a script via LLM → bind to intent → trigger by voice → verify behavior
 - [ ] **Latency profiling** — measure end-to-end time from player instruction to visible game action for both agent and voice paths
@@ -461,7 +461,7 @@ Phase 1                          Phase 2                          Phase 3
 | `fixed` | Fixed-point arithmetic for determinism | cc_core |
 | `serde` / `bincode` | Serialization | cc_core, cc_net |
 | `mlua` | Lua scripting runtime | cc_voice |
-| `reqwest` | HTTP client for Mistral API | cc_agent |
+| `reqwest` | HTTP client for LLM API | cc_agent |
 | `tokio` | Async runtime for inference calls | cc_agent |
 | `wasmtime` | WASM sandbox for scripts | cc_voice, cc_agent |
 | `rodio` / `bevy_audio` | Audio playback | cc_client |
@@ -470,6 +470,6 @@ Phase 1                          Phase 2                          Phase 3
 
 1. **Tilemap approach**: `bevy_ecs_tilemap` git branch vs. manual sprite-per-tile. Try the plugin first; fall back to manual if the 0.18 branch is unstable.
 2. **Pathfinding crate**: Write A* from scratch (simple, deterministic) vs. use `pathfinding` crate. Recommend writing it — it's ~100 lines and we control determinism.
-3. **Construct mode LLM**: Same Devstral model as the agent, or a separate code-gen model? Start with the same model; if Lua quality is poor, evaluate Codestral.
+3. **Construct mode LLM**: Same model as the agent (Qwen3-Coder-30B-A3B via Ollama) for both construct mode and game-loop decisions.
 4. **Native vs. WASM client**: Phase 1-3 target native desktop. WASM build for browser is a Phase 6 stretch goal. Voice/speech APIs need platform abstraction either way.
 5. **Multiplayer architecture**: Lockstep vs. client-server. Defer final decision to Phase 5 but design for lockstep (stricter determinism requirements = better code).

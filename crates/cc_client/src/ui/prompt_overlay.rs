@@ -350,7 +350,7 @@ pub fn update_prompt_display(
     // Update response area
     if let Ok(mut text) = response_q.single_mut() {
         if construct_state.waiting_for_response && construct_state.editable_source.is_empty() {
-            text.0 = "Minstral is thinking...".to_string();
+            text.0 = "Le Chat is thinking...".to_string();
         } else if construct_state.waiting_for_response
             && !construct_state.editable_source.is_empty()
         {
@@ -387,7 +387,7 @@ pub fn update_prompt_display(
     // Update status line
     if let Ok(mut text) = status_q.single_mut() {
         if construct_state.waiting_for_response {
-            text.0 = "Waiting for Minstral...".to_string();
+            text.0 = "Waiting for Le Chat...".to_string();
         } else if construct_state.current_script.is_some() {
             text.0 = "T=test | S=save & activate | Enter=new prompt | Esc=close".to_string();
         } else {

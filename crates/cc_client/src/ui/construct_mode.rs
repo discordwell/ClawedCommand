@@ -6,7 +6,7 @@ use super::LocalPlayer;
 
 /// System prompt for construct mode.
 #[allow(dead_code)]
-const CONSTRUCT_MODE_SYSTEM_PROMPT: &str = r#"You are Minstral, an AI assistant in the RTS game ClawedCommand. The player is asking you to create or modify a Lua script for army automation.
+const CONSTRUCT_MODE_SYSTEM_PROMPT: &str = r#"You are Le Chat, an AI assistant in the RTS game ClawedCommand. The player is asking you to create or modify a Lua script for army automation.
 
 Generate a Lua script using the ctx API. Available methods:
 
@@ -149,7 +149,7 @@ pub fn spawn_construct_mode(mut commands: Commands) {
                     ));
                     parent.spawn((
                         ConstructCodeDisplay,
-                        Text::new("Select a script or ask Minstral to create one"),
+                        Text::new("Select a script or ask Le Chat to create one"),
                         TextColor(Color::srgb(0.6, 0.8, 0.6)),
                         TextFont {
                             font_size: 11.0,
@@ -281,7 +281,7 @@ pub fn update_construct_mode(
             }
             text.0 = display;
         } else {
-            text.0 = "Select a script or ask Minstral to create one".to_string();
+            text.0 = "Select a script or ask Le Chat to create one".to_string();
         }
     }
 
@@ -300,7 +300,7 @@ pub fn update_construct_mode(
                     let prefix = if msg.role == "user" {
                         "You"
                     } else {
-                        "Minstral"
+                        "Le Chat"
                     };
                     let content: String = msg.content.chars().take(100).collect();
                     format!("{}: {}", prefix, content)
@@ -308,7 +308,7 @@ pub fn update_construct_mode(
                 .collect();
             let mut display = history.join("\n\n");
             if state.waiting_for_response {
-                display.push_str("\n\n... Minstral is thinking ...");
+                display.push_str("\n\n... Le Chat is thinking ...");
             }
             text.0 = display;
         }
