@@ -1610,7 +1610,7 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/nibblet_idle.png
-    style_version: 1
+    style_version: 2
   swarmer_idle:
     template: unit_static
     status: game_ready
@@ -1626,7 +1626,7 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/swarmer_idle.png
-    style_version: 1
+    style_version: 2
   gnawer_idle:
     template: unit_static
     status: game_ready
@@ -1660,7 +1660,7 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/shrieker_idle.png
-    style_version: 1
+    style_version: 2
   tunneler_idle:
     template: unit_static
     status: game_ready
@@ -1866,7 +1866,7 @@ units:
     style_version: 1
   jayflicker_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Jayflicker
       pose: semi-transparent, flickering between visible and invisible
@@ -1880,10 +1880,10 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/jayflicker_idle.png
-    style_version: 1
+    style_version: 2
   dusktalon_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Dusktalon
       pose: emerging from shadows, talons gleaming
@@ -1897,7 +1897,7 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/dusktalon_idle.png
-    style_version: 1
+    style_version: 2
   hootseer_idle:
     template: unit_static
     status: planned
@@ -1917,7 +1917,7 @@ units:
     style_version: 1
   corvus_rex_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Corvus Rex
       pose: perched on throne of bones, crown of stars
@@ -1931,7 +1931,7 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/corvus_rex_idle.png
-    style_version: 1
+    style_version: 2
   delver_idle:
     template: unit_static
     status: planned
@@ -1967,7 +1967,7 @@ units:
     style_version: 1
   cragback_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Cragback
       pose: hunched with boulder cannon on back, stone-plated
@@ -1981,7 +1981,7 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/cragback_idle.png
-    style_version: 1
+    style_version: 2
   warden_idle:
     template: unit_static
     status: planned
@@ -2069,7 +2069,7 @@ units:
     style_version: 1
   dustclaw_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Dustclaw
       pose: low stance, claws out, ready to dash
@@ -2082,10 +2082,10 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/dustclaw_idle.png
-    style_version: 1
+    style_version: 2
   gutripper_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Gutripper
       pose: standing with blood-stained claws, menacing
@@ -2099,7 +2099,7 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/gutripper_idle.png
-    style_version: 1
+    style_version: 2
   ponderer_idle:
     template: unit_static
     status: planned
@@ -2119,7 +2119,7 @@ units:
     style_version: 1
   regeneron_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Regeneron
       pose: mid-regeneration, one limb glowing
@@ -2133,7 +2133,7 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/regeneron_idle.png
-    style_version: 1
+    style_version: 2
   broodmother_idle:
     template: unit_static
     status: planned
@@ -2153,7 +2153,7 @@ units:
     style_version: 1
   gulper_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Gulper
       pose: wide mouth open, massive and round
@@ -2167,10 +2167,10 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/gulper_idle.png
-    style_version: 1
+    style_version: 2
   eftsaber_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Eftsaber
       pose: dual-wielding bone blades, crouched to strike
@@ -2184,7 +2184,7 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/eftsaber_idle.png
-    style_version: 1
+    style_version: 2
   croaker_idle:
     template: unit_static
     status: planned
@@ -2204,7 +2204,7 @@ units:
     style_version: 1
   leapfrog_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Leapfrog
       pose: crouched ready to leap, powerful hind legs
@@ -2218,10 +2218,10 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/leapfrog_idle.png
-    style_version: 1
+    style_version: 2
   shellwarden_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Shellwarden
       pose: retracted into shell, only eyes and legs visible
@@ -2235,7 +2235,7 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/shellwarden_idle.png
-    style_version: 1
+    style_version: 2
   bogwhisper_idle:
     template: unit_static
     status: planned
@@ -2255,7 +2255,7 @@ units:
     style_version: 1
   murk_commander_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Murk Commander
       pose: standing in shallow water, trident raised, bioluminescent crown
@@ -2269,10 +2269,10 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/murk_commander_idle.png
-    style_version: 1
+    style_version: 2
   scrounger_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Scrounger
       pose: rummaging through trash, holding a shiny find
@@ -2286,10 +2286,10 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/scrounger_idle.png
-    style_version: 1
+    style_version: 2
   bandit_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Bandit
       pose: crouched with makeshift weapon, sneaky expression
@@ -2303,10 +2303,10 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/bandit_idle.png
-    style_version: 1
+    style_version: 2
   heap_titan_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Heap Titan
       pose: standing in scrap armor, massive and slow
@@ -2320,10 +2320,10 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/heap_titan_idle.png
-    style_version: 1
+    style_version: 2
   glitch_rat_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Glitch Rat
       pose: twitching with sparking electronics, glitchy visual
@@ -2337,7 +2337,7 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/glitch_rat_idle.png
-    style_version: 1
+    style_version: 2
   patch_possum_idle:
     template: unit_static
     status: planned
@@ -2357,7 +2357,7 @@ units:
     style_version: 1
   grease_monkey_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Grease Monkey
       pose: holding wrench-launcher, oil-stained
@@ -2371,10 +2371,10 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/grease_monkey_idle.png
-    style_version: 1
+    style_version: 2
   dead_drop_unit_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Dead Drop
       pose: pressed against wall, nearly invisible, holding intel
@@ -2388,7 +2388,7 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/dead_drop_unit_idle.png
-    style_version: 1
+    style_version: 2
   wrecker_idle:
     template: unit_static
     status: planned
@@ -2408,7 +2408,7 @@ units:
     style_version: 1
   dumpster_diver_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Dumpster Diver
       pose: emerging from dumpster with chemical vials
@@ -2422,10 +2422,10 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/dumpster_diver_idle.png
-    style_version: 1
+    style_version: 2
   junkyard_king_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Junkyard King
       pose: seated on throne of trash, crown of bent forks
@@ -2439,7 +2439,7 @@ units:
     output:
       type: single
       game_path: assets/sprites/units/junkyard_king_idle.png
-    style_version: 1
+    style_version: 2
 projectiles:
   spit:
     template: projectile
