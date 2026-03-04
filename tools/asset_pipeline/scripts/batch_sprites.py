@@ -372,28 +372,30 @@ def download_and_process(slug: str) -> bool:
         print("    Fully opaque — applying rembg...")
         img = remove_background(img)
 
-    # Quality gate
-    passed, reason = validate_sprite_quality(img, sprite_type="idle")
+    bbox = img.getbbox()
+    if not bbox:
+        print(f"    Empty image (no bounding box)")
+        dl_path.unlink()
+        return False
+
+    cropped = img.crop(bbox)
+    cropped.thumbnail((128, 128), Image.LANCZOS)
+    canvas = Image.new("RGBA", (128, 128), (0, 0, 0, 0))
+    x = (128 - cropped.width) // 2
+    y = (128 - cropped.height) // 2
+    canvas.paste(cropped, (x, y))
+
+    # Quality gate on final 128x128 output (downscaling concentrates edge detail,
+    # so QC must run after resize, not on the raw 1024x1024 rembg output)
+    passed, reason = validate_sprite_quality(canvas, sprite_type="idle")
     if not passed:
         print(f"    QC FAIL: {reason}")
         dl_path.unlink(missing_ok=True)
         return False
 
-    bbox = img.getbbox()
-    if bbox:
-        cropped = img.crop(bbox)
-        cropped.thumbnail((128, 128), Image.LANCZOS)
-        canvas = Image.new("RGBA", (128, 128), (0, 0, 0, 0))
-        x = (128 - cropped.width) // 2
-        y = (128 - cropped.height) // 2
-        canvas.paste(cropped, (x, y))
-        out_path = OUT_DIR / f"{slug}_idle.png"
-        canvas.save(str(out_path))
-        print(f"    {cropped.width}x{cropped.height} -> 128x128 ({reason})")
-    else:
-        print(f"    Empty image (no bounding box)")
-        dl_path.unlink()
-        return False
+    out_path = OUT_DIR / f"{slug}_idle.png"
+    canvas.save(str(out_path))
+    print(f"    {cropped.width}x{cropped.height} -> 128x128 ({reason})")
 
     dl_path.unlink(missing_ok=True)
     return True
