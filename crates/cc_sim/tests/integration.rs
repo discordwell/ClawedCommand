@@ -1887,7 +1887,7 @@ fn test_research_completes_and_applies() {
     let unit = spawn_full_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
     let dmg_before = world.get::<AttackStats>(unit).unwrap().damage;
 
-    // Research SharperClaws (+2 damage, 200 ticks)
+    // Research SharperClaws (+20% damage, 100 ticks)
     world
         .resource_mut::<CommandQueue>()
         .push(GameCommand::Research {
@@ -1895,12 +1895,12 @@ fn test_research_completes_and_applies() {
             upgrade: UpgradeType::SharperClaws,
         });
 
-    run_ticks(&mut world, &mut schedule, 205);
+    run_ticks(&mut world, &mut schedule, 105);
 
     let dmg_after = world.get::<AttackStats>(unit).unwrap().damage;
     assert!(
         dmg_after > dmg_before,
-        "SharperClaws should add +2 damage: before={dmg_before}, after={dmg_after}"
+        "SharperClaws should add +20% damage: before={dmg_before}, after={dmg_after}"
     );
 
     // Verify upgrade is recorded
@@ -1956,7 +1956,7 @@ fn test_cancel_research_refunds() {
     world.resource_mut::<PlayerResources>().players[0].food = 500;
     world.resource_mut::<PlayerResources>().players[0].gpu_cores = 200;
 
-    // Queue SharperClaws (costs 150F, 50G)
+    // Queue SharperClaws (costs 100F, 25G)
     world
         .resource_mut::<CommandQueue>()
         .push(GameCommand::Research {
@@ -1968,8 +1968,8 @@ fn test_cancel_research_refunds() {
 
     let food_after_queue = world.resource::<PlayerResources>().players[0].food;
     let gpu_after_queue = world.resource::<PlayerResources>().players[0].gpu_cores;
-    assert_eq!(food_after_queue, 350, "150 food should be deducted");
-    assert_eq!(gpu_after_queue, 150, "50 GPU should be deducted");
+    assert_eq!(food_after_queue, 400, "100 food should be deducted");
+    assert_eq!(gpu_after_queue, 175, "25 GPU should be deducted");
 
     // Cancel research
     world
@@ -2004,7 +2004,7 @@ fn test_new_units_get_upgrades() {
     world.resource_mut::<PlayerResources>().players[0].supply = 0;
     world.resource_mut::<PlayerResources>().players[0].supply_cap = 20;
 
-    // Research ThickerFur (+25 HP for combat units, 200 ticks)
+    // Research ThickerFur (+25% HP for combat units, 100 ticks)
     world
         .resource_mut::<CommandQueue>()
         .push(GameCommand::Research {
@@ -2012,7 +2012,7 @@ fn test_new_units_get_upgrades() {
             upgrade: UpgradeType::ThickerFur,
         });
 
-    run_ticks(&mut world, &mut schedule, 205);
+    run_ticks(&mut world, &mut schedule, 105);
 
     // Verify upgrade completed
     assert!(
@@ -2022,14 +2022,15 @@ fn test_new_units_get_upgrades() {
         "ThickerFur should be completed"
     );
 
-    // Train a Nuisance (combat unit) — it should spawn with +25 HP
+    // Train a Nuisance (combat unit) — it should spawn with +25% HP
     issue_train(&mut world, cat_tree, UnitKind::Nuisance);
 
     // Nuisance train_time = 60 ticks
     run_ticks(&mut world, &mut schedule, 65);
 
     let base_hp = base_stats(UnitKind::Nuisance).health;
-    let expected_hp = base_hp + Fixed::from_num(25);
+    // +25% of 80 = +20 HP → 100 total
+    let expected_hp = base_hp + base_hp * Fixed::from_bits((1 << 16) * 25 / 100);
 
     let has_boosted_unit = world
         .query_filtered::<(&UnitType, &Health), ()>()
@@ -2038,7 +2039,7 @@ fn test_new_units_get_upgrades() {
 
     assert!(
         has_boosted_unit,
-        "Newly trained Nuisance should have +25 HP from ThickerFur"
+        "Newly trained Nuisance should have +25% HP from ThickerFur"
     );
 }
 

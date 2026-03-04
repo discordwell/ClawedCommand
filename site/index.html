@@ -357,13 +357,15 @@ a { color: var(--accent); text-decoration: none; }
   position: relative;
 }
 .faction-strip .f-sprite img { width: 100%; height: 100%; }
-.faction-strip .f-sprite .f-building {
+.faction-strip .f-sprite .f-portrait {
   position: absolute;
   bottom: -4px;
   right: -12px;
   width: 48px;
   height: 48px;
-  opacity: 0.7;
+  opacity: 0.85;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.15);
 }
 
 .faction-strip .f-info {
@@ -753,7 +755,7 @@ footer .end-tx {
     padding: 16px 20px;
   }
   .faction-strip .f-sprite { width: 72px; height: 72px; }
-  .faction-strip .f-sprite .f-building { width: 36px; height: 36px; }
+  .faction-strip .f-sprite .f-portrait { width: 36px; height: 36px; }
 
   .ai-voice {
     grid-template-columns: 1fr;
@@ -848,7 +850,7 @@ footer .end-tx {
     <div class="faction-strip fs-catgpt reveal">
       <div class="f-sprite sprite-float-slow">
         <img src="assets/sprites/units/mech_commander_idle.png" alt="Mech Commander">
-        <img class="f-building" src="assets/sprites/buildings/the_box.png" alt="The Box">
+        <img class="f-portrait" src="assets/sprites/portraits/ai_geppity.png" alt="Le Chat">
       </div>
       <div class="f-info">
         <div class="f-name">catGPT</div>
@@ -860,7 +862,7 @@ footer .end-tx {
     <div class="faction-strip fs-clawed reveal reveal-delay-1">
       <div class="f-sprite sprite-float-slow" style="animation-delay: 0.5s;">
         <img src="assets/sprites/units/warren_marshal_idle.png" alt="Warren Marshal">
-        <img class="f-building" src="assets/sprites/buildings/the_burrow.png" alt="The Burrow">
+        <img class="f-portrait" src="assets/sprites/portraits/ai_claudeus_maximus.png" alt="Claudeus Maximus">
       </div>
       <div class="f-info">
         <div class="f-name">The Clawed</div>
@@ -871,8 +873,8 @@ footer .end-tx {
 
     <div class="faction-strip fs-seekers reveal reveal-delay-2">
       <div class="f-sprite sprite-float-slow" style="animation-delay: 1s;">
-        <img src="assets/sprites/units/sentinel_idle.png" alt="Sentinel">
-        <img class="f-building" src="assets/sprites/buildings/the_sett.png" alt="The Sett">
+        <img src="assets/sprites/units/wardenmother_idle.png" alt="Wardenmother"><!-- TODO: badger hero sprite needed -->
+        <img class="f-portrait" src="assets/sprites/portraits/ai_deepseek.png" alt="Deepseek">
       </div>
       <div class="f-info">
         <div class="f-name">Seekers of the Deep</div>
@@ -883,8 +885,8 @@ footer .end-tx {
 
     <div class="faction-strip fs-murder reveal reveal-delay-3">
       <div class="f-sprite sprite-float-slow" style="animation-delay: 1.5s;">
-        <img src="assets/sprites/units/rookclaw_idle.png" alt="Rookclaw">
-        <img class="f-building" src="assets/sprites/buildings/the_parliament.png" alt="The Parliament">
+        <img src="assets/sprites/units/magpyre_idle.png" alt="Magpyre">
+        <img class="f-portrait" src="assets/sprites/portraits/ai_gemineye.png" alt="Gemineye">
       </div>
       <div class="f-info">
         <div class="f-name">The Murder</div>
@@ -895,8 +897,8 @@ footer .end-tx {
 
     <div class="faction-strip fs-llama reveal reveal-delay-4">
       <div class="f-sprite sprite-float-slow" style="animation-delay: 2s;">
-        <img src="assets/sprites/units/murder_scrounger_idle.png" alt="Scrounger">
-        <img class="f-building" src="assets/sprites/buildings/the_dumpster.png" alt="The Dumpster">
+        <img src="assets/sprites/heroes/king_ringtail_idle.png" alt="King Ringtail">
+        <img class="f-portrait" src="assets/sprites/portraits/ai_llhama.png" alt="Llhama">
       </div>
       <div class="f-info">
         <div class="f-name">LLAMA</div>
@@ -908,8 +910,8 @@ footer .end-tx {
 
     <div class="faction-strip fs-croak reveal reveal-delay-5">
       <div class="f-sprite sprite-float-slow" style="animation-delay: 2.5s;">
-        <img src="assets/sprites/units/plaguetail_idle.png" alt="Plaguetail">
-        <img class="f-building" src="assets/sprites/buildings/the_grotto.png" alt="The Grotto">
+        <img src="assets/sprites/heroes/the_eternal_idle.png" alt="The Eternal">
+        <img class="f-portrait" src="assets/sprites/portraits/ai_grok.png" alt="Grok">
       </div>
       <div class="f-info">
         <div class="f-name">Croak</div>

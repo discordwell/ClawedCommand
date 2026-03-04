@@ -1,6 +1,7 @@
 """Shared image processing utilities for the asset pipeline."""
 
 import sys
+import time
 
 import numpy as np
 from PIL import Image
@@ -69,3 +70,118 @@ def resize_to_fit(img: Image.Image, target_w: int, target_h: int) -> Image.Image
     offset_y = (target_h - new_h) // 2
     canvas.paste(img, (offset_x, offset_y), img)
     return canvas
+
+
+def validate_sprite_quality(img: Image.Image, sprite_type: str = "idle") -> tuple[bool, str]:
+    """Validate sprite quality: transparency, sharpness, content.
+
+    Args:
+        img: RGBA PIL Image to validate.
+        sprite_type: "idle" (transparency + sharpness), "portrait" (sharpness only),
+                     "sheet" (sharpness only).
+
+    Returns:
+        (passed, reason) tuple.
+    """
+    arr = np.array(img.convert("RGBA"))
+    alpha = arr[:, :, 3]
+    total_pixels = alpha.size
+
+    # Content check — must have at least 1% opaque pixels
+    opaque_count = np.count_nonzero(alpha > 10)
+    if opaque_count < total_pixels * 0.01:
+        return False, f"empty/invisible — only {opaque_count}/{total_pixels} opaque pixels"
+
+    # Transparency check (idle sprites only — portraits have painted backgrounds)
+    if sprite_type == "idle":
+        opaque_ratio = np.count_nonzero(alpha > 200) / total_pixels
+        if opaque_ratio > 0.95:
+            return False, f"fully opaque ({opaque_ratio:.1%}) — likely mid-generation grab or missing bg removal"
+
+    # Sharpness check via Laplacian variance (pure numpy, no scipy)
+    gray = np.mean(arr[:, :, :3], axis=2).astype(np.float64)
+    # Pad for 3x3 Laplacian kernel
+    padded = np.pad(gray, 1, mode="edge")
+    laplacian = (
+        padded[:-2, 1:-1] + padded[2:, 1:-1] +
+        padded[1:-1, :-2] + padded[1:-1, 2:] -
+        4 * padded[1:-1, 1:-1]
+    )
+    edge_var = np.var(laplacian)
+    if edge_var < 500:
+        return False, f"blurry — Laplacian variance {edge_var:.0f} < 500"
+
+    return True, f"ok (opaque={np.count_nonzero(alpha > 200) / total_pixels:.0%}, sharpness={edge_var:.0f})"
+
+
+def wait_for_stable_image(applescript_js_fn, timeout: int = 120,
+                          settle_time: float = 8.0,
+                          poll_interval: float = 3.0) -> bool:
+    """Wait for a ChatGPT-generated image to fully render and stabilize.
+
+    Phase 1: Wait for img[alt="Generated image"] to exist in DOM.
+    Phase 2: Wait for img.complete && img.naturalWidth > 0.
+    Phase 3: Wait settle_time after image src URL stabilizes on two consecutive polls.
+
+    Args:
+        applescript_js_fn: Callable that takes JS code string and returns result string.
+        timeout: Max total wait time in seconds.
+        settle_time: Seconds to wait after src URL stabilizes.
+        poll_interval: Seconds between polls.
+
+    Returns:
+        True if image is stable, False on timeout.
+    """
+    start = time.time()
+
+    # Phase 1: Wait for image element to exist
+    while time.time() - start < timeout:
+        time.sleep(poll_interval)
+        r = applescript_js_fn(
+            'document.querySelectorAll(\'img[alt="Generated image"]\').length.toString()'
+        )
+        try:
+            if int(r) > 0:
+                break
+        except (ValueError, TypeError):
+            pass
+    else:
+        return False
+
+    # Phase 2: Wait for img.complete and naturalWidth > 0
+    while time.time() - start < timeout:
+        time.sleep(poll_interval)
+        r = applescript_js_fn('''
+(function() {
+    var img = document.querySelector('img[alt="Generated image"]');
+    if (!img) return "no_img";
+    if (img.complete && img.naturalWidth > 0) return "loaded";
+    return "loading";
+})()
+''')
+        if "loaded" in r:
+            break
+    else:
+        return False
+
+    # Phase 3: Wait for src URL to stabilize
+    last_src = None
+    stable_since = None
+    while time.time() - start < timeout:
+        time.sleep(poll_interval)
+        src = applescript_js_fn('''
+(function() {
+    var img = document.querySelector('img[alt="Generated image"]');
+    return img ? img.src : "no_img";
+})()
+''')
+        if src == last_src and last_src and "no_img" not in last_src:
+            if stable_since is None:
+                stable_since = time.time()
+            elif time.time() - stable_since >= settle_time:
+                return True
+        else:
+            last_src = src
+            stable_since = None
+
+    return False

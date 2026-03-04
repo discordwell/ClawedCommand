@@ -4,14 +4,44 @@
 Sends prompts via MCP (claude-in-chrome), downloads via AppleScript.
 Requires "Allow JavaScript from Apple Events" enabled in Chrome.
 
-Usage: python3 batch_sprites.py [start_index]
+Usage:
+  python3 batch_sprites.py [start_index]
+  python3 batch_sprites.py --regen-bad
 """
+import random
 import subprocess, sys, time, shutil
 from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+from image_utils import (
+    remove_background,
+    validate_sprite_quality,
+    wait_for_stable_image,
+)
 
 PROJECT = Path("/Users/discordwell/Projects/ClawedCommand")
 RAW_DIR = PROJECT / "tools/asset_pipeline/raw/units"
 OUT_DIR = PROJECT / "assets/sprites/units"
+
+# Faction membership for style reference selection
+FACTIONS = {
+    "murder": ["murder_scrounger", "sentinel", "rookclaw", "magpike", "magpyre",
+               "jaycaller", "jayflicker", "dusktalon", "hootseer", "corvus_rex"],
+    "seekers": ["delver", "ironhide", "cragback", "warden", "sapjaw",
+                "wardenmother", "seeker_tunneler", "embermaw", "dustclaw", "gutripper"],
+    "croak": ["ponderer", "regeneron", "broodmother", "gulper", "eftsaber",
+              "croaker", "leapfrog", "shellwarden", "bogwhisper", "murk_commander"],
+    "llama": ["scrounger", "bandit", "heap_titan", "glitch_rat", "patch_possum",
+              "grease_monkey", "dead_drop_unit", "wrecker", "dumpster_diver", "junkyard_king"],
+}
+
+# Reverse lookup: slug → faction name
+SLUG_TO_FACTION = {}
+for faction, members in FACTIONS.items():
+    for slug in members:
+        SLUG_TO_FACTION[slug] = faction
 
 # All 40 sprites: (slug, animal, description)
 SPRITES = [
@@ -125,35 +155,91 @@ def open_new_chat():
     return False
 
 
-def upload_style_reference() -> bool:
-    """Upload a style reference image to the ChatGPT chat."""
-    ref_image = str(PROJECT / "assets/sprites/units/chonk_idle.png")
+def check_rate_limit() -> bool:
+    """Check if ChatGPT is showing a rate limit message. Returns True if rate-limited."""
+    r = applescript_js('''
+(function() {
+    var body = document.body ? document.body.innerText : "";
+    if (body.match(/rate limit|too many|try again later|usage cap/i)) return "rate_limited";
+    return "ok";
+})()
+''')
+    return "rate_limited" in r
 
-    # Use AppleScript to inject the file into the file input
-    js = f'''
-(function() {{
-    // Find the file input (hidden) or the "Add files" button
-    var fileInput = document.querySelector('input[type="file"]');
-    if (!fileInput) {{
-        // Click the "Add files" button to reveal file input
-        var addBtn = document.querySelector('button[aria-label="Add files and more"]');
-        if (addBtn) addBtn.click();
-        return "clicked_add_btn";
-    }}
-    return "file_input_found";
-}})()
-'''
-    r = applescript_js(js)
-    if "clicked_add_btn" in r:
-        time.sleep(1)
 
-    # Use DataTransfer API to inject the file
-    # First read the file as base64 via Python and inject
+_good_sprites_cache: dict[str, list[str]] = {}
+
+def get_good_sprites(faction: str) -> list[str]:
+    """Return slugs of sprites that pass QC for a given faction. Cached."""
+    if faction in _good_sprites_cache:
+        return _good_sprites_cache[faction]
+    good = []
+    for slug in FACTIONS.get(faction, []):
+        p = OUT_DIR / f"{slug}_idle.png"
+        if p.exists():
+            img = Image.open(str(p)).convert("RGBA")
+            passed, _ = validate_sprite_quality(img, sprite_type="idle")
+            if passed:
+                good.append(slug)
+    _good_sprites_cache[faction] = good
+    return good
+
+
+def get_style_refs(slug: str) -> list[str]:
+    """Get 3 style reference paths: 2 same-faction + 1 cross-faction.
+    Falls back gracefully if fewer are available."""
+    faction = SLUG_TO_FACTION.get(slug)
+    if not faction:
+        return []
+
+    # Same-faction good sprites (excluding self)
+    same = [s for s in get_good_sprites(faction) if s != slug]
+
+    # Cross-faction good sprites
+    cross = []
+    for other_faction in FACTIONS:
+        if other_faction != faction:
+            cross.extend(get_good_sprites(other_faction))
+
+    refs = []
+    # Pick up to 2 same-faction
+    if same:
+        refs.extend(random.sample(same, min(2, len(same))))
+    # Pick 1 cross-faction
+    if cross:
+        refs.append(random.choice(cross))
+
+    return [str(OUT_DIR / f"{s}_idle.png") for s in refs]
+
+
+def upload_style_references(ref_paths: list[str]) -> int:
+    """Upload multiple style reference images to the ChatGPT chat.
+    Returns count of successfully uploaded references."""
     import base64
-    with open(ref_image, "rb") as f:
-        b64 = base64.b64encode(f.read()).decode()
 
-    js_inject = f'''
+    if not ref_paths:
+        return 0
+
+    # Click "Add files" button first
+    applescript_js('''
+(function() {
+    var addBtn = document.querySelector('button[aria-label="Add files and more"]');
+    if (addBtn) addBtn.click();
+})()
+''')
+    time.sleep(1)
+
+    uploaded = 0
+    for ref_path in ref_paths:
+        if not Path(ref_path).exists():
+            print(f"    Ref not found: {ref_path}")
+            continue
+
+        with open(ref_path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode()
+
+        ref_name = Path(ref_path).stem
+        js_inject = f'''
 (function() {{
     var b64 = "{b64}";
     var byteChars = atob(b64);
@@ -162,7 +248,7 @@ def upload_style_reference() -> bool:
         byteArray[i] = byteChars.charCodeAt(i);
     }}
     var blob = new Blob([byteArray], {{type: "image/png"}});
-    var file = new File([blob], "style_reference.png", {{type: "image/png"}});
+    var file = new File([blob], "{ref_name}.png", {{type: "image/png"}});
     var dt = new DataTransfer();
     dt.items.add(file);
     var fileInput = document.querySelector('input[type="file"]');
@@ -174,21 +260,24 @@ def upload_style_reference() -> bool:
     return "no_file_input";
 }})()
 '''
-    r = applescript_js(js_inject)
-    if "uploaded" in r:
-        print("    Style reference uploaded")
-        time.sleep(2)
-        return True
-    print(f"    Style ref upload: {r}")
-    return False
+        r = applescript_js(js_inject)
+        if "uploaded" in r:
+            uploaded += 1
+            time.sleep(1.5)  # Wait between uploads
+
+    if uploaded > 0:
+        print(f"    {uploaded} style reference(s) uploaded")
+        time.sleep(1)
+    return uploaded
 
 
-def send_prompt(animal: str, description: str, with_style_ref: bool = True) -> bool:
-    """Send sprite generation prompt, optionally with style reference."""
-    if with_style_ref:
-        upload_style_reference()
+def send_prompt(animal: str, description: str, ref_paths: list[str] | None = None) -> bool:
+    """Send sprite generation prompt with faction-specific style references."""
+    has_refs = ref_paths and len(ref_paths) > 0
+    if has_refs:
+        upload_style_references(ref_paths)
 
-    style_line = "Use the attached image as a STYLE REFERENCE. Match its art style exactly: clean vector art, bold dark outlines, flat colors, isometric perspective." if with_style_ref else ""
+    style_line = "Use the attached images as STYLE REFERENCES. Match their art style: clean vector art, bold dark outlines, flat colors, isometric perspective. The character should look like it belongs in the same faction/army." if has_refs else ""
 
     js_fill = f'''
 (function() {{
@@ -233,24 +322,13 @@ def send_prompt(animal: str, description: str, with_style_ref: bool = True) -> b
     return "sent" in r
 
 
-def wait_for_image(timeout=90) -> bool:
-    """Wait for ChatGPT to generate images."""
-    start = time.time()
-    while time.time() - start < timeout:
-        time.sleep(5)
-        r = applescript_js('document.querySelectorAll(\'img[alt="Generated image"]\').length.toString()')
-        try:
-            if int(r) > 0:
-                return True
-        except (ValueError, TypeError):
-            pass
-    return False
+def wait_for_image(timeout=120) -> bool:
+    """Wait for ChatGPT to generate a fully rendered, stable image."""
+    return wait_for_stable_image(applescript_js, timeout=timeout, settle_time=8)
 
 
 def download_and_process(slug: str) -> bool:
-    """Download first generated image via curl and process to 128x128."""
-    from PIL import Image
-
+    """Download first generated image via curl, apply rembg if needed, QC gate, process to 128x128."""
     # Get image URL and cookies via AppleScript JS
     js_url = '''
 (function() {
@@ -276,7 +354,7 @@ def download_and_process(slug: str) -> bool:
         print(f"    curl download failed: {result.stderr[:100]}")
         return False
 
-    if dl_path.stat().st_size < 1000:
+    if dl_path.stat().st_size < 5000:
         print(f"    Downloaded file too small: {dl_path.stat().st_size} bytes")
         dl_path.unlink()
         return False
@@ -287,6 +365,20 @@ def download_and_process(slug: str) -> bool:
 
     # Process to 128x128
     img = Image.open(str(raw_path)).convert("RGBA")
+
+    # rembg fallback: if image is fully opaque, ChatGPT didn't give transparency
+    alpha = np.array(img.split()[-1])
+    if alpha.min() > 200:
+        print("    Fully opaque — applying rembg...")
+        img = remove_background(img)
+
+    # Quality gate
+    passed, reason = validate_sprite_quality(img, sprite_type="idle")
+    if not passed:
+        print(f"    QC FAIL: {reason}")
+        dl_path.unlink(missing_ok=True)
+        return False
+
     bbox = img.getbbox()
     if bbox:
         cropped = img.crop(bbox)
@@ -297,41 +389,120 @@ def download_and_process(slug: str) -> bool:
         canvas.paste(cropped, (x, y))
         out_path = OUT_DIR / f"{slug}_idle.png"
         canvas.save(str(out_path))
-        print(f"    {cropped.width}x{cropped.height} -> 128x128")
+        print(f"    {cropped.width}x{cropped.height} -> 128x128 ({reason})")
     else:
         print(f"    Empty image (no bounding box)")
         dl_path.unlink()
         return False
 
-    dl_path.unlink()
+    dl_path.unlink(missing_ok=True)
     return True
 
 
 def generate_one(slug: str, animal: str, description: str) -> bool:
-    """Full pipeline for one sprite."""
-    print(f"\n  [{slug}] {animal}")
+    """Full pipeline for one sprite, with up to 2 retries on QC failure."""
+    # Get faction-specific style references (2 same-faction + 1 cross-faction)
+    ref_paths = get_style_refs(slug)
+    faction = SLUG_TO_FACTION.get(slug, "unknown")
+    ref_names = [Path(r).stem for r in ref_paths]
 
-    # Navigate to new chat
-    if not open_new_chat():
-        print("    Failed to load new chat")
-        return False
+    for attempt in range(3):
+        if attempt > 0:
+            print(f"    Retry {attempt}/2...")
 
-    # Send prompt
-    if not send_prompt(animal, description):
-        print("    Failed to send prompt")
-        return False
-    print("    Prompt sent, waiting for generation...")
+        if attempt == 0:
+            print(f"\n  [{slug}] {animal} (faction={faction}, refs={ref_names})")
 
-    # Wait for image
-    if not wait_for_image():
-        print("    Timeout waiting for image")
-        return False
+        # Check for rate limiting
+        if check_rate_limit():
+            print("    Rate limited — pausing 5 minutes...")
+            time.sleep(300)
 
-    # Download and process
-    return download_and_process(slug)
+        # Navigate to new chat
+        if not open_new_chat():
+            print("    Failed to load new chat")
+            continue
+
+        # Send prompt with faction-specific references
+        if not send_prompt(animal, description, ref_paths=ref_paths):
+            print("    Failed to send prompt")
+            continue
+        print("    Prompt sent, waiting for generation...")
+
+        # Wait for image
+        if not wait_for_image():
+            print("    Timeout waiting for image")
+            continue
+
+        # Download and process (includes QC gate)
+        if download_and_process(slug):
+            return True
+
+    return False
+
+
+def scan_bad_sprites() -> list[str]:
+    """Scan sprites from SPRITES list: return slugs that are missing or fail QC."""
+    bad = []
+    for slug, animal, desc in SPRITES:
+        p = OUT_DIR / f"{slug}_idle.png"
+        if not p.exists():
+            print(f"  MISSING: {slug}")
+            bad.append(slug)
+            continue
+
+        img = Image.open(str(p)).convert("RGBA")
+        passed, reason = validate_sprite_quality(img, sprite_type="idle")
+        if not passed:
+            print(f"  BAD: {slug} — {reason}")
+            bad.append(slug)
+        else:
+            print(f"  ok:  {slug} — {reason}")
+    return bad
 
 
 def main():
+    # --regen-bad mode: scan, delete bad, regenerate
+    if "--regen-bad" in sys.argv:
+        print("Scanning for bad sprites...")
+        bad_slugs = scan_bad_sprites()
+        if not bad_slugs:
+            print("\nAll sprites pass QC!")
+            return
+
+        print(f"\n{len(bad_slugs)} bad sprites found. Deleting and regenerating...")
+
+        # Delete bad outputs so the skip-if-exists check won't skip them
+        for slug in bad_slugs:
+            out = OUT_DIR / f"{slug}_idle.png"
+            if out.exists():
+                out.unlink()
+                print(f"  Deleted {out.name}")
+
+        # Find ChatGPT tab
+        loc = find_and_focus_mcp_tab()
+        print(f"ChatGPT tab: {loc}")
+
+        # Build lookup for sprite data
+        sprite_map = {s[0]: s for s in SPRITES}
+
+        done = 0
+        failed = []
+        for slug in bad_slugs:
+            _, animal, desc = sprite_map[slug]
+            if generate_one(slug, animal, desc):
+                done += 1
+                print(f"    Regenerated! ({done}/{len(bad_slugs)})")
+            else:
+                failed.append(slug)
+                print(f"    REGEN FAILED")
+
+        print(f"\nRegenerated: {done}/{len(bad_slugs)}")
+        if failed:
+            print(f"Still failed: {', '.join(failed)}")
+        return
+
+    # Normal mode
     start_idx = int(sys.argv[1]) if len(sys.argv) > 1 else 0
 
     # Check which sprites already exist
@@ -353,15 +524,14 @@ def main():
             done += 1
             continue
 
-        success = generate_one(slug, animal, desc)
-        if success:
+        if generate_one(slug, animal, desc):
             done += 1
-            print(f"    Done! ({done}/40)")
+            print(f"    Done! ({done}/{len(SPRITES)})")
         else:
             failed.append(slug)
             print(f"    FAILED")
 
-    print(f"\nComplete: {done}/40 sprites")
+    print(f"\nComplete: {done}/{len(SPRITES)} sprites")
     if failed:
         print(f"Failed: {', '.join(failed)}")
 

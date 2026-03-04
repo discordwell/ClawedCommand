@@ -4,12 +4,22 @@
 Handles terrain, resources, portraits, and walk/attack animation sheets.
 Requires "Allow JavaScript from Apple Events" enabled in Chrome.
 
-Usage: python3 batch_remaining.py [category] [start_index]
+Usage:
+  python3 batch_remaining.py [category] [start_index]
+  python3 batch_remaining.py portraits --regen-bad
   Categories: terrain, resources, portraits, walk, attack, all
-  Example: python3 batch_remaining.py terrain 0
 """
 import subprocess, sys, time, shutil, base64
 from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+from image_utils import (
+    remove_background,
+    validate_sprite_quality,
+    wait_for_stable_image,
+)
 
 PROJECT = Path("/Users/discordwell/Projects/ClawedCommand")
 SPRITE_DIR = PROJECT / "assets/sprites"
@@ -145,6 +155,18 @@ def open_new_chat():
     return False
 
 
+def check_rate_limit() -> bool:
+    """Check if ChatGPT is showing a rate limit message."""
+    r = applescript_js('''
+(function() {
+    var body = document.body ? document.body.innerText : "";
+    if (body.match(/rate limit|too many|try again later|usage cap/i)) return "rate_limited";
+    return "ok";
+})()
+''')
+    return "rate_limited" in r
+
+
 def upload_style_reference(ref_path: str) -> bool:
     """Upload a style reference image via DataTransfer API."""
     if not Path(ref_path).exists():
@@ -226,24 +248,14 @@ def send_prompt_text(lines: list[str]) -> bool:
     return "sent" in r
 
 
-def wait_for_image(timeout=90) -> bool:
-    """Wait for ChatGPT to generate an image."""
-    start = time.time()
-    while time.time() - start < timeout:
-        time.sleep(5)
-        r = applescript_js('document.querySelectorAll(\'img[alt="Generated image"]\').length.toString()')
-        try:
-            if int(r) > 0:
-                return True
-        except (ValueError, TypeError):
-            pass
-    return False
+def wait_for_image(timeout=120) -> bool:
+    """Wait for ChatGPT to generate a fully rendered, stable image."""
+    return wait_for_stable_image(applescript_js, timeout=timeout, settle_time=8)
 
 
-def download_image(out_path: Path, crop_size: tuple[int, int] | None = None) -> bool:
-    """Download first generated image via curl, optionally crop/resize."""
-    from PIL import Image
-
+def download_image(out_path: Path, crop_size: tuple[int, int] | None = None,
+                   sprite_type: str = "idle") -> bool:
+    """Download first generated image via curl, apply rembg if needed, QC gate, optionally crop/resize."""
     js_url = '''
 (function() {
     var imgs = document.querySelectorAll('img[alt="Generated image"]');
@@ -267,16 +279,34 @@ def download_image(out_path: Path, crop_size: tuple[int, int] | None = None) -> 
         print(f"    curl failed: {result.stderr[:100]}")
         return False
 
-    if dl_path.stat().st_size < 500:
+    if dl_path.stat().st_size < 5000:
         print(f"    File too small: {dl_path.stat().st_size}B")
         dl_path.unlink()
         return False
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
+    img = Image.open(str(dl_path)).convert("RGBA")
+
+    # rembg fallback for idle sprites: if fully opaque, ChatGPT didn't give transparency
+    if sprite_type == "idle":
+        alpha = np.array(img.split()[-1])
+        if alpha.min() > 200:
+            print("    Fully opaque — applying rembg...")
+            img = remove_background(img)
+
+    # Quality gate (skip for sheets — they have different structure)
+    if sprite_type in ("idle", "portrait"):
+        passed, reason = validate_sprite_quality(img, sprite_type=sprite_type)
+        if not passed:
+            print(f"    QC FAIL: {reason}")
+            dl_path.unlink(missing_ok=True)
+            return False
+    else:
+        reason = "sheet (no QC)"
+
     if crop_size:
         w, h = crop_size
-        img = Image.open(str(dl_path)).convert("RGBA")
         bbox = img.getbbox()
         if bbox:
             cropped = img.crop(bbox)
@@ -286,15 +316,14 @@ def download_image(out_path: Path, crop_size: tuple[int, int] | None = None) -> 
             y = (h - cropped.height) // 2
             canvas.paste(cropped, (x, y))
             canvas.save(str(out_path))
-            print(f"    {cropped.width}x{cropped.height} -> {w}x{h}")
+            print(f"    {cropped.width}x{cropped.height} -> {w}x{h} ({reason})")
         else:
             print(f"    Empty image")
             dl_path.unlink()
             return False
     else:
-        shutil.copy2(dl_path, out_path)
-        img = Image.open(str(out_path))
-        print(f"    Saved {img.size[0]}x{img.size[1]}")
+        img.save(str(out_path))
+        print(f"    Saved {img.size[0]}x{img.size[1]} ({reason})")
 
     dl_path.unlink(missing_ok=True)
     return True
@@ -392,27 +421,41 @@ def build_sheet_prompt(name: str, animal: str, anim_desc: str, sheet_type: str) 
 
 def generate_one(slug: str, prompt_lines: list[str], out_path: Path,
                  crop_size: tuple[int, int] | None = None,
-                 style_ref: str | None = None) -> bool:
-    """Full pipeline for one asset."""
-    print(f"\n  [{slug}]")
+                 style_ref: str | None = None,
+                 sprite_type: str = "idle") -> bool:
+    """Full pipeline for one asset, with up to 2 retries on failure."""
+    for attempt in range(3):
+        if attempt > 0:
+            print(f"    Retry {attempt}/2...")
 
-    if not open_new_chat():
-        print("    Failed to load new chat")
-        return False
+        if attempt == 0:
+            print(f"\n  [{slug}]")
 
-    if style_ref:
-        upload_style_reference(style_ref)
+        # Check for rate limiting
+        if check_rate_limit():
+            print("    Rate limited — pausing 5 minutes...")
+            time.sleep(300)
 
-    if not send_prompt_text(prompt_lines):
-        print("    Failed to send prompt")
-        return False
-    print("    Prompt sent, waiting...")
+        if not open_new_chat():
+            print("    Failed to load new chat")
+            continue
 
-    if not wait_for_image(timeout=120):
-        print("    Timeout waiting for image")
-        return False
+        if style_ref:
+            upload_style_reference(style_ref)
 
-    return download_image(out_path, crop_size)
+        if not send_prompt_text(prompt_lines):
+            print("    Failed to send prompt")
+            continue
+        print("    Prompt sent, waiting...")
+
+        if not wait_for_image(timeout=120):
+            print("    Timeout waiting for image")
+            continue
+
+        if download_image(out_path, crop_size, sprite_type=sprite_type):
+            return True
+
+    return False
 
 
 def run_terrain(start: int = 0):
@@ -469,13 +512,70 @@ def run_portraits(start: int = 0):
             done += 1
             continue
         prompt = build_portrait_prompt(name, animal, faction, desc)
-        if generate_one(slug, prompt, out, crop_size=(128, 128)):
+        if generate_one(slug, prompt, out, crop_size=(128, 128), sprite_type="portrait"):
             done += 1
         else:
             failed.append(slug)
     print(f"\nPortraits: {done}/{len(PORTRAITS)} done")
     if failed:
         print(f"Failed: {', '.join(failed)}")
+
+
+def scan_bad_portraits() -> list[str]:
+    """Scan existing portraits and return slugs that fail QC."""
+    portrait_dir = SPRITE_DIR / "portraits"
+    bad = []
+    known = {p[0] for p in PORTRAITS}
+    for p in sorted(portrait_dir.glob("*.png")):
+        slug = p.stem
+        if slug not in known:
+            continue
+        img = Image.open(str(p)).convert("RGBA")
+        passed, reason = validate_sprite_quality(img, sprite_type="portrait")
+        if not passed:
+            print(f"  BAD: {slug} — {reason}")
+            bad.append(slug)
+        else:
+            print(f"  ok:  {slug} — {reason}")
+    return bad
+
+
+def regen_bad_portraits():
+    """Scan portraits, delete bad ones, regenerate."""
+    print("Scanning portraits for quality issues...")
+    bad_slugs = scan_bad_portraits()
+    if not bad_slugs:
+        print("\nAll portraits pass QC!")
+        return
+
+    print(f"\n{len(bad_slugs)} bad portraits found. Deleting and regenerating...")
+    portrait_dir = SPRITE_DIR / "portraits"
+
+    for slug in bad_slugs:
+        out = portrait_dir / f"{slug}.png"
+        if out.exists():
+            out.unlink()
+            print(f"  Deleted {out.name}")
+
+    # Build lookup
+    portrait_map = {p[0]: p for p in PORTRAITS}
+
+    done = 0
+    failed = []
+    for slug in bad_slugs:
+        _, name, animal, faction, desc = portrait_map[slug]
+        prompt = build_portrait_prompt(name, animal, faction, desc)
+        out = portrait_dir / f"{slug}.png"
+        if generate_one(slug, prompt, out, crop_size=(128, 128), sprite_type="portrait"):
+            done += 1
+            print(f"    Regenerated! ({done}/{len(bad_slugs)})")
+        else:
+            failed.append(slug)
+            print(f"    REGEN FAILED")
+
+    print(f"\nRegenerated: {done}/{len(bad_slugs)}")
+    if failed:
+        print(f"Still failed: {', '.join(failed)}")
 
 
 def run_walk(start: int = 0):
@@ -491,7 +591,7 @@ def run_walk(start: int = 0):
             done += 1
             continue
         prompt = build_sheet_prompt(name, animal, desc, "walk cycle")
-        if generate_one(slug, prompt, out, style_ref=ref):
+        if generate_one(slug, prompt, out, style_ref=ref, sprite_type="sheet"):
             done += 1
         else:
             failed.append(slug)
@@ -513,7 +613,7 @@ def run_attack(start: int = 0):
             done += 1
             continue
         prompt = build_sheet_prompt(name, animal, desc, "attack")
-        if generate_one(slug, prompt, out, style_ref=ref):
+        if generate_one(slug, prompt, out, style_ref=ref, sprite_type="sheet"):
             done += 1
         else:
             failed.append(slug)
@@ -533,6 +633,23 @@ CATEGORIES = {
 
 def main():
     category = sys.argv[1] if len(sys.argv) > 1 else "all"
+
+    # --regen-bad mode for portraits
+    if "--regen-bad" in sys.argv:
+        loc = find_and_focus_chatgpt_tab()
+        print(f"ChatGPT tab: {loc}")
+        if "not_found" in loc:
+            print("ERROR: No ChatGPT tab found. Open chatgpt.com in Chrome first.")
+            sys.exit(1)
+
+        if category == "portraits":
+            regen_bad_portraits()
+        else:
+            print("--regen-bad currently only supports 'portraits' category")
+            print("Usage: python3 batch_remaining.py portraits --regen-bad")
+            sys.exit(1)
+        return
+
     start_idx = int(sys.argv[2]) if len(sys.argv) > 2 else 0
 
     loc = find_and_focus_chatgpt_tab()

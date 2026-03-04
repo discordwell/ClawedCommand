@@ -8,6 +8,40 @@ use cc_core::math::Fixed;
 
 use crate::resources::PlayerResources;
 
+/// Categories of stat-boosting upgrades. Gate upgrades unlock units, not stats.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum UpgradeCategory {
+    /// +20% damage to all combat units.
+    Damage,
+    /// +25% max HP to all combat units (and heal the bonus).
+    Health,
+    /// +10% speed to all units.
+    Speed,
+    /// Unlock gate — no stat bonus.
+    Gate,
+}
+
+/// Classify an upgrade into its stat-boost category.
+fn upgrade_category(upgrade: UpgradeType) -> UpgradeCategory {
+    use UpgradeType::*;
+    match upgrade {
+        // Damage upgrades — one per faction
+        SharperClaws | SharperTeeth | SharperFangs | SharperTalons | RustyFangs
+        | SlickerMucus => UpgradeCategory::Damage,
+
+        // HP upgrades — one per faction
+        ThickerFur | ThickerHide | ReinforcedHide | HardenedPlumage | ScrapPlating
+        | TougherHide => UpgradeCategory::Health,
+
+        // Speed upgrades — one per faction
+        NimblePaws | QuickPaws | SteadyStance | SwiftWings | TrashRunning
+        | AmphibianAgility => UpgradeCategory::Speed,
+
+        // Everything else is a gate (unlocks units, no stat bonus)
+        _ => UpgradeCategory::Gate,
+    }
+}
+
 /// Tick research queues on ScratchingPosts. On completion, apply upgrades.
 pub fn research_system(
     mut buildings: Query<(&Owner, &mut ResearchQueue), (With<Researcher>, Without<Dead>)>,
@@ -59,57 +93,37 @@ pub fn apply_upgrade_to_existing_units(
         Without<Dead>,
     >,
 ) {
+    let category = upgrade_category(upgrade);
+
     for (owner, unit_type, mut health, mut attack_stats, mut speed) in units.iter_mut() {
         if owner.player_id != player_id {
             continue;
         }
 
-        match upgrade {
-            UpgradeType::SharperClaws => {
-                // +2 damage for combat units (not Pawdler)
-                if unit_type.kind != UnitKind::Pawdler {
-                    attack_stats.damage += Fixed::from_bits(2 << 16);
+        match category {
+            UpgradeCategory::Damage => {
+                // +20% damage for combat units (not workers)
+                if !unit_type.kind.is_worker() {
+                    let bonus = attack_stats.damage * Fixed::from_bits((1 << 16) * 20 / 100);
+                    attack_stats.damage += bonus;
                 }
             }
-            UpgradeType::ThickerFur => {
-                // +25 HP for combat units (not Pawdler)
-                if unit_type.kind != UnitKind::Pawdler {
-                    let bonus = Fixed::from_bits(25 << 16);
+            UpgradeCategory::Health => {
+                // +25% max HP for combat units (not workers), heal the bonus
+                if !unit_type.kind.is_worker() {
+                    let bonus = health.max * Fixed::from_bits((1 << 16) * 25 / 100);
                     health.max += bonus;
                     health.current += bonus;
                 }
             }
-            UpgradeType::NimblePaws => {
-                // +10% speed for all units
-                speed.speed = speed.speed + speed.speed * Fixed::from_bits((1 << 16) * 10 / 100);
+            UpgradeCategory::Speed => {
+                // +10% speed for all units (including workers)
+                let bonus = speed.speed * Fixed::from_bits((1 << 16) * 10 / 100);
+                speed.speed += bonus;
             }
-            UpgradeType::SiegeTraining | UpgradeType::MechPrototype => {
-                // These are unlock gates, not stat bonuses
+            UpgradeCategory::Gate => {
+                // No stat bonus — just unlocks training
             }
-            // --- The Clawed (Mice) upgrades ---
-            UpgradeType::SharperTeeth => {
-                // +2 damage for Clawed combat units (not Nibblet worker)
-                if !matches!(unit_type.kind, UnitKind::Pawdler | UnitKind::Nibblet) {
-                    attack_stats.damage += Fixed::from_bits(2 << 16);
-                }
-            }
-            UpgradeType::ThickerHide => {
-                // +20 HP for Clawed combat units (not Nibblet worker)
-                if !matches!(unit_type.kind, UnitKind::Pawdler | UnitKind::Nibblet) {
-                    let bonus = Fixed::from_bits(20 << 16);
-                    health.max += bonus;
-                    health.current += bonus;
-                }
-            }
-            UpgradeType::QuickPaws => {
-                // +10% speed for all units
-                speed.speed = speed.speed + speed.speed * Fixed::from_bits((1 << 16) * 10 / 100);
-            }
-            UpgradeType::AdvancedGnawing | UpgradeType::WarrenProtocol => {
-                // These are unlock gates, not stat bonuses
-            }
-            // Non-cat/clawed faction upgrades — no effect yet
-            _ => {}
         }
     }
 }
@@ -122,31 +136,28 @@ pub fn apply_upgrades_to_new_unit(
     attack_stats: &mut AttackStats,
     speed: &mut MovementSpeed,
 ) {
-    let is_worker = matches!(kind, UnitKind::Pawdler | UnitKind::Nibblet);
+    let is_worker = kind.is_worker();
 
-    // --- catGPT upgrades ---
-    if !is_worker && completed.contains(&UpgradeType::SharperClaws) {
-        attack_stats.damage += Fixed::from_bits(2 << 16);
-    }
-    if !is_worker && completed.contains(&UpgradeType::ThickerFur) {
-        let bonus = Fixed::from_bits(25 << 16);
-        health.max += bonus;
-        health.current += bonus;
-    }
-    if completed.contains(&UpgradeType::NimblePaws) {
-        speed.speed = speed.speed + speed.speed * Fixed::from_bits((1 << 16) * 10 / 100);
-    }
-
-    // --- The Clawed (Mice) upgrades ---
-    if !is_worker && completed.contains(&UpgradeType::SharperTeeth) {
-        attack_stats.damage += Fixed::from_bits(2 << 16);
-    }
-    if !is_worker && completed.contains(&UpgradeType::ThickerHide) {
-        let bonus = Fixed::from_bits(20 << 16);
-        health.max += bonus;
-        health.current += bonus;
-    }
-    if completed.contains(&UpgradeType::QuickPaws) {
-        speed.speed = speed.speed + speed.speed * Fixed::from_bits((1 << 16) * 10 / 100);
+    for &upgrade in completed {
+        match upgrade_category(upgrade) {
+            UpgradeCategory::Damage => {
+                if !is_worker {
+                    let bonus = attack_stats.damage * Fixed::from_bits((1 << 16) * 20 / 100);
+                    attack_stats.damage += bonus;
+                }
+            }
+            UpgradeCategory::Health => {
+                if !is_worker {
+                    let bonus = health.max * Fixed::from_bits((1 << 16) * 25 / 100);
+                    health.max += bonus;
+                    health.current += bonus;
+                }
+            }
+            UpgradeCategory::Speed => {
+                let bonus = speed.speed * Fixed::from_bits((1 << 16) * 10 / 100);
+                speed.speed += bonus;
+            }
+            UpgradeCategory::Gate => {}
+        }
     }
 }

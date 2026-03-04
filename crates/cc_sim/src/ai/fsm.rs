@@ -283,7 +283,7 @@ pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
                 (UnitKind::Ironhide, 2), // 125f 0gpu, 250 HP tank
             ], // removed GPU-gated: Embermaw, Cragback, Gutripper
             target_workers: 4,
-            economy_priority: false, // military-first for tanky units
+            economy_priority: true, // invest in upgrades (+20% dmg on Sapjaw) + SlagThrower
             retreat_threshold: 50,
             eval_speed_mult: 1.0,
             chaos_factor: 0,
@@ -335,7 +335,7 @@ pub fn faction_personality(faction: Faction) -> AiPersonalityProfile {
                 (UnitKind::Broodmother, 1), // tech support (available later)
             ],
             target_workers: 4,
-            economy_priority: false, // tanky units need to be on the field
+            economy_priority: true, // invest in TougherHide (+25% HP on 300 HP Gulper) + SporeTower
             retreat_threshold: 40,
             eval_speed_mult: 0.9,
             chaos_factor: 10,

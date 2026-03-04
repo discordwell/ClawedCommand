@@ -57,9 +57,9 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             train_time: 120,
         },
         UnitKind::FlyingFox => UnitBaseStats {
-            health: Fixed::from_bits(50 << 16), // 50
+            health: Fixed::from_bits(80 << 16), // 80 (was 50)
             speed: Fixed::from_bits(14745),     // 0.225
-            damage: Fixed::from_bits(6 << 16),  // 6
+            damage: Fixed::from_bits(10 << 16), // 10 (was 6), DPS 8.3
             range: Fixed::from_bits(2 << 16),   // 2
             attack_speed: 12,
             attack_type: AttackType::Ranged,
@@ -93,7 +93,7 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             train_time: 100,
         },
         UnitKind::Mouser => UnitBaseStats {
-            health: Fixed::from_bits(55 << 16), // 55
+            health: Fixed::from_bits(75 << 16), // 75 (was 55)
             speed: Fixed::from_bits(13107),     // 0.20
             damage: Fixed::from_bits(10 << 16), // 10
             range: Fixed::from_bits(1 << 16),   // 1
@@ -299,9 +299,9 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             train_time: 150,
         },
         UnitKind::Warden => UnitBaseStats {
-            health: Fixed::from_bits(150 << 16),
+            health: Fixed::from_bits(120 << 16), // 120 (was 150), ranged units shouldn't out-tank melee
             speed: Fixed::from_bits(6553),
-            damage: Fixed::from_bits(14 << 16),
+            damage: Fixed::from_bits(14 << 16), // keep 14
             range: Fixed::from_bits(5 << 16),
             attack_speed: 15,
             attack_type: AttackType::Ranged,
@@ -309,11 +309,11 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             gpu_cost: 0,
             supply_cost: 2,
             train_time: 80,
-        }, // dmg 10→14, range 4→5 (DPS 9.33, matches Hisser)
+        },
         UnitKind::Sapjaw => UnitBaseStats {
             health: Fixed::from_bits(120 << 16),
             speed: Fixed::from_bits(9175),
-            damage: Fixed::from_bits(18 << 16),
+            damage: Fixed::from_bits(14 << 16), // 14 (was 18), DPS 1.17. Tanky identity via HP, not DPS
             range: Fixed::from_bits(1 << 16),
             attack_speed: 12,
             attack_type: AttackType::Melee,
@@ -321,7 +321,7 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             gpu_cost: 0,
             supply_cost: 2,
             train_time: 80,
-        }, // speed 0.12→0.14
+        },
         UnitKind::Wardenmother => UnitBaseStats {
             health: Fixed::from_bits(600 << 16),
             speed: Fixed::from_bits(5242),
@@ -361,7 +361,7 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
         UnitKind::Dustclaw => UnitBaseStats {
             health: Fixed::from_bits(70 << 16),
             speed: Fixed::from_bits(10486),
-            damage: Fixed::from_bits(12 << 16),
+            damage: Fixed::from_bits(10 << 16), // 10 (was 12), DPS 1.0. Fast harasser, not a brawler
             range: Fixed::from_bits(1 << 16),
             attack_speed: 10,
             attack_type: AttackType::Melee,
@@ -644,10 +644,10 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
             range: Fixed::from_bits(1 << 16),
             attack_speed: 8,
             attack_type: AttackType::Melee,
-            food_cost: 65,
+            food_cost: 70, // 70 (was 65)
             gpu_cost: 0,
             supply_cost: 1,
-            train_time: 55, // dmg 7→8, attack_speed 9→8 (DPS 0.78→1.00)
+            train_time: 55,
         },
         UnitKind::HeapTitan => UnitBaseStats {
             health: Fixed::from_bits(280 << 16),
@@ -712,7 +712,7 @@ pub fn base_stats(kind: UnitKind) -> UnitBaseStats {
         UnitKind::Wrecker => UnitBaseStats {
             health: Fixed::from_bits(100 << 16),
             speed: Fixed::from_bits(7864),
-            damage: Fixed::from_bits(14 << 16),
+            damage: Fixed::from_bits(14 << 16), // 14
             range: Fixed::from_bits(1 << 16),
             attack_speed: 10,
             attack_type: AttackType::Melee,
