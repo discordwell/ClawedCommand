@@ -12,6 +12,8 @@ Usage:
     python generate_asset.py qc <asset_name|--all>     Run quality checks
     python generate_asset.py batch-faction <faction>   List all assets for a faction with prompts
     python generate_asset.py style-report              Show v1 vs v2 style version breakdown
+    python generate_asset.py cleanup [--dry-run]       Clean up stale raws and sync catalog
+    python generate_asset.py replace <name> <file>     Replace sprite with new version (archives old)
 """
 
 import argparse
@@ -626,6 +628,152 @@ def cmd_style_report(args):
     print()
 
 
+def cmd_cleanup(args):
+    """Clean up stale raw files and sync catalog with disk state."""
+    catalog = load_catalog()
+
+    raw_units = RAW_DIR / "units"
+    output_units = ASSETS_DIR / "sprites" / "units"
+    archive_dir = RAW_DIR / "archive"
+
+    # 1. Find stale v1 raws superseded by v2
+    stale_v1 = []
+    if raw_units.exists():
+        for v2_raw in sorted(raw_units.glob("*_idle_raw.png")):
+            slug = v2_raw.stem.replace("_idle_raw", "")
+            v1_raw = raw_units / f"{slug}_raw.png"
+            if v1_raw.exists():
+                stale_v1.append(v1_raw)
+
+    # 2. Find orphaned raws (no corresponding output)
+    stale_v1_set = set(f.name for f in stale_v1)
+    orphaned = []
+    if raw_units.exists():
+        for raw_file in sorted(raw_units.glob("*.png")):
+            if raw_file.name in stale_v1_set:
+                continue  # already handled above
+            stem = raw_file.stem
+            if not stem.endswith("_raw"):
+                continue
+            base = stem[:-4]  # e.g. "chonk_walk_raw" → "chonk_walk"
+            # Check direct match and _idle variant (v1 raws use slug_raw, output is slug_idle)
+            candidates = [
+                output_units / f"{base}.png",
+                output_units / f"{base}_idle.png",
+            ]
+            if not any(c.exists() for c in candidates):
+                orphaned.append(raw_file)
+
+    # 3. Sync catalog status with disk
+    synced = 0
+    units = catalog.get("units", {})
+    for key, entry in units.items():
+        if entry.get("status") == "planned":
+            game_path = entry.get("output", {}).get("game_path", "")
+            if game_path:
+                full = PROJECT_ROOT / game_path
+                if full.exists():
+                    entry["status"] = "game_ready"
+                    synced += 1
+
+    if args.dry_run:
+        print("── Cleanup Dry Run ──\n")
+        if stale_v1:
+            print(f"Would delete {len(stale_v1)} stale v1 raws:")
+            for f in stale_v1:
+                print(f"  rm {f.relative_to(PIPELINE_ROOT)}")
+        if orphaned:
+            print(f"\nWould {'archive' if args.archive else 'delete'} {len(orphaned)} orphaned raws:")
+            for f in orphaned:
+                print(f"  {'mv' if args.archive else 'rm'} {f.relative_to(PIPELINE_ROOT)}")
+        if synced:
+            print(f"\nWould sync {synced} catalog entries: planned → game_ready")
+        if not stale_v1 and not orphaned and not synced:
+            print("Nothing to clean up!")
+        return
+
+    # Execute
+    deleted = 0
+    archived = 0
+
+    for f in stale_v1:
+        f.unlink()
+        deleted += 1
+        print(f"  Deleted stale v1: {f.name}")
+
+    for f in orphaned:
+        if args.archive:
+            archive_dir.mkdir(parents=True, exist_ok=True)
+            dest = archive_dir / f.name
+            shutil.move(str(f), str(dest))
+            archived += 1
+            print(f"  Archived orphan: {f.name}")
+        else:
+            f.unlink()
+            deleted += 1
+            print(f"  Deleted orphan: {f.name}")
+
+    if synced:
+        save_catalog(catalog)
+        print(f"  Synced {synced} catalog entries → game_ready")
+
+    # Clean up any empty subdirs
+    if raw_units.exists():
+        for subdir in raw_units.iterdir():
+            if subdir.is_dir():
+                try:
+                    subdir.rmdir()
+                    print(f"  Removed empty dir: {subdir.name}/")
+                except OSError:
+                    pass
+
+    print(f"\nDone: {deleted} deleted, {archived} archived, {synced} catalog synced")
+
+
+def cmd_replace(args):
+    """Replace a sprite with a new version, archiving the old one."""
+    catalog = load_catalog()
+    category, key, entry = find_asset(catalog, args.name)
+    if entry is None:
+        print(f"Error: asset '{args.name}' not found in catalog", file=sys.stderr)
+        sys.exit(1)
+
+    game_path = entry.get("output", {}).get("game_path", "")
+    if not game_path:
+        print(f"Error: asset '{args.name}' has no game_path", file=sys.stderr)
+        sys.exit(1)
+
+    current = PROJECT_ROOT / game_path
+    new_file = Path(args.new_file)
+
+    if not new_file.exists():
+        print(f"Error: new file not found: {new_file}", file=sys.stderr)
+        sys.exit(1)
+
+    # Archive the current version
+    archive_dir = RAW_DIR / "archive"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+
+    if current.exists():
+        # Timestamp the archive copy
+        import time
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        archive_name = f"{args.name}_{ts}.png"
+        dest = archive_dir / archive_name
+        shutil.copy2(str(current), str(dest))
+        print(f"  Archived: {current.name} → archive/{archive_name}")
+
+    # Copy new file into place
+    shutil.copy2(str(new_file), str(current))
+    print(f"  Replaced: {current.name}")
+
+    # Update catalog
+    entry["status"] = "game_ready"
+    entry["style_version"] = 2
+    save_catalog(catalog)
+    print(f"  Catalog: {args.name} → style_version=2, game_ready")
+
+
 # ── Main ────────────────────────────────────────────────────
 
 
@@ -675,6 +823,16 @@ def main():
     p_sr = subparsers.add_parser("style-report", help="Show v1 vs v2 style version breakdown")
     p_sr.add_argument("--verbose", "-v", action="store_true", help="List individual v1 assets")
 
+    # cleanup
+    p_cl = subparsers.add_parser("cleanup", help="Clean up stale raws and sync catalog")
+    p_cl.add_argument("--dry-run", action="store_true", help="Show what would be done without doing it")
+    p_cl.add_argument("--archive", action="store_true", help="Archive orphaned files instead of deleting")
+
+    # replace
+    p_rp = subparsers.add_parser("replace", help="Replace a sprite with a new version, archiving the old")
+    p_rp.add_argument("name", help="Asset name from catalog (e.g. scrounger_idle)")
+    p_rp.add_argument("new_file", help="Path to the new sprite file")
+
     args = parser.parse_args()
 
     if args.command == "prompt":
@@ -695,6 +853,10 @@ def main():
         cmd_batch_faction(args)
     elif args.command == "style-report":
         cmd_style_report(args)
+    elif args.command == "cleanup":
+        cmd_cleanup(args)
+    elif args.command == "replace":
+        cmd_replace(args)
     else:
         parser.print_help()
 

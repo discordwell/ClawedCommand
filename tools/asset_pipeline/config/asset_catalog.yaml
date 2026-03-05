@@ -964,7 +964,7 @@ buildings:
 units:
   pawdler_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Pawdler
       pose: idle standing, slightly slouched, reluctant posture
@@ -982,7 +982,7 @@ units:
     style_version: 1
   pawdler_walk:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: Pawdler
       animation: walk cycle
@@ -1005,7 +1005,7 @@ units:
     style_version: 1
   nuisance_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: The Nuisance
       pose: crouched, ready to pounce, mischievous expression
@@ -1022,7 +1022,7 @@ units:
     style_version: 1
   nuisance_walk:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: The Nuisance
       animation: walk cycle
@@ -1045,7 +1045,7 @@ units:
     style_version: 1
   nuisance_attack:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: The Nuisance
       animation: attack / swipe
@@ -1068,7 +1068,7 @@ units:
     style_version: 1
   chonk_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: The Chonk
       pose: sitting, immovable, taking up space
@@ -1086,7 +1086,7 @@ units:
     style_version: 1
   flying_fox_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Flying Fox
       pose: hovering in air, wings spread
@@ -1103,7 +1103,7 @@ units:
     style_version: 1
   hisser_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Hisser
       pose: arched back, hissing, disgusted expression
@@ -1119,7 +1119,7 @@ units:
     style_version: 1
   yowler_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Yowler
       pose: mouth wide open, yowling
@@ -1136,7 +1136,7 @@ units:
     style_version: 1
   mouser_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Mouser
       pose: low crouch, stalking, nearly invisible
@@ -1154,7 +1154,7 @@ units:
     style_version: 1
   catnapper_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Catnapper
       pose: curled up sleeping, Zzz floating above
@@ -1171,7 +1171,7 @@ units:
     style_version: 1
   ferret_sapper_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Ferret Sapper
       pose: standing alert with explosives, slightly manic expression
@@ -1188,7 +1188,7 @@ units:
     style_version: 1
   mech_commander_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Mech Commander
       pose: standing in oversized mech suit, cat visible in cockpit
@@ -1206,7 +1206,7 @@ units:
     style_version: 1
   chonk_walk:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: The Chonk
       animation: walk cycle
@@ -1229,7 +1229,7 @@ units:
     style_version: 1
   flying_fox_walk:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: Flying Fox
       animation: fly cycle
@@ -1252,7 +1252,7 @@ units:
     style_version: 1
   hisser_walk:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: The Hisser
       animation: walk cycle
@@ -1275,7 +1275,7 @@ units:
     style_version: 1
   yowler_walk:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: The Yowler
       animation: walk cycle
@@ -1298,7 +1298,7 @@ units:
     style_version: 1
   mouser_walk:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: The Mouser
       animation: walk cycle
@@ -1321,7 +1321,7 @@ units:
     style_version: 1
   catnapper_walk:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: The Catnapper
       animation: walk cycle
@@ -1344,7 +1344,7 @@ units:
     style_version: 1
   ferret_sapper_walk:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: Ferret Sapper
       animation: walk cycle
@@ -1367,7 +1367,7 @@ units:
     style_version: 1
   mech_commander_walk:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: Mech Commander
       animation: walk cycle
@@ -1390,7 +1390,7 @@ units:
     style_version: 1
   pawdler_attack:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: Pawdler
       animation: attack / pickaxe swing
@@ -1413,7 +1413,7 @@ units:
     style_version: 1
   chonk_attack:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: The Chonk
       animation: attack / body slam
@@ -1436,7 +1436,7 @@ units:
     style_version: 1
   flying_fox_attack:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: Flying Fox
       animation: attack / dive bomb
@@ -1459,7 +1459,7 @@ units:
     style_version: 1
   hisser_attack:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: The Hisser
       animation: attack / spit projectile
@@ -1482,7 +1482,7 @@ units:
     style_version: 1
   yowler_attack:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: The Yowler
       animation: attack / sonic yowl
@@ -1505,7 +1505,7 @@ units:
     style_version: 1
   mouser_attack:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: The Mouser
       animation: attack / backstab
@@ -1528,7 +1528,7 @@ units:
     style_version: 1
   catnapper_attack:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: The Catnapper
       animation: attack / siege shot
@@ -1551,7 +1551,7 @@ units:
     style_version: 1
   ferret_sapper_attack:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: Ferret Sapper
       animation: attack / bomb throw
@@ -1574,7 +1574,7 @@ units:
     style_version: 1
   mech_commander_attack:
     template: unit_sheet
-    status: planned
+    status: game_ready
     params:
       name: Mech Commander
       animation: attack / cannon blast
@@ -1849,7 +1849,7 @@ units:
     style_version: 1
   jaycaller_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Jaycaller
       pose: chest puffed, beak open, commanding stance
@@ -1900,7 +1900,7 @@ units:
     style_version: 2
   hootseer_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Hootseer
       pose: perched with eyes glowing, mystical runes floating
@@ -1934,7 +1934,7 @@ units:
     style_version: 2
   delver_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Delver
       pose: standing with pickaxe and lantern, sturdy
@@ -1950,7 +1950,7 @@ units:
     style_version: 1
   ironhide_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Ironhide
       pose: standing firm with massive shield, immovable
@@ -1984,7 +1984,7 @@ units:
     style_version: 2
   warden_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Warden
       pose: standing guard with halberd, vigilant expression
@@ -2001,7 +2001,7 @@ units:
     style_version: 1
   sapjaw_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Sapjaw
       pose: jaw open showing reinforced teeth, aggressive
@@ -2018,7 +2018,7 @@ units:
     style_version: 1
   wardenmother_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Wardenmother
       pose: standing with ancestral war-hammer, regal and ancient
@@ -2035,7 +2035,7 @@ units:
     style_version: 1
   seeker_tunneler_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Seeker Tunneler
       pose: digging stance, claws extended, wearing goggles
@@ -2052,7 +2052,7 @@ units:
     style_version: 1
   embermaw_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Embermaw
       pose: mouth glowing with ember fire, smoke rising
@@ -2102,7 +2102,7 @@ units:
     style_version: 2
   ponderer_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Ponderer
       pose: standing with collection net, contemplative expression
@@ -2136,7 +2136,7 @@ units:
     style_version: 2
   broodmother_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Broodmother
       pose: surrounded by small spawn, nurturing stance
@@ -2187,7 +2187,7 @@ units:
     style_version: 2
   croaker_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Croaker
       pose: throat sac inflated, preparing to launch projectile
@@ -2238,7 +2238,7 @@ units:
     style_version: 2
   bogwhisper_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Bogwhisper
       pose: floating in mist, eyes glowing, tendrils of fog
@@ -2340,7 +2340,7 @@ units:
     style_version: 2
   patch_possum_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Patch Possum
       pose: standing with medkit made of duct tape and bandages
@@ -2391,7 +2391,7 @@ units:
     style_version: 2
   wrecker_idle:
     template: unit_static
-    status: planned
+    status: game_ready
     params:
       name: Wrecker
       pose: swinging wrecking ball made from a bowling ball on chain
@@ -2440,6 +2440,2206 @@ units:
       type: single
       game_path: assets/sprites/units/junkyard_king_idle.png
     style_version: 2
+  bandit_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Bandit
+      animation: walk cycle
+      description: Bandit walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/bandit_walk.png
+  bandit_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Bandit
+      animation: attack
+      description: Bandit attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/bandit_attack.png
+  bogwhisper_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Bogwhisper
+      animation: walk cycle
+      description: Bogwhisper walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/bogwhisper_walk.png
+  bogwhisper_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Bogwhisper
+      animation: attack
+      description: Bogwhisper attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/bogwhisper_attack.png
+  broodmother_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Broodmother
+      animation: walk cycle
+      description: Broodmother walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/broodmother_walk.png
+  broodmother_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Broodmother
+      animation: attack
+      description: Broodmother attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/broodmother_attack.png
+  corvus_rex_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Corvus Rex
+      animation: walk cycle
+      description: Corvus Rex walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/corvus_rex_walk.png
+  corvus_rex_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Corvus Rex
+      animation: attack
+      description: Corvus Rex attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/corvus_rex_attack.png
+  cragback_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Cragback
+      animation: walk cycle
+      description: Cragback walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/cragback_walk.png
+  cragback_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Cragback
+      animation: attack
+      description: Cragback attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/cragback_attack.png
+  croaker_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Croaker
+      animation: walk cycle
+      description: Croaker walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/croaker_walk.png
+  croaker_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Croaker
+      animation: attack
+      description: Croaker attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/croaker_attack.png
+  dead_drop_unit_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Dead Drop
+      animation: walk cycle
+      description: Dead Drop walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/dead_drop_unit_walk.png
+  dead_drop_unit_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Dead Drop
+      animation: attack
+      description: Dead Drop attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/dead_drop_unit_attack.png
+  delver_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Delver
+      animation: walk cycle
+      description: Delver walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/delver_walk.png
+  delver_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Delver
+      animation: attack
+      description: Delver attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/delver_attack.png
+  dumpster_diver_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Dumpster Diver
+      animation: walk cycle
+      description: Dumpster Diver walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/dumpster_diver_walk.png
+  dumpster_diver_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Dumpster Diver
+      animation: attack
+      description: Dumpster Diver attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/dumpster_diver_attack.png
+  dusktalon_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Dusktalon
+      animation: walk cycle
+      description: Dusktalon walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/dusktalon_walk.png
+  dusktalon_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Dusktalon
+      animation: attack
+      description: Dusktalon attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/dusktalon_attack.png
+  dustclaw_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Dustclaw
+      animation: walk cycle
+      description: Dustclaw walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/dustclaw_walk.png
+  dustclaw_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Dustclaw
+      animation: attack
+      description: Dustclaw attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/dustclaw_attack.png
+  eftsaber_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Eftsaber
+      animation: walk cycle
+      description: Eftsaber walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/eftsaber_walk.png
+  eftsaber_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Eftsaber
+      animation: attack
+      description: Eftsaber attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/eftsaber_attack.png
+  embermaw_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Embermaw
+      animation: walk cycle
+      description: Embermaw walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/embermaw_walk.png
+  embermaw_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Embermaw
+      animation: attack
+      description: Embermaw attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/embermaw_attack.png
+  glitch_rat_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Glitch Rat
+      animation: walk cycle
+      description: Glitch Rat walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/glitch_rat_walk.png
+  glitch_rat_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Glitch Rat
+      animation: attack
+      description: Glitch Rat attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/glitch_rat_attack.png
+  gnawer_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Gnawer
+      animation: walk cycle
+      description: Gnawer walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/gnawer_walk.png
+  gnawer_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Gnawer
+      animation: attack
+      description: Gnawer attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/gnawer_attack.png
+  grease_monkey_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Grease Monkey
+      animation: walk cycle
+      description: Grease Monkey walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/grease_monkey_walk.png
+  grease_monkey_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Grease Monkey
+      animation: attack
+      description: Grease Monkey attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/grease_monkey_attack.png
+  gulper_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Gulper
+      animation: walk cycle
+      description: Gulper walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/gulper_walk.png
+  gulper_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Gulper
+      animation: attack
+      description: Gulper attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/gulper_attack.png
+  gutripper_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Gutripper
+      animation: walk cycle
+      description: Gutripper walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/gutripper_walk.png
+  gutripper_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Gutripper
+      animation: attack
+      description: Gutripper attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/gutripper_attack.png
+  heap_titan_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Heap Titan
+      animation: walk cycle
+      description: Heap Titan walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/heap_titan_walk.png
+  heap_titan_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Heap Titan
+      animation: attack
+      description: Heap Titan attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/heap_titan_attack.png
+  hootseer_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Hootseer
+      animation: walk cycle
+      description: Hootseer walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/hootseer_walk.png
+  hootseer_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Hootseer
+      animation: attack
+      description: Hootseer attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/hootseer_attack.png
+  ironhide_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Ironhide
+      animation: walk cycle
+      description: Ironhide walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/ironhide_walk.png
+  ironhide_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Ironhide
+      animation: attack
+      description: Ironhide attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/ironhide_attack.png
+  jaycaller_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Jaycaller
+      animation: walk cycle
+      description: Jaycaller walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/jaycaller_walk.png
+  jaycaller_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Jaycaller
+      animation: attack
+      description: Jaycaller attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/jaycaller_attack.png
+  jayflicker_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Jayflicker
+      animation: walk cycle
+      description: Jayflicker walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/jayflicker_walk.png
+  jayflicker_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Jayflicker
+      animation: attack
+      description: Jayflicker attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/jayflicker_attack.png
+  junkyard_king_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Junkyard King
+      animation: walk cycle
+      description: Junkyard King walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/junkyard_king_walk.png
+  junkyard_king_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Junkyard King
+      animation: attack
+      description: Junkyard King attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/junkyard_king_attack.png
+  leapfrog_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Leapfrog
+      animation: walk cycle
+      description: Leapfrog walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/leapfrog_walk.png
+  leapfrog_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Leapfrog
+      animation: attack
+      description: Leapfrog attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/leapfrog_attack.png
+  magpike_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Magpike
+      animation: walk cycle
+      description: Magpike walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/magpike_walk.png
+  magpike_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Magpike
+      animation: attack
+      description: Magpike attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/magpike_attack.png
+  magpyre_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Magpyre
+      animation: walk cycle
+      description: Magpyre walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/magpyre_walk.png
+  magpyre_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Magpyre
+      animation: attack
+      description: Magpyre attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/magpyre_attack.png
+  murder_scrounger_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Murder Scrounger
+      animation: walk cycle
+      description: Murder Scrounger walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/murder_scrounger_walk.png
+  murder_scrounger_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Murder Scrounger
+      animation: attack
+      description: Murder Scrounger attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/murder_scrounger_attack.png
+  murk_commander_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Murk Commander
+      animation: walk cycle
+      description: Murk Commander walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/murk_commander_walk.png
+  murk_commander_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Murk Commander
+      animation: attack
+      description: Murk Commander attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/murk_commander_attack.png
+  nibblet_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Nibblet
+      animation: walk cycle
+      description: Nibblet walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/nibblet_walk.png
+  nibblet_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Nibblet
+      animation: attack
+      description: Nibblet attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/nibblet_attack.png
+  patch_possum_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Patch Possum
+      animation: walk cycle
+      description: Patch Possum walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/patch_possum_walk.png
+  patch_possum_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Patch Possum
+      animation: attack
+      description: Patch Possum attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/patch_possum_attack.png
+  plaguetail_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Plaguetail
+      animation: walk cycle
+      description: Plaguetail walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/plaguetail_walk.png
+  plaguetail_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Plaguetail
+      animation: attack
+      description: Plaguetail attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/plaguetail_attack.png
+  ponderer_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Ponderer
+      animation: walk cycle
+      description: Ponderer walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/ponderer_walk.png
+  ponderer_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Ponderer
+      animation: attack
+      description: Ponderer attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/ponderer_attack.png
+  quillback_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Quillback
+      animation: walk cycle
+      description: Quillback walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/quillback_walk.png
+  quillback_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Quillback
+      animation: attack
+      description: Quillback attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/quillback_attack.png
+  regeneron_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Regeneron
+      animation: walk cycle
+      description: Regeneron walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/regeneron_walk.png
+  regeneron_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Regeneron
+      animation: attack
+      description: Regeneron attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/regeneron_attack.png
+  rookclaw_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Rookclaw
+      animation: walk cycle
+      description: Rookclaw walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/rookclaw_walk.png
+  rookclaw_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Rookclaw
+      animation: attack
+      description: Rookclaw attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/rookclaw_attack.png
+  sapjaw_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Sapjaw
+      animation: walk cycle
+      description: Sapjaw walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/sapjaw_walk.png
+  sapjaw_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Sapjaw
+      animation: attack
+      description: Sapjaw attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/sapjaw_attack.png
+  scrounger_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Scrounger
+      animation: walk cycle
+      description: Scrounger walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/scrounger_walk.png
+  scrounger_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Scrounger
+      animation: attack
+      description: Scrounger attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/scrounger_attack.png
+  seeker_tunneler_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Seeker Tunneler
+      animation: walk cycle
+      description: Seeker Tunneler walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/seeker_tunneler_walk.png
+  seeker_tunneler_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Seeker Tunneler
+      animation: attack
+      description: Seeker Tunneler attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/seeker_tunneler_attack.png
+  sentinel_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Sentinel
+      animation: walk cycle
+      description: Sentinel walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/sentinel_walk.png
+  sentinel_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Sentinel
+      animation: attack
+      description: Sentinel attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Murder
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/sentinel_attack.png
+  shellwarden_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Shellwarden
+      animation: walk cycle
+      description: Shellwarden walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/shellwarden_walk.png
+  shellwarden_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Shellwarden
+      animation: attack
+      description: Shellwarden attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Croak
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/shellwarden_attack.png
+  shrieker_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Shrieker
+      animation: walk cycle
+      description: Shrieker walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/shrieker_walk.png
+  shrieker_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Shrieker
+      animation: attack
+      description: Shrieker attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/shrieker_attack.png
+  sparks_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Sparks
+      animation: walk cycle
+      description: Sparks walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/sparks_walk.png
+  sparks_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Sparks
+      animation: attack
+      description: Sparks attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/sparks_attack.png
+  swarmer_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Swarmer
+      animation: walk cycle
+      description: Swarmer walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/swarmer_walk.png
+  swarmer_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Swarmer
+      animation: attack
+      description: Swarmer attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/swarmer_attack.png
+  tunneler_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Tunneler
+      animation: walk cycle
+      description: Tunneler walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/tunneler_walk.png
+  tunneler_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Tunneler
+      animation: attack
+      description: Tunneler attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/tunneler_attack.png
+  warden_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Warden
+      animation: walk cycle
+      description: Warden walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/warden_walk.png
+  warden_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Warden
+      animation: attack
+      description: Warden attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/warden_attack.png
+  wardenmother_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Wardenmother
+      animation: walk cycle
+      description: Wardenmother walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/wardenmother_walk.png
+  wardenmother_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Wardenmother
+      animation: attack
+      description: Wardenmother attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: Seekers of the Deep
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/wardenmother_attack.png
+  warren_marshal_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Warren Marshal
+      animation: walk cycle
+      description: Warren Marshal walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/warren_marshal_walk.png
+  warren_marshal_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Warren Marshal
+      animation: attack
+      description: Warren Marshal attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/warren_marshal_attack.png
+  whiskerwitch_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Whiskerwitch
+      animation: walk cycle
+      description: Whiskerwitch walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/whiskerwitch_walk.png
+  whiskerwitch_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Whiskerwitch
+      animation: attack
+      description: Whiskerwitch attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: The Clawed
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/whiskerwitch_attack.png
+  wrecker_walk:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Wrecker
+      animation: walk cycle
+      description: Wrecker walk cycle animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/wrecker_walk.png
+  wrecker_attack:
+    template: unit_sheet
+    status: game_ready
+    style_version: 1
+    params:
+      name: Wrecker
+      animation: attack
+      description: Wrecker attack animation
+      frame_count: 4
+      frame_width: 128
+      frame_height: 128
+      sheet_width: 512
+      direction: south-east
+      faction: LLAMA
+    output:
+      type: sheet
+      columns: 4
+      rows: 1
+      tile_size:
+      - 128
+      - 128
+      game_path: assets/sprites/units/wrecker_attack.png
 projectiles:
   spit:
     template: projectile
