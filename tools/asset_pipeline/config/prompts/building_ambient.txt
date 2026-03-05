@@ -1,0 +1,29 @@
+Create a 4-frame ambient animation sprite sheet for a completed 2D isometric RTS building.
+
+Building: {name}
+Faction: {faction}
+Description: {description}
+Ambient Detail: {ambient_detail}
+
+OUTPUT FORMAT: 4096x1024 PNG (four 1024x1024 frames side by side, left to right)
+
+ANIMATION LOOP:
+The building should look IDENTICAL across all 4 frames except for subtle ambient motion:
+Frame 1: {ambient_detail} — starting position
+Frame 2: {ambient_detail} — mid-cycle A
+Frame 3: {ambient_detail} — peak/apex
+Frame 4: {ambient_detail} — mid-cycle B (returning to start)
+
+CRITICAL RULES:
+- Building silhouette must be IDENTICAL in all 4 frames
+- Building color, shape, and architectural details must NOT change between frames
+- ONLY animate small ambient details (smoke, lights, flags, gears, etc.)
+- Match the EXACT building design from the attached reference image
+- The animation should loop seamlessly (Frame 4 → Frame 1 transition should be smooth)
+
+STYLE:
+- Into the Breach × Redwall aesthetic — clean, minimal, readable
+- NOT pixel art — smooth cel-shaded illustration
+- Wargroove / Advance Wars visual clarity
+- Isometric 3/4 view, consistent perspective across all 4 frames
+- Same ground/shadow footprint in every frame

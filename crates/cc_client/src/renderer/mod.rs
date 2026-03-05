@@ -2,6 +2,7 @@ pub mod anim_assets;
 pub mod animation;
 pub mod autotile;
 pub mod box_select;
+pub mod building_anim_assets;
 pub mod building_gen;
 pub mod buildings;
 pub mod camera;
@@ -65,6 +66,7 @@ impl Plugin for RenderPlugin {
                     resource_nodes::generate_resource_sprites,
                     building_gen::generate_building_sprites,
                     anim_assets::load_anim_assets,
+                    building_anim_assets::load_building_anim_assets,
                     projectile_assets::load_projectile_assets,
                     hero_sprites::load_hero_sprites,
                 ),
@@ -130,6 +132,19 @@ impl Plugin for RenderPlugin {
                     buildings::update_construction_alpha_sprite,
                     buildings::update_construction_alpha_mesh,
                     buildings::update_building_damage_tint,
+                ),
+            )
+            // Building animation systems (chained for deterministic ordering)
+            .add_systems(
+                Update,
+                (
+                    buildings::init_building_anim.after(buildings::spawn_building_visuals),
+                    buildings::transition_building_to_ambient
+                        .after(buildings::init_building_anim),
+                    buildings::advance_building_construction_anim
+                        .after(buildings::transition_building_to_ambient),
+                    buildings::advance_building_ambient_anim
+                        .after(buildings::transition_building_to_ambient),
                 ),
             )
             .add_systems(

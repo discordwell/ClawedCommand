@@ -1,0 +1,24 @@
+Create a 4-frame construction sequence sprite sheet for a 2D isometric RTS building.
+
+Building: {name}
+Faction: {faction}
+Description: {description}
+
+OUTPUT FORMAT: 4096x1024 PNG (four 1024x1024 frames side by side, left to right)
+
+FRAME SEQUENCE:
+Frame 1 (leftmost): Foundation/scaffolding — ground cleared, basic outline visible, construction materials scattered
+Frame 2: Walls rising — structure ~40% built, scaffolding visible around partial walls
+Frame 3: Nearly complete — structure ~80% built, roof and architectural details appearing
+Frame 4 (rightmost): Finished building — matches the completed idle sprite EXACTLY
+
+STYLE:
+- Into the Breach × Redwall aesthetic — clean, minimal, readable
+- NOT pixel art — smooth cel-shaded illustration
+- Wargroove / Advance Wars visual clarity
+- Isometric 3/4 view, consistent perspective across all 4 frames
+- Same ground/shadow footprint in every frame
+- Match the EXACT character design from the attached reference image (Frame 4 must be identical)
+- Each frame should be clearly distinct from the others to show construction progress
+
+IMPORTANT: The building silhouette should grow progressively larger from Frame 1 to Frame 4. Frame 4 must match the reference sprite exactly.

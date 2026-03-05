@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use crate::input::{InputMode, PlacementPreview};
+use crate::renderer::building_anim_assets::BuildingAnimSheets;
 use crate::renderer::building_gen::{
     BuildingRole, BuildingSprites, building_kind_index, building_role, building_scale,
 };
@@ -9,6 +10,39 @@ use cc_core::components::{Building, BuildingKind, Health, Owner, Position, Under
 use cc_core::coords::{depth_z, world_to_screen};
 use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
 use cc_sim::resources::MapResource;
+
+// ---------------------------------------------------------------------------
+// Building animation components
+// ---------------------------------------------------------------------------
+
+/// Animation phase for a building.
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
+pub enum BuildingAnimState {
+    /// Progress-driven construction frames (tied to UnderConstruction::progress_f32()).
+    Constructing,
+    /// Timer-driven looping ambient animation after construction completes.
+    AmbientIdle,
+    /// No animation sheet available — static idle sprite.
+    Static,
+}
+
+/// Timer for ambient idle loop (0.6s per frame, repeating).
+/// Not used during construction — that's progress-driven.
+#[derive(Component, Deref, DerefMut)]
+pub struct BuildingAnimTimer(pub Timer);
+
+impl Default for BuildingAnimTimer {
+    fn default() -> Self {
+        Self(Timer::from_seconds(BUILDING_AMBIENT_FRAME_SECS, TimerMode::Repeating))
+    }
+}
+
+/// Marker: building animation has been initialized.
+#[derive(Component)]
+pub struct BuildingAnimInit;
+
+/// Seconds per frame for ambient building animations.
+const BUILDING_AMBIENT_FRAME_SECS: f32 = 0.6;
 
 // ---------------------------------------------------------------------------
 // Construction bar components
@@ -404,5 +438,220 @@ pub fn update_building_damage_tint(
             // Reset to base building color when above 50% HP
             mat.color = base.with_alpha(mat.color.alpha());
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Building animation systems
+// ---------------------------------------------------------------------------
+
+/// Initialize building animation state on newly spawned buildings.
+/// Attaches BuildingAnimState, BuildingAnimTimer, and optionally a TextureAtlas.
+pub fn init_building_anim(
+    mut commands: Commands,
+    anim_sheets: Option<Res<BuildingAnimSheets>>,
+    mut new_buildings: Query<
+        (Entity, &Building, Option<&UnderConstruction>, &mut Sprite),
+        (With<BuildingMesh>, With<SpriteBuilding>, Without<BuildingAnimInit>),
+    >,
+) {
+    let Some(sheets) = anim_sheets else { return };
+
+    for (entity, building, uc, mut sprite) in new_buildings.iter_mut() {
+        let idx = building_kind_index(building.kind);
+
+        let (state, sheet_opt) = if uc.is_some() {
+            // Building is under construction — use construction sheet if available
+            if let Some(ref entry) = sheets.construct[idx] {
+                (BuildingAnimState::Constructing, Some(entry))
+            } else {
+                (BuildingAnimState::Static, None)
+            }
+        } else {
+            // Building already complete — use ambient sheet if available
+            if let Some(ref entry) = sheets.ambient[idx] {
+                (BuildingAnimState::AmbientIdle, Some(entry))
+            } else {
+                (BuildingAnimState::Static, None)
+            }
+        };
+
+        commands.entity(entity).insert((
+            state,
+            BuildingAnimTimer::default(),
+            BuildingAnimInit,
+        ));
+
+        if let Some((img, layout)) = sheet_opt {
+            sprite.image = img.clone();
+            sprite.texture_atlas = Some(TextureAtlas {
+                layout: layout.clone(),
+                index: 0,
+            });
+        }
+    }
+}
+
+/// Advance construction animation frames based on build progress.
+/// Frame index = floor(progress * 3.99) → maps 0.0..1.0 to frames 0..3.
+/// Also swaps the sprite image to the construction sheet.
+pub fn advance_building_construction_anim(
+    anim_sheets: Option<Res<BuildingAnimSheets>>,
+    mut buildings: Query<
+        (&Building, &UnderConstruction, &mut Sprite),
+        (With<BuildingAnimInit>, With<SpriteBuilding>),
+    >,
+) {
+    let Some(sheets) = anim_sheets else { return };
+
+    for (building, uc, mut sprite) in buildings.iter_mut() {
+        let idx = building_kind_index(building.kind);
+        let Some(ref entry) = sheets.construct[idx] else {
+            continue;
+        };
+
+        let progress = uc.progress_f32();
+        let frame = (progress * 3.99).floor() as usize;
+
+        // Swap to construction sheet image if not already set
+        if sprite.image != entry.0 {
+            sprite.image = entry.0.clone();
+        }
+
+        // Set atlas frame
+        if let Some(ref mut atlas) = sprite.texture_atlas {
+            atlas.index = frame;
+        } else {
+            sprite.texture_atlas = Some(TextureAtlas {
+                layout: entry.1.clone(),
+                index: frame,
+            });
+        }
+    }
+}
+
+/// Transition buildings from Constructing to AmbientIdle (or Static) when
+/// UnderConstruction component is removed.
+pub fn transition_building_to_ambient(
+    anim_sheets: Option<Res<BuildingAnimSheets>>,
+    building_sprites: Option<Res<BuildingSprites>>,
+    mut finished: Query<
+        (&Building, &mut Sprite, &mut BuildingAnimState, &mut BuildingAnimTimer),
+        (
+            With<BuildingAnimInit>,
+            With<SpriteBuilding>,
+            Without<UnderConstruction>,
+        ),
+    >,
+) {
+    for (building, mut sprite, mut anim_state, mut timer) in finished.iter_mut() {
+        // Only transition from Constructing or Static (no construct sheet but might have ambient)
+        if *anim_state == BuildingAnimState::AmbientIdle {
+            continue;
+        }
+
+        let idx = building_kind_index(building.kind);
+
+        // Check for ambient sheet
+        let has_ambient = anim_sheets
+            .as_ref()
+            .and_then(|s| s.ambient[idx].as_ref())
+            .is_some();
+
+        if has_ambient {
+            let entry = anim_sheets.as_ref().unwrap().ambient[idx].as_ref().unwrap();
+            *anim_state = BuildingAnimState::AmbientIdle;
+            timer.set_duration(std::time::Duration::from_secs_f32(BUILDING_AMBIENT_FRAME_SECS));
+            timer.reset();
+
+            // Swap to ambient sheet
+            sprite.image = entry.0.clone();
+            sprite.texture_atlas = Some(TextureAtlas {
+                layout: entry.1.clone(),
+                index: 0,
+            });
+        } else {
+            // No ambient sheet — restore idle sprite and go static
+            *anim_state = BuildingAnimState::Static;
+
+            if let Some(ref sprites) = building_sprites {
+                sprite.image = sprites.sprites[idx].clone();
+            }
+            sprite.texture_atlas = None;
+        }
+    }
+}
+
+/// Advance ambient idle animation frames on a timer (0.6s per frame, looping 0→3).
+/// Only runs on buildings in AmbientIdle state (not Constructing or Static).
+pub fn advance_building_ambient_anim(
+    time: Res<Time>,
+    mut buildings: Query<
+        (&BuildingAnimState, &mut Sprite, &mut BuildingAnimTimer),
+        (With<BuildingAnimInit>, With<SpriteBuilding>, Without<UnderConstruction>),
+    >,
+) {
+    for (anim_state, mut sprite, mut timer) in buildings.iter_mut() {
+        if *anim_state != BuildingAnimState::AmbientIdle {
+            continue;
+        }
+        timer.tick(time.delta());
+        if timer.just_finished() {
+            if let Some(ref mut atlas) = sprite.texture_atlas {
+                atlas.index = (atlas.index + 1) % 4;
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn building_anim_state_constructing_ne_ambient() {
+        assert_ne!(BuildingAnimState::Constructing, BuildingAnimState::AmbientIdle);
+        assert_ne!(BuildingAnimState::Constructing, BuildingAnimState::Static);
+        assert_ne!(BuildingAnimState::AmbientIdle, BuildingAnimState::Static);
+    }
+
+    #[test]
+    fn building_anim_timer_default_is_600ms() {
+        let timer = BuildingAnimTimer::default();
+        let secs = timer.duration().as_secs_f32();
+        assert!((secs - 0.6).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn construction_frame_index_calculation() {
+        // Progress 0.0 → frame 0
+        assert_eq!((0.0_f32 * 3.99).floor() as usize, 0);
+        // Progress 0.25 → frame 0
+        assert_eq!((0.25_f32 * 3.99).floor() as usize, 0);
+        // Progress 0.26 → frame 1
+        assert_eq!((0.26_f32 * 3.99).floor() as usize, 1);
+        // Progress 0.5 → frame 1
+        assert_eq!((0.5_f32 * 3.99).floor() as usize, 1);
+        // Progress 0.51 → frame 2
+        assert_eq!((0.51_f32 * 3.99).floor() as usize, 2);
+        // Progress 0.75 → frame 2
+        assert_eq!((0.75_f32 * 3.99).floor() as usize, 2);
+        // Progress 0.76 → frame 3
+        assert_eq!((0.76_f32 * 3.99).floor() as usize, 3);
+        // Progress 1.0 → frame 3
+        assert_eq!((1.0_f32 * 3.99).floor() as usize, 3);
+    }
+
+    #[test]
+    fn ambient_frame_loops_0_to_3() {
+        for i in 0..8 {
+            let frame = (i + 1) % 4;
+            assert!(frame <= 3);
+        }
+    }
+
+    #[test]
+    fn ambient_frame_rate_constant() {
+        assert!((BUILDING_AMBIENT_FRAME_SECS - 0.6).abs() < f32::EPSILON);
     }
 }
