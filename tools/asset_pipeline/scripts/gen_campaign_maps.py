@@ -1368,6 +1368,8 @@ def build_m8():
     m.set_tile(24, 22, "Rock", 1)
     # Slight uphill elevation change
     m.set_elevation_rect(10, 16, 38, 20, 1)
+    # Ramp transition at south edge of elevated section (y=21)
+    m.fill_rect(20, 21, 28, 21, "Ramp", 1)
 
     # ── Connector: tunnel zone to exit zone ──
     m.fill_rect(20, 12, 28, 18, "Dirt", 0)
