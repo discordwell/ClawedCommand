@@ -16,8 +16,14 @@
 //!   Click Auto — toggle auto-cycle
 //!   Mouse wheel over sidebar — scroll
 
+use std::collections::HashSet;
+
 use bevy::asset::AssetPlugin;
+use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
+use bevy::ui_widgets::{
+    ControlOrientation, CoreScrollbarDragState, CoreScrollbarThumb, Scrollbar, ScrollbarPlugin,
+};
 
 use cc_client::loading::LoadingTracker;
 use cc_client::renderer::anim_assets::load_anim_assets;
@@ -199,6 +205,22 @@ struct AnimButton(AnimPhase);
 #[derive(Component)]
 struct AutoToggle;
 
+/// Faction header button (click to collapse/expand).
+#[derive(Component)]
+struct FactionHeader(usize);
+
+/// Child of a faction section (hidden when collapsed).
+#[derive(Component)]
+struct FactionChild(usize);
+
+/// The ▼/▶ indicator text inside a faction header.
+#[derive(Component)]
+struct CollapseIndicator(usize);
+
+/// Tracks which faction sections are collapsed.
+#[derive(Resource, Default)]
+struct CollapsedFactions(HashSet<usize>);
+
 // ---------------------------------------------------------------------------
 // Colors
 // ---------------------------------------------------------------------------
@@ -322,97 +344,142 @@ fn build_ui(commands: &mut Commands) {
             ..default()
         })
         .with_children(|root| {
-            // --- Left sidebar ---
+            // --- Left sidebar (flex row: scroll area + scrollbar track) ---
             root.spawn((
                 Node {
                     width: Val::Px(SIDEBAR_WIDTH),
+                    height: Val::Percent(100.0),
+                    flex_direction: FlexDirection::Row,
+                    ..default()
+                },
+                BackgroundColor(SIDEBAR_BG),
+            ))
+            .with_children(|sidebar_frame| {
+                // Scroll area
+                let mut scroll_cmd = sidebar_frame.spawn(Node {
+                    flex_grow: 1.0,
                     height: Val::Percent(100.0),
                     flex_direction: FlexDirection::Column,
                     overflow: Overflow::scroll_y(),
                     padding: UiRect::all(Val::Px(6.0)),
                     ..default()
-                },
-                BackgroundColor(SIDEBAR_BG),
-            ))
-            .with_children(|sidebar| {
-                for (fi, (faction_name, _, faction_color)) in FACTIONS.iter().enumerate() {
-                    // Faction header
-                    sidebar.spawn((
-                        Text::new(faction_name.to_string()),
-                        TextFont {
-                            font_size: 14.0,
-                            ..default()
-                        },
-                        TextColor(*faction_color),
-                        Node {
-                            margin: UiRect {
-                                top: Val::Px(if fi == 0 { 4.0 } else { 14.0 }),
-                                bottom: Val::Px(2.0),
-                                left: Val::Px(4.0),
+                });
+                let scroll_id = scroll_cmd.id();
+                scroll_cmd.with_children(|scroll_area| {
+                    for (fi, (faction_name, _, faction_color)) in FACTIONS.iter().enumerate() {
+                        // Faction header (clickable, toggles collapse)
+                        scroll_area
+                            .spawn((
+                                FactionHeader(fi),
+                                Button,
+                                Node {
+                                    width: Val::Percent(100.0),
+                                    margin: UiRect {
+                                        top: Val::Px(if fi == 0 { 4.0 } else { 14.0 }),
+                                        bottom: Val::Px(2.0),
+                                        ..default()
+                                    },
+                                    padding: UiRect::horizontal(Val::Px(4.0)),
+                                    ..default()
+                                },
+                                BackgroundColor(Color::NONE),
+                            ))
+                            .with_child((
+                                CollapseIndicator(fi),
+                                Text::new(format!("\u{25BC} {}", faction_name)),
+                                TextFont {
+                                    font_size: 14.0,
+                                    ..default()
+                                },
+                                TextColor(*faction_color),
+                            ));
+
+                        // "Units" sub-header
+                        scroll_area.spawn((
+                            FactionChild(fi),
+                            Text::new("Units"),
+                            TextFont {
+                                font_size: 11.0,
                                 ..default()
                             },
-                            ..default()
-                        },
-                    ));
-
-                    // "Units" sub-header
-                    sidebar.spawn((
-                        Text::new("Units"),
-                        TextFont {
-                            font_size: 11.0,
-                            ..default()
-                        },
-                        TextColor(SECTION_HEADER),
-                        Node {
-                            margin: UiRect {
-                                top: Val::Px(2.0),
-                                bottom: Val::Px(2.0),
-                                left: Val::Px(8.0),
+                            TextColor(SECTION_HEADER),
+                            Node {
+                                margin: UiRect {
+                                    top: Val::Px(2.0),
+                                    bottom: Val::Px(2.0),
+                                    left: Val::Px(8.0),
+                                    ..default()
+                                },
                                 ..default()
                             },
-                            ..default()
-                        },
-                    ));
+                        ));
 
-                    // 10 unit buttons per faction
-                    for ui in 0..UNITS_PER_FACTION {
-                        let unit_idx = fi * UNITS_PER_FACTION + ui;
-                        spawn_sidebar_button::<UnitButton>(
-                            sidebar,
-                            UnitButton(unit_idx),
-                            &unit_display_name(unit_idx),
-                        );
+                        // 10 unit buttons per faction
+                        for ui in 0..UNITS_PER_FACTION {
+                            let unit_idx = fi * UNITS_PER_FACTION + ui;
+                            spawn_sidebar_button(
+                                scroll_area,
+                                UnitButton(unit_idx),
+                                &unit_display_name(unit_idx),
+                                fi,
+                            );
+                        }
+
+                        // "Buildings" sub-header
+                        scroll_area.spawn((
+                            FactionChild(fi),
+                            Text::new("Buildings"),
+                            TextFont {
+                                font_size: 11.0,
+                                ..default()
+                            },
+                            TextColor(SECTION_HEADER),
+                            Node {
+                                margin: UiRect {
+                                    top: Val::Px(6.0),
+                                    bottom: Val::Px(2.0),
+                                    left: Val::Px(8.0),
+                                    ..default()
+                                },
+                                ..default()
+                            },
+                        ));
+
+                        // 8 building buttons per faction
+                        for bi in 0..BUILDINGS_PER_FACTION {
+                            let building_idx = fi * BUILDINGS_PER_FACTION + bi;
+                            spawn_sidebar_button(
+                                scroll_area,
+                                BuildingButton(building_idx),
+                                &building_display_name(building_idx),
+                                fi,
+                            );
+                        }
                     }
+                });
 
-                    // "Buildings" sub-header
-                    sidebar.spawn((
-                        Text::new("Buildings"),
-                        TextFont {
-                            font_size: 11.0,
-                            ..default()
-                        },
-                        TextColor(SECTION_HEADER),
+                // Scrollbar track
+                sidebar_frame
+                    .spawn((
+                        Scrollbar::new(scroll_id, ControlOrientation::Vertical, 20.0),
                         Node {
-                            margin: UiRect {
-                                top: Val::Px(6.0),
-                                bottom: Val::Px(2.0),
-                                left: Val::Px(8.0),
-                                ..default()
-                            },
+                            width: Val::Px(8.0),
+                            height: Val::Percent(100.0),
                             ..default()
                         },
+                        BackgroundColor(Color::srgba(0.15, 0.15, 0.2, 0.5)),
+                    ))
+                    .with_child((
+                        CoreScrollbarThumb,
+                        Hovered(false),
+                        Node {
+                            position_type: PositionType::Absolute,
+                            width: Val::Px(8.0),
+                            border_radius: BorderRadius::all(Val::Px(4.0)),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgba(0.4, 0.4, 0.5, 0.7)),
                     ));
-
-                    // 8 building buttons per faction
-                    for bi in 0..BUILDINGS_PER_FACTION {
-                        let building_idx = fi * BUILDINGS_PER_FACTION + bi;
-                        spawn_sidebar_button::<BuildingButton>(
-                            sidebar,
-                            BuildingButton(building_idx),
-                            &building_display_name(building_idx),
-                        );
-                    }
-                }
             });
 
             // --- Center area ---
@@ -516,10 +583,12 @@ fn spawn_sidebar_button<M: Component>(
     parent: &mut ChildSpawnerCommands,
     marker: M,
     label: &str,
+    faction_idx: usize,
 ) {
     parent
         .spawn((
             marker,
+            FactionChild(faction_idx),
             Button,
             Node {
                 width: Val::Percent(100.0),
@@ -910,6 +979,77 @@ fn update_anim_button_colors(
 }
 
 // ---------------------------------------------------------------------------
+// Collapsible faction sections
+// ---------------------------------------------------------------------------
+
+fn handle_faction_collapse(
+    mut collapsed: ResMut<CollapsedFactions>,
+    query: Query<(&FactionHeader, &Interaction), Changed<Interaction>>,
+) {
+    for (header, interaction) in query.iter() {
+        if *interaction == Interaction::Pressed {
+            if collapsed.0.contains(&header.0) {
+                collapsed.0.remove(&header.0);
+            } else {
+                collapsed.0.insert(header.0);
+            }
+        }
+    }
+}
+
+fn update_faction_visibility(
+    collapsed: Res<CollapsedFactions>,
+    mut child_query: Query<(&FactionChild, &mut Node), Without<CollapseIndicator>>,
+    mut indicator_query: Query<(&CollapseIndicator, &mut Text)>,
+) {
+    if !collapsed.is_changed() {
+        return;
+    }
+
+    for (fc, mut node) in child_query.iter_mut() {
+        node.display = if collapsed.0.contains(&fc.0) {
+            Display::None
+        } else {
+            Display::Flex
+        };
+    }
+
+    for (ci, mut text) in indicator_query.iter_mut() {
+        let faction_name = FACTIONS[ci.0].0;
+        if collapsed.0.contains(&ci.0) {
+            **text = format!("\u{25B6} {}", faction_name);
+        } else {
+            **text = format!("\u{25BC} {}", faction_name);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Scrollbar thumb hover/drag styling
+// ---------------------------------------------------------------------------
+
+fn style_scrollbar_thumb(
+    mut query: Query<
+        (&mut BackgroundColor, Option<&Hovered>, &CoreScrollbarDragState),
+        (
+            With<CoreScrollbarThumb>,
+            Or<(Changed<Hovered>, Changed<CoreScrollbarDragState>)>,
+        ),
+    >,
+) {
+    for (mut bg, hovered, drag_state) in query.iter_mut() {
+        let is_hovered = hovered.is_some_and(|h| h.0);
+        *bg = if drag_state.dragging {
+            BackgroundColor(Color::srgba(0.7, 0.7, 0.8, 0.9))
+        } else if is_hovered {
+            BackgroundColor(Color::srgba(0.55, 0.55, 0.65, 0.85))
+        } else {
+            BackgroundColor(Color::srgba(0.4, 0.4, 0.5, 0.7))
+        };
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -931,8 +1071,10 @@ fn main() {
                 })
                 .set(ImagePlugin::default_nearest()),
         )
+        .add_plugins(ScrollbarPlugin)
         .insert_resource(ClearColor(Color::srgb(0.08, 0.08, 0.12)))
         .init_resource::<LoadingTracker>()
+        .init_resource::<CollapsedFactions>()
         .add_systems(
             PreStartup,
             (
@@ -966,6 +1108,10 @@ fn main() {
                 update_labels.after(swap_display),
                 update_sidebar_colors.after(swap_display),
                 update_anim_button_colors.after(swap_display),
+                // Collapse & scrollbar
+                handle_faction_collapse.after(handle_input),
+                update_faction_visibility.after(handle_faction_collapse),
+                style_scrollbar_thumb,
             ),
         )
         .run();
