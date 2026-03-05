@@ -1475,4 +1475,242 @@ mod tests {
         let mission = load_act1_m4();
         assert_all_positions_passable(&mission);
     }
+
+    // ── Act 2 M5-M8 inline map tests ─────────────────────────────────────
+
+    fn load_act2_m5() -> MissionDefinition {
+        let ron_str = include_str!("../../../assets/campaign/act2_m5_false_front.ron");
+        ron::from_str(ron_str).expect("Failed to parse act2_m5_false_front.ron")
+    }
+
+    fn load_act2_m6() -> MissionDefinition {
+        let ron_str = include_str!("../../../assets/campaign/act2_m6_triangulation.ron");
+        ron::from_str(ron_str).expect("Failed to parse act2_m6_triangulation.ron")
+    }
+
+    fn load_act2_m7() -> MissionDefinition {
+        let ron_str = include_str!("../../../assets/campaign/act2_m7_rexs_whisper.ron");
+        ron::from_str(ron_str).expect("Failed to parse act2_m7_rexs_whisper.ron")
+    }
+
+    fn load_act2_m8() -> MissionDefinition {
+        let ron_str = include_str!("../../../assets/campaign/act2_m8_oath_breaker.ron");
+        ron::from_str(ron_str).expect("Failed to parse act2_m8_oath_breaker.ron")
+    }
+
+    #[test]
+    fn parse_act2_m5_false_front_ron() {
+        let mission = load_act2_m5();
+        assert_eq!(mission.id, "act2_m5_false_front");
+        assert_eq!(mission.act, 2);
+        assert_eq!(mission.mission_index, 5);
+        assert_eq!(mission.player_setup.heroes.len(), 2);
+        assert_eq!(mission.player_setup.units.len(), 10);
+        assert_eq!(mission.enemy_waves.len(), 4);
+        assert_eq!(mission.objectives.len(), 3);
+        assert_eq!(mission.mutators.len(), 2);
+        assert!(matches!(
+            mission.mutators[0],
+            crate::mutator::MissionMutator::DenseFog { .. }
+        ));
+        assert!(matches!(
+            mission.mutators[1],
+            crate::mutator::MissionMutator::TimeLimit { .. }
+        ));
+        assert!(
+            matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act2_m6_triangulation")
+        );
+        mission
+            .validate()
+            .expect("Mission validation failed for act2_m5_false_front");
+    }
+
+    #[test]
+    fn act2_m5_has_inline_map() {
+        let mission = load_act2_m5();
+        match &mission.map {
+            MissionMap::Inline {
+                width,
+                height,
+                tiles,
+                elevation,
+            } => {
+                assert_eq!(*width, 48);
+                assert_eq!(*height, 48);
+                assert_eq!(tiles.len(), 48 * 48);
+                assert_eq!(elevation.len(), 48 * 48);
+            }
+            _ => panic!("Expected Inline map for M5"),
+        }
+    }
+
+    #[test]
+    fn act2_m5_positions_on_passable_terrain() {
+        let mission = load_act2_m5();
+        assert_all_positions_passable(&mission);
+    }
+
+    #[test]
+    fn parse_act2_m6_triangulation_ron() {
+        let mission = load_act2_m6();
+        assert_eq!(mission.id, "act2_m6_triangulation");
+        assert_eq!(mission.act, 2);
+        assert_eq!(mission.mission_index, 6);
+        assert_eq!(mission.player_setup.heroes.len(), 2);
+        assert_eq!(mission.player_setup.units.len(), 10);
+        assert_eq!(mission.enemy_waves.len(), 5);
+        assert_eq!(mission.objectives.len(), 3);
+        assert_eq!(mission.mutators.len(), 2);
+        assert!(matches!(
+            mission.mutators[0],
+            crate::mutator::MissionMutator::Tremors { .. }
+        ));
+        assert!(matches!(
+            mission.mutators[1],
+            crate::mutator::MissionMutator::TimeLimit { .. }
+        ));
+        assert!(
+            matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act2_m7_rexs_whisper")
+        );
+        mission
+            .validate()
+            .expect("Mission validation failed for act2_m6_triangulation");
+    }
+
+    #[test]
+    fn act2_m6_has_inline_map() {
+        let mission = load_act2_m6();
+        match &mission.map {
+            MissionMap::Inline {
+                width,
+                height,
+                tiles,
+                elevation,
+            } => {
+                assert_eq!(*width, 48);
+                assert_eq!(*height, 48);
+                assert_eq!(tiles.len(), 48 * 48);
+                assert_eq!(elevation.len(), 48 * 48);
+            }
+            _ => panic!("Expected Inline map for M6"),
+        }
+    }
+
+    #[test]
+    fn act2_m6_positions_on_passable_terrain() {
+        let mission = load_act2_m6();
+        assert_all_positions_passable(&mission);
+    }
+
+    #[test]
+    fn parse_act2_m7_rexs_whisper_ron() {
+        let mission = load_act2_m7();
+        assert_eq!(mission.id, "act2_m7_rexs_whisper");
+        assert_eq!(mission.act, 2);
+        assert_eq!(mission.mission_index, 7);
+        assert_eq!(mission.player_setup.heroes.len(), 2);
+        assert_eq!(mission.player_setup.units.len(), 18);
+        assert_eq!(mission.enemy_waves.len(), 6);
+        assert_eq!(mission.objectives.len(), 3);
+        assert_eq!(mission.mutators.len(), 2);
+        assert!(matches!(
+            mission.mutators[0],
+            crate::mutator::MissionMutator::Tremors { .. }
+        ));
+        assert!(matches!(
+            mission.mutators[1],
+            crate::mutator::MissionMutator::DamageMultiplier { .. }
+        ));
+        assert!(
+            matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act2_m8_oath_breaker")
+        );
+        mission
+            .validate()
+            .expect("Mission validation failed for act2_m7_rexs_whisper");
+    }
+
+    #[test]
+    fn act2_m7_has_inline_map() {
+        let mission = load_act2_m7();
+        match &mission.map {
+            MissionMap::Inline {
+                width,
+                height,
+                tiles,
+                elevation,
+            } => {
+                assert_eq!(*width, 64);
+                assert_eq!(*height, 64);
+                assert_eq!(tiles.len(), 64 * 64);
+                assert_eq!(elevation.len(), 64 * 64);
+            }
+            _ => panic!("Expected Inline map for M7"),
+        }
+    }
+
+    #[test]
+    fn act2_m7_positions_on_passable_terrain() {
+        let mission = load_act2_m7();
+        assert_all_positions_passable(&mission);
+    }
+
+    #[test]
+    fn parse_act2_m8_oath_breaker_ron() {
+        let mission = load_act2_m8();
+        assert_eq!(mission.id, "act2_m8_oath_breaker");
+        assert_eq!(mission.act, 2);
+        assert_eq!(mission.mission_index, 8);
+        assert_eq!(mission.player_setup.heroes.len(), 1);
+        assert_eq!(mission.player_setup.units.len(), 4);
+        assert_eq!(mission.enemy_waves.len(), 4);
+        assert_eq!(mission.objectives.len(), 2);
+        assert_eq!(mission.mutators.len(), 4);
+        assert!(matches!(
+            mission.mutators[0],
+            crate::mutator::MissionMutator::DenseFog { .. }
+        ));
+        assert!(matches!(
+            mission.mutators[1],
+            crate::mutator::MissionMutator::RestrictedUnits { .. }
+        ));
+        assert!(matches!(
+            mission.mutators[2],
+            crate::mutator::MissionMutator::NoBuildMode
+        ));
+        assert!(matches!(
+            mission.mutators[3],
+            crate::mutator::MissionMutator::NoAiControl
+        ));
+        assert!(
+            matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act3_m9_jinx")
+        );
+        mission
+            .validate()
+            .expect("Mission validation failed for act2_m8_oath_breaker");
+    }
+
+    #[test]
+    fn act2_m8_has_inline_map() {
+        let mission = load_act2_m8();
+        match &mission.map {
+            MissionMap::Inline {
+                width,
+                height,
+                tiles,
+                elevation,
+            } => {
+                assert_eq!(*width, 48);
+                assert_eq!(*height, 64);
+                assert_eq!(tiles.len(), 48 * 64);
+                assert_eq!(elevation.len(), 48 * 64);
+            }
+            _ => panic!("Expected Inline map for M8"),
+        }
+    }
+
+    #[test]
+    fn act2_m8_positions_on_passable_terrain() {
+        let mission = load_act2_m8();
+        assert_all_positions_passable(&mission);
+    }
 }

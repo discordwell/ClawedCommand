@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Generate hand-crafted inline maps for Act 1 campaign missions (M2-M4).
+"""Generate hand-crafted inline maps for campaign missions.
 
 Usage:
-    python gen_campaign_maps.py --map [m2|m3|m4|all] --preview --patch
+    python gen_campaign_maps.py --map [m2|m3|m4|m5|m6|m7|m8|all] --preview --patch
 
 Flags:
     --map NAME   Which map(s) to generate (default: all)
@@ -806,6 +806,648 @@ def build_m4():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# M5: The False Front — Mountain Defensive Stand (48x48)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def build_m5():
+    # ══════════════════════════════════════════════════════════════
+    # M5 "The False Front" — Mountain defense against 3-axis assault
+    #
+    # Default: Rock (mountain interior). Carve passable areas.
+    # Central plateau (elev 1): player's defensive position.
+    # 3 approach corridors: N (main road), E (narrow ledge), S (tunnel exit).
+    # ══════════════════════════════════════════════════════════════
+
+    m = MapBuilder(48, 48, default_terrain="Rock", default_elevation=2)
+
+    # ── Central Plateau (elev 1): player defensive position ──
+    # 16x10 platform centered around x=24, y=34-43
+    m.fill_rect(16, 32, 31, 43, "Dirt", 1)
+    m.fill_rect(18, 33, 29, 42, "Grass", 1)
+    # Partial Rock walls on plateau = defensive cover with gaps
+    m.fill_rect(17, 32, 30, 32, "Rock", 2)  # North wall
+    m.set_tile(22, 32, "Dirt", 1)  # Gap in north wall
+    m.set_tile(26, 32, "Dirt", 1)  # Gap in north wall
+    m.fill_rect(16, 33, 16, 42, "Rock", 2)  # West wall
+    m.set_tile(16, 37, "Dirt", 1)  # Gap in west wall
+    m.fill_rect(31, 33, 31, 42, "Rock", 2)  # East wall
+    m.set_tile(31, 38, "Dirt", 1)  # Gap in east wall
+    # Core Tap area (TechRuins on plateau)
+    m.tech_ruins(24, 38, 3, 3, elevation=1)
+    # Seekers mining equipment
+    m.tech_ruins(19, 36, 2, 2, elevation=1)
+    m.tech_ruins(28, 40, 2, 2, elevation=1)
+
+    # ── N Approach: main road, wide corridor ──
+    # Carve a corridor from top down to plateau
+    m.fill_rect(18, 2, 28, 6, "Dirt", 0)     # Top staging area
+    m.fill_rect(20, 3, 26, 5, "Grass", 0)
+    # Road descending south
+    m.road([(24, 5), (24, 10), (23, 15), (23, 20), (22, 25), (22, 30), (22, 32)],
+           width=2, terrain="Road", elevation=0)
+    # Widen corridor around road
+    m.fill_rect(19, 7, 27, 12, "Dirt", 0)
+    m.fill_rect(18, 14, 26, 20, "Dirt", 0)
+    m.fill_rect(17, 22, 27, 30, "Grass", 0)
+    m.fill_rect(19, 24, 25, 29, "Dirt", 0)
+    # Ramp connecting corridor to plateau
+    m.fill_rect(20, 30, 26, 31, "Ramp", 1)
+
+    # ── E Approach: narrow mountain ledge ──
+    # Narrow path from east border to plateau
+    m.fill_rect(36, 16, 46, 24, "Dirt", 0)   # Eastern staging
+    m.fill_rect(38, 18, 44, 22, "Grass", 0)
+    # Narrow ledge path
+    m.road([(42, 20), (38, 22), (35, 25), (33, 28), (32, 32), (32, 35), (31, 38)],
+           width=1, terrain="Dirt", elevation=0)
+    # Widen key sections
+    m.fill_rect(33, 25, 36, 29, "Dirt", 0)
+    m.fill_rect(32, 30, 34, 34, "Grass", 0)
+    # Ramp to plateau from east
+    m.fill_rect(31, 35, 32, 39, "Ramp", 1)
+
+    # ── S Tunnel Exit: rear ambush route ──
+    # Tunnel mouth at bottom, carve upward to plateau
+    m.fill_rect(20, 44, 27, 47, "Dirt", 0)   # Tunnel mouth
+    m.fill_rect(21, 45, 26, 46, "Grass", 0)
+    m.road([(24, 45), (24, 43)], width=2, terrain="Road", elevation=0)
+    # Ramp up to plateau from south
+    m.fill_rect(20, 43, 27, 43, "Ramp", 1)
+
+    # ── NE elevated position (elev 2, sniping spot) ──
+    m.fill_rect(34, 6, 40, 12, "Grass", 2)
+    m.fill_rect(36, 8, 38, 10, "Dirt", 2)
+    # Ramp access
+    m.fill_rect(34, 12, 36, 14, "Ramp", 1)
+    m.fill_rect(34, 14, 36, 16, "Dirt", 0)
+
+    # ── West side: underground stream (limits flanking) ──
+    m.river([(6, 10), (8, 18), (10, 26), (12, 34), (14, 42)],
+            width=2, bank_width=1)
+    # Small passable area west of stream
+    m.fill_rect(2, 20, 6, 28, "Dirt", 0)
+    m.fill_rect(3, 22, 5, 26, "Grass", 0)
+
+    # ── Rocky crags between corridors (block direct movement) ──
+    # These are left as default Rock, already impassable
+
+    # ── Scattered rock outcrops in corridors ──
+    m.fill_rect(21, 16, 22, 17, "Rock", 1)
+    m.fill_rect(25, 22, 26, 23, "Rock", 1)
+
+    # ── Forest patches for concealment ──
+    m.forest_patch(20, 8, 2, 0.6, seed=500)
+    m.forest_patch(26, 15, 2, 0.5, seed=501)
+    m.forest_patch(19, 26, 2, 0.4, seed=502)
+
+    # ── Validate all spawn positions from RON ──
+    spawns = {
+        # Player setup
+        "Kelpie": (24, 40),
+        "MotherGranite": (26, 40),
+        "Chonk_1": (22, 38),
+        "Chonk_2": (24, 38),
+        "Chonk_3": (26, 38),
+        "Chonk_4": (28, 38),
+        "Hisser_1": (22, 40),
+        "Hisser_2": (23, 41),
+        "Hisser_3": (27, 41),
+        "Hisser_4": (28, 40),
+        "Nuisance_1": (20, 39),
+        "Nuisance_2": (30, 39),
+        # Wave 1: scouts from N
+        "scout_1": (22, 5),
+        "scout_2": (24, 4),
+        "scout_3": (26, 5),
+        # Wave 2: flank from E
+        "flank_1": (44, 20),
+        "flank_2": (45, 21),
+        "flank_3": (44, 22),
+        "flank_4": (45, 19),
+        "flank_5": (46, 20),
+        # Wave 3: main from N
+        "main_1": (20, 3),
+        "main_2": (22, 4),
+        "main_3": (24, 3),
+        "main_4": (21, 5),
+        "main_5": (25, 5),
+        "main_6": (23, 2),
+        "main_7": (26, 4),
+        # Wave 4: rear from S
+        "rear_1": (22, 46),
+        "rear_2": (24, 47),
+        "rear_3": (26, 46),
+        "rear_4": (23, 47),
+        "rear_5": (25, 47),
+        "rear_6": (24, 46),
+        # Attack targets
+        "attack_target": (24, 40),
+    }
+    m.validate_positions(spawns)
+    return m
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# M6: Triangulation — Surrounded High Ground Defense (48x48)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def build_m6():
+    # ══════════════════════════════════════════════════════════════
+    # M6 "Triangulation" — Mountain peak with 4 approach valleys
+    #
+    # Default: Rock (mountain). Carve valleys and plateau.
+    # Central plateau (elev 2 core, elev 1 ring).
+    # 4 approach valleys: N (wide road), E (narrow), W (forest), S (player rear).
+    # ══════════════════════════════════════════════════════════════
+
+    m = MapBuilder(48, 48, default_terrain="Rock", default_elevation=2)
+
+    # ── Central Plateau (elev 2 core + elev 1 ring) ──
+    # Ring (elev 1): y=30-44, x=14-33
+    m.fill_rect(14, 30, 33, 44, "Grass", 1)
+    # Core (elev 2): y=33-41, x=17-30
+    m.fill_rect(17, 33, 30, 41, "Dirt", 2)
+    m.fill_rect(19, 35, 28, 39, "Grass", 2)
+    # Ramps around plateau edges
+    m.fill_rect(14, 30, 33, 30, "Ramp", 1)  # North edge ramp
+    m.fill_rect(14, 30, 14, 44, "Ramp", 1)  # West edge ramp
+    m.fill_rect(33, 30, 33, 44, "Ramp", 1)  # East edge ramp
+    # TechRuins on plateau (Seekers equipment)
+    m.tech_ruins(22, 36, 3, 3, elevation=2)
+    m.tech_ruins(27, 38, 2, 2, elevation=2)
+    m.tech_ruins(18, 40, 2, 2, elevation=1)
+
+    # ── N Valley: wide road approach (main threat axis) ──
+    m.fill_rect(8, 1, 40, 12, "Dirt", 0)
+    m.fill_rect(10, 2, 38, 10, "Grass", 0)
+    m.road([(24, 4), (24, 10), (24, 16), (24, 22), (24, 28), (24, 30)],
+           width=2, terrain="Road", elevation=0)
+    # Widen corridor between valley and plateau
+    m.fill_rect(16, 12, 32, 16, "Dirt", 0)
+    m.fill_rect(18, 14, 30, 16, "Grass", 0)
+    m.fill_rect(16, 17, 32, 22, "Dirt", 0)
+    m.fill_rect(18, 18, 30, 21, "Grass", 0)
+    m.fill_rect(16, 23, 32, 29, "Grass", 0)
+    m.fill_rect(18, 24, 30, 28, "Dirt", 0)
+    # Rocky outcrops in N valley
+    m.fill_rect(20, 8, 21, 9, "Rock", 1)
+    m.fill_rect(27, 6, 28, 7, "Rock", 1)
+    m.fill_rect(19, 19, 20, 20, "Rock", 1)
+
+    # ── E Valley: narrow rocky ledge (pincer route) ──
+    m.fill_rect(38, 14, 45, 24, "Dirt", 0)
+    m.fill_rect(40, 16, 44, 22, "Grass", 0)
+    # Narrow path connecting to plateau
+    m.road([(42, 20), (38, 24), (36, 27), (34, 30)],
+           width=1, terrain="Dirt", elevation=0)
+    m.fill_rect(34, 26, 38, 30, "Grass", 0)
+    m.fill_rect(35, 27, 37, 29, "Dirt", 0)
+    # Cliff edges (left as Rock default)
+
+    # ── W Valley: forested, wider, concealed (pincer route) ──
+    m.fill_rect(2, 12, 12, 24, "Grass", 0)
+    m.fill_rect(3, 14, 10, 22, "Forest", 0)
+    # Connect to plateau
+    m.road([(6, 18), (10, 22), (12, 26), (14, 30)],
+           width=1, terrain="Dirt", elevation=0)
+    m.fill_rect(10, 24, 14, 30, "Grass", 0)
+    m.fill_rect(11, 25, 13, 29, "Forest", 0)
+    # Extra forest cover
+    m.forest_patch(5, 16, 3, 0.7, seed=600)
+    m.forest_patch(8, 20, 2, 0.6, seed=601)
+
+    # ── S: player's rear, minimal approach ──
+    m.fill_rect(18, 44, 30, 47, "Grass", 1)
+    m.fill_rect(20, 45, 28, 46, "Dirt", 1)
+
+    # ── Scattered features ──
+    m.forest_patch(16, 26, 2, 0.5, seed=602)
+    m.forest_patch(30, 24, 2, 0.4, seed=603)
+
+    # ── Validate all spawn positions from RON ──
+    spawns = {
+        # Player setup
+        "Kelpie": (24, 38),
+        "MotherGranite": (26, 38),
+        "Chonk_1": (22, 36),
+        "Chonk_2": (24, 36),
+        "Chonk_3": (26, 36),
+        "Hisser_1": (21, 38),
+        "Hisser_2": (23, 39),
+        "Hisser_3": (27, 39),
+        "Hisser_4": (29, 38),
+        "Nuisance_1": (20, 37),
+        "Nuisance_2": (28, 37),
+        "Nuisance_3": (24, 40),
+        # Wave 1: probes from N
+        "probe_1": (10, 8),
+        "probe_2": (12, 7),
+        "probe_3": (38, 6),
+        # Wave 2: E pincer
+        "east_1": (44, 18),
+        "east_2": (45, 19),
+        "east_3": (43, 20),
+        "east_4": (44, 17),
+        # Wave 3: W pincer
+        "west_1": (4, 16),
+        "west_2": (3, 18),
+        "west_3": (5, 17),
+        "west_4": (4, 15),
+        "west_5": (3, 19),
+        # Wave 4: central N
+        "central_1": (22, 4),
+        "central_2": (24, 3),
+        "central_3": (26, 4),
+        "central_4": (23, 5),
+        "central_5": (25, 5),
+        "central_6": (24, 2),
+        # Wave 5: final N
+        "final_1": (20, 2),
+        "final_2": (28, 2),
+        "final_3": (22, 3),
+        "final_4": (26, 3),
+        "final_5": (24, 1),
+        "final_6": (21, 3),
+        "final_7": (27, 3),
+        # Attack targets
+        "attack_target_1": (24, 24),
+        "attack_target_2": (24, 36),
+        "attack_target_3": (24, 38),
+    }
+    m.validate_positions(spawns)
+    return m
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# M7: The Rex's Whisper — Epic Diagonal Battlefield (64x64)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def build_m7():
+    # ══════════════════════════════════════════════════════════════
+    # M7 "The Rex's Whisper" — Massive battle with diagonal ridge
+    #
+    # Default: Grass. Central diagonal Rock ridge with 3 passes.
+    # SW player base, NE enemy territory, SE excavation site.
+    # ══════════════════════════════════════════════════════════════
+
+    m = MapBuilder(64, 64, default_terrain="Grass", default_elevation=0)
+
+    # ── Rock border ──
+    m.border(2, "Rock", 2)
+
+    # ══════════════════════════════════════════════════════════════
+    # CENTRAL RIDGE: diagonal Rock wall (elev 2) NW→SE
+    # Runs from ~(10,20) to ~(50,45). The defining map feature.
+    # ══════════════════════════════════════════════════════════════
+    m.road([(10, 20), (18, 26), (25, 30), (32, 34), (40, 38), (50, 45)],
+           width=4, terrain="Rock", elevation=2)
+    # Thicken the ridge in key sections
+    m.fill_rect(12, 21, 16, 25, "Rock", 2)
+    m.fill_rect(22, 28, 28, 33, "Rock", 2)
+    m.fill_rect(34, 34, 38, 39, "Rock", 2)
+    m.fill_rect(44, 40, 48, 44, "Rock", 2)
+
+    # ── 3 Passes through ridge ──
+    # NORTH PASS: wide, Road-surfaced, near (16,23)
+    m.fill_rect(14, 22, 18, 25, "Road", 0)
+    m.fill_rect(13, 22, 13, 25, "Dirt", 0)
+    m.fill_rect(19, 22, 19, 25, "Dirt", 0)
+
+    # CENTER PASS: medium width, Dirt, near (28,31)
+    m.fill_rect(26, 29, 30, 33, "Dirt", 0)
+    m.fill_rect(27, 30, 29, 32, "Road", 0)
+
+    # SOUTH PASS: narrow, forested, near (42,40)
+    m.fill_rect(40, 38, 44, 42, "Forest", 0)
+    m.fill_rect(41, 39, 43, 41, "Dirt", 0)
+
+    # ══════════════════════════════════════════════════════════════
+    # SW PLAYER BASE: Forest cover + Dirt staging
+    # ══════════════════════════════════════════════════════════════
+    m.fill_rect(4, 44, 18, 56, "Grass", 0)
+    m.fill_rect(5, 45, 17, 55, "Forest", 0)
+    m.fill_rect(6, 47, 16, 53, "Dirt", 0)
+    m.fill_rect(8, 48, 14, 52, "Grass", 0)
+    # Road from base toward center pass
+    m.road([(12, 50), (16, 46), (20, 40), (24, 36), (28, 32)],
+           width=2, terrain="Road")
+
+    # ══════════════════════════════════════════════════════════════
+    # NE ENEMY TERRITORY: beyond the ridge
+    # ══════════════════════════════════════════════════════════════
+    m.fill_rect(42, 4, 60, 18, "Grass", 0)
+    m.fill_rect(44, 6, 58, 16, "Dirt", 0)
+    m.fill_rect(46, 8, 56, 14, "Grass", 0)
+    # Forest cover for enemy staging
+    m.forest_patch(48, 8, 4, 0.6, seed=700)
+    m.forest_patch(54, 12, 3, 0.5, seed=701)
+    # Road from enemy base through north pass
+    m.road([(50, 10), (44, 14), (36, 18), (28, 22), (20, 24), (16, 23)],
+           width=2, terrain="Road")
+    # Open areas north of ridge
+    m.fill_rect(20, 4, 40, 18, "Grass", 0)
+    m.fill_rect(22, 6, 38, 16, "Dirt", 0)
+    m.fill_rect(24, 8, 36, 14, "Grass", 0)
+    # Hills (elev 1 patches)
+    m.set_elevation_rect(26, 10, 34, 14, 1)
+    m.set_elevation_rect(36, 6, 42, 10, 1)
+
+    # ══════════════════════════════════════════════════════════════
+    # SE EXCAVATION SITE: walled TechRuins compound
+    # ══════════════════════════════════════════════════════════════
+    # Rock perimeter
+    m.fill_rect(50, 50, 60, 60, "Rock", 1)
+    # Interior
+    m.fill_rect(52, 52, 58, 58, "Dirt", 0)
+    m.fill_rect(53, 53, 57, 57, "Grass", 0)
+    # TechRuins core
+    m.tech_ruins(55, 55, 3, 3)
+    m.tech_ruins(53, 54, 2, 2)
+    # Entry ramp from NW
+    m.fill_rect(50, 53, 51, 55, "Ramp", 0)
+    m.fill_rect(48, 52, 50, 56, "Dirt", 0)
+    # Path from south pass to excavation
+    m.road([(44, 42), (48, 46), (50, 50), (52, 54)],
+           width=1, terrain="Dirt")
+
+    # ══════════════════════════════════════════════════════════════
+    # SOUTHERN PLAINS: rolling hills, scattered forest
+    # ══════════════════════════════════════════════════════════════
+    # Hills (elev 1 patches)
+    m.set_elevation_rect(20, 38, 26, 42, 1)
+    m.set_elevation_rect(30, 44, 36, 48, 1)
+    m.set_elevation_rect(38, 50, 44, 54, 1)
+    # Forest patches
+    m.forest_patch(24, 46, 3, 0.5, seed=702)
+    m.forest_patch(32, 50, 3, 0.4, seed=703)
+    m.forest_patch(18, 38, 2, 0.5, seed=704)
+
+    # ══════════════════════════════════════════════════════════════
+    # WEST SIDE: mountain stream
+    # ══════════════════════════════════════════════════════════════
+    m.river([(4, 8), (5, 16), (6, 24), (7, 32), (8, 40)],
+            width=2, bank_width=1)
+    # Passable areas beside stream
+    m.fill_rect(2, 8, 4, 16, "Dirt", 0)
+
+    # ── East flank area ──
+    m.fill_rect(56, 26, 61, 36, "Dirt", 0)
+    m.fill_rect(57, 28, 60, 34, "Grass", 0)
+
+    # ── West push area ──
+    m.fill_rect(2, 6, 8, 16, "Dirt", 0)
+    m.fill_rect(3, 8, 7, 14, "Grass", 0)
+
+    # ── Validate all spawn positions from RON ──
+    spawns = {
+        # Player setup
+        "Kelpie": (10, 50),
+        "MotherGranite": (12, 50),
+        "Chonk_1": (8, 48),
+        "Chonk_2": (10, 48),
+        "Chonk_3": (12, 48),
+        "Chonk_4": (14, 48),
+        "Chonk_5": (9, 46),
+        "Chonk_6": (13, 46),
+        "Hisser_1": (8, 50),
+        "Hisser_2": (10, 51),
+        "Hisser_3": (12, 51),
+        "Hisser_4": (14, 50),
+        "Hisser_5": (9, 52),
+        "Hisser_6": (13, 52),
+        "Nuisance_1": (6, 49),
+        "Nuisance_2": (16, 49),
+        "Nuisance_3": (7, 47),
+        "Nuisance_4": (15, 47),
+        "Yowler_1": (10, 53),
+        "Yowler_2": (12, 53),
+        # Wave 1: vanguard NE
+        "van_1": (50, 10),
+        "van_2": (52, 11),
+        "van_3": (54, 10),
+        "van_4": (51, 12),
+        "van_5": (53, 12),
+        # Wave 2: main NE
+        "wm_1": (48, 8),
+        "wm_2": (50, 9),
+        "wm_3": (52, 8),
+        "wm_4": (49, 10),
+        "wm_5": (51, 10),
+        "wm_6": (53, 10),
+        "wm_7": (50, 7),
+        "wm_8": (52, 7),
+        # Wave 3: E flank
+        "ef_1": (58, 30),
+        "ef_2": (59, 32),
+        "ef_3": (60, 31),
+        "ef_4": (57, 33),
+        "ef_5": (58, 29),
+        "ef_6": (59, 34),
+        # Wave 4: elite NE
+        "el_1": (50, 6),
+        "el_2": (52, 5),
+        "el_3": (54, 6),
+        "el_4": (51, 7),
+        "el_5": (53, 7),
+        "el_6": (49, 8),
+        "el_7": (55, 8),
+        # Wave 5: W push
+        "wp_1": (4, 10),
+        "wp_2": (3, 12),
+        "wp_3": (5, 11),
+        "wp_4": (2, 13),
+        "wp_5": (4, 9),
+        # Wave 6: final NE
+        "fin_1": (48, 5),
+        "fin_2": (50, 4),
+        "fin_3": (52, 5),
+        "fin_4": (54, 4),
+        "fin_5": (49, 6),
+        "fin_6": (51, 6),
+        "fin_7": (53, 6),
+        "fin_8": (55, 6),
+        "fin_9": (50, 3),
+        "fin_10": (52, 3),
+        "fin_11": (54, 3),
+        # Attack target
+        "attack_target": (10, 50),
+        # Excavation objective
+        "excavation": (55, 55),
+    }
+    m.validate_positions(spawns)
+    return m
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# M8: The Oath-Breaker — Underground Tunnel Escape (48x64)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def build_m8():
+    # ══════════════════════════════════════════════════════════════
+    # M8 "The Oath-Breaker" — Stealth escape, south→north
+    #
+    # Default: Rock (underground, impassable). Carve corridors/chambers.
+    # Main shaft 6-8 tiles wide running N-S through center.
+    # 4 checkpoint zones with wider chambers.
+    # Side passages as alternate routes.
+    # ══════════════════════════════════════════════════════════════
+
+    m = MapBuilder(48, 64, default_terrain="Rock", default_elevation=2)
+
+    # ══════════════════════════════════════════════════════════════
+    # MAIN SHAFT: runs N-S through center, 6 tiles wide
+    # x=20-27, full height with chambers
+    # ══════════════════════════════════════════════════════════════
+
+    # ── Player Start (y=56-62): small safe chamber ──
+    m.fill_rect(18, 55, 30, 62, "Dirt", 0)
+    m.fill_rect(20, 56, 28, 61, "Grass", 0)
+    m.fill_rect(22, 57, 26, 60, "Dirt", 0)
+    # Road exit north
+    m.road([(24, 56), (24, 54)], width=2, terrain="Road", elevation=0)
+
+    # ── South Gate (y=44-54): entry chamber + narrowing ──
+    m.fill_rect(16, 44, 32, 55, "Dirt", 0)
+    m.fill_rect(18, 46, 30, 53, "Grass", 0)
+    m.fill_rect(20, 48, 28, 52, "Dirt", 0)
+    # Central Road through chamber
+    m.road([(24, 54), (24, 50), (24, 44)], width=2, terrain="Road", elevation=0)
+    # TechRuins: mining equipment
+    m.tech_ruins(18, 50, 2, 2)
+    # Pillars for hiding
+    m.set_tile(20, 50, "Rock", 1)
+    m.set_tile(28, 50, "Rock", 1)
+
+    # ── Side passage W (bypasses south gate) ──
+    m.fill_rect(8, 46, 14, 54, "Shallows", 0)   # Underground water seepage
+    m.fill_rect(10, 48, 12, 52, "Dirt", 0)
+    # Connect to main shaft
+    m.road([(14, 50), (16, 50)], width=1, terrain="Dirt", elevation=0)
+    m.road([(12, 46), (14, 44), (16, 44)], width=1, terrain="Dirt", elevation=0)
+
+    # ── Mid Checkpoint (y=30-40): wider chamber with pillars ──
+    m.fill_rect(14, 30, 34, 43, "Dirt", 0)
+    m.fill_rect(16, 32, 32, 41, "Grass", 0)
+    m.fill_rect(18, 34, 30, 38, "Dirt", 0)
+    # Road through center
+    m.road([(24, 44), (24, 40), (24, 34), (24, 30)], width=2, terrain="Road", elevation=0)
+    # Pillars (Rock tiles within chamber)
+    m.set_tile(20, 34, "Rock", 1)
+    m.set_tile(28, 34, "Rock", 1)
+    m.set_tile(20, 38, "Rock", 1)
+    m.set_tile(28, 38, "Rock", 1)
+    m.set_tile(24, 36, "Rock", 1)  # Center pillar
+    # Side alcoves for hiding
+    m.fill_rect(10, 34, 14, 40, "Dirt", 0)   # West alcove
+    m.fill_rect(11, 35, 13, 39, "Grass", 0)
+    m.fill_rect(34, 34, 38, 40, "Dirt", 0)   # East alcove
+    m.fill_rect(35, 35, 37, 39, "Grass", 0)
+    # TechRuins in mid section
+    m.tech_ruins(16, 36, 2, 2)
+    m.tech_ruins(30, 36, 2, 2)
+
+    # ── Connector: mid checkpoint to tunnel zone ──
+    m.fill_rect(20, 26, 28, 30, "Dirt", 0)
+    m.road([(24, 30), (24, 26)], width=2, terrain="Road", elevation=0)
+
+    # ── Tunnel Zone (y=16-26): patrol corridors ──
+    m.fill_rect(10, 18, 38, 26, "Dirt", 0)
+    m.fill_rect(12, 20, 36, 24, "Grass", 0)
+    m.fill_rect(14, 21, 34, 23, "Dirt", 0)
+    # Road through center
+    m.road([(24, 26), (24, 20), (24, 16)], width=2, terrain="Road", elevation=0)
+    # Side passage E (bypasses tunnel zone)
+    m.fill_rect(36, 16, 42, 26, "Shallows", 0)
+    m.fill_rect(38, 18, 40, 24, "Dirt", 0)
+    # Connect to main shaft
+    m.road([(36, 22), (34, 22)], width=1, terrain="Dirt", elevation=0)
+    m.road([(38, 16), (34, 14), (28, 14)], width=1, terrain="Dirt", elevation=0)
+    # Pillars
+    m.set_tile(18, 22, "Rock", 1)
+    m.set_tile(30, 22, "Rock", 1)
+    m.set_tile(24, 22, "Rock", 1)
+    # Slight uphill elevation change
+    m.set_elevation_rect(10, 16, 38, 20, 1)
+
+    # ── Connector: tunnel zone to exit zone ──
+    m.fill_rect(20, 12, 28, 18, "Dirt", 0)
+    m.fill_rect(22, 14, 26, 16, "Grass", 0)
+    m.road([(24, 18), (24, 14)], width=2, terrain="Road", elevation=0)
+    # Ramp between elevation levels
+    m.fill_rect(20, 16, 28, 16, "Ramp", 1)
+
+    # ── Exit Zone (y=2-12): wide chamber, multiple exits ──
+    m.fill_rect(14, 2, 34, 12, "Dirt", 0)
+    m.fill_rect(16, 3, 32, 11, "Grass", 0)
+    m.fill_rect(18, 4, 30, 10, "Dirt", 0)
+    # Road out to the north
+    m.road([(24, 12), (24, 8), (24, 4)], width=2, terrain="Road", elevation=0)
+    # Multiple corridor exits leading to border
+    m.fill_rect(20, 2, 28, 3, "Road", 0)   # Main exit
+    m.fill_rect(14, 2, 16, 4, "Dirt", 0)   # West exit
+    m.fill_rect(32, 2, 34, 4, "Dirt", 0)   # East exit
+    # TechRuins
+    m.tech_ruins(18, 6, 2, 2)
+    m.tech_ruins(28, 8, 2, 2)
+    # Ironjaw's last stand area
+    m.fill_rect(30, 6, 34, 10, "Dirt", 0)
+    m.fill_rect(31, 7, 33, 9, "Grass", 0)
+
+    # ── Validate all spawn positions from RON ──
+    spawns = {
+        # Player start
+        "Kelpie": (24, 58),
+        "Mouser_1": (22, 57),
+        "Mouser_2": (26, 57),
+        "Nuisance_1": (23, 59),
+        "Nuisance_2": (25, 59),
+        # Wave 1: S patrol
+        "s_patrol_1": (20, 52),
+        "s_patrol_2": (28, 52),
+        "s_patrol_3": (24, 50),
+        # Wave 2: mid checkpoint
+        "mid_1": (18, 36),
+        "mid_2": (30, 36),
+        "mid_3": (24, 34),
+        "mid_4": (22, 38),
+        "mid_5": (26, 38),
+        # Wave 3: tunnel patrol
+        "tun_1": (12, 24),
+        "tun_2": (14, 24),
+        "tun_3": (13, 22),
+        # Wave 4: exit guard
+        "exit_1": (22, 10),
+        "exit_2": (26, 10),
+        "exit_3": (24, 8),
+        "exit_4": (20, 12),
+        "exit_5": (28, 12),
+        # Patrol waypoints
+        "patrol_s_1": (20, 52),
+        "patrol_s_2": (28, 52),
+        "patrol_s_3": (28, 48),
+        "patrol_s_4": (20, 48),
+        "patrol_t_1": (12, 24),
+        "patrol_t_2": (36, 24),
+        "patrol_t_3": (36, 20),
+        "patrol_t_4": (12, 20),
+        "patrol_e_1": (20, 10),
+        "patrol_e_2": (28, 10),
+        "patrol_e_3": (28, 6),
+        "patrol_e_4": (20, 6),
+        # Objective/trigger positions
+        "obj_exit": (24, 5),
+        "trig_54": (24, 54),
+        "trig_44": (24, 44),
+        "trig_40": (24, 40),
+        "trig_32": (24, 32),
+        "trig_24": (24, 24),
+        "trig_14": (24, 14),
+    }
+    m.validate_positions(spawns)
+    return m
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # RON Patching
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -860,13 +1502,17 @@ MAP_BUILDERS = {
     "m2": ("act1_m2_dead_drop.ron", build_m2),
     "m3": ("act1_m3_counter_raid.ron", build_m3),
     "m4": ("act1_m4_envoy.ron", build_m4),
+    "m5": ("act2_m5_false_front.ron", build_m5),
+    "m6": ("act2_m6_triangulation.ron", build_m6),
+    "m7": ("act2_m7_rexs_whisper.ron", build_m7),
+    "m8": ("act2_m8_oath_breaker.ron", build_m8),
 }
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate Act 1 campaign inline maps")
-    parser.add_argument("--map", choices=["m2", "m3", "m4", "all"], default="all",
-                        help="Which map(s) to generate")
+    parser = argparse.ArgumentParser(description="Generate campaign inline maps")
+    parser.add_argument("--map", choices=["m2", "m3", "m4", "m5", "m6", "m7", "m8", "all"],
+                        default="all", help="Which map(s) to generate")
     parser.add_argument("--preview", action="store_true",
                         help="Print ASCII art preview")
     parser.add_argument("--patch", action="store_true",
