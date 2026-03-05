@@ -1122,18 +1122,19 @@ units:
     status: game_ready
     params:
       name: Yowler
-      pose: mouth wide open, yowling
-      description: Cat support unit mid-yowl. Mouth wide open, eyes squeezed shut, projecting sound waves. Nearby allies look
-        energized.
+      pose: mid-yowl, mouth wide open, eyes squeezed shut, dramatic pose
+      description: Siamese cat mid-yowl, mouth wide open, eyes squeezed shut. Visible purple sonic rings radiating from mouth.
+        Wearing small silver speaker collar. Sleek build, dramatic pose. Cream and chocolate point coloring.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Support unit. Sound wave visual effect around it. Thematic link to voice commands.
+      extra_notes: Support unit. Purple sonic rings key visual. Silver speaker collar. Sleek Siamese build. Cool silver-gray
+        tech accents.
       faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/yowler_idle.png
-    style_version: 1
+    style_version: 2
   mouser_idle:
     template: unit_static
     status: game_ready
@@ -1666,35 +1667,37 @@ units:
     status: game_ready
     params:
       name: Tunneler
-      pose: half-emerged from ground, dirt flying
-      description: Mouse transport/utility unit. Digs tunnels for rapid troop movement. Wears mining helmet, claws caked in
-        dirt, emerging from a hole.
+      pose: emerging from hole, mining helmet glowing, dirt-caked claws
+      description: Stout vole with mining helmet and dirt-caked claws, emerging from a freshly dug hole. Earthy brown fur
+        with green accents. Rope-and-burlap gear. Vole species (coalition ally, NOT a mouse). Determined expression.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Transport utility. Half-in-ground visual. Mining helmet and dirty claws.
+      extra_notes: Transport utility. VOLE species. Mining helmet with glowing lamp. Dirt-caked claws. Emerging from hole.
+        Earthy brown + green accents.
       faction: The Clawed
     output:
       type: single
       game_path: assets/sprites/units/tunneler_idle.png
-    style_version: 1
+    style_version: 2
   sparks_idle:
     template: unit_static
     status: game_ready
     params:
       name: Sparks
-      pose: holding sparking device, slightly singed fur
-      description: Mouse saboteur with improvised electrical weapons. Singed whiskers, wild eyes, carrying a crackling device
-        made from scavenged electronics.
+      pose: clutching crackling taser device, singed whiskers, wild excited eyes
+      description: Wiry shrew clutching a crackling scavenged taser device. Singed whiskers, wild excited eyes. Sparks flying
+        from device. Shrew species (coalition ally, NOT a mouse). Tiny and manic energy.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Saboteur. Electricity visual effects. Singed and slightly manic.
+      extra_notes: Saboteur. SHREW species. Crackling taser device. Singed whiskers. Wild excited eyes. Sparks flying. Wiry
+        build.
       faction: The Clawed
     output:
       type: single
       game_path: assets/sprites/units/sparks_idle.png
-    style_version: 1
+    style_version: 2
   quillback_idle:
     template: unit_static
     status: game_ready
@@ -1717,18 +1720,20 @@ units:
     status: game_ready
     params:
       name: Whiskerwitch
-      pose: floating slightly, paws glowing with energy
-      description: Mouse caster/support unit. Mystical elder mouse with glowing whiskers and floating herbs. Casts buffs and
-        debuffs. Tiny spectacles.
+      pose: floating slightly off ground, glowing whiskers, herbs orbiting around her
+      description: Tiny elderly shrew in patchwork robe, floating slightly off ground. Glowing green whiskers, tiny brass
+        spectacles, dried herbs orbiting around her. Shrew species (coalition ally, NOT a mouse). Warm brown body with green
+        accent palette.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Caster support. Mystical visual. Glowing whiskers and floating herbs.
+      extra_notes: Caster support. SHREW species. Patchwork robe. Glowing green whiskers. Brass spectacles. Floating herbs
+        orbit. Warm brown + green accents.
       faction: The Clawed
     output:
       type: single
       game_path: assets/sprites/units/whiskerwitch_idle.png
-    style_version: 1
+    style_version: 2
   plaguetail_idle:
     template: unit_static
     status: game_ready
@@ -1768,35 +1773,38 @@ units:
     status: game_ready
     params:
       name: Murder Scrounger
-      pose: hopping on ground, picking at shiny objects
-      description: Corvid worker unit. Scruffy crow collecting shiny objects. Carries a satchel overflowing with trinkets.
-        Beady eyes scanning for loot.
+      pose: hopping on ground, beak stuffed with shiny trinkets, bulging satchel dragging behind
+      description: Scruffy magpie hopping on ground, beak stuffed with shiny trinkets. Black-and-white plumage with iridescent
+        purple sheen. Bulging satchel of stolen baubles dragging behind. Beady covetous eyes. Magpie species (coalition ally,
+        NOT a crow).
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Worker unit. Ground-based crow. Shiny object obsession visible.
+      extra_notes: Worker unit. MAGPIE species. Black-and-white plumage with purple iridescence. Beak full of trinkets. Bulging
+        satchel. Covetous beady eyes.
       faction: The Murder
     output:
       type: single
       game_path: assets/sprites/units/murder_scrounger_idle.png
-    style_version: 1
+    style_version: 2
   sentinel_idle:
     template: unit_static
     status: game_ready
     params:
       name: Sentinel
-      pose: perched alert, scanning with one eye
-      description: Corvid ranged scout. Tall, thin bird perched on a vantage point. One eye zoomed in like a telescope. Long-range
-        spotter.
+      pose: perched on branch stub, one eye replaced with brass telescope lens, zodiac chest pattern
+      description: Tall thin crow perched on branch stub, one eye replaced with brass telescope lens. Zodiac constellation
+        pattern on chest feathers. Dark obsidian plumage with purple accents. Alert, watchful stance.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Ranged scout. Tall and thin silhouette. Telescope eye visual.
+      extra_notes: Ranged scout. Tall thin crow silhouette. Brass telescope eye. Zodiac constellation chest pattern. Dark
+        obsidian + purple accents.
       faction: The Murder
     output:
       type: single
       game_path: assets/sprites/units/sentinel_idle.png
-    style_version: 1
+    style_version: 2
   rookclaw_idle:
     template: unit_static
     status: game_ready
@@ -1903,18 +1911,19 @@ units:
     status: game_ready
     params:
       name: Hootseer
-      pose: perched with eyes glowing, mystical runes floating
-      description: Corvid area denial/debuffer. Great horned owl with glowing eyes and floating zodiac runes. Debuffs enemies
-        in area. Astrology-themed.
+      pose: perched on dark branch, enormous glowing amber eyes, floating zodiac rune circle around head
+      description: Great horned owl with enormous glowing amber eyes. Floating zodiac rune circle around head. Dark branch
+        perch, crystal prisms hanging from talons. Owl species (coalition ally). Purple and amber accents.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Area debuffer. Owl silhouette. Glowing eyes and floating zodiac runes.
+      extra_notes: Area debuffer. OWL species. Enormous glowing amber eyes. Floating zodiac rune circle. Crystal prisms on
+        talons. Purple + amber accents.
       faction: The Murder
     output:
       type: single
       game_path: assets/sprites/units/hootseer_idle.png
-    style_version: 1
+    style_version: 2
   corvus_rex_idle:
     template: unit_static
     status: game_ready
@@ -2038,18 +2047,19 @@ units:
     status: game_ready
     params:
       name: Seeker Tunneler
-      pose: digging stance, claws extended, wearing goggles
-      description: Badger tunneling utility. Specialized digging badger with reinforced claws and mining goggles. Creates
-        underground passages.
+      pose: emerging halfway from a dirt mound, oversized claws forward, goggles on forehead
+      description: Stocky mole with oversized digging claws and mining goggles pushed up on forehead. Emerging halfway from
+        a dirt mound. Star-nosed snout, amber lantern on belt. Mole species (coalition ally, NOT a badger).
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Tunneling utility. Goggles and reinforced claws. Dirt-spraying visual.
+      extra_notes: Tunneling utility. MOLE species. Star-nosed snout. Oversized digging claws. Mining goggles on forehead.
+        Amber lantern. Stone-gray and amber palette.
       faction: Seekers of the Deep
     output:
       type: single
       game_path: assets/sprites/units/seeker_tunneler_idle.png
-    style_version: 1
+    style_version: 2
   embermaw_idle:
     template: unit_static
     status: game_ready
@@ -2105,18 +2115,19 @@ units:
     status: game_ready
     params:
       name: Ponderer
-      pose: standing with collection net, contemplative expression
-      description: Axolotl worker unit. Cute axolotl with external gills, carrying a collection net. Philosophical expression.
-        Slowly blinks.
+      pose: standing with collection net, big contemplative eyes, feathery gills visible
+      description: Cute pink axolotl with feathery external gills, holding collection net. Big contemplative eyes, teal bioluminescent
+        spots on body. Moss-green and teal palette. Gentle philosophical expression.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Worker unit. Cute axolotl with visible gills. Collection net. Teal/purple palette.
+      extra_notes: Worker unit. Pink axolotl with feathery gills. Collection net. Teal bioluminescent spots. Big contemplative
+        eyes. Moss-green + teal palette.
       faction: Croak
     output:
       type: single
       game_path: assets/sprites/units/ponderer_idle.png
-    style_version: 1
+    style_version: 2
   regeneron_idle:
     template: unit_static
     status: game_ready
@@ -2190,18 +2201,19 @@ units:
     status: game_ready
     params:
       name: Croaker
-      pose: throat sac inflated, preparing to launch projectile
-      description: Axolotl ranged artillery. Squat axolotl with inflated vocal sac that launches toxic globs at long range.
-        Teal and purple coloring.
+      pose: throat sac massively inflated, eyes bulging with effort, ready to launch
+      description: Squat tree frog with massively inflated teal vocal sac. Eyes bulging with effort. Ready to launch toxic
+        glob. Bright green body with teal palette. Frog species (coalition ally, NOT an axolotl).
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Ranged artillery. Inflated throat sac is key visual. Long-range unit.
+      extra_notes: Ranged artillery. FROG species. Massively inflated teal vocal sac. Eyes bulging. Bright green + teal palette.
+        Squat build.
       faction: Croak
     output:
       type: single
       game_path: assets/sprites/units/croaker_idle.png
-    style_version: 1
+    style_version: 2
   leapfrog_idle:
     template: unit_static
     status: game_ready
@@ -2241,18 +2253,19 @@ units:
     status: game_ready
     params:
       name: Bogwhisper
-      pose: floating in mist, eyes glowing, tendrils of fog
-      description: Axolotl support/caster. Ethereal axolotl wreathed in swamp mist. Casts debuffs and area effects. Whispers
-        carry on the fog.
+      pose: wreathed in swamp fog tendrils, glowing teal eyes peering from mist
+      description: Dark-skinned newt wreathed in swamp fog tendrils. Glowing teal eyes peer from mist. Bioluminescent belly
+        markings. Ethereal, spooky. Newt species (coalition ally, NOT an axolotl).
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Support caster. Misty/ethereal visual. Glowing eyes in fog. Spooky.
+      extra_notes: Support caster. NEWT species. Dark skin. Swamp fog tendrils. Glowing teal eyes. Bioluminescent belly markings.
+        Ethereal and spooky.
       faction: Croak
     output:
       type: single
       game_path: assets/sprites/units/bogwhisper_idle.png
-    style_version: 1
+    style_version: 2
   murk_commander_idle:
     template: unit_static
     status: game_ready
@@ -2326,13 +2339,14 @@ units:
     status: game_ready
     params:
       name: Glitch Rat
-      pose: twitching with sparking electronics, glitchy visual
-      description: Raccoon saboteur. Tiny, hyperactive raccoon wired into stolen electronics. Moves erratically. Disrupts
-        enemy tech. Sparking and glitchy.
+      pose: jittery stance, one eye twitching, sparks flying from wires
+      description: Tiny hyperactive raccoon kit wired into stolen electronics. Sparking wires wrapped around torso, one eye
+        twitching. Jittery pose, static-electricity fur spikes. Orange sparks flying. Raccoon species (NOT a rat).
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Saboteur. Smallest raccoon. Sparking electronics. Glitch visual effect.
+      extra_notes: Saboteur. Smallest raccoon kit. Sparking wires wrapped around body. Static-electricity spiky fur. Orange
+        sparks. Jittery energy.
       faction: LLAMA
     output:
       type: single
@@ -2377,13 +2391,14 @@ units:
     status: game_ready
     params:
       name: Dead Drop
-      pose: pressed against wall, nearly invisible, holding intel
-      description: Raccoon stealth scout. Dark-furred raccoon specialist in espionage. Carries stolen documents. Nearly invisible
-        when still.
+      pose: pressed flat against a wall, nearly invisible, only eyes gleaming
+      description: Dark-furred raccoon pressed flat against a wall, nearly invisible. Holding rolled-up stolen documents in
+        mouth. Wearing tiny dark beanie. Only eyes gleam in shadow. Raccoon species with dark mask markings.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Stealth scout. Dark fur. Pressed-against-wall visual. Intel documents.
+      extra_notes: Stealth scout. Dark beanie, documents in mouth. Pressed-against-wall silhouette. Only gleaming eyes visible.
+        Raccoon with natural mask.
       faction: LLAMA
     output:
       type: single
@@ -2411,13 +2426,14 @@ units:
     status: game_ready
     params:
       name: Dumpster Diver
-      pose: emerging from dumpster with chemical vials
-      description: Raccoon area denial. Raccoon that weaponizes dumpster chemicals. Throws toxic waste grenades. Wears a gas
-        mask and rubber gloves.
+      pose: physically inside a small dumpster, head and arms over rim, holding chemical vial
+      description: Raccoon physically INSIDE a small green dumpster, only head and arms visible over the rim. Wearing gas
+        mask pushed up on forehead, holding chemical vial in one paw. Dumpster has hazard stripes and duct-tape patches.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Area denial. Gas mask and rubber gloves. Chemical vials. Toxic green accents.
+      extra_notes: Area denial. MUST be literally inside dumpster. Gas mask on forehead. Chemical vial. Green dumpster with
+        hazard stripes and duct tape.
       faction: LLAMA
     output:
       type: single
