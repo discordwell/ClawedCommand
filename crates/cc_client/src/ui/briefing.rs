@@ -230,7 +230,7 @@ pub fn update_briefing(
         (With<BriefingObjectives>, Without<BriefingText>, Without<BriefingMissionName>, Without<BriefingActHeader>),
     >,
     mut portrait_q: Query<
-        &mut ImageNode,
+        (&mut ImageNode, &mut FadeIn),
         (With<BriefingPortrait>, Without<BriefingRoot>),
     >,
     asset_server: Res<AssetServer>,
@@ -249,6 +249,10 @@ pub fn update_briefing(
     if !show {
         if typewriter.active {
             typewriter.active = false;
+            // Reset portrait fade-in for next briefing
+            if let Ok((_, mut fade)) = portrait_q.single_mut() {
+                fade.timer.reset();
+            }
         }
         return;
     }
@@ -315,7 +319,7 @@ pub fn update_briefing(
     }
 
     // Portrait
-    if let Ok(mut img) = portrait_q.single_mut() {
+    if let Ok((mut img, _)) = portrait_q.single_mut() {
         let key = faction_hero_portrait(act);
         let handle = portraits
             .handles
@@ -327,19 +331,31 @@ pub fn update_briefing(
 }
 
 /// Transition from Briefing to InMission via Enter/Space or button click.
+/// Space also skips the typewriter if it's still running.
 pub fn briefing_input_system(
     keys: Res<ButtonInput<KeyCode>>,
     mut campaign: ResMut<CampaignState>,
+    mut typewriter: ResMut<BriefingTypewriter>,
     interactions: Query<(&BriefingStartButton, &Interaction), Changed<Interaction>>,
 ) {
     if campaign.phase != CampaignPhase::Briefing {
         return;
     }
 
-    let key_pressed = keys.just_pressed(KeyCode::Enter) || keys.just_pressed(KeyCode::Space);
     let button_pressed = interactions
         .iter()
         .any(|(_, i)| *i == Interaction::Pressed);
+
+    let key_pressed = keys.just_pressed(KeyCode::Enter) || keys.just_pressed(KeyCode::Space);
+
+    // If typewriter is still running, Space/Enter skips it first
+    if key_pressed && typewriter.active {
+        let total = typewriter.full_text.chars().count();
+        if typewriter.chars_revealed < total {
+            typewriter.chars_revealed = total;
+            return;
+        }
+    }
 
     if key_pressed || button_pressed {
         campaign.phase = CampaignPhase::InMission;

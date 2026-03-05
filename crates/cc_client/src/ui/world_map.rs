@@ -28,6 +28,10 @@ pub struct WorldMapProgress;
 #[derive(Component)]
 pub struct WorldMapContent;
 
+/// Marker for act column entities (cleaned up on rebuild).
+#[derive(Component)]
+pub struct ActColumn;
+
 pub fn spawn_world_map(mut commands: Commands) {
     commands
         .spawn((
@@ -156,7 +160,7 @@ pub fn update_world_map(
     available: Res<AvailableMissions>,
     mut root_vis: Query<&mut Visibility, (With<WorldMapRoot>, Without<WorldMapProgress>)>,
     content_q: Query<Entity, With<WorldMapContent>>,
-    existing_nodes: Query<Entity, With<MissionNode>>,
+    existing_nodes: Query<Entity, Or<(With<MissionNode>, With<ActColumn>)>>,
     mut progress_q: Query<&mut Text, With<WorldMapProgress>>,
 ) {
     let show = campaign.phase == CampaignPhase::WorldMap;
@@ -185,7 +189,7 @@ pub fn update_world_map(
         return;
     }
 
-    // Clear existing nodes
+    // Clear existing nodes and act columns (despawn includes children in Bevy 0.18)
     for entity in existing_nodes.iter() {
         commands.entity(entity).despawn();
     }
@@ -210,13 +214,13 @@ pub fn update_world_map(
         let accent = faction_accent_color(*act);
 
         let col_entity = commands
-            .spawn(Node {
+            .spawn((ActColumn, Node {
                 flex_direction: FlexDirection::Column,
                 align_items: AlignItems::Center,
                 row_gap: Val::Px(8.0),
                 min_width: Val::Px(120.0),
                 ..default()
-            })
+            }))
             .with_children(|col| {
                 // Act header
                 col.spawn((

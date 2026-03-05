@@ -58,13 +58,30 @@ pub fn load_campaign() -> Result<CampaignSaveData, String> {
     Ok(data)
 }
 
-/// System: auto-save when transitioning from Debriefing to WorldMap.
-pub fn auto_save_campaign(campaign: Res<CampaignState>) {
-    if !campaign.is_changed() {
+/// Tracks the previous campaign phase to detect actual transitions.
+#[derive(Resource)]
+pub struct PreviousCampaignPhase(pub CampaignPhase);
+
+impl Default for PreviousCampaignPhase {
+    fn default() -> Self {
+        Self(CampaignPhase::Inactive)
+    }
+}
+
+/// System: auto-save when transitioning into WorldMap (not every frame).
+pub fn auto_save_campaign(
+    campaign: Res<CampaignState>,
+    mut prev_phase: ResMut<PreviousCampaignPhase>,
+) {
+    let current = campaign.phase;
+    if current == prev_phase.0 {
         return;
     }
-    // Save when entering WorldMap (after debrief)
-    if campaign.phase == CampaignPhase::WorldMap {
+    let old = prev_phase.0;
+    prev_phase.0 = current;
+
+    // Only save on transition into WorldMap (from Debriefing or elsewhere)
+    if current == CampaignPhase::WorldMap && old != CampaignPhase::Inactive {
         if let Err(e) = save_campaign(&campaign) {
             warn!("Auto-save failed: {e}");
         }
@@ -107,6 +124,12 @@ mod tests {
         assert!(parsed.completed_missions.contains("prologue"));
         assert_eq!(parsed.current_mission_id.as_deref(), Some("act1_m1"));
         assert!(parsed.persistent.murder_alliance);
+    }
+
+    #[test]
+    fn previous_phase_defaults_to_inactive() {
+        let prev = PreviousCampaignPhase::default();
+        assert_eq!(prev.0, CampaignPhase::Inactive);
     }
 
     #[test]

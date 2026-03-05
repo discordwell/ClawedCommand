@@ -49,6 +49,7 @@ impl Plugin for UiPlugin {
             .init_resource::<debrief::DebriefState>()
             .init_resource::<act_title_card::ActTitleTimer>()
             .init_resource::<briefing::BriefingTypewriter>()
+            .init_resource::<campaign_save::PreviousCampaignPhase>()
             .add_systems(
                 Startup,
                 (
@@ -96,7 +97,7 @@ impl Plugin for UiPlugin {
                     debrief::debrief_typewriter,
                     debrief::debrief_interaction,
                     act_title_card::update_act_title_card,
-                    act_title_card::act_title_input,
+                    act_title_card::act_title_input.after(act_title_card::update_act_title_card),
                     world_map::update_world_map,
                     world_map::world_map_interaction,
                     world_map::world_map_input,

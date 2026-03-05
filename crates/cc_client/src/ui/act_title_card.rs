@@ -93,7 +93,7 @@ pub fn update_act_title_card(
         (With<ActTitleRoot>, Without<ActTitleText>),
     >,
     mut title_q: Query<
-        (&mut Text, &mut TextColor),
+        (&mut Text, &mut TextColor, &mut FadeIn),
         (With<ActTitleText>, Without<ActTitleRoot>, Without<ActTitlePortrait>),
     >,
     mut portrait_q: Query<
@@ -115,6 +115,10 @@ pub fn update_act_title_card(
 
     if !show {
         timer.0.reset();
+        // Reset FadeIn on title text so it replays on next act transition
+        if let Ok((_, _, mut fade)) = title_q.single_mut() {
+            fade.timer.reset();
+        }
         return;
     }
 
@@ -128,7 +132,7 @@ pub fn update_act_title_card(
     }
 
     // Set title text
-    if let Ok((mut text, mut color)) = title_q.single_mut() {
+    if let Ok((mut text, mut color, _)) = title_q.single_mut() {
         text.0 = act_display_name(act).to_string();
         color.0 = accent;
     }
