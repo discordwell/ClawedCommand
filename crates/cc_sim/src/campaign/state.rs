@@ -54,12 +54,23 @@ impl PersistentCampaignState {
 pub enum CampaignPhase {
     /// No campaign active — normal skirmish mode.
     Inactive,
+    /// Showing the campaign world map.
+    WorldMap,
+    /// Showing an act title card transition.
+    ActTitleCard,
     /// Showing the mission briefing screen.
     Briefing,
     /// Mission is actively playing.
     InMission,
     /// Mission ended, showing debrief.
     Debriefing,
+}
+
+/// Result of a completed mission.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MissionResult {
+    Victory,
+    Failure,
 }
 
 /// Tracking status of a single objective.
@@ -91,6 +102,12 @@ pub struct CampaignState {
     pub spawned_waves: HashSet<String>,
     /// Persistent state that survives across mission loads.
     pub persistent: PersistentCampaignState,
+    /// Result of the last completed mission.
+    pub last_mission_result: Option<MissionResult>,
+    /// Reason for last mission failure.
+    pub last_failure_reason: Option<String>,
+    /// The act number the player is entering (for title card display).
+    pub entering_act: Option<u32>,
 }
 
 impl Default for CampaignState {
@@ -105,6 +122,9 @@ impl Default for CampaignState {
             phase: CampaignPhase::Inactive,
             spawned_waves: HashSet::new(),
             persistent: PersistentCampaignState::default(),
+            last_mission_result: None,
+            last_failure_reason: None,
+            entering_act: None,
         }
     }
 }
@@ -252,9 +272,12 @@ pub fn mission_objective_system(
                 // This is a FAIL condition — if the hero is dead, mission fails
                 for (identity, _owner, is_dead, _pos) in heroes.iter() {
                     if identity.hero_id == *hero_id && is_dead {
+                        let reason = format!("{:?} has fallen. Mission failed.", hero_id);
                         fail_writer.write(MissionFailedEvent {
-                            reason: format!("{:?} has fallen. Mission failed.", hero_id),
+                            reason: reason.clone(),
                         });
+                        campaign.last_mission_result = Some(MissionResult::Failure);
+                        campaign.last_failure_reason = Some(reason);
                         campaign.phase = CampaignPhase::Debriefing;
                         return;
                     }
@@ -279,12 +302,15 @@ pub fn mission_objective_system(
     // Check mission-critical heroes
     for (identity, _owner, is_dead, _pos) in heroes.iter() {
         if identity.mission_critical && is_dead {
+            let reason = format!(
+                "{:?} was mission-critical and has fallen.",
+                identity.hero_id
+            );
             fail_writer.write(MissionFailedEvent {
-                reason: format!(
-                    "{:?} was mission-critical and has fallen.",
-                    identity.hero_id
-                ),
+                reason: reason.clone(),
             });
+            campaign.last_mission_result = Some(MissionResult::Failure);
+            campaign.last_failure_reason = Some(reason);
             campaign.phase = CampaignPhase::Debriefing;
             return;
         }
@@ -293,6 +319,8 @@ pub fn mission_objective_system(
     // Check if all primary objectives are complete
     if campaign.all_primary_complete() {
         victory_writer.write(MissionVictoryEvent);
+        campaign.last_mission_result = Some(MissionResult::Victory);
+        campaign.last_failure_reason = None;
         campaign.phase = CampaignPhase::Debriefing;
         let mission_id = campaign.current_mission.as_ref().map(|m| m.id.clone());
         if let Some(id) = mission_id {

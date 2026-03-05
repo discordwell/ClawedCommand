@@ -15,6 +15,7 @@ cc_voice = { path = "../cc_voice", optional = true }
 cc_agent = { path = "../cc_agent", optional = true }
 bevy = { workspace = true }
 ron = { workspace = true }
+serde = { workspace = true }
 
 [[example]]
 name = "poc_3d"

@@ -379,4 +379,5 @@
     ],
     briefing_text: "Full assault on the Clawed staging area in the Darkhollow. Destroy the garrison and Tunneler rigs before Thimble can launch his invasion.",
     debrief_text: "The Darkhollow burns. catGPT victorious. But Felix saw what Kelpie did to the flanking force. Questions are coming.",
+    next_mission: Fixed("act1_m4_envoy"),
 )

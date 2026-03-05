@@ -194,4 +194,5 @@
     ],
     briefing_text: "Three fish ponds under Clawed harassment. Defend them all. Kelpie commands the garrison with Patches as second.",
     debrief_text: "The ponds are secure. The Clawed pull back to lick their wounds. Felix wants a full debrief at The Perch.",
+    next_mission: Fixed("act1_m2_dead_drop"),
 )

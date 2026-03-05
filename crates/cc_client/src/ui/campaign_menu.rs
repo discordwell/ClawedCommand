@@ -3,6 +3,8 @@ use bevy::prelude::*;
 use cc_core::mission::MissionDefinition;
 use cc_sim::campaign::state::{CampaignPhase, CampaignState};
 
+use super::campaign_save;
+
 /// Resource: available campaign missions loaded from RON files.
 #[derive(Resource, Default)]
 pub struct AvailableMissions {
@@ -32,15 +34,13 @@ pub fn campaign_menu_toggle(
 #[derive(Component)]
 pub struct CampaignMenuRoot;
 
-/// Marker for campaign menu text.
+/// Marker for the "NEW CAMPAIGN" button.
 #[derive(Component)]
-pub struct CampaignMenuText;
+pub struct NewCampaignButton;
 
-/// Marker for individual mission buttons.
+/// Marker for the "CONTINUE" button.
 #[derive(Component)]
-pub struct MissionButton {
-    pub index: usize,
-}
+pub struct ContinueCampaignButton;
 
 pub fn spawn_campaign_menu(mut commands: Commands) {
     commands
@@ -51,27 +51,94 @@ pub fn spawn_campaign_menu(mut commands: Commands) {
                 left: Val::Percent(50.0),
                 top: Val::Percent(50.0),
                 margin: UiRect {
-                    left: Val::Px(-200.0),
-                    top: Val::Px(-200.0),
+                    left: Val::Px(-180.0),
+                    top: Val::Px(-120.0),
                     ..default()
                 },
-                width: Val::Px(400.0),
-                padding: UiRect::all(Val::Px(24.0)),
+                width: Val::Px(360.0),
+                padding: UiRect::all(Val::Px(32.0)),
                 flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(8.0),
+                row_gap: Val::Px(16.0),
+                align_items: AlignItems::Center,
                 border_radius: BorderRadius::all(Val::Px(12.0)),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.06, 0.06, 0.12, 0.94)),
+            BackgroundColor(Color::srgba(0.04, 0.04, 0.08, 0.94)),
             Visibility::Hidden,
+            ZIndex(120),
         ))
         .with_children(|parent| {
+            // Title
             parent.spawn((
-                CampaignMenuText,
-                Text::new("CAMPAIGN\n\nNo missions available."),
+                Text::new("CAMPAIGN"),
                 TextColor(Color::srgb(0.9, 0.9, 0.9)),
                 TextFont {
-                    font_size: 14.0,
+                    font_size: 28.0,
+                    ..default()
+                },
+                Node {
+                    margin: UiRect::bottom(Val::Px(8.0)),
+                    ..default()
+                },
+            ));
+
+            // NEW CAMPAIGN button
+            parent
+                .spawn((
+                    NewCampaignButton,
+                    Button,
+                    Node {
+                        width: Val::Px(240.0),
+                        padding: UiRect::axes(Val::Px(20.0), Val::Px(12.0)),
+                        border_radius: BorderRadius::all(Val::Px(8.0)),
+                        justify_content: JustifyContent::Center,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgba(0.1, 0.4, 0.35, 0.9)),
+                ))
+                .with_children(|btn| {
+                    btn.spawn((
+                        Text::new("NEW CAMPAIGN"),
+                        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+                        TextFont {
+                            font_size: 16.0,
+                            ..default()
+                        },
+                    ));
+                });
+
+            // CONTINUE button (only visible if save exists)
+            parent
+                .spawn((
+                    ContinueCampaignButton,
+                    Button,
+                    Node {
+                        width: Val::Px(240.0),
+                        padding: UiRect::axes(Val::Px(20.0), Val::Px(12.0)),
+                        border_radius: BorderRadius::all(Val::Px(8.0)),
+                        justify_content: JustifyContent::Center,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgba(0.15, 0.15, 0.25, 0.9)),
+                    Visibility::Hidden,
+                ))
+                .with_children(|btn| {
+                    btn.spawn((
+                        Text::new("CONTINUE"),
+                        TextColor(Color::srgb(0.8, 0.8, 0.8)),
+                        TextFont {
+                            font_size: 16.0,
+                            ..default()
+                        },
+                    ));
+                });
+
+            // Hint text
+            parent.spawn((
+                Text::new("[Esc] Close"),
+                TextColor(Color::srgb(0.4, 0.4, 0.4)),
+                TextFont {
+                    font_size: 11.0,
                     ..default()
                 },
             ));
@@ -79,11 +146,18 @@ pub fn spawn_campaign_menu(mut commands: Commands) {
 }
 
 pub fn update_campaign_menu(
-    menu_open: Res<CampaignMenuOpen>,
-    available: Res<AvailableMissions>,
-    campaign: Res<CampaignState>,
-    mut root_vis: Query<&mut Visibility, (With<CampaignMenuRoot>, Without<CampaignMenuText>)>,
-    mut text_q: Query<&mut Text, With<CampaignMenuText>>,
+    mut campaign: ResMut<CampaignState>,
+    mut menu_open: ResMut<CampaignMenuOpen>,
+    mut root_vis: Query<&mut Visibility, (With<CampaignMenuRoot>, Without<ContinueCampaignButton>)>,
+    mut continue_vis: Query<
+        &mut Visibility,
+        (With<ContinueCampaignButton>, Without<CampaignMenuRoot>),
+    >,
+    new_btn: Query<(&NewCampaignButton, &Interaction), Changed<Interaction>>,
+    continue_btn: Query<
+        (&ContinueCampaignButton, &Interaction),
+        (Changed<Interaction>, Without<NewCampaignButton>),
+    >,
 ) {
     let show = menu_open.0 && campaign.phase == CampaignPhase::Inactive;
 
@@ -95,34 +169,49 @@ pub fn update_campaign_menu(
         };
     }
 
+    // Show CONTINUE button only if save exists
+    let has_save = campaign_save::save_exists();
+    for mut vis in continue_vis.iter_mut() {
+        *vis = if show && has_save {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+    }
+
     if !show {
         return;
     }
 
-    let Ok(mut text) = text_q.single_mut() else {
-        return;
-    };
-
-    let mut lines = vec!["CAMPAIGN".to_string(), String::new()];
-
-    if available.missions.is_empty() {
-        lines.push("No missions available.".to_string());
-    } else {
-        for (i, mission) in available.missions.iter().enumerate() {
-            let completed = campaign.completed_missions.contains(&mission.id);
-            let prefix = if completed { "[DONE] " } else { "" };
-            let brief: String = mission.briefing_text.chars().take(50).collect();
-            lines.push(format!(
-                "{}. {}{} - {}...",
-                i + 1,
-                prefix,
-                mission.name,
-                brief
-            ));
+    // Handle NEW CAMPAIGN button
+    for (_, interaction) in new_btn.iter() {
+        if *interaction == Interaction::Pressed {
+            // Reset campaign state
+            *campaign = CampaignState::default();
+            campaign.phase = CampaignPhase::WorldMap;
+            menu_open.0 = false;
         }
-        lines.push(String::new());
-        lines.push("Press [Esc] to close".to_string());
     }
 
-    text.0 = lines.join("\n");
+    // Handle CONTINUE button
+    for (_, interaction) in continue_btn.iter() {
+        if *interaction == Interaction::Pressed {
+            match campaign_save::load_campaign() {
+                Ok(data) => {
+                    campaign.completed_missions = data.completed_missions;
+                    campaign.persistent = data.persistent;
+                    campaign.phase = CampaignPhase::WorldMap;
+                    menu_open.0 = false;
+                    info!(
+                        "Loaded campaign save ({} completed)",
+                        campaign.completed_missions.len()
+                    );
+                }
+                Err(e) => {
+                    warn!("Failed to load campaign save: {e}");
+                }
+            }
+        }
+    }
 }
+

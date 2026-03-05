@@ -234,4 +234,5 @@
     ],
     briefing_text: "Dawn breaks over the Millstone River. You've dragged a server rack from the ruins, awakening six AI voices in your head. Now feral monkeys are coming for the tech. Survive.",
     debrief_text: "The monkeys are defeated. A data chip hums in your paw. Six voices promise different futures. Le Chat says to head to catGPT territory. The world awaits.",
+    next_mission: Fixed("act1_m1_pond_defense"),
 )

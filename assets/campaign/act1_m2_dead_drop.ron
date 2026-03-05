@@ -297,4 +297,5 @@
     ],
     briefing_text: "The Darkhollow Woods hide a Clawed staging area. Find it. Mark it. Do not engage. Bring Felix a location and force estimate.",
     debrief_text: "The staging area is worse than feared. An invasion force. Felix orders a counter-assault at dawn.",
+    next_mission: Fixed("act1_m3_counter_raid"),
 )

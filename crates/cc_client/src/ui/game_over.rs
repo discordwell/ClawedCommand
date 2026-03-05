@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use cc_sim::campaign::state::{CampaignPhase, CampaignState};
 use cc_sim::resources::GameState;
 
 const LOCAL_PLAYER: u8 = 0;
@@ -67,6 +68,7 @@ pub fn spawn_game_over(mut commands: Commands) {
 
 pub fn update_game_over(
     game_state: Res<GameState>,
+    campaign: Res<CampaignState>,
     mut root_q: Query<
         &mut Visibility,
         (
@@ -92,6 +94,17 @@ pub fn update_game_over(
         ),
     >,
 ) {
+    // Hide game_over overlay during campaign debriefing (debrief.rs handles it)
+    if campaign.phase == CampaignPhase::Debriefing
+        || campaign.phase == CampaignPhase::WorldMap
+        || campaign.phase == CampaignPhase::ActTitleCard
+    {
+        for mut vis in root_q.iter_mut() {
+            *vis = Visibility::Hidden;
+        }
+        return;
+    }
+
     let winner = match *game_state {
         GameState::Playing | GameState::Paused => {
             for mut vis in root_q.iter_mut() {

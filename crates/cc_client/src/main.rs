@@ -115,7 +115,8 @@ fn main() {
             setup_match(&mut app);
         }
         None => {
-            // No demo mode — normal game startup
+            // No demo mode — show campaign menu on startup
+            app.insert_resource(ui::campaign_menu::CampaignMenuOpen(true));
         }
     }
 
