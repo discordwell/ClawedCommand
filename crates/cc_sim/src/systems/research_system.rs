@@ -10,7 +10,7 @@ use crate::resources::PlayerResources;
 
 /// Categories of stat-boosting upgrades. Gate upgrades unlock units, not stats.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum UpgradeCategory {
+pub enum UpgradeCategory {
     /// +20% damage to all combat units.
     Damage,
     /// +25% max HP to all combat units (and heal the bonus).
@@ -22,7 +22,7 @@ enum UpgradeCategory {
 }
 
 /// Classify an upgrade into its stat-boost category.
-fn upgrade_category(upgrade: UpgradeType) -> UpgradeCategory {
+pub fn upgrade_category(upgrade: UpgradeType) -> UpgradeCategory {
     use UpgradeType::*;
     match upgrade {
         // Damage upgrades — one per faction

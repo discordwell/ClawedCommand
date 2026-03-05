@@ -3173,3 +3173,125 @@ fn idle_unit_still_auto_acquires() {
         "Idle unit should auto-acquire nearby enemy and deal damage"
     );
 }
+
+// ===========================================================================
+// Balance regression tests — pure computation, no Bevy World needed
+// ===========================================================================
+
+/// Test 4: Faction army combat efficiency (DPS*HP / food) should be within 2.5x
+/// across all factions. Catches imbalances like Seekers' 70% DPS advantage or
+/// LLAMA's 32% DPS advantage that previously required full 9000-tick games.
+///
+/// Uses each faction's unit_preferences weights and attack_threshold to simulate
+/// the expected army composition, then computes a combat_value proxy.
+#[test]
+fn balance_faction_army_value_within_bounds() {
+    use cc_core::unit_stats::base_stats;
+    use cc_core::components::Faction;
+    use cc_sim::ai::fsm::faction_personality;
+
+    let factions = [
+        Faction::CatGpt,
+        Faction::TheClawed,
+        Faction::SeekersOfTheDeep,
+        Faction::TheMurder,
+        Faction::Llama,
+        Faction::Croak,
+    ];
+
+    let mut efficiencies: Vec<(&str, f64)> = Vec::new();
+
+    for &faction in &factions {
+        let profile = faction_personality(faction);
+        let threshold = profile.attack_threshold as f64;
+
+        let total_weight: u32 = profile.unit_preferences.iter().map(|(_, w)| w).sum();
+        if total_weight == 0 {
+            continue;
+        }
+
+        let mut weighted_dps = 0.0_f64;
+        let mut weighted_hp = 0.0_f64;
+        let mut weighted_food = 0.0_f64;
+
+        for &(kind, weight) in &profile.unit_preferences {
+            let s = base_stats(kind);
+            let w = weight as f64 / total_weight as f64;
+            let unit_dps = s.damage.to_num::<f64>() / s.attack_speed as f64;
+            weighted_dps += w * unit_dps;
+            weighted_hp += w * s.health.to_num::<f64>();
+            weighted_food += w * s.food_cost as f64;
+        }
+
+        let army_dps = threshold * weighted_dps;
+        let army_hp = threshold * weighted_hp;
+        let army_food = threshold * weighted_food;
+
+        let combat_value = army_dps * army_hp;
+        let efficiency = combat_value / army_food;
+
+        efficiencies.push((faction.as_str(), efficiency));
+    }
+
+    let max_eff = efficiencies
+        .iter()
+        .map(|(_, e)| *e)
+        .fold(f64::NEG_INFINITY, f64::max);
+    let min_eff = efficiencies
+        .iter()
+        .map(|(_, e)| *e)
+        .fold(f64::INFINITY, f64::min);
+
+    let ratio = max_eff / min_eff;
+    // 2.5x allows intentional asymmetry (swarm vs elite factions) while catching
+    // egregious imbalances. Tighter bounds require supply/production normalization.
+    assert!(
+        ratio <= 2.5,
+        "Faction army efficiency spread {ratio:.2}x exceeds 2.5x bound.\n\
+         Efficiencies: {efficiencies:?}\n\
+         max={max_eff:.2} min={min_eff:.2}"
+    );
+}
+
+/// Test 5: Every faction's research_upgrades array must contain at least one
+/// Damage upgrade and one Health upgrade. Catches the original bug where 4/6
+/// factions had upgrades that did nothing.
+/// Note: CatGpt's 3rd upgrade is SiegeTraining (Gate), not a Speed upgrade.
+#[test]
+fn balance_every_faction_has_damage_and_hp_upgrade() {
+    use cc_core::components::Faction;
+    use cc_sim::ai::fsm::faction_map;
+    use cc_sim::systems::research_system::{upgrade_category, UpgradeCategory};
+
+    let factions = [
+        Faction::CatGpt,
+        Faction::TheClawed,
+        Faction::SeekersOfTheDeep,
+        Faction::TheMurder,
+        Faction::Llama,
+        Faction::Croak,
+    ];
+
+    for &faction in &factions {
+        let fmap = faction_map(faction);
+        let upgrades = fmap.research_upgrades;
+
+        let has_damage = upgrades
+            .iter()
+            .any(|&u| upgrade_category(u) == UpgradeCategory::Damage);
+        let has_health = upgrades
+            .iter()
+            .any(|&u| upgrade_category(u) == UpgradeCategory::Health);
+
+        assert!(
+            has_damage,
+            "{:?} missing Damage upgrade in research_upgrades {:?}",
+            faction, upgrades
+        );
+        assert!(
+            has_health,
+            "{:?} missing Health upgrade in research_upgrades {:?}",
+            faction, upgrades
+        );
+    }
+}

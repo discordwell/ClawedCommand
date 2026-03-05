@@ -1219,3 +1219,325 @@ mod tests {
         assert!(jk.health > ht.health);
     }
 }
+
+/// Cross-faction balance regression tests.
+/// Pure computation — no Bevy World needed. Catches stat imbalances that
+/// previously required full 9000-tick integration games to discover.
+#[cfg(test)]
+mod balance_tests {
+    use super::*;
+    use crate::tuning::*;
+    use crate::upgrade_stats::upgrade_stats;
+
+    /// All non-worker combat units across every faction.
+    const ALL_COMBAT_UNITS: &[UnitKind] = &[
+        // catGPT
+        UnitKind::Nuisance,
+        UnitKind::Chonk,
+        UnitKind::FlyingFox,
+        UnitKind::Hisser,
+        UnitKind::Yowler,
+        UnitKind::Mouser,
+        UnitKind::Catnapper,
+        UnitKind::FerretSapper,
+        UnitKind::MechCommander,
+        // The Murder
+        UnitKind::Sentinel,
+        UnitKind::Rookclaw,
+        UnitKind::Magpike,
+        UnitKind::Magpyre,
+        UnitKind::Jaycaller,
+        UnitKind::Jayflicker,
+        UnitKind::Dusktalon,
+        UnitKind::Hootseer,
+        UnitKind::CorvusRex,
+        // Seekers of the Deep
+        UnitKind::Ironhide,
+        UnitKind::Cragback,
+        UnitKind::Warden,
+        UnitKind::Sapjaw,
+        UnitKind::Wardenmother,
+        UnitKind::SeekerTunneler,
+        UnitKind::Embermaw,
+        UnitKind::Dustclaw,
+        UnitKind::Gutripper,
+        // The Clawed
+        UnitKind::Swarmer,
+        UnitKind::Gnawer,
+        UnitKind::Shrieker,
+        UnitKind::Tunneler,
+        UnitKind::Sparks,
+        UnitKind::Quillback,
+        UnitKind::Whiskerwitch,
+        UnitKind::Plaguetail,
+        UnitKind::WarrenMarshal,
+        // Croak
+        UnitKind::Regeneron,
+        UnitKind::Broodmother,
+        UnitKind::Gulper,
+        UnitKind::Eftsaber,
+        UnitKind::Croaker,
+        UnitKind::Leapfrog,
+        UnitKind::Shellwarden,
+        UnitKind::Bogwhisper,
+        UnitKind::MurkCommander,
+        // LLAMA
+        UnitKind::Bandit,
+        UnitKind::HeapTitan,
+        UnitKind::GlitchRat,
+        UnitKind::PatchPossum,
+        UnitKind::GreaseMonkey,
+        UnitKind::DeadDropUnit,
+        UnitKind::Wrecker,
+        UnitKind::DumpsterDiver,
+        UnitKind::JunkyardKing,
+    ];
+
+    fn dps(s: &UnitBaseStats) -> f64 {
+        s.damage.to_num::<f64>() / s.attack_speed as f64
+    }
+
+    /// Test 1: No combat unit's combat efficiency (DPS * HP / food) should exceed
+    /// 4.0x the cross-faction median. Uses the DPS*HP product to account for the
+    /// intentional HP/DPS tradeoff between swarm units and elite units.
+    /// The 4.0x bound allows natural variance between tank/glass-cannon designs
+    /// while catching truly broken outliers.
+    #[test]
+    fn no_unit_combat_efficiency_exceeds_bound() {
+        let mut ratios: Vec<(UnitKind, f64)> = ALL_COMBAT_UNITS
+            .iter()
+            .filter_map(|&kind| {
+                let s = base_stats(kind);
+                if s.food_cost == 0 {
+                    return None;
+                }
+                let efficiency =
+                    dps(&s) * s.health.to_num::<f64>() / s.food_cost as f64;
+                Some((kind, efficiency))
+            })
+            .collect();
+
+        ratios.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+
+        let median = if ratios.len() % 2 == 0 {
+            (ratios[ratios.len() / 2 - 1].1 + ratios[ratios.len() / 2].1) / 2.0
+        } else {
+            ratios[ratios.len() / 2].1
+        };
+
+        let bound = 4.0 * median;
+        for &(kind, ratio) in &ratios {
+            assert!(
+                ratio <= bound,
+                "{kind:?} combat efficiency (DPS*HP/food) {ratio:.3} exceeds 4.0x median ({median:.3}, bound={bound:.3})"
+            );
+        }
+    }
+
+    /// Test 2: Ranged units should trade HP for range.
+    /// Average HP/food for ranged units must be less than average HP/food for melee units.
+    /// Catches issues like Warden having 150 HP (more than most melee tanks at similar cost).
+    #[test]
+    fn ranged_units_trade_hp_for_range() {
+        let mut ranged_hp_food = Vec::new();
+        let mut melee_hp_food = Vec::new();
+
+        for &kind in ALL_COMBAT_UNITS {
+            let s = base_stats(kind);
+            if s.food_cost == 0 {
+                continue;
+            }
+            let ratio = s.health.to_num::<f64>() / s.food_cost as f64;
+            match s.attack_type {
+                AttackType::Ranged => ranged_hp_food.push(ratio),
+                AttackType::Melee => melee_hp_food.push(ratio),
+            }
+        }
+
+        let ranged_avg: f64 =
+            ranged_hp_food.iter().sum::<f64>() / ranged_hp_food.len() as f64;
+        let melee_avg: f64 =
+            melee_hp_food.iter().sum::<f64>() / melee_hp_food.len() as f64;
+
+        assert!(
+            ranged_avg < melee_avg,
+            "Ranged avg HP/food ({ranged_avg:.3}) should be less than melee avg ({melee_avg:.3})"
+        );
+    }
+
+    /// Test 3: All non-worker combat units must cost at least 40 food.
+    /// Prevents accidentally creating ultra-cheap spam units.
+    /// (The Clawed's Swarmer at 40f is the intentional floor for swarm-identity factions.)
+    #[test]
+    fn combat_unit_minimum_food_cost() {
+        const MIN_FOOD: u32 = 40;
+        for &kind in ALL_COMBAT_UNITS {
+            let s = base_stats(kind);
+            assert!(
+                s.food_cost >= MIN_FOOD,
+                "{kind:?} food_cost {} is below minimum {MIN_FOOD}",
+                s.food_cost
+            );
+        }
+    }
+
+    /// Test 6: Each faction's defense tower DPS >= 1.5x the weakest unit DPS in that
+    /// faction's preferred army. Towers must justify their food/gpu investment.
+    #[test]
+    fn tower_dps_worth_at_least_one_point_five_units() {
+        // (faction_name, tower_building, tower_damage_const, tower_attack_speed, unit_preferences)
+        struct FactionTowerCheck {
+            name: &'static str,
+            tower_damage: Fixed,
+            tower_attack_speed: u32,
+            preferred_units: &'static [UnitKind],
+        }
+
+        let checks = [
+            FactionTowerCheck {
+                name: "CatGPT",
+                tower_damage: TOWER_DAMAGE_LASER_POINTER,
+                tower_attack_speed: TOWER_ATTACK_SPEED_LASER_POINTER,
+                preferred_units: &[
+                    UnitKind::Nuisance,
+                    UnitKind::Hisser,
+                    UnitKind::Chonk,
+                    UnitKind::FlyingFox,
+                ],
+            },
+            FactionTowerCheck {
+                name: "TheClawed",
+                tower_damage: TOWER_DAMAGE_SQUEAK_TOWER,
+                tower_attack_speed: TOWER_ATTACK_SPEED_SQUEAK_TOWER,
+                preferred_units: &[
+                    UnitKind::Swarmer,
+                    UnitKind::Plaguetail,
+                    UnitKind::Gnawer,
+                    UnitKind::Sparks,
+                ],
+            },
+            FactionTowerCheck {
+                name: "Seekers",
+                tower_damage: TOWER_DAMAGE_SLAG_THROWER,
+                tower_attack_speed: TOWER_ATTACK_SPEED_SLAG_THROWER,
+                preferred_units: &[
+                    UnitKind::Sapjaw,
+                    UnitKind::Dustclaw,
+                    UnitKind::Warden,
+                    UnitKind::Ironhide,
+                ],
+            },
+            FactionTowerCheck {
+                name: "Murder",
+                tower_damage: TOWER_DAMAGE_WATCHTOWER,
+                tower_attack_speed: TOWER_ATTACK_SPEED_WATCHTOWER,
+                preferred_units: &[
+                    UnitKind::Rookclaw,
+                    UnitKind::Sentinel,
+                    UnitKind::Magpike,
+                    UnitKind::Jaycaller,
+                ],
+            },
+            FactionTowerCheck {
+                name: "LLAMA",
+                tower_damage: TOWER_DAMAGE_TETANUS_TOWER,
+                tower_attack_speed: TOWER_ATTACK_SPEED_TETANUS_TOWER,
+                preferred_units: &[
+                    UnitKind::Bandit,
+                    UnitKind::GreaseMonkey,
+                    UnitKind::Wrecker,
+                ],
+            },
+            FactionTowerCheck {
+                name: "Croak",
+                tower_damage: TOWER_DAMAGE_SPORE_TOWER,
+                tower_attack_speed: TOWER_ATTACK_SPEED_SPORE_TOWER,
+                preferred_units: &[
+                    UnitKind::Regeneron,
+                    UnitKind::Croaker,
+                    UnitKind::Leapfrog,
+                    UnitKind::Gulper,
+                    UnitKind::Shellwarden,
+                    UnitKind::Broodmother,
+                ],
+            },
+        ];
+
+        for check in &checks {
+            let tower_dps =
+                check.tower_damage.to_num::<f64>() / check.tower_attack_speed as f64;
+
+            let min_unit_dps = check
+                .preferred_units
+                .iter()
+                .map(|&kind| dps(&base_stats(kind)))
+                .fold(f64::INFINITY, f64::min);
+
+            let bound = 1.5 * min_unit_dps;
+            assert!(
+                tower_dps >= bound,
+                "{} tower DPS {tower_dps:.2} < 1.5x weakest unit DPS ({min_unit_dps:.3}, bound={bound:.3})",
+                check.name
+            );
+        }
+    }
+
+    /// Test 7: All damage upgrades cost the same, all HP upgrades cost the same,
+    /// all speed upgrades cost the same. Prevents accidentally making one faction's
+    /// upgrades cheaper than another's.
+    #[test]
+    fn upgrade_costs_consistent_across_factions() {
+        use crate::components::UpgradeType;
+
+        let damage_upgrades = [
+            UpgradeType::SharperClaws,
+            UpgradeType::SharperTeeth,
+            UpgradeType::SharperFangs,
+            UpgradeType::SharperTalons,
+            UpgradeType::RustyFangs,
+            UpgradeType::SlickerMucus,
+        ];
+        let hp_upgrades = [
+            UpgradeType::ThickerFur,
+            UpgradeType::ThickerHide,
+            UpgradeType::ReinforcedHide,
+            UpgradeType::HardenedPlumage,
+            UpgradeType::ScrapPlating,
+            UpgradeType::TougherHide,
+        ];
+        let speed_upgrades = [
+            UpgradeType::NimblePaws,
+            UpgradeType::QuickPaws,
+            UpgradeType::SteadyStance,
+            UpgradeType::SwiftWings,
+            UpgradeType::TrashRunning,
+            UpgradeType::AmphibianAgility,
+        ];
+
+        fn assert_same_cost(category: &str, upgrades: &[UpgradeType]) {
+            let first = upgrade_stats(upgrades[0]);
+            for &u in &upgrades[1..] {
+                let s = upgrade_stats(u);
+                assert_eq!(
+                    s.research_time, first.research_time,
+                    "{category} upgrade {u:?} research_time {} != {} (from {:?})",
+                    s.research_time, first.research_time, upgrades[0]
+                );
+                assert_eq!(
+                    s.food_cost, first.food_cost,
+                    "{category} upgrade {u:?} food_cost {} != {} (from {:?})",
+                    s.food_cost, first.food_cost, upgrades[0]
+                );
+                assert_eq!(
+                    s.gpu_cost, first.gpu_cost,
+                    "{category} upgrade {u:?} gpu_cost {} != {} (from {:?})",
+                    s.gpu_cost, first.gpu_cost, upgrades[0]
+                );
+            }
+        }
+
+        assert_same_cost("Damage", &damage_upgrades);
+        assert_same_cost("Health", &hp_upgrades);
+        assert_same_cost("Speed", &speed_upgrades);
+    }
+}
