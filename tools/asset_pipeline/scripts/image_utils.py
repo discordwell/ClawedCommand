@@ -114,6 +114,65 @@ def validate_sprite_quality(img: Image.Image, sprite_type: str = "idle") -> tupl
     return True, f"ok (opaque={np.count_nonzero(alpha > 200) / total_pixels:.0%}, sharpness={edge_var:.0f})"
 
 
+def download_and_validate(raw_path: str, out_path: str,
+                          sprite_type: str = "idle",
+                          crop_size: tuple[int, int] | None = None) -> tuple[bool, str]:
+    """Consolidated processing chain: load -> rembg if opaque -> crop -> resize -> QC -> save.
+
+    Args:
+        raw_path: Path to the raw downloaded image.
+        out_path: Path to save the processed result.
+        sprite_type: "idle", "portrait", or "sheet".
+        crop_size: (width, height) to fit into, or None to keep original size.
+
+    Returns:
+        (success, reason) tuple.
+    """
+    from pathlib import Path
+
+    raw = Path(raw_path)
+    if not raw.exists():
+        return False, f"raw file not found: {raw_path}"
+
+    if raw.stat().st_size < 5000:
+        return False, f"file too small: {raw.stat().st_size}B"
+
+    img = Image.open(str(raw)).convert("RGBA")
+
+    # rembg for idle sprites: if fully opaque, ChatGPT/Gemini didn't give transparency
+    if sprite_type == "idle":
+        alpha = np.array(img.split()[-1])
+        if alpha.min() > 200:
+            img = remove_background(img)
+
+    # QC gate (skip for sheets — they have different structure)
+    if sprite_type in ("idle", "portrait"):
+        passed, reason = validate_sprite_quality(img, sprite_type=sprite_type)
+        if not passed:
+            return False, f"QC fail: {reason}"
+    else:
+        reason = "sheet (no QC)"
+
+    # Crop/resize to target dimensions
+    if crop_size:
+        w, h = crop_size
+        bbox = img.getbbox()
+        if not bbox:
+            return False, "empty image (fully transparent)"
+        cropped = img.crop(bbox)
+        cropped.thumbnail((w, h), Image.Resampling.LANCZOS)
+        canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        x = (w - cropped.width) // 2
+        y = (h - cropped.height) // 2
+        canvas.paste(cropped, (x, y), cropped)
+        img = canvas
+
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    img.save(str(out))
+    return True, f"ok ({img.size[0]}x{img.size[1]}, {reason})"
+
+
 def wait_for_stable_image(applescript_js_fn, timeout: int = 120,
                           settle_time: float = 8.0,
                           poll_interval: float = 3.0) -> bool:

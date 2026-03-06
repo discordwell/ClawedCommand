@@ -1,6 +1,6 @@
 # Asset Pipeline
 
-Claude-in-Chrome automated asset generation pipeline. Uses ChatGPT image generation (via browser automation) with post-processing to produce game-ready sprites.
+Claude-in-Chrome automated asset generation pipeline. Uses ChatGPT and Gemini image generation (via MCP browser automation) with post-processing to produce game-ready sprites. Supports parallel dual-provider generation for 2x throughput.
 
 ## Art Style
 
@@ -33,11 +33,18 @@ tools/asset_pipeline/
 ├── processed/                  # Post-processed intermediates
 ├── scripts/
 │   ├── generate_asset.py       # Main orchestrator
+│   ├── generate_mcp.py         # MCP-based generation CLI helper
 │   ├── process_sprite.py       # Single sprite processing
 │   ├── process_sheet.py        # Sprite sheet processing
 │   ├── normalize_palette.py    # Color palette normalization
 │   ├── verify_grid.py          # Grid alignment verification
-│   └── generate_atlas_meta.py  # Bevy atlas manifest generator
+│   ├── generate_atlas_meta.py  # Bevy atlas manifest generator
+│   ├── image_utils.py          # Shared processing + QC validation
+│   └── providers/              # Provider abstraction for browser automation
+│       ├── __init__.py
+│       ├── base.py             # Interface contract + shared JS utilities
+│       ├── chatgpt.py          # ChatGPT DOM selectors + JS snippets
+│       └── gemini.py           # Gemini DOM selectors + JS snippets
 └── requirements.txt
 
 assets/                         # Final game-ready (Bevy loads from here)
@@ -107,18 +114,70 @@ python scripts/normalize_palette.py processed/units/infantry_idle.png output.png
 python scripts/verify_grid.py sprites/units/infantry_walk.png --columns 4 --rows 1
 ```
 
-## Browser Automation Flow (Claude-in-Chrome)
+## Browser Automation Flow (MCP — Dual Provider)
 
-When Claude automates asset generation via ChatGPT:
+Claude uses MCP browser tools (`javascript_tool`, `find`, `read_page`) with provider-specific JS snippets from `scripts/providers/`.
 
-1. Get/create browser tab
-2. Navigate to `chatgpt.com`
-3. Upload `references/master_style.png` via file input
-4. Type the assembled prompt, send
-5. Wait for image generation (~15-60s), polling with screenshots
-6. Download the generated image
-7. Move from `~/Downloads/` to `raw/{category}/`
-8. Run `generate_asset.py process <name>`
+### Single-provider flow
+
+1. Create browser tab via `tabs_create_mcp`
+2. Navigate to provider URL (`chatgpt.com` or `gemini.google.com/app`)
+3. Optionally upload `references/master_style.png` via DataTransfer JS
+4. Fill prompt using provider's `fill_prompt_js()`, click send via `click_send_js()`
+5. Poll for image completion using `image_check_js()` + `image_loaded_js()`
+6. Extract image URL via `image_src_js()`, download with `curl`
+7. Register via `generate_mcp.py received <name> <raw_path>`
+8. Process via `generate_mcp.py process <name>`
+
+### Parallel dual-provider flow
+
+1. Create 2 tabs — tab A → ChatGPT, tab B → Gemini
+2. Send prompt to provider A (tab A)
+3. Immediately send prompt to provider B (tab B)
+4. Poll both tabs for completion (image gen takes 15-60s)
+5. Download from whichever finishes first, or both for A/B comparison
+6. Rate limit on one provider? Switch to the other
+
+### Provider selection modes
+
+- **single** (`--provider chatgpt` or `--provider gemini`) — use one provider only
+- **both** — generate same asset from both, user picks the better result
+- **round-robin** — alternate between providers for batch work
+- **fallback** — try primary, switch to secondary on rate limit
+
+### MCP CLI helper
+
+```bash
+# Show what needs generating
+python scripts/generate_mcp.py queue
+
+# Get the prompt for an asset
+python scripts/generate_mcp.py prompt pawdler_idle
+
+# Register a downloaded raw image
+python scripts/generate_mcp.py received pawdler_idle /tmp/sprite.png --provider chatgpt
+
+# Run post-processing
+python scripts/generate_mcp.py process pawdler_idle
+
+# Show pipeline status
+python scripts/generate_mcp.py status
+
+# List available providers
+python scripts/generate_mcp.py providers
+```
+
+### Provider modules
+
+Each provider module (`providers/chatgpt.py`, `providers/gemini.py`) exports:
+- `URL` — base URL to navigate to
+- `fill_prompt_js(text)` — JS to inject prompt text
+- `click_send_js()` — JS to click send
+- `image_check_js()` / `image_loaded_js()` / `image_src_js()` — JS for image polling
+- `rate_limit_check_js()` — JS to detect rate limiting
+- `upload_reference_js(b64)` — JS to upload a reference image
+
+Gemini's DOM changes frequently. When selectors break, use MCP `find`/`read_page` to discover current selectors and update `gemini.py`.
 
 ## Adding New Asset Categories
 
