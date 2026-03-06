@@ -10,13 +10,18 @@
 //! Controls:
 //!   Left/Right — navigate items (pauses auto-cycle 5s)
 //!   Space      — toggle auto-cycle
+//!   C          — toggle compare mode (when candidates exist)
+//!   [ / ]      — cycle candidates (in compare mode)
+//!   P          — promote candidate to game-ready sprite (in compare mode)
 //!   Escape     — quit
 //!   Click sidebar item — select it
-//!   Click Idle/Walk/Attack — change animation phase (units only)
+//!   Click Idle/Walk/Attack — change animation phase (units)
+//!   Click Static/Construct/Ambient — change building animation phase (buildings)
 //!   Click Auto — toggle auto-cycle
+//!   Click Compare (C) — toggle compare mode
 //!   Mouse wheel over sidebar — scroll
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use bevy::asset::AssetPlugin;
 use bevy::picking::hover::Hovered;
@@ -28,6 +33,7 @@ use bevy::ui_widgets::{
 use cc_client::loading::LoadingTracker;
 use cc_client::renderer::anim_assets::load_anim_assets;
 use cc_client::renderer::animation::{self, AnimIndices, AnimState, AnimTimer, PrevAnimState};
+use cc_client::renderer::building_anim_assets::{BuildingAnimSheets, load_building_anim_assets};
 use cc_client::renderer::building_gen::{
     self, ALL_BUILDING_KINDS, BuildingSprites, building_kind_index, building_scale, building_slug,
 };
@@ -61,7 +67,7 @@ const FACTIONS: [(&str, u8, Color); 6] = [
 // Animation phase enum
 // ---------------------------------------------------------------------------
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Hash)]
 enum AnimPhase {
     #[default]
     Idle,
@@ -88,6 +94,36 @@ impl AnimPhase {
 }
 
 // ---------------------------------------------------------------------------
+// Building animation phase enum
+// ---------------------------------------------------------------------------
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+enum BuildingAnimPhase {
+    #[default]
+    Static,
+    Construct,
+    Ambient,
+}
+
+impl BuildingAnimPhase {
+    fn label(self) -> &'static str {
+        match self {
+            BuildingAnimPhase::Static => "Static",
+            BuildingAnimPhase::Construct => "Construct",
+            BuildingAnimPhase::Ambient => "Ambient",
+        }
+    }
+
+    fn next(self) -> Self {
+        match self {
+            BuildingAnimPhase::Static => BuildingAnimPhase::Construct,
+            BuildingAnimPhase::Construct => BuildingAnimPhase::Ambient,
+            BuildingAnimPhase::Ambient => BuildingAnimPhase::Static,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Viewer mode — unit or building
 // ---------------------------------------------------------------------------
 
@@ -108,6 +144,7 @@ struct ViewerState {
     unit_index: usize,
     building_index: usize,
     phase: AnimPhase,
+    building_phase: BuildingAnimPhase,
     phase_timer: Timer,
     auto_cycle: bool,
     resume_timer: Timer,
@@ -115,6 +152,12 @@ struct ViewerState {
     prev_mode: ViewerMode,
     prev_unit_index: usize,
     prev_building_index: usize,
+    prev_building_phase: BuildingAnimPhase,
+    /// Compare mode state.
+    compare_mode: bool,
+    candidate_index: usize,
+    prev_compare_mode: bool,
+    prev_candidate_index: usize,
 }
 
 impl Default for ViewerState {
@@ -124,12 +167,18 @@ impl Default for ViewerState {
             unit_index: 0,
             building_index: 0,
             phase: AnimPhase::Idle,
+            building_phase: BuildingAnimPhase::Static,
             phase_timer: Timer::from_seconds(PHASE_DURATION, TimerMode::Repeating),
             auto_cycle: true,
             resume_timer: Timer::from_seconds(RESUME_DELAY, TimerMode::Once),
-            prev_mode: ViewerMode::Building, // Force first-frame swap
+            prev_mode: ViewerMode::Unit,
             prev_unit_index: usize::MAX,
             prev_building_index: usize::MAX,
+            prev_building_phase: BuildingAnimPhase::Ambient,
+            compare_mode: false,
+            candidate_index: 0,
+            prev_compare_mode: false,
+            prev_candidate_index: usize::MAX,
         }
     }
 }
@@ -162,13 +211,19 @@ impl ViewerState {
         self.mode != self.prev_mode
             || (self.mode == ViewerMode::Unit && self.unit_index != self.prev_unit_index)
             || (self.mode == ViewerMode::Building
-                && self.building_index != self.prev_building_index)
+                && (self.building_index != self.prev_building_index
+                    || self.building_phase != self.prev_building_phase))
+            || self.compare_mode != self.prev_compare_mode
+            || (self.compare_mode && self.candidate_index != self.prev_candidate_index)
     }
 
     fn mark_clean(&mut self) {
         self.prev_mode = self.mode;
         self.prev_unit_index = self.unit_index;
         self.prev_building_index = self.building_index;
+        self.prev_building_phase = self.building_phase;
+        self.prev_compare_mode = self.compare_mode;
+        self.prev_candidate_index = self.candidate_index;
     }
 }
 
@@ -205,6 +260,10 @@ struct AnimButton(AnimPhase);
 #[derive(Component)]
 struct AutoToggle;
 
+/// Timer for building animation frame cycling in the viewer.
+#[derive(Component, Deref, DerefMut)]
+struct BuildingViewerAnimTimer(Timer);
+
 /// Faction header button (click to collapse/expand).
 #[derive(Component)]
 struct FactionHeader(usize);
@@ -220,6 +279,40 @@ struct CollapseIndicator(usize);
 /// Tracks which faction sections are collapsed.
 #[derive(Resource, Default)]
 struct CollapsedFactions(HashSet<usize>);
+
+// ---------------------------------------------------------------------------
+// Candidate comparison
+// ---------------------------------------------------------------------------
+
+/// Candidate sprites for comparison. Keyed by (unit_index, phase).
+#[derive(Resource, Default)]
+struct CandidateSprites {
+    entries: HashMap<(usize, AnimPhase), Vec<(String, Handle<Image>)>>,
+}
+
+/// Marker for the comparison sprite entity.
+#[derive(Component)]
+struct CompareUnit;
+
+/// Timer for cycling candidate sheet animation frames.
+#[derive(Component, Deref, DerefMut)]
+struct CompareAnimTimer(Timer);
+
+/// UI label showing current candidate name and index.
+#[derive(Component)]
+struct CandidateLabel;
+
+/// Compare (C) button in control row.
+#[derive(Component)]
+struct CompareButton;
+
+/// Status text (e.g. "Promoted!") shown briefly.
+#[derive(Component)]
+struct StatusText;
+
+/// Timer to auto-hide status text.
+#[derive(Resource)]
+struct StatusTimer(Timer);
 
 // ---------------------------------------------------------------------------
 // Colors
@@ -259,6 +352,94 @@ fn unit_display_name(index: usize) -> String {
 
 fn building_display_name(index: usize) -> String {
     slug_to_display(building_slug(ALL_BUILDING_KINDS[index]))
+}
+
+// ---------------------------------------------------------------------------
+// Candidate loading
+// ---------------------------------------------------------------------------
+
+fn load_candidates(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let mut entries: HashMap<(usize, AnimPhase), Vec<(String, Handle<Image>)>> = HashMap::new();
+
+    // Build slug → unit_index lookup
+    let mut slug_to_index: HashMap<&str, usize> = HashMap::new();
+    for (i, &kind) in ALL_KINDS.iter().enumerate() {
+        slug_to_index.insert(unit_slug(kind), i);
+    }
+
+    let phases = [
+        ("_idle_", AnimPhase::Idle),
+        ("_walk_", AnimPhase::Walk),
+        ("_attack_", AnimPhase::Attack),
+    ];
+    // Also match files ending with _idle.png, _walk.png, _attack.png (no label → "candidate")
+    let phase_suffixes = [
+        ("_idle", AnimPhase::Idle),
+        ("_walk", AnimPhase::Walk),
+        ("_attack", AnimPhase::Attack),
+    ];
+
+    // Scan candidates directory on disk
+    let candidates_dir =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/sprites/units/candidates");
+    let Ok(dir_entries) = std::fs::read_dir(&candidates_dir) else {
+        commands.insert_resource(CandidateSprites { entries });
+        return;
+    };
+
+    for entry in dir_entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("png") {
+            continue;
+        }
+        let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+            continue;
+        };
+
+        // Try to match {slug}_{phase}_{label} or {slug}_{phase}
+        let mut matched = false;
+        for &(phase_mid, phase) in &phases {
+            if let Some(pos) = stem.find(phase_mid) {
+                let slug = &stem[..pos];
+                let label = &stem[pos + phase_mid.len()..];
+                if let Some(&unit_idx) = slug_to_index.get(slug) {
+                    let asset_path = format!("sprites/units/candidates/{}.png", stem);
+                    let handle = asset_server.load::<Image>(&asset_path);
+                    entries
+                        .entry((unit_idx, phase))
+                        .or_default()
+                        .push((label.to_string(), handle));
+                    matched = true;
+                    break;
+                }
+            }
+        }
+        if matched {
+            continue;
+        }
+        // Try suffix-only match (no label)
+        for &(suffix, phase) in &phase_suffixes {
+            if stem.ends_with(suffix) {
+                let slug = &stem[..stem.len() - suffix.len()];
+                if let Some(&unit_idx) = slug_to_index.get(slug) {
+                    let asset_path = format!("sprites/units/candidates/{}.png", stem);
+                    let handle = asset_server.load::<Image>(&asset_path);
+                    entries
+                        .entry((unit_idx, phase))
+                        .or_default()
+                        .push(("candidate".to_string(), handle));
+                    break;
+                }
+            }
+        }
+    }
+
+    let count: usize = entries.values().map(|v| v.len()).sum();
+    if count > 0 {
+        info!("Loaded {} candidate sprites for {} unit/phase combos", count, entries.len());
+    }
+
+    commands.insert_resource(CandidateSprites { entries });
 }
 
 // ---------------------------------------------------------------------------
@@ -330,6 +511,19 @@ fn setup_viewer(
         Transform::from_xyz(0.0, 0.0, 10.0)
             .with_scale(Vec3::splat(building_scale(ALL_BUILDING_KINDS[0], building_sprites.has_art[0]))),
         Visibility::Hidden,
+        BuildingViewerAnimTimer(Timer::from_seconds(0.6, TimerMode::Repeating)),
+    ));
+
+    // Spawn compare unit entity (hidden until compare mode active)
+    commands.spawn((
+        CompareUnit,
+        Sprite {
+            image: unit_sprites.sprites[0].clone(),
+            ..default()
+        },
+        Transform::from_xyz(80.0, 0.0, 10.0).with_scale(Vec3::splat(scale)),
+        Visibility::Hidden,
+        CompareAnimTimer(Timer::from_seconds(0.15, TimerMode::Repeating)),
     ));
 
     build_ui(&mut commands);
@@ -573,7 +767,61 @@ fn build_ui(commands: &mut Commands) {
                             },
                             TextColor(Color::WHITE),
                         ));
+
+                        // Compare toggle
+                        row.spawn((
+                            CompareButton,
+                            Button,
+                            Node {
+                                padding: UiRect::axes(Val::Px(14.0), Val::Px(6.0)),
+                                margin: UiRect::left(Val::Px(4.0)),
+                                border_radius: BorderRadius::all(Val::Px(4.0)),
+                                ..default()
+                            },
+                            BackgroundColor(BTN_NORMAL),
+                            Visibility::Hidden,
+                        ))
+                        .with_child((
+                            Text::new("Compare (C)"),
+                            TextFont {
+                                font_size: 15.0,
+                                ..default()
+                            },
+                            TextColor(Color::WHITE),
+                        ));
                     });
+
+                // Candidate label (below control row)
+                center.spawn((
+                    CandidateLabel,
+                    Text::new(""),
+                    TextFont {
+                        font_size: 16.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.9, 0.8, 0.4)),
+                    Node {
+                        margin: UiRect::bottom(Val::Px(4.0)),
+                        ..default()
+                    },
+                    Visibility::Hidden,
+                ));
+
+                // Status text (promote feedback)
+                center.spawn((
+                    StatusText,
+                    Text::new(""),
+                    TextFont {
+                        font_size: 14.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.4, 0.9, 0.4)),
+                    Node {
+                        margin: UiRect::bottom(Val::Px(8.0)),
+                        ..default()
+                    },
+                    Visibility::Hidden,
+                ));
             });
         });
 }
@@ -616,7 +864,10 @@ fn spawn_sidebar_button<M: Component>(
 fn handle_input(
     keys: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<ViewerState>,
+    candidates: Res<CandidateSprites>,
     mut exit: MessageWriter<AppExit>,
+    mut status_timer: ResMut<StatusTimer>,
+    mut status_q: Query<(&mut Text, &mut Visibility), With<StatusText>>,
 ) {
     if keys.just_pressed(KeyCode::Escape) {
         exit.write(AppExit::Success);
@@ -627,20 +878,94 @@ fn handle_input(
         state.auto_cycle = !state.auto_cycle;
     }
 
+    // Compare mode toggle (C key) — only for units with candidates
+    if keys.just_pressed(KeyCode::KeyC) && state.mode == ViewerMode::Unit {
+        let key = (state.unit_index, state.phase);
+        if candidates.entries.contains_key(&key) {
+            state.compare_mode = !state.compare_mode;
+            state.candidate_index = 0;
+        }
+    }
+
+    // Cycle candidates with [/] or Up/Down in compare mode
+    if state.compare_mode && state.mode == ViewerMode::Unit {
+        let key = (state.unit_index, state.phase);
+        if let Some(list) = candidates.entries.get(&key) {
+            let count = list.len();
+            if count > 0 {
+                if keys.just_pressed(KeyCode::BracketLeft) || keys.just_pressed(KeyCode::ArrowUp) {
+                    state.candidate_index = if state.candidate_index == 0 {
+                        count - 1
+                    } else {
+                        state.candidate_index - 1
+                    };
+                }
+                if keys.just_pressed(KeyCode::BracketRight) || keys.just_pressed(KeyCode::ArrowDown) {
+                    state.candidate_index = (state.candidate_index + 1) % count;
+                }
+            }
+        }
+    }
+
+    // Promote candidate (P key)
+    if keys.just_pressed(KeyCode::KeyP) && state.compare_mode && state.mode == ViewerMode::Unit {
+        let key = (state.unit_index, state.phase);
+        if let Some(list) = candidates.entries.get(&key) {
+            if let Some((label, _handle)) = list.get(state.candidate_index) {
+                let slug = unit_slug(ALL_KINDS[state.unit_index]);
+                let phase_str = match state.phase {
+                    AnimPhase::Idle => "idle",
+                    AnimPhase::Walk => "walk",
+                    AnimPhase::Attack => "attack",
+                };
+                let candidates_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../assets/sprites/units/candidates");
+                // Reconstruct candidate filename
+                let candidate_file = if label == "candidate" {
+                    format!("{}_{}.png", slug, phase_str)
+                } else {
+                    format!("{}_{}_{}.png", slug, phase_str, label)
+                };
+                let src = candidates_dir.join(&candidate_file);
+                let dest = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join(format!("../../assets/sprites/units/{}_{}.png", slug, phase_str));
+
+                if src.exists() {
+                    if let Err(e) = std::fs::copy(&src, &dest) {
+                        warn!("Failed to promote candidate: {}", e);
+                    } else {
+                        info!("Promoted {} → {}", candidate_file, dest.display());
+                        // Show status text
+                        if let Ok((mut text, mut vis)) = status_q.single_mut() {
+                            **text = format!("Promoted: {}", label);
+                            *vis = Visibility::Inherited;
+                            status_timer.0.reset();
+                        }
+                        state.compare_mode = false;
+                    }
+                }
+            }
+        }
+    }
+
     let mut navigated = false;
-    if keys.just_pressed(KeyCode::ArrowRight) {
+    if keys.just_pressed(KeyCode::ArrowRight) && !state.compare_mode {
         let idx = (state.flat_index() + 1) % TOTAL_ITEMS;
         state.set_flat_index(idx);
         state.phase = AnimPhase::Idle;
         state.phase_timer.reset();
+        state.compare_mode = false;
+        state.candidate_index = 0;
         navigated = true;
     }
-    if keys.just_pressed(KeyCode::ArrowLeft) {
+    if keys.just_pressed(KeyCode::ArrowLeft) && !state.compare_mode {
         let cur = state.flat_index();
         let idx = if cur == 0 { TOTAL_ITEMS - 1 } else { cur - 1 };
         state.set_flat_index(idx);
         state.phase = AnimPhase::Idle;
         state.phase_timer.reset();
+        state.compare_mode = false;
+        state.candidate_index = 0;
         navigated = true;
     }
 
@@ -670,6 +995,7 @@ fn handle_sidebar_clicks(
             state.mode = ViewerMode::Building;
             state.building_index = btn.0;
             state.phase = AnimPhase::Idle;
+            state.building_phase = BuildingAnimPhase::Static;
             state.phase_timer.reset();
             state.auto_cycle = false;
             state.resume_timer.reset();
@@ -682,14 +1008,27 @@ fn handle_anim_clicks(
     anim_query: Query<(&AnimButton, &Interaction), (Changed<Interaction>, Without<AutoToggle>)>,
     auto_query: Query<&Interaction, (Changed<Interaction>, With<AutoToggle>)>,
 ) {
-    // Anim buttons only affect units
-    if state.mode == ViewerMode::Unit {
-        for (btn, interaction) in anim_query.iter() {
-            if *interaction == Interaction::Pressed {
-                state.phase = btn.0;
-                state.phase_timer.reset();
-                state.auto_cycle = false;
-                state.resume_timer.reset();
+    for (btn, interaction) in anim_query.iter() {
+        if *interaction == Interaction::Pressed {
+            match state.mode {
+                ViewerMode::Unit => {
+                    state.phase = btn.0;
+                    state.candidate_index = 0;
+                    state.phase_timer.reset();
+                    state.auto_cycle = false;
+                    state.resume_timer.reset();
+                }
+                ViewerMode::Building => {
+                    // Map AnimPhase buttons to BuildingAnimPhase
+                    state.building_phase = match btn.0 {
+                        AnimPhase::Idle => BuildingAnimPhase::Static,
+                        AnimPhase::Walk => BuildingAnimPhase::Construct,
+                        AnimPhase::Attack => BuildingAnimPhase::Ambient,
+                    };
+                    state.phase_timer.reset();
+                    state.auto_cycle = false;
+                    state.resume_timer.reset();
+                }
             }
         }
     }
@@ -706,6 +1045,10 @@ fn handle_anim_clicks(
 // ---------------------------------------------------------------------------
 
 fn cycle_viewer(time: Res<Time>, mut state: ResMut<ViewerState>) {
+    // Never auto-cycle while in compare mode
+    if state.compare_mode {
+        return;
+    }
     if !state.auto_cycle {
         state.resume_timer.tick(time.delta());
         if state.resume_timer.is_finished() {
@@ -727,10 +1070,15 @@ fn cycle_viewer(time: Res<Time>, mut state: ResMut<ViewerState>) {
                 state.phase = next_phase;
             }
             ViewerMode::Building => {
-                // Buildings have no animation phases — just advance after one timer tick
-                let idx = (state.flat_index() + 1) % TOTAL_ITEMS;
-                state.set_flat_index(idx);
-                state.phase = AnimPhase::Idle;
+                // Cycle through Static → Construct → Ambient → next building
+                let next_phase = state.building_phase.next();
+                if next_phase == BuildingAnimPhase::Static {
+                    // Completed all phases, advance to next item
+                    let idx = (state.flat_index() + 1) % TOTAL_ITEMS;
+                    state.set_flat_index(idx);
+                    state.phase = AnimPhase::Idle;
+                }
+                state.building_phase = next_phase;
             }
         }
     }
@@ -744,6 +1092,8 @@ fn swap_display(
     mut state: ResMut<ViewerState>,
     unit_sprites: Res<UnitSprites>,
     building_sprites: Res<BuildingSprites>,
+    candidates: Res<CandidateSprites>,
+    anim_sheets: Option<Res<BuildingAnimSheets>>,
     mut unit_query: Query<
         (
             &mut UnitType,
@@ -756,11 +1106,15 @@ fn swap_display(
             &mut AttackStats,
             &mut Visibility,
         ),
-        (With<ViewerUnit>, Without<ViewerBuilding>),
+        (With<ViewerUnit>, Without<ViewerBuilding>, Without<CompareUnit>),
     >,
     mut building_query: Query<
-        (&mut Sprite, &mut Transform, &mut Visibility),
-        (With<ViewerBuilding>, Without<ViewerUnit>),
+        (&mut Sprite, &mut Transform, &mut Visibility, &mut BuildingViewerAnimTimer),
+        (With<ViewerBuilding>, Without<ViewerUnit>, Without<CompareUnit>),
+    >,
+    mut compare_query: Query<
+        (&mut Sprite, &mut Transform, &mut Visibility, &mut CompareAnimTimer),
+        (With<CompareUnit>, Without<ViewerUnit>, Without<ViewerBuilding>),
     >,
 ) {
     if !state.display_changed() {
@@ -782,7 +1136,15 @@ fn swap_display(
         return;
     };
 
-    let Ok((mut bld_sprite, mut bld_transform, mut bld_vis)) = building_query.single_mut() else {
+    let Ok((mut bld_sprite, mut bld_transform, mut bld_vis, mut bld_timer)) =
+        building_query.single_mut()
+    else {
+        return;
+    };
+
+    let Ok((mut cmp_sprite, mut cmp_transform, mut cmp_vis, mut cmp_timer)) =
+        compare_query.single_mut()
+    else {
         return;
     };
 
@@ -807,10 +1169,50 @@ fn swap_display(
 
             *anim_state = AnimState::Idle;
             *prev_state = PrevAnimState(AnimState::Idle);
+
+            // Compare mode: offset main sprite left, show candidate right
+            if state.compare_mode {
+                // Main sprite shifts left
+                // (reset_viewer_transform will set x=0, so we track offset there)
+
+                let key = (state.unit_index, state.phase);
+                if let Some(list) = candidates.entries.get(&key) {
+                    let idx = state.candidate_index.min(list.len().saturating_sub(1));
+                    let (_label, handle) = &list[idx];
+
+                    cmp_sprite.image = handle.clone();
+                    cmp_sprite.color = tint;
+                    cmp_transform.scale = Vec3::splat(scale);
+
+                    // For walk/attack sheets (512x128), the compare anim system
+                    // auto-detects and sets up TextureAtlas from image dimensions
+                    if state.phase != AnimPhase::Idle {
+                        cmp_sprite.texture_atlas = None;
+
+                        // Set timer rate based on phase
+                        let rate = match state.phase {
+                            AnimPhase::Walk => 0.15,
+                            AnimPhase::Attack => 0.1,
+                            AnimPhase::Idle => 0.15,
+                        };
+                        cmp_timer.set_duration(std::time::Duration::from_secs_f32(rate));
+                        cmp_timer.reset();
+                    } else {
+                        cmp_sprite.texture_atlas = None;
+                    }
+
+                    *cmp_vis = Visibility::Inherited;
+                } else {
+                    *cmp_vis = Visibility::Hidden;
+                }
+            } else {
+                *cmp_vis = Visibility::Hidden;
+            }
         }
         ViewerMode::Building => {
             *unit_vis = Visibility::Hidden;
             *bld_vis = Visibility::Inherited;
+            *cmp_vis = Visibility::Hidden;
 
             let bkind = ALL_BUILDING_KINDS[state.building_index];
             let faction_idx = state.building_index / BUILDINGS_PER_FACTION;
@@ -820,10 +1222,51 @@ fn swap_display(
             let has_art = building_sprites.has_art[bidx];
             let scale = building_scale(bkind, has_art);
 
-            bld_sprite.image = building_sprites.sprites[bidx].clone();
             bld_sprite.color = tint;
             bld_transform.translation = Vec3::new(0.0, 0.0, 10.0);
             bld_transform.scale = Vec3::splat(scale);
+
+            // Apply building animation phase
+            match state.building_phase {
+                BuildingAnimPhase::Static => {
+                    bld_sprite.image = building_sprites.sprites[bidx].clone();
+                    bld_sprite.texture_atlas = None;
+                }
+                BuildingAnimPhase::Construct => {
+                    let sheet = anim_sheets
+                        .as_ref()
+                        .and_then(|s| s.construct[bidx].as_ref());
+                    if let Some((img, layout)) = sheet {
+                        bld_sprite.image = img.clone();
+                        bld_sprite.texture_atlas = Some(TextureAtlas {
+                            layout: layout.clone(),
+                            index: 0,
+                        });
+                        bld_timer.set_duration(std::time::Duration::from_secs_f32(1.0));
+                        bld_timer.reset();
+                    } else {
+                        bld_sprite.image = building_sprites.sprites[bidx].clone();
+                        bld_sprite.texture_atlas = None;
+                    }
+                }
+                BuildingAnimPhase::Ambient => {
+                    let sheet = anim_sheets
+                        .as_ref()
+                        .and_then(|s| s.ambient[bidx].as_ref());
+                    if let Some((img, layout)) = sheet {
+                        bld_sprite.image = img.clone();
+                        bld_sprite.texture_atlas = Some(TextureAtlas {
+                            layout: layout.clone(),
+                            index: 0,
+                        });
+                        bld_timer.set_duration(std::time::Duration::from_secs_f32(0.6));
+                        bld_timer.reset();
+                    } else {
+                        bld_sprite.image = building_sprites.sprites[bidx].clone();
+                        bld_sprite.texture_atlas = None;
+                    }
+                }
+            }
         }
     }
 
@@ -868,12 +1311,21 @@ fn drive_anim_phase(
 // Reset viewer transform before tweens apply additive offsets
 // ---------------------------------------------------------------------------
 
-fn reset_viewer_transform(mut query: Query<&mut Transform, With<ViewerUnit>>) {
+fn reset_viewer_transform(
+    state: Res<ViewerState>,
+    mut query: Query<&mut Transform, (With<ViewerUnit>, Without<CompareUnit>)>,
+    mut compare_query: Query<&mut Transform, (With<CompareUnit>, Without<ViewerUnit>)>,
+) {
     let Ok(mut transform) = query.single_mut() else {
         return;
     };
-    transform.translation = Vec3::new(0.0, 0.0, 10.0);
+    let x_offset = if state.compare_mode { -80.0 } else { 0.0 };
+    transform.translation = Vec3::new(x_offset, 0.0, 10.0);
     transform.rotation = Quat::IDENTITY;
+
+    if let Ok(mut cmp_transform) = compare_query.single_mut() {
+        cmp_transform.translation = Vec3::new(if state.compare_mode { 80.0 } else { 0.0 }, 0.0, 10.0);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -953,20 +1405,25 @@ fn update_anim_button_colors(
     mut query: Query<(&AnimButton, &Interaction, &mut BackgroundColor), Without<AutoToggle>>,
     mut auto_query: Query<&mut BackgroundColor, With<AutoToggle>>,
 ) {
-    let dimmed = Color::srgba(0.15, 0.15, 0.18, 0.5);
     for (btn, interaction, mut bg) in query.iter_mut() {
-        if state.mode == ViewerMode::Building {
-            // Dim anim buttons when showing a building
-            *bg = BackgroundColor(dimmed);
+        let is_active = match state.mode {
+            ViewerMode::Unit => btn.0 == state.phase,
+            ViewerMode::Building => {
+                // Map AnimPhase buttons to BuildingAnimPhase for highlight
+                match btn.0 {
+                    AnimPhase::Idle => state.building_phase == BuildingAnimPhase::Static,
+                    AnimPhase::Walk => state.building_phase == BuildingAnimPhase::Construct,
+                    AnimPhase::Attack => state.building_phase == BuildingAnimPhase::Ambient,
+                }
+            }
+        };
+        *bg = if is_active {
+            BackgroundColor(BTN_SELECTED)
+        } else if *interaction == Interaction::Hovered {
+            BackgroundColor(BTN_HOVER)
         } else {
-            *bg = if btn.0 == state.phase {
-                BackgroundColor(BTN_SELECTED)
-            } else if *interaction == Interaction::Hovered {
-                BackgroundColor(BTN_HOVER)
-            } else {
-                BackgroundColor(BTN_NORMAL)
-            };
-        }
+            BackgroundColor(BTN_NORMAL)
+        };
     }
 
     if let Ok(mut bg) = auto_query.single_mut() {
@@ -975,6 +1432,127 @@ fn update_anim_button_colors(
         } else {
             BackgroundColor(BTN_AUTO_OFF)
         };
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Update anim button labels based on mode (Unit vs Building)
+// ---------------------------------------------------------------------------
+
+fn update_anim_button_labels(
+    state: Res<ViewerState>,
+    anim_buttons: Query<(&AnimButton, &Children), Without<AutoToggle>>,
+    mut texts: Query<&mut Text>,
+) {
+    if !state.is_changed() {
+        return;
+    }
+    for (btn, children) in anim_buttons.iter() {
+        let label = match state.mode {
+            ViewerMode::Unit => btn.0.label(),
+            ViewerMode::Building => match btn.0 {
+                AnimPhase::Idle => BuildingAnimPhase::Static.label(),
+                AnimPhase::Walk => BuildingAnimPhase::Construct.label(),
+                AnimPhase::Attack => BuildingAnimPhase::Ambient.label(),
+            },
+        };
+        for child in children.iter() {
+            if let Ok(mut text) = texts.get_mut(child) {
+                **text = label.to_string();
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Compare UI updates
+// ---------------------------------------------------------------------------
+
+fn update_compare_ui(
+    state: Res<ViewerState>,
+    candidates: Res<CandidateSprites>,
+    mut compare_btn_q: Query<(&mut BackgroundColor, &mut Visibility), (With<CompareButton>, Without<CandidateLabel>)>,
+    mut label_q: Query<(&mut Text, &mut Visibility), (With<CandidateLabel>, Without<CompareButton>)>,
+) {
+    if !state.is_changed() && !candidates.is_changed() {
+        return;
+    }
+
+    // Show/hide compare button based on whether candidates exist
+    let has_candidates = state.mode == ViewerMode::Unit
+        && candidates
+            .entries
+            .contains_key(&(state.unit_index, state.phase));
+
+    if let Ok((mut bg, mut vis)) = compare_btn_q.single_mut() {
+        *vis = if has_candidates {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+        *bg = if state.compare_mode {
+            BackgroundColor(BTN_SELECTED)
+        } else {
+            BackgroundColor(BTN_NORMAL)
+        };
+    }
+
+    // Update candidate label
+    if let Ok((mut text, mut vis)) = label_q.single_mut() {
+        if state.compare_mode && has_candidates {
+            let key = (state.unit_index, state.phase);
+            if let Some(list) = candidates.entries.get(&key) {
+                let idx = state.candidate_index.min(list.len().saturating_sub(1));
+                let (label, _) = &list[idx];
+                **text = format!("{} ({}/{})\u{2003}[P] Promote", label, idx + 1, list.len());
+                *vis = Visibility::Inherited;
+            }
+        } else {
+            *vis = Visibility::Hidden;
+        }
+    }
+}
+
+fn handle_compare_click(
+    mut state: ResMut<ViewerState>,
+    candidates: Res<CandidateSprites>,
+    query: Query<&Interaction, (Changed<Interaction>, With<CompareButton>)>,
+) {
+    for interaction in query.iter() {
+        if *interaction == Interaction::Pressed && state.mode == ViewerMode::Unit {
+            let key = (state.unit_index, state.phase);
+            if candidates.entries.contains_key(&key) {
+                state.compare_mode = !state.compare_mode;
+                state.candidate_index = 0;
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Building animation frame advancement
+// ---------------------------------------------------------------------------
+
+fn advance_building_viewer_anim(
+    time: Res<Time>,
+    state: Res<ViewerState>,
+    mut query: Query<(&mut Sprite, &mut BuildingViewerAnimTimer), With<ViewerBuilding>>,
+) {
+    if state.mode != ViewerMode::Building {
+        return;
+    }
+    // Only animate when in Construct or Ambient phase
+    if state.building_phase == BuildingAnimPhase::Static {
+        return;
+    }
+    let Ok((mut sprite, mut timer)) = query.single_mut() else {
+        return;
+    };
+    timer.tick(time.delta());
+    if timer.just_finished() {
+        if let Some(ref mut atlas) = sprite.texture_atlas {
+            atlas.index = (atlas.index + 1) % 4;
+        }
     }
 }
 
@@ -1050,6 +1628,71 @@ fn style_scrollbar_thumb(
 }
 
 // ---------------------------------------------------------------------------
+// Compare animation frame cycling (for walk/attack sheet candidates)
+// ---------------------------------------------------------------------------
+
+fn cycle_compare_anim(
+    time: Res<Time>,
+    state: Res<ViewerState>,
+    images: Res<Assets<Image>>,
+    mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    mut query: Query<(&mut Sprite, &mut CompareAnimTimer), With<CompareUnit>>,
+) {
+    if !state.compare_mode || state.phase == AnimPhase::Idle {
+        return;
+    }
+    let Ok((mut sprite, mut timer)) = query.single_mut() else {
+        return;
+    };
+    timer.tick(time.delta());
+
+    // Ensure atlas is set up for sheet sprites
+    if sprite.texture_atlas.is_none() {
+        // Check if the image is a sheet (width > height means multi-frame)
+        if let Some(img) = images.get(&sprite.image) {
+            let w = img.width();
+            let h = img.height();
+            if w > h {
+                let frames = (w / h).max(1);
+                let layout =
+                    TextureAtlasLayout::from_grid(UVec2::new(h, h), frames, 1, None, None);
+                let layout_handle = atlas_layouts.add(layout);
+                sprite.texture_atlas = Some(TextureAtlas {
+                    layout: layout_handle,
+                    index: 0,
+                });
+            }
+        }
+    }
+
+    if timer.just_finished() {
+        if let Some(ref mut atlas) = sprite.texture_atlas {
+            if let Some(layout) = atlas_layouts.get(&atlas.layout) {
+                let frame_count = layout.textures.len();
+                atlas.index = (atlas.index + 1) % frame_count;
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Status text auto-hide
+// ---------------------------------------------------------------------------
+
+fn hide_status_text(
+    time: Res<Time>,
+    mut timer: ResMut<StatusTimer>,
+    mut query: Query<&mut Visibility, With<StatusText>>,
+) {
+    timer.0.tick(time.delta());
+    if timer.0.just_finished() {
+        if let Ok(mut vis) = query.single_mut() {
+            *vis = Visibility::Hidden;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -1075,15 +1718,17 @@ fn main() {
         .insert_resource(ClearColor(Color::srgb(0.08, 0.08, 0.12)))
         .init_resource::<LoadingTracker>()
         .init_resource::<CollapsedFactions>()
+        .insert_resource(StatusTimer(Timer::from_seconds(2.0, TimerMode::Once)))
         .add_systems(
             PreStartup,
             (
                 unit_gen::generate_unit_sprites,
                 building_gen::generate_building_sprites,
                 load_anim_assets,
+                load_building_anim_assets,
             ),
         )
-        .add_systems(Startup, setup_viewer)
+        .add_systems(Startup, (setup_viewer, load_candidates).chain())
         .add_systems(
             Update,
             (
@@ -1091,6 +1736,7 @@ fn main() {
                 handle_input,
                 handle_sidebar_clicks.after(handle_input),
                 handle_anim_clicks.after(handle_input),
+                handle_compare_click.after(handle_input),
                 // Auto-cycle
                 cycle_viewer
                     .after(handle_sidebar_clicks)
@@ -1104,14 +1750,24 @@ fn main() {
                 animation::derive_anim_state.after(reset_viewer_transform),
                 animation::advance_animation.after(animation::derive_anim_state),
                 tweens::apply_unit_tweens.after(animation::advance_animation),
-                // UI updates
-                update_labels.after(swap_display),
-                update_sidebar_colors.after(swap_display),
-                update_anim_button_colors.after(swap_display),
+                // Building + compare animation
+                advance_building_viewer_anim.after(swap_display),
+                cycle_compare_anim.after(swap_display),
                 // Collapse & scrollbar
                 handle_faction_collapse.after(handle_input),
                 update_faction_visibility.after(handle_faction_collapse),
                 style_scrollbar_thumb,
+            ),
+        )
+        .add_systems(
+            Update,
+            (
+                update_labels.after(swap_display),
+                update_sidebar_colors.after(swap_display),
+                update_anim_button_colors.after(swap_display),
+                update_anim_button_labels.after(swap_display),
+                update_compare_ui.after(swap_display),
+                hide_status_text,
             ),
         )
         .run();
