@@ -52,6 +52,7 @@ const RESUME_DELAY: f32 = 5.0;
 const SIDEBAR_WIDTH: f32 = 210.0;
 const UNITS_PER_FACTION: usize = 10;
 const BUILDINGS_PER_FACTION: usize = 8;
+const COMPARE_OFFSET_X: f32 = 50.0;
 
 /// Faction info: (name, player_id, label color).
 const FACTIONS: [(&str, u8, Color); 6] = [
@@ -294,9 +295,9 @@ struct CandidateSprites {
 #[derive(Component)]
 struct CompareUnit;
 
-/// Timer for cycling candidate sheet animation frames.
-#[derive(Component, Deref, DerefMut)]
-struct CompareAnimTimer(Timer);
+/// Marker for the comparison sprite (animation synced from main ViewerUnit).
+#[derive(Component)]
+struct CompareAnimSync;
 
 /// UI label showing current candidate name and index.
 #[derive(Component)]
@@ -306,6 +307,18 @@ struct CandidateLabel;
 #[derive(Component)]
 struct CompareButton;
 
+/// World-space "CURRENT" label above main sprite (visible in compare mode).
+#[derive(Component)]
+struct CurrentLabel;
+
+/// World-space "CANDIDATE (name)" label above compare sprite.
+#[derive(Component)]
+struct CandidateWorldLabel;
+
+/// Compare mode banner at top of center area.
+#[derive(Component)]
+struct CompareBanner;
+
 /// Status text (e.g. "Promoted!") shown briefly.
 #[derive(Component)]
 struct StatusText;
@@ -313,6 +326,10 @@ struct StatusText;
 /// Timer to auto-hide status text.
 #[derive(Resource)]
 struct StatusTimer(Timer);
+
+/// Timer for promote green-flash feedback on the banner.
+#[derive(Resource)]
+struct PromoteFlash(Timer);
 
 // ---------------------------------------------------------------------------
 // Colors
@@ -324,7 +341,11 @@ const BTN_HOVER: Color = Color::srgba(0.25, 0.25, 0.30, 1.0);
 const BTN_SELECTED: Color = Color::srgba(0.35, 0.35, 0.50, 1.0);
 const BTN_AUTO_ON: Color = Color::srgba(0.2, 0.45, 0.2, 1.0);
 const BTN_AUTO_OFF: Color = Color::srgba(0.45, 0.2, 0.2, 1.0);
+const BTN_DISABLED: Color = Color::srgba(0.15, 0.15, 0.18, 0.6);
 const SECTION_HEADER: Color = Color::srgba(0.5, 0.5, 0.55, 1.0);
+const BANNER_AMBER: Color = Color::srgb(0.95, 0.75, 0.3);
+const BANNER_GREEN: Color = Color::srgb(0.3, 0.85, 0.3);
+const BANNER_TEXT: &str = "COMPARE MODE \u{2014} [ ] cycle | P promote | C exit";
 
 // ---------------------------------------------------------------------------
 // Display name helpers
@@ -517,13 +538,39 @@ fn setup_viewer(
     // Spawn compare unit entity (hidden until compare mode active)
     commands.spawn((
         CompareUnit,
+        CompareAnimSync,
         Sprite {
             image: unit_sprites.sprites[0].clone(),
             ..default()
         },
-        Transform::from_xyz(80.0, 0.0, 10.0).with_scale(Vec3::splat(scale)),
+        Transform::from_xyz(COMPARE_OFFSET_X, 0.0, 10.0).with_scale(Vec3::splat(scale)),
         Visibility::Hidden,
-        CompareAnimTimer(Timer::from_seconds(0.15, TimerMode::Repeating)),
+    ));
+
+    // World-space label: "CURRENT" above main sprite (hidden until compare mode)
+    commands.spawn((
+        CurrentLabel,
+        Text2d::new("CURRENT"),
+        TextFont {
+            font_size: 16.0,
+            ..default()
+        },
+        TextColor(Color::srgba(1.0, 1.0, 1.0, 0.8)),
+        Transform::from_xyz(-COMPARE_OFFSET_X, 28.0, 20.0),
+        Visibility::Hidden,
+    ));
+
+    // World-space label: "CANDIDATE" above compare sprite (hidden until compare mode)
+    commands.spawn((
+        CandidateWorldLabel,
+        Text2d::new("CANDIDATE"),
+        TextFont {
+            font_size: 16.0,
+            ..default()
+        },
+        TextColor(Color::srgba(1.0, 1.0, 1.0, 0.8)),
+        Transform::from_xyz(COMPARE_OFFSET_X, 28.0, 20.0),
+        Visibility::Hidden,
     ));
 
     build_ui(&mut commands);
@@ -685,6 +732,33 @@ fn build_ui(commands: &mut Commands) {
                 ..default()
             })
             .with_children(|center| {
+                // Compare mode banner (absolute, top of center area)
+                center
+                    .spawn((
+                        CompareBanner,
+                        Node {
+                            position_type: PositionType::Absolute,
+                            top: Val::Px(0.0),
+                            left: Val::Px(0.0),
+                            right: Val::Px(0.0),
+                            padding: UiRect::axes(Val::Px(16.0), Val::Px(6.0)),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        BackgroundColor(BANNER_AMBER),
+                        Visibility::Hidden,
+                        ZIndex(10),
+                    ))
+                    .with_child((
+                        Text::new(BANNER_TEXT),
+                        TextFont {
+                            font_size: 14.0,
+                            ..default()
+                        },
+                        TextColor(Color::srgb(0.1, 0.1, 0.1)),
+                    ));
+
                 // Item name label
                 center.spawn((
                     UnitNameLabel,
@@ -768,7 +842,7 @@ fn build_ui(commands: &mut Commands) {
                             TextColor(Color::WHITE),
                         ));
 
-                        // Compare toggle
+                        // Compare toggle (always visible, disabled when no candidates)
                         row.spawn((
                             CompareButton,
                             Button,
@@ -778,11 +852,10 @@ fn build_ui(commands: &mut Commands) {
                                 border_radius: BorderRadius::all(Val::Px(4.0)),
                                 ..default()
                             },
-                            BackgroundColor(BTN_NORMAL),
-                            Visibility::Hidden,
+                            BackgroundColor(BTN_DISABLED),
                         ))
                         .with_child((
-                            Text::new("Compare (C)"),
+                            Text::new("Compare (C) (no candidates)"),
                             TextFont {
                                 font_size: 15.0,
                                 ..default()
@@ -791,21 +864,29 @@ fn build_ui(commands: &mut Commands) {
                         ));
                     });
 
-                // Candidate label (below control row)
-                center.spawn((
-                    CandidateLabel,
-                    Text::new(""),
-                    TextFont {
-                        font_size: 16.0,
-                        ..default()
-                    },
-                    TextColor(Color::srgb(0.9, 0.8, 0.4)),
-                    Node {
-                        margin: UiRect::bottom(Val::Px(4.0)),
-                        ..default()
-                    },
-                    Visibility::Hidden,
-                ));
+                // Candidate info panel (below control row)
+                center
+                    .spawn((
+                        CandidateLabel,
+                        Node {
+                            padding: UiRect::axes(Val::Px(14.0), Val::Px(8.0)),
+                            margin: UiRect::bottom(Val::Px(6.0)),
+                            border_radius: BorderRadius::all(Val::Px(6.0)),
+                            flex_direction: FlexDirection::Column,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgba(0.12, 0.12, 0.16, 0.85)),
+                        Visibility::Hidden,
+                    ))
+                    .with_child((
+                        Text::new(""),
+                        TextFont {
+                            font_size: 16.0,
+                            ..default()
+                        },
+                        TextColor(Color::srgb(0.95, 0.85, 0.45)),
+                    ));
 
                 // Status text (promote feedback)
                 center.spawn((
@@ -862,6 +943,7 @@ fn spawn_sidebar_button<M: Component>(
 // ---------------------------------------------------------------------------
 
 fn handle_input(
+    mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<ViewerState>,
     candidates: Res<CandidateSprites>,
@@ -941,7 +1023,8 @@ fn handle_input(
                             *vis = Visibility::Inherited;
                             status_timer.0.reset();
                         }
-                        state.compare_mode = false;
+                        // Trigger green flash on banner
+                        commands.insert_resource(PromoteFlash(Timer::from_seconds(1.0, TimerMode::Once)));
                     }
                 }
             }
@@ -1113,7 +1196,7 @@ fn swap_display(
         (With<ViewerBuilding>, Without<ViewerUnit>, Without<CompareUnit>),
     >,
     mut compare_query: Query<
-        (&mut Sprite, &mut Transform, &mut Visibility, &mut CompareAnimTimer),
+        (&mut Sprite, &mut Transform, &mut Visibility),
         (With<CompareUnit>, Without<ViewerUnit>, Without<ViewerBuilding>),
     >,
 ) {
@@ -1142,7 +1225,7 @@ fn swap_display(
         return;
     };
 
-    let Ok((mut cmp_sprite, mut cmp_transform, mut cmp_vis, mut cmp_timer)) =
+    let Ok((mut cmp_sprite, mut cmp_transform, mut cmp_vis)) =
         compare_query.single_mut()
     else {
         return;
@@ -1184,22 +1267,10 @@ fn swap_display(
                     cmp_sprite.color = tint;
                     cmp_transform.scale = Vec3::splat(scale);
 
-                    // For walk/attack sheets (512x128), the compare anim system
-                    // auto-detects and sets up TextureAtlas from image dimensions
-                    if state.phase != AnimPhase::Idle {
-                        cmp_sprite.texture_atlas = None;
-
-                        // Set timer rate based on phase
-                        let rate = match state.phase {
-                            AnimPhase::Walk => 0.15,
-                            AnimPhase::Attack => 0.1,
-                            AnimPhase::Idle => 0.15,
-                        };
-                        cmp_timer.set_duration(std::time::Duration::from_secs_f32(rate));
-                        cmp_timer.reset();
-                    } else {
-                        cmp_sprite.texture_atlas = None;
-                    }
+                    // For walk/attack sheets (512x128), the cycle_compare_anim system
+                    // auto-detects and sets up TextureAtlas from image dimensions.
+                    // Animation is synced from main sprite's atlas index.
+                    cmp_sprite.texture_atlas = None;
 
                     *cmp_vis = Visibility::Inherited;
                 } else {
@@ -1313,18 +1384,42 @@ fn drive_anim_phase(
 
 fn reset_viewer_transform(
     state: Res<ViewerState>,
-    mut query: Query<&mut Transform, (With<ViewerUnit>, Without<CompareUnit>)>,
-    mut compare_query: Query<&mut Transform, (With<CompareUnit>, Without<ViewerUnit>)>,
+    mut query: Query<
+        &mut Transform,
+        (With<ViewerUnit>, Without<CompareUnit>, Without<CurrentLabel>, Without<CandidateWorldLabel>),
+    >,
+    mut compare_query: Query<
+        &mut Transform,
+        (With<CompareUnit>, Without<ViewerUnit>, Without<CurrentLabel>, Without<CandidateWorldLabel>),
+    >,
+    mut current_label_q: Query<
+        (&mut Transform, &mut Visibility),
+        (With<CurrentLabel>, Without<ViewerUnit>, Without<CompareUnit>, Without<CandidateWorldLabel>),
+    >,
+    mut candidate_label_q: Query<
+        (&mut Transform, &mut Visibility),
+        (With<CandidateWorldLabel>, Without<ViewerUnit>, Without<CompareUnit>, Without<CurrentLabel>),
+    >,
 ) {
     let Ok(mut transform) = query.single_mut() else {
         return;
     };
-    let x_offset = if state.compare_mode { -80.0 } else { 0.0 };
+    let x_offset = if state.compare_mode { -COMPARE_OFFSET_X } else { 0.0 };
     transform.translation = Vec3::new(x_offset, 0.0, 10.0);
     transform.rotation = Quat::IDENTITY;
 
     if let Ok(mut cmp_transform) = compare_query.single_mut() {
-        cmp_transform.translation = Vec3::new(if state.compare_mode { 80.0 } else { 0.0 }, 0.0, 10.0);
+        cmp_transform.translation = Vec3::new(if state.compare_mode { COMPARE_OFFSET_X } else { 0.0 }, 0.0, 10.0);
+    }
+
+    // Position and toggle world-space labels
+    if let Ok((mut label_t, mut label_vis)) = current_label_q.single_mut() {
+        label_t.translation = Vec3::new(x_offset, 28.0, 20.0);
+        *label_vis = if state.compare_mode { Visibility::Inherited } else { Visibility::Hidden };
+    }
+    if let Ok((mut label_t, mut label_vis)) = candidate_label_q.single_mut() {
+        label_t.translation = Vec3::new(if state.compare_mode { COMPARE_OFFSET_X } else { 0.0 }, 28.0, 20.0);
+        *label_vis = if state.compare_mode { Visibility::Inherited } else { Visibility::Hidden };
     }
 }
 
@@ -1471,44 +1566,96 @@ fn update_anim_button_labels(
 fn update_compare_ui(
     state: Res<ViewerState>,
     candidates: Res<CandidateSprites>,
-    mut compare_btn_q: Query<(&mut BackgroundColor, &mut Visibility), (With<CompareButton>, Without<CandidateLabel>)>,
-    mut label_q: Query<(&mut Text, &mut Visibility), (With<CandidateLabel>, Without<CompareButton>)>,
+    mut compare_btn_q: Query<
+        (&mut BackgroundColor, &Children),
+        (With<CompareButton>, Without<CandidateLabel>, Without<CompareBanner>),
+    >,
+    mut label_q: Query<(&mut Visibility, &Children), (With<CandidateLabel>, Without<CompareButton>)>,
+    mut world_label_q: Query<&mut Text2d, With<CandidateWorldLabel>>,
+    mut banner_q: Query<
+        (&mut Visibility, &mut BackgroundColor, &Children),
+        (With<CompareBanner>, Without<CompareButton>, Without<CandidateLabel>),
+    >,
+    mut texts: Query<&mut Text, (Without<CandidateLabel>, Without<CompareButton>)>,
+    promote_flash: Option<Res<PromoteFlash>>,
 ) {
     if !state.is_changed() && !candidates.is_changed() {
         return;
     }
 
-    // Show/hide compare button based on whether candidates exist
     let has_candidates = state.mode == ViewerMode::Unit
         && candidates
             .entries
             .contains_key(&(state.unit_index, state.phase));
 
-    if let Ok((mut bg, mut vis)) = compare_btn_q.single_mut() {
-        *vis = if has_candidates {
-            Visibility::Inherited
-        } else {
-            Visibility::Hidden
-        };
-        *bg = if state.compare_mode {
+    // Compare button — always visible, disabled style when no candidates
+    if let Ok((mut bg, children)) = compare_btn_q.single_mut() {
+        *bg = if !has_candidates {
+            BackgroundColor(BTN_DISABLED)
+        } else if state.compare_mode {
             BackgroundColor(BTN_SELECTED)
         } else {
             BackgroundColor(BTN_NORMAL)
         };
+        // Update button text
+        for child in children.iter() {
+            if let Ok(mut text) = texts.get_mut(child) {
+                **text = if !has_candidates {
+                    "Compare (C) (no candidates)".to_string()
+                } else {
+                    "Compare (C)".to_string()
+                };
+            }
+        }
     }
 
-    // Update candidate label
-    if let Ok((mut text, mut vis)) = label_q.single_mut() {
+    // Candidate info panel
+    if let Ok((mut vis, children)) = label_q.single_mut() {
         if state.compare_mode && has_candidates {
             let key = (state.unit_index, state.phase);
             if let Some(list) = candidates.entries.get(&key) {
                 let idx = state.candidate_index.min(list.len().saturating_sub(1));
                 let (label, _) = &list[idx];
-                **text = format!("{} ({}/{})\u{2003}[P] Promote", label, idx + 1, list.len());
+                for child in children.iter() {
+                    if let Ok(mut text) = texts.get_mut(child) {
+                        **text = format!("{}\n{} of {}", label, idx + 1, list.len());
+                    }
+                }
                 *vis = Visibility::Inherited;
             }
         } else {
             *vis = Visibility::Hidden;
+        }
+    }
+
+    // World-space candidate label
+    if let Ok(mut world_text) = world_label_q.single_mut() {
+        if state.compare_mode && has_candidates {
+            let key = (state.unit_index, state.phase);
+            if let Some(list) = candidates.entries.get(&key) {
+                let idx = state.candidate_index.min(list.len().saturating_sub(1));
+                let (label, _) = &list[idx];
+                **world_text = format!("CANDIDATE ({})", label);
+            }
+        }
+    }
+
+    // Compare mode banner
+    if let Ok((mut banner_vis, mut banner_bg, banner_children)) = banner_q.single_mut() {
+        // Don't override green flash color
+        let is_flashing = promote_flash.as_ref().is_some_and(|pf| !pf.0.is_finished());
+        if state.compare_mode {
+            *banner_vis = Visibility::Inherited;
+            if !is_flashing {
+                *banner_bg = BackgroundColor(BANNER_AMBER);
+                for child in banner_children.iter() {
+                    if let Ok(mut text) = texts.get_mut(child) {
+                        **text = BANNER_TEXT.to_string();
+                    }
+                }
+            }
+        } else {
+            *banner_vis = Visibility::Hidden;
         }
     }
 }
@@ -1632,24 +1779,25 @@ fn style_scrollbar_thumb(
 // ---------------------------------------------------------------------------
 
 fn cycle_compare_anim(
-    time: Res<Time>,
     state: Res<ViewerState>,
     images: Res<Assets<Image>>,
     mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    mut query: Query<(&mut Sprite, &mut CompareAnimTimer), With<CompareUnit>>,
+    main_query: Query<&Sprite, (With<ViewerUnit>, Without<CompareUnit>)>,
+    mut compare_query: Query<&mut Sprite, (With<CompareUnit>, Without<ViewerUnit>)>,
 ) {
     if !state.compare_mode || state.phase == AnimPhase::Idle {
         return;
     }
-    let Ok((mut sprite, mut timer)) = query.single_mut() else {
+    let Ok(main_sprite) = main_query.single() else {
         return;
     };
-    timer.tick(time.delta());
+    let Ok(mut cmp_sprite) = compare_query.single_mut() else {
+        return;
+    };
 
     // Ensure atlas is set up for sheet sprites
-    if sprite.texture_atlas.is_none() {
-        // Check if the image is a sheet (width > height means multi-frame)
-        if let Some(img) = images.get(&sprite.image) {
+    if cmp_sprite.texture_atlas.is_none() {
+        if let Some(img) = images.get(&cmp_sprite.image) {
             let w = img.width();
             let h = img.height();
             if w > h {
@@ -1657,7 +1805,7 @@ fn cycle_compare_anim(
                 let layout =
                     TextureAtlasLayout::from_grid(UVec2::new(h, h), frames, 1, None, None);
                 let layout_handle = atlas_layouts.add(layout);
-                sprite.texture_atlas = Some(TextureAtlas {
+                cmp_sprite.texture_atlas = Some(TextureAtlas {
                     layout: layout_handle,
                     index: 0,
                 });
@@ -1665,13 +1813,14 @@ fn cycle_compare_anim(
         }
     }
 
-    if timer.just_finished() {
-        if let Some(ref mut atlas) = sprite.texture_atlas {
-            if let Some(layout) = atlas_layouts.get(&atlas.layout) {
-                let frame_count = layout.textures.len();
-                atlas.index = (atlas.index + 1) % frame_count;
-            }
-        }
+    // Mirror frame index from main sprite
+    let main_index = main_sprite
+        .texture_atlas
+        .as_ref()
+        .map(|a| a.index)
+        .unwrap_or(0);
+    if let Some(ref mut atlas) = cmp_sprite.texture_atlas {
+        atlas.index = main_index;
     }
 }
 
@@ -1688,6 +1837,44 @@ fn hide_status_text(
     if timer.0.just_finished() {
         if let Ok(mut vis) = query.single_mut() {
             *vis = Visibility::Hidden;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Promote flash — green banner feedback
+// ---------------------------------------------------------------------------
+
+fn update_promote_flash(
+    time: Res<Time>,
+    promote_flash: Option<ResMut<PromoteFlash>>,
+    mut banner_q: Query<(&mut BackgroundColor, &Children), With<CompareBanner>>,
+    mut texts: Query<&mut Text>,
+) {
+    let Some(mut flash) = promote_flash else {
+        return;
+    };
+    if flash.0.is_finished() {
+        return;
+    }
+    flash.0.tick(time.delta());
+
+    if let Ok((mut bg, children)) = banner_q.single_mut() {
+        if !flash.0.is_finished() {
+            *bg = BackgroundColor(BANNER_GREEN);
+            for child in children.iter() {
+                if let Ok(mut text) = texts.get_mut(child) {
+                    **text = "PROMOTED! \u{2713}".to_string();
+                }
+            }
+        } else {
+            // Revert to amber — update_compare_ui will handle text on next change
+            *bg = BackgroundColor(BANNER_AMBER);
+            for child in children.iter() {
+                if let Ok(mut text) = texts.get_mut(child) {
+                    **text = BANNER_TEXT.to_string();
+                }
+            }
         }
     }
 }
@@ -1752,7 +1939,7 @@ fn main() {
                 tweens::apply_unit_tweens.after(animation::advance_animation),
                 // Building + compare animation
                 advance_building_viewer_anim.after(swap_display),
-                cycle_compare_anim.after(swap_display),
+                cycle_compare_anim.after(animation::advance_animation),
                 // Collapse & scrollbar
                 handle_faction_collapse.after(handle_input),
                 update_faction_visibility.after(handle_faction_collapse),
@@ -1767,6 +1954,7 @@ fn main() {
                 update_anim_button_colors.after(swap_display),
                 update_anim_button_labels.after(swap_display),
                 update_compare_ui.after(swap_display),
+                update_promote_flash.after(update_compare_ui),
                 hide_status_text,
             ),
         )
