@@ -16,14 +16,42 @@ from regrid_sheet import regrid_sheet, find_sprite_blobs, merge_nearby_blobs
 
 
 def process_raw_walk(input_path: str, output_path: str) -> bool:
+    from image_utils import remove_background
+
     img = Image.open(input_path).convert("RGBA")
+    w, h = img.size
     arr = np.array(img)
     alpha = arr[:, :, 3]
 
-    # Zero out faint pixels (anti-aliasing artifacts, subtle background)
+    # If image is mostly opaque, use rembg for background removal
+    if alpha.min() > 200:
+        print("  Removing background with rembg...")
+        img = remove_background(img)
+        arr = np.array(img)
+        alpha = arr[:, :, 3]
+
+    # Zero out faint pixels
     mask = alpha < 50
     arr[mask] = [0, 0, 0, 0]
     clean = Image.fromarray(arr)
+    alpha = arr[:, :, 3]
+
+    # For 2-row layouts (e.g. 1536x1024), take only the top half
+    if h > w * 0.6:
+        # Likely a 2-row layout — find the row with the most content in the top half
+        top_half_alpha = alpha[:h // 2, :]
+        bot_half_alpha = alpha[h // 2:, :]
+        top_content = (top_half_alpha > 50).sum()
+        bot_content = (bot_half_alpha > 50).sum()
+        if top_content > 0 and bot_content > 0:
+            # Both halves have content — take the half with more
+            if top_content >= bot_content:
+                clean = clean.crop((0, 0, w, h // 2))
+            else:
+                clean = clean.crop((0, h // 2, w, h))
+            arr = np.array(clean)
+            alpha = arr[:, :, 3]
+            print(f"  Took {'top' if top_content >= bot_content else 'bottom'} half ({top_content} vs {bot_content} px)")
 
     # Find content bounding box via alpha threshold
     content_rows = np.where((alpha > 50).sum(axis=1) > 10)[0]
@@ -35,12 +63,12 @@ def process_raw_walk(input_path: str, output_path: str) -> bool:
 
     bbox = (content_cols[0], content_rows[0], content_cols[-1] + 1, content_rows[-1] + 1)
     cropped = clean.crop(bbox)
-    w, h = cropped.size
-    print(f"  Cropped: {w}x{h}, aspect: {w/h:.2f}")
+    cw, ch = cropped.size
+    print(f"  Cropped: {cw}x{ch}, aspect: {cw/ch:.2f}")
 
     # Scale to height=128
     new_h = 128
-    new_w = int(w * new_h / h)
+    new_w = int(cw * new_h / ch)
     resized = cropped.resize((new_w, new_h), Image.LANCZOS)
 
     # Place on canvas wide enough for regrid

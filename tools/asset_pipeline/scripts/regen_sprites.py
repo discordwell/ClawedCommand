@@ -146,16 +146,23 @@ def applescript_js(js_code: str) -> str:
     tmp = Path("/tmp/chrome_js.js")
     tmp.write_text(js_code)
     w, t = _target_tab
-    result = subprocess.run(["osascript", "-e", f'''
-    tell application "Google Chrome"
-        tell tab {t} of window {w}
-            execute javascript (read POSIX file "/tmp/chrome_js.js" as «class utf8»)
-        end tell
-    end tell
-    '''], capture_output=True, text=True, timeout=30)
-    if result.returncode != 0:
-        return f"ERROR: {result.stderr.strip()[:100]}"
-    return result.stdout.strip()
+    for attempt in range(3):
+        try:
+            result = subprocess.run(["osascript", "-e", f'''
+            tell application "Google Chrome"
+                tell tab {t} of window {w}
+                    execute javascript (read POSIX file "/tmp/chrome_js.js" as «class utf8»)
+                end tell
+            end tell
+            '''], capture_output=True, text=True, timeout=60)
+            if result.returncode != 0:
+                return f"ERROR: {result.stderr.strip()[:100]}"
+            return result.stdout.strip()
+        except subprocess.TimeoutExpired:
+            if attempt < 2:
+                time.sleep(2)
+                continue
+            return "ERROR: AppleScript timeout after 3 attempts"
 
 
 def find_and_focus_chatgpt_tab():
@@ -179,13 +186,41 @@ def find_and_focus_chatgpt_tab():
         end repeat
         return "not_found"
     end tell
-    '''], capture_output=True, text=True, timeout=10)
+    '''], capture_output=True, text=True, timeout=60)
     loc = result.stdout.strip()
     if "," in loc:
         parts = loc.split(",")
         # After `set index of window w to 1`, window is now at index 1
         _target_tab = (1, int(parts[1]))
     return loc
+
+
+def disable_pro_mode():
+    """Click the X on the Pro badge to switch to Auto mode (faster image gen)."""
+    r = applescript_js('''
+(function() {
+    // Look for the Pro badge X button inside the input area
+    var proBadge = document.querySelector('button[class*="pro"], button[aria-label*="Pro"]');
+    if (!proBadge) {
+        // Try finding by text content
+        var buttons = document.querySelectorAll('button');
+        for (var b of buttons) {
+            if (b.innerText.trim() === 'Pro' || b.innerText.includes('Pro')) {
+                // Check if it has an X/close icon (SVG sibling or child)
+                var closeSvg = b.querySelector('svg') || b.previousElementSibling;
+                if (closeSvg) { b.click(); return "clicked_pro_badge"; }
+            }
+        }
+        return "no_pro_badge";
+    }
+    proBadge.click();
+    return "clicked_pro_badge";
+})()
+''')
+    if "clicked" in r:
+        time.sleep(1)
+        print("    Switched from Pro to Auto mode")
+    return r
 
 
 def open_new_chat():
@@ -195,6 +230,8 @@ def open_new_chat():
         time.sleep(1)
         r = applescript_js('document.querySelector("#prompt-textarea") ? "ready" : "loading"')
         if "ready" in r:
+            # Switch to Auto if Pro is active
+            disable_pro_mode()
             return True
     return False
 
@@ -326,7 +363,7 @@ def upload_reference_image(image_path: Path) -> bool:
     return False
 
 
-def wait_for_image(timeout=120) -> bool:
+def wait_for_image(timeout=300) -> bool:
     """Wait for ChatGPT to generate a fully rendered, stable image."""
     return wait_for_stable_image(applescript_js, timeout=timeout, settle_time=8)
 
@@ -629,6 +666,7 @@ def main():
     parser.add_argument("--phase", "-p", type=int, choices=[1, 2], help="Phase 1 = idles, Phase 2 = walk/attack sheets")
     parser.add_argument("--all", action="store_true", help="Regenerate all broken sprites (Phase 1 then 2)")
     parser.add_argument("--dry-run", action="store_true", help="Print prompts without generating")
+    parser.add_argument("--tab", help="Skip tab scan, use 'window,tab' directly (e.g. '1,4')")
     args = parser.parse_args()
 
     # Build sprite list
@@ -675,11 +713,18 @@ def main():
         return
 
     # Live mode: find ChatGPT tab and generate
-    loc = find_and_focus_chatgpt_tab()
-    if "not_found" in loc:
-        print("Error: No ChatGPT tab found. Open chatgpt.com in Chrome first.")
-        sys.exit(1)
-    print(f"ChatGPT tab: {loc}")
+    if args.tab:
+        global _target_tab
+        parts = args.tab.split(",")
+        _target_tab = (int(parts[0]), int(parts[1]))
+        loc = args.tab
+        print(f"ChatGPT tab (manual): {loc}")
+    else:
+        loc = find_and_focus_chatgpt_tab()
+        if "not_found" in loc:
+            print("Error: No ChatGPT tab found. Open chatgpt.com in Chrome first.")
+            sys.exit(1)
+        print(f"ChatGPT tab: {loc}")
 
     # Delete existing bad sprites so they don't interfere
     for slug in target_sprites:
