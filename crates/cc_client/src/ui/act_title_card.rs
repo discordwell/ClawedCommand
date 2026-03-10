@@ -94,11 +94,19 @@ pub fn update_act_title_card(
     >,
     mut title_q: Query<
         (&mut Text, &mut TextColor, &mut FadeIn),
-        (With<ActTitleText>, Without<ActTitleRoot>, Without<ActTitlePortrait>),
+        (
+            With<ActTitleText>,
+            Without<ActTitleRoot>,
+            Without<ActTitlePortrait>,
+        ),
     >,
     mut portrait_q: Query<
         &mut ImageNode,
-        (With<ActTitlePortrait>, Without<ActTitleRoot>, Without<ActTitleText>),
+        (
+            With<ActTitlePortrait>,
+            Without<ActTitleRoot>,
+            Without<ActTitleText>,
+        ),
     >,
     asset_server: Res<AssetServer>,
     mut portraits: ResMut<PortraitHandles>,
@@ -128,7 +136,12 @@ pub fn update_act_title_card(
     // Tint background with faction color
     for (_, mut bg) in root_vis.iter_mut() {
         let srgba = accent.to_srgba();
-        bg.0 = Color::srgba(srgba.red * 0.15, srgba.green * 0.15, srgba.blue * 0.15, 0.95);
+        bg.0 = Color::srgba(
+            srgba.red * 0.15,
+            srgba.green * 0.15,
+            srgba.blue * 0.15,
+            0.95,
+        );
     }
 
     // Set title text

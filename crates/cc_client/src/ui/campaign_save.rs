@@ -97,7 +97,10 @@ pub fn load_campaign_save(mut campaign: ResMut<CampaignState>) {
         Ok(data) => {
             campaign.completed_missions = data.completed_missions;
             campaign.persistent = data.persistent;
-            info!("Campaign save loaded ({} missions completed)", campaign.completed_missions.len());
+            info!(
+                "Campaign save loaded ({} missions completed)",
+                campaign.completed_missions.len()
+            );
         }
         Err(e) => {
             warn!("Failed to load campaign save: {e}");

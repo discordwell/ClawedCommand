@@ -214,4 +214,3 @@ pub fn update_campaign_menu(
         }
     }
 }
-

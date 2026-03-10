@@ -26,16 +26,18 @@ pub fn upgrade_category(upgrade: UpgradeType) -> UpgradeCategory {
     use UpgradeType::*;
     match upgrade {
         // Damage upgrades — one per faction
-        SharperClaws | SharperTeeth | SharperFangs | SharperTalons | RustyFangs
-        | SlickerMucus => UpgradeCategory::Damage,
+        SharperClaws | SharperTeeth | SharperFangs | SharperTalons | RustyFangs | SlickerMucus => {
+            UpgradeCategory::Damage
+        }
 
         // HP upgrades — one per faction
         ThickerFur | ThickerHide | ReinforcedHide | HardenedPlumage | ScrapPlating
         | TougherHide => UpgradeCategory::Health,
 
         // Speed upgrades — one per faction
-        NimblePaws | QuickPaws | SteadyStance | SwiftWings | TrashRunning
-        | AmphibianAgility => UpgradeCategory::Speed,
+        NimblePaws | QuickPaws | SteadyStance | SwiftWings | TrashRunning | AmphibianAgility => {
+            UpgradeCategory::Speed
+        }
 
         // Everything else is a gate (unlocks units, no stat bonus)
         _ => UpgradeCategory::Gate,

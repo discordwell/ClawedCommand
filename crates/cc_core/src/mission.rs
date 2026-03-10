@@ -1681,9 +1681,7 @@ mod tests {
             mission.mutators[3],
             crate::mutator::MissionMutator::NoAiControl
         ));
-        assert!(
-            matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act3_m9_jinx")
-        );
+        assert!(matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act3_m9_jinx"));
         mission
             .validate()
             .expect("Mission validation failed for act2_m8_oath_breaker");

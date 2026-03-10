@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use cc_core::components::{GridCell, Owner, UnitType};
 use cc_core::coords::{GridPos, TILE_HALF_HEIGHT, TILE_HALF_WIDTH, WorldPos, world_to_screen};
 use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
+use cc_sim::campaign::mutator_state::FogState;
 use cc_sim::resources::MapResource;
 
 /// Local player ID for fog-of-war calculations.
@@ -141,6 +142,7 @@ pub fn spawn_fog_overlays(
 /// Recompute fog visibility based on player unit positions.
 pub fn update_fog_visibility(
     mut fog: ResMut<FogOfWar>,
+    fog_state: Option<Res<FogState>>,
     units: Query<(&GridCell, &Owner), With<UnitType>>,
 ) {
     if !fog.enabled {
@@ -156,7 +158,17 @@ pub fn update_fog_visibility(
     // Clear visible state
     fog.visible.fill(false);
 
-    let range = fog.vision_range as i32;
+    // Apply DenseFog vision reduction (bypassed when fog is periodically cleared)
+    let effective_range = if let Some(fs) = &fog_state {
+        if fs.currently_clear {
+            fog.vision_range
+        } else {
+            fog.vision_range.saturating_sub(fs.vision_reduction)
+        }
+    } else {
+        fog.vision_range
+    };
+    let range = effective_range as i32;
 
     // Mark tiles visible around each player unit
     for (grid_cell, owner) in units.iter() {

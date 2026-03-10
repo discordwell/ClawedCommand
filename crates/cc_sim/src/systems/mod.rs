@@ -8,6 +8,7 @@ pub mod command_system;
 pub mod damage;
 pub mod grid_sync_system;
 pub mod movement_system;
+pub mod patrol_system;
 pub mod production_system;
 pub mod projectile_system;
 pub mod research_system;
@@ -68,6 +69,7 @@ impl Plugin for SimSystemsPlugin {
                     tower_combat_system::tower_combat_system,
                     projectile_system::projectile_system,
                     movement_system::movement_system,
+                    patrol_system::patrol_system,
                     stationary_timer_system::stationary_timer_system,
                     builder_system::builder_system,
                     grid_sync_system::grid_sync_system,

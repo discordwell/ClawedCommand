@@ -26,6 +26,7 @@ pub fn mutator_init(
     // Reset to defaults
     *restrictions = ControlRestrictions::default();
     *fog = FogState::default();
+    *mutator_state = MutatorState::default();
 
     let mut active = vec![true; mission.mutators.len()];
 
@@ -73,6 +74,13 @@ pub fn mutator_init(
                 fog.vision_reduction = *vision_reduction;
                 fog.currently_clear = false;
             }
+            MissionMutator::DamageMultiplier {
+                player_multiplier,
+                enemy_multiplier,
+            } => {
+                mutator_state.player_damage_multiplier = *player_multiplier;
+                mutator_state.enemy_damage_multiplier = *enemy_multiplier;
+            }
             MissionMutator::Flooding {
                 initial_water_level,
                 ..
@@ -84,11 +92,6 @@ pub fn mutator_init(
     }
 
     mutator_state.active = active;
-    mutator_state.lava_advance_count = 0;
-    mutator_state.toxic_advance_count = 0;
-    mutator_state.wind_active = false;
-    mutator_state.fog_cleared = false;
-    mutator_state.time_warning_fired = false;
 }
 
 /// Set dynamic flags on a tile by grid coordinates, bounds-checked.

@@ -139,8 +139,7 @@ impl Plugin for RenderPlugin {
                 Update,
                 (
                     buildings::init_building_anim.after(buildings::spawn_building_visuals),
-                    buildings::transition_building_to_ambient
-                        .after(buildings::init_building_anim),
+                    buildings::transition_building_to_ambient.after(buildings::init_building_anim),
                     buildings::advance_building_construction_anim
                         .after(buildings::transition_building_to_ambient),
                     buildings::advance_building_ambient_anim

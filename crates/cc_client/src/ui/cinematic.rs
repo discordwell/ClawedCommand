@@ -29,7 +29,11 @@ pub struct SlideIn {
 /// System: animate FadeIn components by interpolating BackgroundColor alpha.
 pub fn animate_fade_in(
     time: Res<Time>,
-    mut query: Query<(&mut FadeIn, Option<&mut BackgroundColor>, Option<&mut TextColor>)>,
+    mut query: Query<(
+        &mut FadeIn,
+        Option<&mut BackgroundColor>,
+        Option<&mut TextColor>,
+    )>,
 ) {
     for (mut fade, bg, text_color) in query.iter_mut() {
         fade.timer.tick(time.delta());
@@ -60,12 +64,12 @@ pub fn animate_slide_in(time: Res<Time>, mut query: Query<(&mut SlideIn, &mut No
 /// Returns the faction accent color for a given act number.
 pub fn faction_accent_color(act: u32) -> Color {
     match act {
-        0 => Color::srgb(0.0, 0.8, 0.7),       // Neutral teal
-        1 => Color::srgb(1.0, 0.7, 0.2),        // catGPT amber
-        2 => Color::srgb(0.3, 0.7, 0.3),        // Seekers green
-        3 => Color::srgb(0.6, 0.3, 0.8),        // Murder purple
-        4 => Color::srgb(0.9, 0.6, 0.2),        // LLAMA orange
-        5 => Color::srgb(0.2, 0.7, 0.7),        // Croak teal-green
+        0 => Color::srgb(0.0, 0.8, 0.7), // Neutral teal
+        1 => Color::srgb(1.0, 0.7, 0.2), // catGPT amber
+        2 => Color::srgb(0.3, 0.7, 0.3), // Seekers green
+        3 => Color::srgb(0.6, 0.3, 0.8), // Murder purple
+        4 => Color::srgb(0.9, 0.6, 0.2), // LLAMA orange
+        5 => Color::srgb(0.2, 0.7, 0.7), // Croak teal-green
         _ => Color::srgb(0.5, 0.5, 0.5),
     }
 }

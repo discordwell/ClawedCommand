@@ -648,7 +648,10 @@ fn bug_fix_miasma_trail_gives_damage_buff() {
 #[test]
 fn bug_fix_death_omen_has_range() {
     let def = cc_core::abilities::ability_def(cc_core::abilities::AbilityId::DeathOmen);
-    assert!(def.range > Fixed::ZERO, "DeathOmen should have non-zero range");
+    assert!(
+        def.range > Fixed::ZERO,
+        "DeathOmen should have non-zero range"
+    );
 }
 
 // ---------------------------------------------------------------------------

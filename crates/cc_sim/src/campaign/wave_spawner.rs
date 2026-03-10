@@ -266,9 +266,28 @@ fn spawn_wave_entities(
             WaveAiBehavior::Idle => {
                 // No additional components needed
             }
-            WaveAiBehavior::Patrol(_waypoints) => {
-                // Patrol behavior not yet implemented — treat as hold for now
-                commands.entity(entity_id).insert(HoldPosition);
+            WaveAiBehavior::Patrol(waypoints) => {
+                if !waypoints.is_empty() {
+                    commands.entity(entity_id).insert(PatrolWaypoints {
+                        waypoints: waypoints.clone(),
+                        current_index: 0,
+                    });
+                    // Pathfind to first waypoint
+                    let faction =
+                        FactionId::from_u8(unit_spawn.player_id).unwrap_or(FactionId::CatGPT);
+                    let start = unit_spawn.position;
+                    if let Some(path_wps) =
+                        pathfinding::find_path(map, start, waypoints[0], faction)
+                    {
+                        let first = path_wps[0];
+                        commands.entity(entity_id).insert(Path {
+                            waypoints: VecDeque::from(path_wps),
+                        });
+                        commands.entity(entity_id).insert(MoveTarget {
+                            target: WorldPos::from_grid(first),
+                        });
+                    }
+                }
             }
         }
     }

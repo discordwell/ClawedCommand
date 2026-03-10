@@ -714,6 +714,14 @@ pub struct AttackMoveTarget {
     pub target: GridPos,
 }
 
+/// Unit patrols between waypoints in a loop, returning to patrol after combat.
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "bevy", derive(bevy_ecs::component::Component))]
+pub struct PatrolWaypoints {
+    pub waypoints: Vec<GridPos>,
+    pub current_index: usize,
+}
+
 // ---------------------------------------------------------------------------
 // Builder components
 // ---------------------------------------------------------------------------

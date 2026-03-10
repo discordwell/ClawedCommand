@@ -21,8 +21,7 @@ use cc_sim::systems::{
     movement_system::movement_system, production_system::production_system,
     projectile_system::projectile_system, research_system::research_system,
     resource_system::gathering_system, stat_modifier_system::stat_modifier_system,
-    stationary_timer_system::stationary_timer_system,
-    status_effect_system::status_effect_system,
+    stationary_timer_system::stationary_timer_system, status_effect_system::status_effect_system,
     target_acquisition_system::target_acquisition_system, tick_system::tick_system,
     tower_combat_system::tower_combat_system, victory_system::victory_system,
 };
@@ -291,7 +290,10 @@ fn hootseer_death_omen_double_vs_stationary() {
     give_gpu(&mut world, 0, 50);
 
     // Make target stationary for 30+ ticks
-    world.get_mut::<StationaryTimer>(target).unwrap().ticks_stationary = 35;
+    world
+        .get_mut::<StationaryTimer>(target)
+        .unwrap()
+        .ticks_stationary = 35;
 
     let hp_before = world.get::<Health>(target).unwrap().current;
 
@@ -328,10 +330,7 @@ fn grease_monkey_junk_mortar_aoe_splash() {
     let max2 = world.get::<Health>(target2).unwrap().max;
 
     // Primary target should take damage
-    assert!(
-        hp1 < max1,
-        "JunkMortar primary target should take damage"
-    );
+    assert!(hp1 < max1, "JunkMortar primary target should take damage");
     // Splash target (1 tile away, within 2-tile splash radius) should also take damage
     assert!(
         hp2 < max2,
@@ -452,7 +451,10 @@ fn anti_static_threshold_30_ticks() {
     let target = spawn_unit(&mut world, GridPos::new(12, 10), 1, UnitKind::Chonk);
 
     // Set target stationary timer just below threshold
-    world.get_mut::<StationaryTimer>(target).unwrap().ticks_stationary = 29;
+    world
+        .get_mut::<StationaryTimer>(target)
+        .unwrap()
+        .ticks_stationary = 29;
 
     // Entrench the Cragback
     issue_ability(&mut world, cragback, 1);

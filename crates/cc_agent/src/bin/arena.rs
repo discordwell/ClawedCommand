@@ -61,6 +61,18 @@ fn main() {
         /// Dump GameStateSnapshot as JSON every N ticks (0 = disabled)
         #[arg(long, default_value_t = 0)]
         snapshot_interval: u64,
+
+        /// Faction for player 0 (catGPT, "The Clawed", "Seekers of the Deep", "The Murder", LLAMA, Croak)
+        #[arg(long, default_value = "catGPT")]
+        p0_faction: String,
+
+        /// Faction for player 1
+        #[arg(long, default_value = "catGPT")]
+        p1_faction: String,
+
+        /// Auto-populate extra_spawns with a standard army for each player's faction
+        #[arg(long)]
+        standard_army: bool,
     }
 
     fn parse_profile(name: &str) -> AiPersonalityProfile {
@@ -96,6 +108,19 @@ fn main() {
 
     let map_size = parse_map_size(&args.map_size);
 
+    let p0_faction = cc_core::components::Faction::from_faction_str(&args.p0_faction)
+        .unwrap_or_else(|| {
+            eprintln!("Error: unknown faction '{}'", args.p0_faction);
+            eprintln!("Valid: catGPT, The Clawed, Seekers of the Deep, The Murder, LLAMA, Croak");
+            std::process::exit(1);
+        });
+    let p1_faction = cc_core::components::Faction::from_faction_str(&args.p1_faction)
+        .unwrap_or_else(|| {
+            eprintln!("Error: unknown faction '{}'", args.p1_faction);
+            eprintln!("Valid: catGPT, The Clawed, Seekers of the Deep, The Murder, LLAMA, Croak");
+            std::process::exit(1);
+        });
+
     let shared = args.shared_scripts.map(|p| vec![ScriptSource::File(p)]);
 
     let p0_scripts = if let Some(src) = args.p0_inline {
@@ -123,6 +148,11 @@ fn main() {
     println!("=== Arena Match Runner ===");
     println!("Seeds: {:?}", seeds);
     println!(
+        "P0 faction: {} | P1 faction: {}",
+        p0_faction.as_str(),
+        p1_faction.as_str()
+    );
+    println!(
         "P0 scripts: {}",
         p0_scripts
             .as_ref()
@@ -136,11 +166,27 @@ fn main() {
             .map(|s| format!("{:?}", s))
             .unwrap_or_else(|| "none (FSM only)".into())
     );
+    if args.standard_army {
+        println!("Standard army: enabled");
+    }
     println!();
 
     let mut all_results = Vec::new();
 
     for &seed in &seeds {
+        let extra_spawns = if args.standard_army {
+            let mut spawns = Vec::new();
+            for (kind, count) in cc_agent::arena::standard_army(p0_faction) {
+                spawns.push((0, kind, count));
+            }
+            for (kind, count) in cc_agent::arena::standard_army(p1_faction) {
+                spawns.push((1, kind, count));
+            }
+            spawns
+        } else {
+            Vec::new()
+        };
+
         let config = ArenaConfig {
             seed,
             map_size,
@@ -155,18 +201,18 @@ fn main() {
                     player_id: 0,
                     difficulty: AiDifficulty::Medium,
                     profile: parse_profile(&args.p0_profile),
-                    faction: cc_core::components::Faction::CatGpt,
+                    faction: p0_faction,
                 },
                 BotConfig {
                     player_id: 1,
                     difficulty: AiDifficulty::Medium,
                     profile: parse_profile(&args.p1_profile),
-                    faction: cc_core::components::Faction::CatGpt,
+                    faction: p1_faction,
                 },
             ],
             scripts: [p0_scripts.clone(), p1_scripts.clone()],
             script_budget: 500,
-            extra_spawns: Vec::new(),
+            extra_spawns,
         };
 
         print!("Seed {seed}: ");
@@ -261,6 +307,8 @@ fn main() {
             let summary = serde_json::json!({
                 "seeds": seeds,
                 "matches": seeds.len(),
+                "p0_faction": p0_faction.as_str(),
+                "p1_faction": p1_faction.as_str(),
                 "p0_wins": p0_wins,
                 "p1_wins": p1_wins,
                 "draws": draws,

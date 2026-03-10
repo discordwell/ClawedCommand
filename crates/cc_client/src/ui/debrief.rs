@@ -3,8 +3,6 @@ use bevy::prelude::*;
 use cc_core::mission::NextMission;
 use cc_sim::campaign::state::{CampaignPhase, CampaignState, MissionResult};
 
-
-
 const TYPEWRITER_SPEED: f32 = 40.0;
 
 /// Debrief typewriter + UI state.
@@ -179,11 +177,21 @@ pub fn update_debrief(
     mut root_vis: Query<&mut Visibility, (With<DebriefRoot>, Without<DebriefTitle>)>,
     mut title_q: Query<
         (&mut Text, &mut TextColor),
-        (With<DebriefTitle>, Without<DebriefRoot>, Without<DebriefSubtitle>, Without<DebriefText>),
+        (
+            With<DebriefTitle>,
+            Without<DebriefRoot>,
+            Without<DebriefSubtitle>,
+            Without<DebriefText>,
+        ),
     >,
     mut subtitle_q: Query<
         &mut Text,
-        (With<DebriefSubtitle>, Without<DebriefRoot>, Without<DebriefTitle>, Without<DebriefText>),
+        (
+            With<DebriefSubtitle>,
+            Without<DebriefRoot>,
+            Without<DebriefTitle>,
+            Without<DebriefText>,
+        ),
     >,
     mut next_btn_q: Query<
         (&DebriefButton, &mut Visibility),
@@ -242,9 +250,10 @@ pub fn update_debrief(
     }
 
     // Show/hide Next Mission button based on victory + next exists
-    let has_next = campaign.current_mission.as_ref().is_some_and(|m| {
-        !matches!(m.next_mission, NextMission::None)
-    });
+    let has_next = campaign
+        .current_mission
+        .as_ref()
+        .is_some_and(|m| !matches!(m.next_mission, NextMission::None));
 
     for (btn, mut vis) in next_btn_q.iter_mut() {
         match btn.action {
@@ -277,7 +286,11 @@ pub fn debrief_typewriter(
     keys: Res<ButtonInput<KeyCode>>,
     mut text_q: Query<
         &mut Text,
-        (With<DebriefText>, Without<DebriefTitle>, Without<DebriefSubtitle>),
+        (
+            With<DebriefText>,
+            Without<DebriefTitle>,
+            Without<DebriefSubtitle>,
+        ),
     >,
 ) {
     if campaign.phase != CampaignPhase::Debriefing || !state.active {
@@ -342,23 +355,25 @@ pub fn debrief_interaction(
         match btn.action {
             DebriefAction::NextMission => {
                 // Resolve next mission and transition
-                let next_id = campaign.current_mission.as_ref().and_then(|m| {
-                    match &m.next_mission {
-                        NextMission::Fixed(id) => Some(id.clone()),
-                        NextMission::Branching {
-                            flag,
-                            on_true,
-                            on_false,
-                        } => {
-                            if campaign.persistent.has_flag(flag) {
-                                Some(on_true.clone())
-                            } else {
-                                Some(on_false.clone())
+                let next_id =
+                    campaign
+                        .current_mission
+                        .as_ref()
+                        .and_then(|m| match &m.next_mission {
+                            NextMission::Fixed(id) => Some(id.clone()),
+                            NextMission::Branching {
+                                flag,
+                                on_true,
+                                on_false,
+                            } => {
+                                if campaign.persistent.has_flag(flag) {
+                                    Some(on_true.clone())
+                                } else {
+                                    Some(on_false.clone())
+                                }
                             }
-                        }
-                        NextMission::None => None,
-                    }
-                });
+                            NextMission::None => None,
+                        });
 
                 if let Some(next_id) = next_id {
                     // Load the next mission RON file

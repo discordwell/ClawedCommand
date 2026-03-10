@@ -53,8 +53,62 @@ use cc_sim::systems::{
 };
 
 use crate::events::ScriptRegistration;
-use crate::runner::{PreviousSnapshots, ScriptRegistry, script_runner_system};
+use crate::runner::{PlayerScriptState, PreviousSnapshots, ScriptRegistry, script_runner_system};
 use crate::tool_tier::FactionToolStates;
+
+// ---------------------------------------------------------------------------
+// Faction army composition
+// ---------------------------------------------------------------------------
+
+/// Returns a standard army composition for the given faction.
+/// Each faction gets 11 combat units: 3 tank + 3 ranged + 2 harasser + 2 support + 1 siege.
+pub fn standard_army(faction: Faction) -> Vec<(UnitKind, u32)> {
+    match faction {
+        Faction::CatGpt => vec![
+            (UnitKind::Chonk, 3),     // Tank
+            (UnitKind::Hisser, 3),    // Ranged
+            (UnitKind::Nuisance, 2),  // Harasser
+            (UnitKind::Yowler, 2),    // Support
+            (UnitKind::Catnapper, 1), // Siege
+        ],
+        Faction::TheClawed => vec![
+            (UnitKind::Gnawer, 3),       // Tank (anti-structure, closest to tank role)
+            (UnitKind::Shrieker, 3),     // Ranged
+            (UnitKind::Swarmer, 2),      // Harasser
+            (UnitKind::Sparks, 2),       // Support
+            (UnitKind::Whiskerwitch, 1), // Siege
+        ],
+        Faction::SeekersOfTheDeep => vec![
+            (UnitKind::Ironhide, 3), // Tank
+            (UnitKind::Cragback, 3), // Ranged
+            (UnitKind::Sapjaw, 2),   // Harasser
+            (UnitKind::Warden, 2),   // Support
+            (UnitKind::Embermaw, 1), // Siege
+        ],
+        Faction::TheMurder => vec![
+            (UnitKind::Rookclaw, 3),  // Tank (melee dive striker)
+            (UnitKind::Magpike, 3),   // Ranged
+            (UnitKind::Sentinel, 2),  // Harasser
+            (UnitKind::Jaycaller, 2), // Support
+            (UnitKind::Hootseer, 1),  // Siege
+        ],
+        Faction::Llama => vec![
+            (UnitKind::HeapTitan, 3),    // Tank
+            (UnitKind::GreaseMonkey, 3), // Ranged
+            (UnitKind::Bandit, 2),       // Harasser
+            (UnitKind::PatchPossum, 2),  // Support
+            (UnitKind::Wrecker, 1),      // Siege (anti-structure)
+        ],
+        Faction::Croak => vec![
+            (UnitKind::Shellwarden, 3), // Tank
+            (UnitKind::Croaker, 3),     // Ranged
+            (UnitKind::Eftsaber, 2),    // Harasser
+            (UnitKind::Bogwhisper, 2),  // Support
+            (UnitKind::Broodmother, 1), // Siege
+        ],
+        Faction::Neutral => vec![], // No army for neutral
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -379,6 +433,7 @@ fn make_arena_sim(
     }
     world.insert_resource(registry);
     world.insert_resource(PreviousSnapshots::default());
+    world.insert_resource(PlayerScriptState::default());
     world.insert_resource(FactionToolStates::default());
     world.insert_resource(ArenaStats::default());
 
@@ -941,6 +996,52 @@ mod tests {
             result.stats.players[0].units_lost,
             result.stats.players[1].units_killed,
             result.stats.players[1].units_lost,
+        );
+    }
+
+    #[test]
+    fn standard_army_all_factions() {
+        // Every faction should produce exactly 11 combat units
+        for faction in [
+            Faction::CatGpt,
+            Faction::TheClawed,
+            Faction::SeekersOfTheDeep,
+            Faction::TheMurder,
+            Faction::Llama,
+            Faction::Croak,
+        ] {
+            let army = standard_army(faction);
+            let total: u32 = army.iter().map(|(_, count)| count).sum();
+            assert_eq!(
+                total, 11,
+                "{:?} standard army should have 11 units, got {}",
+                faction, total
+            );
+        }
+        // Neutral should produce no army
+        assert!(standard_army(Faction::Neutral).is_empty());
+    }
+
+    #[test]
+    fn cross_faction_match_runs() {
+        let mut config = ArenaConfig {
+            max_ticks: 200,
+            ..Default::default()
+        };
+        config.bots[0].faction = Faction::CatGpt;
+        config.bots[1].faction = Faction::Croak;
+        // Add standard armies
+        for (kind, count) in standard_army(Faction::CatGpt) {
+            config.extra_spawns.push((0, kind, count));
+        }
+        for (kind, count) in standard_army(Faction::Croak) {
+            config.extra_spawns.push((1, kind, count));
+        }
+        let result = run_arena_match(&config);
+        assert!(
+            result.passed(),
+            "Cross-faction match should complete without errors: {:?}",
+            result.violations,
         );
     }
 }

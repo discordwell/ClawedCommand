@@ -176,9 +176,11 @@ fn load_campaign_missions(mut available: ResMut<campaign_menu::AvailableMissions
     }
 
     // Sort by act then mission_index
-    available
-        .missions
-        .sort_by(|a, b| a.act.cmp(&b.act).then(a.mission_index.cmp(&b.mission_index)));
+    available.missions.sort_by(|a, b| {
+        a.act
+            .cmp(&b.act)
+            .then(a.mission_index.cmp(&b.mission_index))
+    });
 
     info!("Loaded {} campaign missions", available.missions.len());
 }

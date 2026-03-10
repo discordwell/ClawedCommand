@@ -4,13 +4,9 @@ use cc_core::components::{Dead, Position, StationaryTimer};
 
 /// Tracks how long each unit has been stationary by comparing positions each tick.
 /// Used by combat_system's anti-static damage bonus.
-pub fn stationary_timer_system(
-    mut query: Query<(&Position, &mut StationaryTimer), Without<Dead>>,
-) {
+pub fn stationary_timer_system(mut query: Query<(&Position, &mut StationaryTimer), Without<Dead>>) {
     for (pos, mut timer) in query.iter_mut() {
-        let moved = timer
-            .last_pos
-            .map_or(false, |last| last != pos.world);
+        let moved = timer.last_pos.map_or(false, |last| last != pos.world);
 
         if moved {
             timer.ticks_stationary = 0;

@@ -3186,8 +3186,8 @@ fn idle_unit_still_auto_acquires() {
 /// the expected army composition, then computes a combat_value proxy.
 #[test]
 fn balance_faction_army_value_within_bounds() {
-    use cc_core::unit_stats::base_stats;
     use cc_core::components::Faction;
+    use cc_core::unit_stats::base_stats;
     use cc_sim::ai::fsm::faction_personality;
 
     let factions = [
@@ -3261,7 +3261,7 @@ fn balance_faction_army_value_within_bounds() {
 fn balance_every_faction_has_damage_and_hp_upgrade() {
     use cc_core::components::Faction;
     use cc_sim::ai::fsm::faction_map;
-    use cc_sim::systems::research_system::{upgrade_category, UpgradeCategory};
+    use cc_sim::systems::research_system::{UpgradeCategory, upgrade_category};
 
     let factions = [
         Faction::CatGpt,

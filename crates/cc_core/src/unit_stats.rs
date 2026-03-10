@@ -1311,8 +1311,7 @@ mod balance_tests {
                 if s.food_cost == 0 {
                     return None;
                 }
-                let efficiency =
-                    dps(&s) * s.health.to_num::<f64>() / s.food_cost as f64;
+                let efficiency = dps(&s) * s.health.to_num::<f64>() / s.food_cost as f64;
                 Some((kind, efficiency))
             })
             .collect();
@@ -1354,10 +1353,8 @@ mod balance_tests {
             }
         }
 
-        let ranged_avg: f64 =
-            ranged_hp_food.iter().sum::<f64>() / ranged_hp_food.len() as f64;
-        let melee_avg: f64 =
-            melee_hp_food.iter().sum::<f64>() / melee_hp_food.len() as f64;
+        let ranged_avg: f64 = ranged_hp_food.iter().sum::<f64>() / ranged_hp_food.len() as f64;
+        let melee_avg: f64 = melee_hp_food.iter().sum::<f64>() / melee_hp_food.len() as f64;
 
         assert!(
             ranged_avg < melee_avg,
@@ -1442,11 +1439,7 @@ mod balance_tests {
                 name: "LLAMA",
                 tower_damage: TOWER_DAMAGE_TETANUS_TOWER,
                 tower_attack_speed: TOWER_ATTACK_SPEED_TETANUS_TOWER,
-                preferred_units: &[
-                    UnitKind::Bandit,
-                    UnitKind::GreaseMonkey,
-                    UnitKind::Wrecker,
-                ],
+                preferred_units: &[UnitKind::Bandit, UnitKind::GreaseMonkey, UnitKind::Wrecker],
             },
             FactionTowerCheck {
                 name: "Croak",
@@ -1464,8 +1457,7 @@ mod balance_tests {
         ];
 
         for check in &checks {
-            let tower_dps =
-                check.tower_damage.to_num::<f64>() / check.tower_attack_speed as f64;
+            let tower_dps = check.tower_damage.to_num::<f64>() / check.tower_attack_speed as f64;
 
             let min_unit_dps = check
                 .preferred_units

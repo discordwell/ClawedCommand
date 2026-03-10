@@ -667,7 +667,7 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
             activation: Activated,
             cooldown_ticks: 150, // 15s
             gpu_cost: 0,
-            duration_ticks: 10, // 1s channel
+            duration_ticks: 10,               // 1s channel
             range: Fixed::from_bits(8 << 16), // 8 tiles
             max_charges: 0,
         },
@@ -1367,7 +1367,7 @@ pub fn ability_def(id: AbilityId) -> AbilityDef {
             activation: Activated,
             cooldown_ticks: 120, // 12s
             gpu_cost: 4,
-            duration_ticks: 0, // instant
+            duration_ticks: 0,                 // instant
             range: Fixed::from_bits(10 << 16), // 10 tiles
             max_charges: 0,
         },

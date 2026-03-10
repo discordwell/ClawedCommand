@@ -4,7 +4,7 @@ use cc_core::components::UnitKind;
 use cc_core::math::{FIXED_ONE, Fixed};
 
 /// Runtime state for active mutators during a mission.
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct MutatorState {
     /// Per-mutator active flags (index matches MissionDefinition.mutators).
     pub active: Vec<bool>,
@@ -20,6 +20,26 @@ pub struct MutatorState {
     pub fog_cleared: bool,
     /// Whether the time limit warning has already fired (prevents duplicates).
     pub time_warning_fired: bool,
+    /// Damage multiplier for player-owned units.
+    pub player_damage_multiplier: Fixed,
+    /// Damage multiplier for enemy-owned units.
+    pub enemy_damage_multiplier: Fixed,
+}
+
+impl Default for MutatorState {
+    fn default() -> Self {
+        Self {
+            active: Vec::new(),
+            lava_advance_count: 0,
+            toxic_advance_count: 0,
+            current_water_level: 0,
+            wind_active: false,
+            fog_cleared: false,
+            time_warning_fired: false,
+            player_damage_multiplier: FIXED_ONE,
+            enemy_damage_multiplier: FIXED_ONE,
+        }
+    }
 }
 
 impl MutatorState {

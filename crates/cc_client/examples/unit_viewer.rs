@@ -401,8 +401,8 @@ fn load_candidates(mut commands: Commands, asset_server: Res<AssetServer>) {
     ];
 
     // Scan candidates directory on disk
-    let candidates_dir =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/sprites/units/candidates");
+    let candidates_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../assets/sprites/units/candidates");
     let Ok(dir_entries) = std::fs::read_dir(&candidates_dir) else {
         commands.insert_resource(CandidateSprites { entries });
         return;
@@ -457,7 +457,11 @@ fn load_candidates(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let count: usize = entries.values().map(|v| v.len()).sum();
     if count > 0 {
-        info!("Loaded {} candidate sprites for {} unit/phase combos", count, entries.len());
+        info!(
+            "Loaded {} candidate sprites for {} unit/phase combos",
+            count,
+            entries.len()
+        );
     }
 
     commands.insert_resource(CandidateSprites { entries });
@@ -529,8 +533,10 @@ fn setup_viewer(
             color: tint,
             ..default()
         },
-        Transform::from_xyz(0.0, 0.0, 10.0)
-            .with_scale(Vec3::splat(building_scale(ALL_BUILDING_KINDS[0], building_sprites.has_art[0]))),
+        Transform::from_xyz(0.0, 0.0, 10.0).with_scale(Vec3::splat(building_scale(
+            ALL_BUILDING_KINDS[0],
+            building_sprites.has_art[0],
+        ))),
         Visibility::Hidden,
         BuildingViewerAnimTimer(Timer::from_seconds(0.6, TimerMode::Repeating)),
     ));
@@ -982,7 +988,8 @@ fn handle_input(
                         state.candidate_index - 1
                     };
                 }
-                if keys.just_pressed(KeyCode::BracketRight) || keys.just_pressed(KeyCode::ArrowDown) {
+                if keys.just_pressed(KeyCode::BracketRight) || keys.just_pressed(KeyCode::ArrowDown)
+                {
                     state.candidate_index = (state.candidate_index + 1) % count;
                 }
             }
@@ -1009,8 +1016,10 @@ fn handle_input(
                     format!("{}_{}_{}.png", slug, phase_str, label)
                 };
                 let src = candidates_dir.join(&candidate_file);
-                let dest = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                    .join(format!("../../assets/sprites/units/{}_{}.png", slug, phase_str));
+                let dest = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(format!(
+                    "../../assets/sprites/units/{}_{}.png",
+                    slug, phase_str
+                ));
 
                 if src.exists() {
                     if let Err(e) = std::fs::copy(&src, &dest) {
@@ -1024,7 +1033,10 @@ fn handle_input(
                             status_timer.0.reset();
                         }
                         // Trigger green flash on banner
-                        commands.insert_resource(PromoteFlash(Timer::from_seconds(1.0, TimerMode::Once)));
+                        commands.insert_resource(PromoteFlash(Timer::from_seconds(
+                            1.0,
+                            TimerMode::Once,
+                        )));
                     }
                 }
             }
@@ -1189,15 +1201,32 @@ fn swap_display(
             &mut AttackStats,
             &mut Visibility,
         ),
-        (With<ViewerUnit>, Without<ViewerBuilding>, Without<CompareUnit>),
+        (
+            With<ViewerUnit>,
+            Without<ViewerBuilding>,
+            Without<CompareUnit>,
+        ),
     >,
     mut building_query: Query<
-        (&mut Sprite, &mut Transform, &mut Visibility, &mut BuildingViewerAnimTimer),
-        (With<ViewerBuilding>, Without<ViewerUnit>, Without<CompareUnit>),
+        (
+            &mut Sprite,
+            &mut Transform,
+            &mut Visibility,
+            &mut BuildingViewerAnimTimer,
+        ),
+        (
+            With<ViewerBuilding>,
+            Without<ViewerUnit>,
+            Without<CompareUnit>,
+        ),
     >,
     mut compare_query: Query<
         (&mut Sprite, &mut Transform, &mut Visibility),
-        (With<CompareUnit>, Without<ViewerUnit>, Without<ViewerBuilding>),
+        (
+            With<CompareUnit>,
+            Without<ViewerUnit>,
+            Without<ViewerBuilding>,
+        ),
     >,
 ) {
     if !state.display_changed() {
@@ -1225,9 +1254,7 @@ fn swap_display(
         return;
     };
 
-    let Ok((mut cmp_sprite, mut cmp_transform, mut cmp_vis)) =
-        compare_query.single_mut()
-    else {
+    let Ok((mut cmp_sprite, mut cmp_transform, mut cmp_vis)) = compare_query.single_mut() else {
         return;
     };
 
@@ -1321,9 +1348,7 @@ fn swap_display(
                     }
                 }
                 BuildingAnimPhase::Ambient => {
-                    let sheet = anim_sheets
-                        .as_ref()
-                        .and_then(|s| s.ambient[bidx].as_ref());
+                    let sheet = anim_sheets.as_ref().and_then(|s| s.ambient[bidx].as_ref());
                     if let Some((img, layout)) = sheet {
                         bld_sprite.image = img.clone();
                         bld_sprite.texture_atlas = Some(TextureAtlas {
@@ -1386,40 +1411,88 @@ fn reset_viewer_transform(
     state: Res<ViewerState>,
     mut query: Query<
         &mut Transform,
-        (With<ViewerUnit>, Without<CompareUnit>, Without<CurrentLabel>, Without<CandidateWorldLabel>),
+        (
+            With<ViewerUnit>,
+            Without<CompareUnit>,
+            Without<CurrentLabel>,
+            Without<CandidateWorldLabel>,
+        ),
     >,
     mut compare_query: Query<
         &mut Transform,
-        (With<CompareUnit>, Without<ViewerUnit>, Without<CurrentLabel>, Without<CandidateWorldLabel>),
+        (
+            With<CompareUnit>,
+            Without<ViewerUnit>,
+            Without<CurrentLabel>,
+            Without<CandidateWorldLabel>,
+        ),
     >,
     mut current_label_q: Query<
         (&mut Transform, &mut Visibility),
-        (With<CurrentLabel>, Without<ViewerUnit>, Without<CompareUnit>, Without<CandidateWorldLabel>),
+        (
+            With<CurrentLabel>,
+            Without<ViewerUnit>,
+            Without<CompareUnit>,
+            Without<CandidateWorldLabel>,
+        ),
     >,
     mut candidate_label_q: Query<
         (&mut Transform, &mut Visibility),
-        (With<CandidateWorldLabel>, Without<ViewerUnit>, Without<CompareUnit>, Without<CurrentLabel>),
+        (
+            With<CandidateWorldLabel>,
+            Without<ViewerUnit>,
+            Without<CompareUnit>,
+            Without<CurrentLabel>,
+        ),
     >,
 ) {
     let Ok(mut transform) = query.single_mut() else {
         return;
     };
-    let x_offset = if state.compare_mode { -COMPARE_OFFSET_X } else { 0.0 };
+    let x_offset = if state.compare_mode {
+        -COMPARE_OFFSET_X
+    } else {
+        0.0
+    };
     transform.translation = Vec3::new(x_offset, 0.0, 10.0);
     transform.rotation = Quat::IDENTITY;
 
     if let Ok(mut cmp_transform) = compare_query.single_mut() {
-        cmp_transform.translation = Vec3::new(if state.compare_mode { COMPARE_OFFSET_X } else { 0.0 }, 0.0, 10.0);
+        cmp_transform.translation = Vec3::new(
+            if state.compare_mode {
+                COMPARE_OFFSET_X
+            } else {
+                0.0
+            },
+            0.0,
+            10.0,
+        );
     }
 
     // Position and toggle world-space labels
     if let Ok((mut label_t, mut label_vis)) = current_label_q.single_mut() {
         label_t.translation = Vec3::new(x_offset, 28.0, 20.0);
-        *label_vis = if state.compare_mode { Visibility::Inherited } else { Visibility::Hidden };
+        *label_vis = if state.compare_mode {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
     }
     if let Ok((mut label_t, mut label_vis)) = candidate_label_q.single_mut() {
-        label_t.translation = Vec3::new(if state.compare_mode { COMPARE_OFFSET_X } else { 0.0 }, 28.0, 20.0);
-        *label_vis = if state.compare_mode { Visibility::Inherited } else { Visibility::Hidden };
+        label_t.translation = Vec3::new(
+            if state.compare_mode {
+                COMPARE_OFFSET_X
+            } else {
+                0.0
+            },
+            28.0,
+            20.0,
+        );
+        *label_vis = if state.compare_mode {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
     }
 }
 
@@ -1568,13 +1641,24 @@ fn update_compare_ui(
     candidates: Res<CandidateSprites>,
     mut compare_btn_q: Query<
         (&mut BackgroundColor, &Children),
-        (With<CompareButton>, Without<CandidateLabel>, Without<CompareBanner>),
+        (
+            With<CompareButton>,
+            Without<CandidateLabel>,
+            Without<CompareBanner>,
+        ),
     >,
-    mut label_q: Query<(&mut Visibility, &Children), (With<CandidateLabel>, Without<CompareButton>)>,
+    mut label_q: Query<
+        (&mut Visibility, &Children),
+        (With<CandidateLabel>, Without<CompareButton>),
+    >,
     mut world_label_q: Query<&mut Text2d, With<CandidateWorldLabel>>,
     mut banner_q: Query<
         (&mut Visibility, &mut BackgroundColor, &Children),
-        (With<CompareBanner>, Without<CompareButton>, Without<CandidateLabel>),
+        (
+            With<CompareBanner>,
+            Without<CompareButton>,
+            Without<CandidateLabel>,
+        ),
     >,
     mut texts: Query<&mut Text, (Without<CandidateLabel>, Without<CompareButton>)>,
     promote_flash: Option<Res<PromoteFlash>>,
@@ -1755,7 +1839,11 @@ fn update_faction_visibility(
 
 fn style_scrollbar_thumb(
     mut query: Query<
-        (&mut BackgroundColor, Option<&Hovered>, &CoreScrollbarDragState),
+        (
+            &mut BackgroundColor,
+            Option<&Hovered>,
+            &CoreScrollbarDragState,
+        ),
         (
             With<CoreScrollbarThumb>,
             Or<(Changed<Hovered>, Changed<CoreScrollbarDragState>)>,
@@ -1802,8 +1890,7 @@ fn cycle_compare_anim(
             let h = img.height();
             if w > h {
                 let frames = (w / h).max(1);
-                let layout =
-                    TextureAtlasLayout::from_grid(UVec2::new(h, h), frames, 1, None, None);
+                let layout = TextureAtlasLayout::from_grid(UVec2::new(h, h), frames, 1, None, None);
                 let layout_handle = atlas_layouts.add(layout);
                 cmp_sprite.texture_atlas = Some(TextureAtlas {
                     layout: layout_handle,

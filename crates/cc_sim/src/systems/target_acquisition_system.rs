@@ -31,8 +31,18 @@ pub fn target_acquisition_system(
         (Or<(With<UnitType>, With<Building>)>, Without<Dead>),
     >,
 ) {
-    for (entity, pos, owner, stats, current_target, hold, atk_move, move_target, chasing, stat_mods) in
-        units.iter()
+    for (
+        entity,
+        pos,
+        owner,
+        stats,
+        current_target,
+        hold,
+        atk_move,
+        move_target,
+        chasing,
+        stat_mods,
+    ) in units.iter()
     {
         // Check if current target is still alive
         if let Some(target) = current_target {

@@ -157,8 +157,7 @@ pub fn stat_modifier_system(mut query: Query<(&StatusEffects, &mut StatModifiers
                 StatusEffectId::SiegeNapDeployed => {
                     // Catnapper siege mode: immobilized, range ×1.43, 30% damage reduction
                     modifiers.immobilized = true;
-                    modifiers.range_multiplier *=
-                        Fixed::from_bits((1 << 16) * 143 / 100); // 1.43
+                    modifiers.range_multiplier *= Fixed::from_bits((1 << 16) * 143 / 100); // 1.43
                     modifiers.damage_reduction *=
                         Fixed::from_bits((1 << 16) - (1 << 16) * 30 / 100); // 0.70
                 }
@@ -171,8 +170,7 @@ pub fn stat_modifier_system(mut query: Query<(&StatusEffects, &mut StatModifiers
                 }
                 StatusEffectId::InflatedBombardment => {
                     // Croaker inflated: range ×1.667 (6→10), anti-static +0.4
-                    modifiers.range_multiplier *=
-                        Fixed::from_bits((1 << 16) * 167 / 100); // 1.67
+                    modifiers.range_multiplier *= Fixed::from_bits((1 << 16) * 167 / 100); // 1.67
                     modifiers.anti_static_bonus += Fixed::from_bits((1 << 16) * 40 / 100); // 0.4
                 }
                 StatusEffectId::Rattled => {

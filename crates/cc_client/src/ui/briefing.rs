@@ -211,23 +211,44 @@ pub fn update_briefing(
     mut root_vis: Query<&mut Visibility, (With<BriefingRoot>, Without<BriefingText>)>,
     mut border_q: Query<
         &mut BackgroundColor,
-        (With<BriefingBorder>, Without<BriefingRoot>, Without<BriefingText>),
+        (
+            With<BriefingBorder>,
+            Without<BriefingRoot>,
+            Without<BriefingText>,
+        ),
     >,
     mut header_q: Query<
         (&mut Text, &mut TextColor),
-        (With<BriefingActHeader>, Without<BriefingRoot>, Without<BriefingText>),
+        (
+            With<BriefingActHeader>,
+            Without<BriefingRoot>,
+            Without<BriefingText>,
+        ),
     >,
     mut name_q: Query<
         &mut Text,
-        (With<BriefingMissionName>, Without<BriefingActHeader>, Without<BriefingText>),
+        (
+            With<BriefingMissionName>,
+            Without<BriefingActHeader>,
+            Without<BriefingText>,
+        ),
     >,
     mut text_q: Query<
         &mut Text,
-        (With<BriefingText>, Without<BriefingMissionName>, Without<BriefingActHeader>),
+        (
+            With<BriefingText>,
+            Without<BriefingMissionName>,
+            Without<BriefingActHeader>,
+        ),
     >,
     mut obj_q: Query<
         &mut Text,
-        (With<BriefingObjectives>, Without<BriefingText>, Without<BriefingMissionName>, Without<BriefingActHeader>),
+        (
+            With<BriefingObjectives>,
+            Without<BriefingText>,
+            Without<BriefingMissionName>,
+            Without<BriefingActHeader>,
+        ),
     >,
     mut portrait_q: Query<
         (&mut ImageNode, &mut FadeIn),
@@ -342,9 +363,7 @@ pub fn briefing_input_system(
         return;
     }
 
-    let button_pressed = interactions
-        .iter()
-        .any(|(_, i)| *i == Interaction::Pressed);
+    let button_pressed = interactions.iter().any(|(_, i)| *i == Interaction::Pressed);
 
     let key_pressed = keys.just_pressed(KeyCode::Enter) || keys.just_pressed(KeyCode::Space);
 

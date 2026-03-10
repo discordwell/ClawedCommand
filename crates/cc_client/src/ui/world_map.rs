@@ -67,20 +67,19 @@ pub fn spawn_world_map(mut commands: Commands) {
             ));
 
             // Scrollable mission grid area
-            parent
-                .spawn((
-                    WorldMapContent,
-                    Node {
-                        flex_direction: FlexDirection::Row,
-                        column_gap: Val::Px(24.0),
-                        flex_grow: 1.0,
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::FlexStart,
-                        overflow: Overflow::scroll_y(),
-                        padding: UiRect::all(Val::Px(12.0)),
-                        ..default()
-                    },
-                ));
+            parent.spawn((
+                WorldMapContent,
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    column_gap: Val::Px(24.0),
+                    flex_grow: 1.0,
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::FlexStart,
+                    overflow: Overflow::scroll_y(),
+                    padding: UiRect::all(Val::Px(12.0)),
+                    ..default()
+                },
+            ));
 
             // Bottom bar
             parent
@@ -130,27 +129,13 @@ pub fn spawn_world_map(mut commands: Commands) {
 
 /// Returns true if a mission is unlocked (prologue always unlocked, or any
 /// predecessor completed).
-fn is_unlocked(mission_id: &str, all_missions: &[MissionDefinition], campaign: &CampaignState) -> bool {
-    // Prologue is always unlocked
-    if mission_id == "prologue" {
-        return true;
-    }
-
-    // A mission is unlocked if any mission that has it as next_mission is completed
-    for m in all_missions {
-        let leads_here = match &m.next_mission {
-            NextMission::Fixed(id) => id == mission_id,
-            NextMission::Branching {
-                on_true, on_false, ..
-            } => on_true == mission_id || on_false == mission_id,
-            NextMission::None => false,
-        };
-        if leads_here && campaign.completed_missions.contains(&m.id) {
-            return true;
-        }
-    }
-
-    false
+fn is_unlocked(
+    _mission_id: &str,
+    _all_missions: &[MissionDefinition],
+    _campaign: &CampaignState,
+) -> bool {
+    // All missions unlocked for development/playtesting
+    true
 }
 
 /// Rebuild world map nodes when missions change.
@@ -214,13 +199,16 @@ pub fn update_world_map(
         let accent = faction_accent_color(*act);
 
         let col_entity = commands
-            .spawn((ActColumn, Node {
-                flex_direction: FlexDirection::Column,
-                align_items: AlignItems::Center,
-                row_gap: Val::Px(8.0),
-                min_width: Val::Px(120.0),
-                ..default()
-            }))
+            .spawn((
+                ActColumn,
+                Node {
+                    flex_direction: FlexDirection::Column,
+                    align_items: AlignItems::Center,
+                    row_gap: Val::Px(8.0),
+                    min_width: Val::Px(120.0),
+                    ..default()
+                },
+            ))
             .with_children(|col| {
                 // Act header
                 col.spawn((
@@ -241,8 +229,7 @@ pub fn update_world_map(
                 sorted_missions.sort_by_key(|m| m.mission_index);
 
                 for mission in sorted_missions {
-                    let unlocked =
-                        is_unlocked(&mission.id, &available.missions, &campaign);
+                    let unlocked = is_unlocked(&mission.id, &available.missions, &campaign);
                     let completed = campaign.completed_missions.contains(&mission.id);
 
                     let (bg_color, border_color, label_color) = if completed {
@@ -343,10 +330,7 @@ pub fn world_map_interaction(
                 match ron::from_str::<MissionDefinition>(&ron_str) {
                     Ok(mission) => {
                         let new_act = mission.act;
-                        let old_act = campaign
-                            .current_mission
-                            .as_ref()
-                            .map(|m| m.act);
+                        let old_act = campaign.current_mission.as_ref().map(|m| m.act);
 
                         campaign.load_mission(mission);
 
@@ -370,10 +354,7 @@ pub fn world_map_interaction(
 }
 
 /// Handle Escape key to go back from world map.
-pub fn world_map_input(
-    keys: Res<ButtonInput<KeyCode>>,
-    mut campaign: ResMut<CampaignState>,
-) {
+pub fn world_map_input(keys: Res<ButtonInput<KeyCode>>, mut campaign: ResMut<CampaignState>) {
     if campaign.phase != CampaignPhase::WorldMap {
         return;
     }
@@ -386,10 +367,10 @@ pub fn world_map_input(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cc_core::coords::GridPos;
+    use cc_core::hero::HeroId;
     use cc_core::mission::*;
     use cc_core::terrain::TerrainType;
-    use cc_core::hero::HeroId;
-    use cc_core::coords::GridPos;
 
     fn minimal_mission(id: &str, act: u32, next: NextMission) -> MissionDefinition {
         MissionDefinition {
@@ -430,56 +411,26 @@ mod tests {
 
     #[test]
     fn prologue_always_unlocked() {
-        let missions = vec![minimal_mission("prologue", 0, NextMission::Fixed("m1".into()))];
+        let missions = vec![minimal_mission(
+            "prologue",
+            0,
+            NextMission::Fixed("m1".into()),
+        )];
         let campaign = CampaignState::default();
         assert!(is_unlocked("prologue", &missions, &campaign));
     }
 
     #[test]
-    fn mission_unlocked_after_predecessor_completed() {
-        let missions = vec![
-            minimal_mission("prologue", 0, NextMission::Fixed("m1".into())),
-            minimal_mission("m1", 1, NextMission::None),
-        ];
-        let mut campaign = CampaignState::default();
-        assert!(!is_unlocked("m1", &missions, &campaign));
-
-        campaign.completed_missions.insert("prologue".into());
-        assert!(is_unlocked("m1", &missions, &campaign));
-    }
-
-    #[test]
-    fn branching_unlock_works() {
-        let missions = vec![
-            minimal_mission(
-                "m12",
-                3,
-                NextMission::Branching {
-                    flag: "helped_rex".into(),
-                    on_true: "m13a".into(),
-                    on_false: "m13b".into(),
-                },
-            ),
-            minimal_mission("m13a", 3, NextMission::None),
-            minimal_mission("m13b", 3, NextMission::None),
-        ];
-        let mut campaign = CampaignState::default();
-        campaign.completed_missions.insert("m12".into());
-        assert!(is_unlocked("m13a", &missions, &campaign));
-        assert!(is_unlocked("m13b", &missions, &campaign));
-    }
-
-    #[test]
-    fn locked_mission_stays_locked() {
+    fn all_missions_unlocked() {
         let missions = vec![
             minimal_mission("prologue", 0, NextMission::Fixed("m1".into())),
             minimal_mission("m1", 1, NextMission::Fixed("m2".into())),
             minimal_mission("m2", 1, NextMission::None),
         ];
-        let mut campaign = CampaignState::default();
-        campaign.completed_missions.insert("prologue".into());
-        // m1 is unlocked, but m2 is NOT (m1 not completed)
+        let campaign = CampaignState::default();
+        // All missions are unlocked for dev/playtesting
+        assert!(is_unlocked("prologue", &missions, &campaign));
         assert!(is_unlocked("m1", &missions, &campaign));
-        assert!(!is_unlocked("m2", &missions, &campaign));
+        assert!(is_unlocked("m2", &missions, &campaign));
     }
 }

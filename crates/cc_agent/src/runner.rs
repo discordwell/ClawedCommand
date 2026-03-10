@@ -11,15 +11,27 @@ use cc_sim::resources::{CommandQueue, MapResource, PlayerResources, SimClock};
 
 use crate::events::{self};
 use crate::lua_runtime;
-use crate::script_context::ScriptContext;
+use crate::script_context::{BlackboardValue, EnemyMemoryEntry, ScriptContext, ScriptEvent};
 pub use crate::script_registry::ScriptRegistry;
 use crate::snapshot::{self, GameStateSnapshot};
 use crate::tool_tier::FactionToolStates;
 
+use std::collections::HashMap;
+
 /// Resource: previous tick's snapshot for event diffing, keyed by player_id.
 #[derive(Resource, Default)]
 pub struct PreviousSnapshots {
-    pub snapshots: std::collections::HashMap<u8, GameStateSnapshot>,
+    pub snapshots: HashMap<u8, GameStateSnapshot>,
+}
+
+/// Resource: persistent per-player state for Phase 1-3 ScriptContext features.
+/// Blackboard, enemy memory, events, and squads all persist across ticks.
+#[derive(Resource, Default)]
+pub struct PlayerScriptState {
+    pub blackboards: HashMap<u8, HashMap<String, BlackboardValue>>,
+    pub enemy_memories: HashMap<u8, HashMap<u64, EnemyMemoryEntry>>,
+    pub events: HashMap<u8, Vec<ScriptEvent>>,
+    pub squads: HashMap<u8, HashMap<String, Vec<u64>>>,
 }
 
 /// Bevy system: runs registered scripts in response to detected events.
@@ -31,6 +43,7 @@ pub fn script_runner_system(
     mut cmd_queue: ResMut<CommandQueue>,
     mut registry: ResMut<ScriptRegistry>,
     mut prev_snapshots: ResMut<PreviousSnapshots>,
+    mut script_state: ResMut<PlayerScriptState>,
     tool_states: Res<FactionToolStates>,
     #[cfg(feature = "harness")] mut arena_stats: Option<ResMut<crate::arena::ArenaStats>>,
     units: Query<
@@ -163,8 +176,34 @@ pub fn script_runner_system(
                 continue;
             }
 
-            // Create ScriptContext and execute
-            let mut ctx = ScriptContext::new(&current_snapshot, &map_res.map, player_id, faction);
+            // Get persistent per-player state for this script invocation.
+            // We destructure script_state to get independent mutable borrows.
+            let PlayerScriptState {
+                blackboards,
+                enemy_memories,
+                events: event_buses,
+                squads: squad_maps,
+            } = &mut *script_state;
+
+            let blackboard = blackboards.entry(player_id).or_default().clone();
+            let enemy_mem = enemy_memories.entry(player_id).or_default();
+            let events = event_buses.entry(player_id).or_default();
+            let squads = squad_maps.entry(player_id).or_default();
+
+            // Create ScriptContext with all optional features wired
+            let mut ctx = ScriptContext::new_with_blackboard(
+                &current_snapshot,
+                &map_res.map,
+                player_id,
+                faction,
+                blackboard,
+            )
+            .with_enemy_memory(enemy_mem)
+            .with_events(events)
+            .with_squads(squads);
+
+            // Update enemy memory from current snapshot visibility
+            ctx.update_enemy_memory();
 
             let tier = tool_states.tier_for(player_id);
             match lua_runtime::execute_script_with_context_tiered(&script.source, &mut ctx, tier) {
@@ -186,6 +225,10 @@ pub fn script_runner_system(
                     }
                 }
             }
+
+            // Persist blackboard changes back to resource
+            let bb = ctx.take_blackboard();
+            blackboards.insert(player_id, bb);
         }
 
         // Store snapshot for next tick's diffing (per-player)
@@ -202,6 +245,7 @@ impl Plugin for ScriptRunnerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ScriptRegistry>()
             .init_resource::<PreviousSnapshots>()
+            .init_resource::<PlayerScriptState>()
             .add_systems(
                 FixedUpdate,
                 script_runner_system.run_if(|state: Res<cc_sim::resources::GameState>| {

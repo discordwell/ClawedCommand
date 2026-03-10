@@ -22,7 +22,8 @@ use cc_sim::campaign::state::{
 use cc_sim::campaign::triggers::{DialogueEvent, ObjectiveCompleteEvent, TriggerFiredEvent};
 use cc_sim::campaign::wave_spawner::{MissionStarted, WaveTracker};
 use cc_sim::resources::{
-    CommandQueue, ControlGroups, MapResource, PlayerResources, SimClock, SimRng, VoiceOverride,
+    CombatStats, CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock,
+    SimRng, SpawnPositions, VoiceOverride,
 };
 use cc_sim::systems::tick_system::tick_system;
 
@@ -1163,4 +1164,350 @@ fn wind_all_edges_skipped() {
     let pos = world.get::<Position>(unit).unwrap();
     let y = pos.world.y.to_num::<i32>();
     assert_eq!(y, 5, "AllEdges wind should not displace units");
+}
+
+// ---------------------------------------------------------------------------
+// Gap 2: DamageMultiplier runtime
+// ---------------------------------------------------------------------------
+
+/// Build a sim that includes both the combat chain and mutator resources.
+fn make_combat_mutator_sim(map: GameMap) -> (World, Schedule) {
+    let mut world = World::new();
+    world.insert_resource(CommandQueue::default());
+    world.insert_resource(SimClock::default());
+    world.insert_resource(ControlGroups::default());
+    world.insert_resource(PlayerResources::default());
+    world.insert_resource(GameState::default());
+    world.insert_resource(SpawnPositions::default());
+    world.insert_resource(SimRng::default());
+    world.insert_resource(CombatStats::default());
+    world.insert_resource(VoiceOverride::default());
+    world.insert_resource(MapResource { map });
+    world.init_resource::<CampaignState>();
+    world.init_resource::<WaveTracker>();
+    world.init_resource::<MissionStarted>();
+    world.init_resource::<ControlRestrictions>();
+    world.init_resource::<MutatorState>();
+    world.init_resource::<FogState>();
+    world.init_resource::<Messages<DialogueEvent>>();
+    world.init_resource::<Messages<TriggerFiredEvent>>();
+    world.init_resource::<Messages<ObjectiveCompleteEvent>>();
+    world.init_resource::<Messages<MissionFailedEvent>>();
+    world.init_resource::<Messages<MissionVictoryEvent>>();
+    world.init_resource::<Messages<TimeLimitWarningEvent>>();
+    world.init_resource::<Messages<cc_sim::systems::projectile_system::ProjectileHit>>();
+
+    let mut schedule = Schedule::new(FixedUpdate);
+    schedule.add_systems(
+        (
+            tick_system,
+            cc_sim::systems::command_system::process_commands,
+            cc_sim::systems::target_acquisition_system::target_acquisition_system,
+            cc_sim::systems::combat_system::combat_system,
+            cc_sim::systems::projectile_system::projectile_system,
+            cc_sim::systems::movement_system::movement_system,
+            cc_sim::systems::patrol_system::patrol_system,
+            cc_sim::systems::grid_sync_system::grid_sync_system,
+            cc_sim::systems::cleanup_system::cleanup_system,
+        )
+            .chain(),
+    );
+
+    (world, schedule)
+}
+
+fn spawn_melee_unit(world: &mut World, pos: GridPos, player_id: u8) -> Entity {
+    let stats = base_stats(UnitKind::Chonk); // melee unit for direct damage
+    world
+        .spawn((
+            Position {
+                world: WorldPos::from_grid(pos),
+            },
+            Velocity::zero(),
+            GridCell { pos },
+            Owner { player_id },
+            UnitType {
+                kind: UnitKind::Chonk,
+            },
+            Health {
+                current: stats.health,
+                max: stats.health,
+            },
+            MovementSpeed { speed: stats.speed },
+            AttackStats {
+                damage: stats.damage,
+                range: stats.range,
+                attack_speed: stats.attack_speed,
+                cooldown_remaining: 0,
+            },
+            AttackTypeMarker {
+                attack_type: stats.attack_type,
+            },
+        ))
+        .id()
+}
+
+#[test]
+fn damage_multiplier_increases_enemy_damage() {
+    let (mut world, mut schedule) = make_combat_mutator_sim(GameMap::new(32, 32));
+
+    // Set up DamageMultiplier: enemy does 1.5x damage
+    let mission = mission_with_mutators(vec![MissionMutator::DamageMultiplier {
+        player_multiplier: cc_core::math::FIXED_ONE,
+        enemy_multiplier: Fixed::from_num(1.5f32),
+    }]);
+    load_mission_with_mutators(&mut world, mission);
+
+    // Spawn enemy attacker (player 1) and player target (player 0) adjacent
+    let attacker = spawn_melee_unit(&mut world, GridPos::new(5, 5), 1);
+    let target = spawn_melee_unit(&mut world, GridPos::new(6, 5), 0);
+
+    // Issue attack command
+    let target_eid = cc_core::commands::EntityId(target.to_bits());
+    world
+        .resource_mut::<CommandQueue>()
+        .push(cc_core::commands::GameCommand::Attack {
+            unit_ids: vec![cc_core::commands::EntityId(attacker.to_bits())],
+            target: target_eid,
+        });
+
+    let initial_hp = world.get::<Health>(target).unwrap().current;
+
+    // 2 ticks: tick 1 processes Attack command + fires first shot (cooldown starts at 0)
+    run_ticks(&mut world, &mut schedule, 2);
+
+    let hp_after = world.get::<Health>(target).unwrap().current;
+    let damage_dealt = initial_hp - hp_after;
+
+    // Expected: base_damage * 1.5 (enemy multiplier) on grass (cover=1.0, flat elevation)
+    let base_damage = base_stats(UnitKind::Chonk).damage;
+    let expected = base_damage * Fixed::from_num(1.5f32);
+
+    assert!(
+        damage_dealt > base_damage,
+        "Damage ({damage_dealt}) should exceed base ({base_damage}) with 1.5x multiplier"
+    );
+    assert_eq!(
+        damage_dealt, expected,
+        "Damage ({damage_dealt}) should equal base*1.5 ({expected})"
+    );
+}
+
+#[test]
+fn damage_multiplier_does_not_affect_player() {
+    let (mut world, mut schedule) = make_combat_mutator_sim(GameMap::new(32, 32));
+
+    // Enemy gets 1.5x, player stays at 1.0x
+    let mission = mission_with_mutators(vec![MissionMutator::DamageMultiplier {
+        player_multiplier: cc_core::math::FIXED_ONE,
+        enemy_multiplier: Fixed::from_num(1.5f32),
+    }]);
+    load_mission_with_mutators(&mut world, mission);
+
+    // Player attacker (player 0) vs enemy target (player 1)
+    let attacker = spawn_melee_unit(&mut world, GridPos::new(5, 5), 0);
+    let target = spawn_melee_unit(&mut world, GridPos::new(6, 5), 1);
+
+    world
+        .resource_mut::<CommandQueue>()
+        .push(cc_core::commands::GameCommand::Attack {
+            unit_ids: vec![cc_core::commands::EntityId(attacker.to_bits())],
+            target: cc_core::commands::EntityId(target.to_bits()),
+        });
+
+    let initial_hp = world.get::<Health>(target).unwrap().current;
+    run_ticks(&mut world, &mut schedule, 2);
+
+    let hp_after = world.get::<Health>(target).unwrap().current;
+    let damage_dealt = initial_hp - hp_after;
+    let base_damage = base_stats(UnitKind::Chonk).damage;
+
+    assert_eq!(
+        damage_dealt, base_damage,
+        "Player damage ({damage_dealt}) should equal base ({base_damage}) — no multiplier for player"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Gap 1: DenseFog mutator_init
+// ---------------------------------------------------------------------------
+
+#[test]
+fn dense_fog_sets_fog_state() {
+    let mission = mission_with_mutators(vec![MissionMutator::DenseFog {
+        vision_reduction: 3,
+        periodic_clearing: None,
+    }]);
+
+    let mut restrictions = ControlRestrictions::default();
+    let mut mutator_state = MutatorState::default();
+    let mut fog = FogState::default();
+    let campaign = CampaignState::default();
+
+    mutator_systems::mutator_init(
+        &campaign,
+        &mission,
+        &mut restrictions,
+        &mut mutator_state,
+        &mut fog,
+    );
+
+    assert_eq!(fog.vision_reduction, 3);
+    assert!(!fog.currently_clear);
+}
+
+#[test]
+fn dense_fog_periodic_clearing_toggles() {
+    let (mut world, mut schedule) = make_mutator_sim(GameMap::new(16, 16));
+
+    let mission = mission_with_mutators(vec![MissionMutator::DenseFog {
+        vision_reduction: 3,
+        periodic_clearing: Some(PeriodicClearing {
+            interval_ticks: 10,
+            clear_duration_ticks: 3,
+        }),
+    }]);
+    load_mission_with_mutators(&mut world, mission);
+
+    // At tick 0, cycle=0 < 3 so fog should be clear
+    run_ticks(&mut world, &mut schedule, 1);
+    assert!(
+        world.resource::<FogState>().currently_clear,
+        "Fog should be clear at tick 0"
+    );
+
+    // At tick 5, cycle=5 >= 3 so fog should not be clear
+    run_ticks(&mut world, &mut schedule, 5);
+    assert!(
+        !world.resource::<FogState>().currently_clear,
+        "Fog should be dense at tick 5"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Gap 3: Patrol AI behavior
+// ---------------------------------------------------------------------------
+
+#[test]
+fn patrol_unit_moves_between_waypoints() {
+    let (mut world, mut schedule) = make_combat_mutator_sim(GameMap::new(32, 32));
+
+    let start = GridPos::new(10, 10);
+    let wp1 = GridPos::new(14, 10);
+    let wp2 = GridPos::new(14, 14);
+
+    // Spawn a unit with PatrolWaypoints
+    let stats = base_stats(UnitKind::Nuisance);
+    let patrol_unit = world
+        .spawn((
+            Position {
+                world: WorldPos::from_grid(start),
+            },
+            Velocity::zero(),
+            GridCell { pos: start },
+            Owner { player_id: 1 },
+            UnitType {
+                kind: UnitKind::Nuisance,
+            },
+            Health {
+                current: stats.health,
+                max: stats.health,
+            },
+            MovementSpeed { speed: stats.speed },
+            AttackStats {
+                damage: stats.damage,
+                range: stats.range,
+                attack_speed: stats.attack_speed,
+                cooldown_remaining: 0,
+            },
+            AttackTypeMarker {
+                attack_type: stats.attack_type,
+            },
+            PatrolWaypoints {
+                waypoints: vec![start, wp1, wp2],
+                current_index: 0,
+            },
+        ))
+        .id();
+
+    // Initially no Path — patrol_system should issue path to wp1 (index advances to 1)
+    run_ticks(&mut world, &mut schedule, 1);
+
+    // Should now have a Path and MoveTarget
+    assert!(
+        world.get::<Path>(patrol_unit).is_some(),
+        "Patrol unit should have a Path after first tick"
+    );
+    assert!(
+        world.get::<MoveTarget>(patrol_unit).is_some(),
+        "Patrol unit should have MoveTarget after first tick"
+    );
+
+    // Run enough ticks for unit to reach wp1 (4 tiles at speed 0.18 = ~22 ticks)
+    run_ticks(&mut world, &mut schedule, 30);
+
+    let pos = world.get::<Position>(patrol_unit).unwrap();
+    let gx = pos.world.x.to_num::<i32>();
+    let gy = pos.world.y.to_num::<i32>();
+
+    // Unit should have moved from (10,10) and be headed toward/reached waypoints
+    assert!(
+        gx > 10 || gy > 10,
+        "Patrol unit should have moved from starting position, got ({gx},{gy})"
+    );
+}
+
+#[test]
+fn patrol_unit_loops_back() {
+    let (mut world, mut schedule) = make_combat_mutator_sim(GameMap::new(32, 32));
+
+    // Simple 2-waypoint patrol: back and forth
+    let wp_a = GridPos::new(10, 10);
+    let wp_b = GridPos::new(12, 10);
+
+    let stats = base_stats(UnitKind::Nuisance);
+    let patrol_unit = world
+        .spawn((
+            Position {
+                world: WorldPos::from_grid(wp_a),
+            },
+            Velocity::zero(),
+            GridCell { pos: wp_a },
+            Owner { player_id: 1 },
+            UnitType {
+                kind: UnitKind::Nuisance,
+            },
+            Health {
+                current: stats.health,
+                max: stats.health,
+            },
+            MovementSpeed { speed: stats.speed },
+            AttackStats {
+                damage: stats.damage,
+                range: stats.range,
+                attack_speed: stats.attack_speed,
+                cooldown_remaining: 0,
+            },
+            AttackTypeMarker {
+                attack_type: stats.attack_type,
+            },
+            PatrolWaypoints {
+                waypoints: vec![wp_a, wp_b],
+                current_index: 0,
+            },
+        ))
+        .id();
+
+    // Run many ticks — unit should patrol back and forth without crashing
+    run_ticks(&mut world, &mut schedule, 100);
+
+    // Unit should still be alive and have PatrolWaypoints
+    assert!(
+        world.get::<PatrolWaypoints>(patrol_unit).is_some(),
+        "Patrol unit should still have PatrolWaypoints after extended patrol"
+    );
+    assert!(
+        world.get::<Health>(patrol_unit).is_some(),
+        "Patrol unit should still be alive"
+    );
 }

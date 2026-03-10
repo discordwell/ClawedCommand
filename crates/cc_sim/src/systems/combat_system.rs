@@ -17,11 +17,14 @@ use cc_core::status_effects::StatusEffectId;
 use cc_core::terrain::FactionId;
 use cc_core::tuning::PROJECTILE_SPEED;
 
+use crate::campaign::mutator_state::MutatorState;
+
 /// Core combat system: tick cooldowns, fire when ready, chase when out of range.
 pub fn combat_system(
     mut commands: Commands,
     map_res: Res<MapResource>,
     mut combat_stats: ResMut<CombatStats>,
+    mutator_state: Option<Res<MutatorState>>,
     mut attackers: Query<
         (
             Entity,
@@ -38,7 +41,12 @@ pub fn combat_system(
         Without<Dead>,
     >,
     targets: Query<
-        (Entity, &Position, Option<&StatModifiers>, Option<&StationaryTimer>),
+        (
+            Entity,
+            &Position,
+            Option<&StatModifiers>,
+            Option<&StationaryTimer>,
+        ),
         (Or<(With<UnitType>, With<Building>)>, Without<Dead>),
     >,
 ) {
@@ -70,8 +78,7 @@ pub fn combat_system(
         };
 
         let target_entity = Entity::from_bits(target.target.0);
-        let Ok((_, target_pos, target_mods, target_stationary)) = targets.get(target_entity)
-        else {
+        let Ok((_, target_pos, target_mods, target_stationary)) = targets.get(target_entity) else {
             // Target doesn't exist or is dead
             continue;
         };
@@ -126,8 +133,8 @@ pub fn combat_system(
 
                     // Anti-static bonus: extra damage vs stationary targets (>=30 ticks = 3s)
                     if mods.anti_static_bonus > Fixed::ZERO {
-                        let target_is_stationary = target_stationary
-                            .is_some_and(|t| t.ticks_stationary >= 30);
+                        let target_is_stationary =
+                            target_stationary.is_some_and(|t| t.ticks_stationary >= 30);
                         if target_is_stationary {
                             final_damage *= FIXED_ONE + mods.anti_static_bonus;
                         }
@@ -152,6 +159,17 @@ pub fn combat_system(
                 // Apply target's damage_reduction
                 if let Some(mods) = target_mods {
                     final_damage *= mods.damage_reduction;
+                }
+
+                // Mission-level damage multiplier (per-side)
+                if let Some(ref ms) = mutator_state {
+                    let is_player = owner.map(|o| o.player_id == 0).unwrap_or(false);
+                    let mult = if is_player {
+                        ms.player_damage_multiplier
+                    } else {
+                        ms.enemy_damage_multiplier
+                    };
+                    final_damage *= mult;
                 }
 
                 // JunkMortarMode: GreaseMonkey gains 2-tile AoE splash when deployed

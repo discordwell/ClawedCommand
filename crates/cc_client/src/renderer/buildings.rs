@@ -33,7 +33,10 @@ pub struct BuildingAnimTimer(pub Timer);
 
 impl Default for BuildingAnimTimer {
     fn default() -> Self {
-        Self(Timer::from_seconds(BUILDING_AMBIENT_FRAME_SECS, TimerMode::Repeating))
+        Self(Timer::from_seconds(
+            BUILDING_AMBIENT_FRAME_SECS,
+            TimerMode::Repeating,
+        ))
     }
 }
 
@@ -452,7 +455,11 @@ pub fn init_building_anim(
     anim_sheets: Option<Res<BuildingAnimSheets>>,
     mut new_buildings: Query<
         (Entity, &Building, Option<&UnderConstruction>, &mut Sprite),
-        (With<BuildingMesh>, With<SpriteBuilding>, Without<BuildingAnimInit>),
+        (
+            With<BuildingMesh>,
+            With<SpriteBuilding>,
+            Without<BuildingAnimInit>,
+        ),
     >,
 ) {
     let Some(sheets) = anim_sheets else { return };
@@ -476,11 +483,9 @@ pub fn init_building_anim(
             }
         };
 
-        commands.entity(entity).insert((
-            state,
-            BuildingAnimTimer::default(),
-            BuildingAnimInit,
-        ));
+        commands
+            .entity(entity)
+            .insert((state, BuildingAnimTimer::default(), BuildingAnimInit));
 
         if let Some((img, layout)) = sheet_opt {
             sprite.image = img.clone();
@@ -536,7 +541,12 @@ pub fn transition_building_to_ambient(
     anim_sheets: Option<Res<BuildingAnimSheets>>,
     building_sprites: Option<Res<BuildingSprites>>,
     mut finished: Query<
-        (&Building, &mut Sprite, &mut BuildingAnimState, &mut BuildingAnimTimer),
+        (
+            &Building,
+            &mut Sprite,
+            &mut BuildingAnimState,
+            &mut BuildingAnimTimer,
+        ),
         (
             With<BuildingAnimInit>,
             With<SpriteBuilding>,
@@ -561,7 +571,9 @@ pub fn transition_building_to_ambient(
         if has_ambient {
             let entry = anim_sheets.as_ref().unwrap().ambient[idx].as_ref().unwrap();
             *anim_state = BuildingAnimState::AmbientIdle;
-            timer.set_duration(std::time::Duration::from_secs_f32(BUILDING_AMBIENT_FRAME_SECS));
+            timer.set_duration(std::time::Duration::from_secs_f32(
+                BUILDING_AMBIENT_FRAME_SECS,
+            ));
             timer.reset();
 
             // Swap to ambient sheet
@@ -588,7 +600,11 @@ pub fn advance_building_ambient_anim(
     time: Res<Time>,
     mut buildings: Query<
         (&BuildingAnimState, &mut Sprite, &mut BuildingAnimTimer),
-        (With<BuildingAnimInit>, With<SpriteBuilding>, Without<UnderConstruction>),
+        (
+            With<BuildingAnimInit>,
+            With<SpriteBuilding>,
+            Without<UnderConstruction>,
+        ),
     >,
 ) {
     for (anim_state, mut sprite, mut timer) in buildings.iter_mut() {
@@ -610,7 +626,10 @@ mod tests {
 
     #[test]
     fn building_anim_state_constructing_ne_ambient() {
-        assert_ne!(BuildingAnimState::Constructing, BuildingAnimState::AmbientIdle);
+        assert_ne!(
+            BuildingAnimState::Constructing,
+            BuildingAnimState::AmbientIdle
+        );
         assert_ne!(BuildingAnimState::Constructing, BuildingAnimState::Static);
         assert_ne!(BuildingAnimState::AmbientIdle, BuildingAnimState::Static);
     }
