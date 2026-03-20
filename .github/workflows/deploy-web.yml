@@ -40,14 +40,52 @@ jobs:
         run: trunk build --release
 
       - name: Deploy to OVH2
+        id: ssh_deploy
+        continue-on-error: true
         env:
           SSH_KEY: ${{ secrets.OVH2_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H 15.204.59.61 >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -p 41022 -H 15.204.59.61 >> ~/.ssh/known_hosts 2>/dev/null
           rsync -az --delete \
-            -e "ssh -i ~/.ssh/deploy_key" \
+            -e "ssh -p 41022 -i ~/.ssh/deploy_key" \
+            dist/ ubuntu@15.204.59.61:/opt/clawed/site/
+          rm -f ~/.ssh/deploy_key
+
+      - name: Reboot ovh2 via OVH API (SSH failed)
+        if: steps.ssh_deploy.outcome == 'failure'
+        env:
+          OVH_APP_KEY: ${{ secrets.OVH_APP_KEY }}
+          OVH_APP_SECRET: ${{ secrets.OVH_APP_SECRET }}
+          OVH_CONSUMER_KEY: ${{ secrets.OVH_CONSUMER_KEY }}
+        run: |
+          echo "::warning::SSH deploy failed — rebooting ovh2 via OVH API"
+          VPS="vps-05030f8b.vps.ovh.us"
+          API="https://api.us.ovhcloud.com/1.0"
+          TSTAMP=$(curl -s "${API}/auth/time")
+          URL="${API}/vps/${VPS}/reboot"
+          SIG="\$1\$$(echo -n "${OVH_APP_SECRET}+${OVH_CONSUMER_KEY}+POST+${URL}++${TSTAMP}" | sha1sum | cut -d' ' -f1)"
+          curl -s -X POST \
+            -H "X-Ovh-Application: ${OVH_APP_KEY}" \
+            -H "X-Ovh-Timestamp: ${TSTAMP}" \
+            -H "X-Ovh-Signature: ${SIG}" \
+            -H "X-Ovh-Consumer: ${OVH_CONSUMER_KEY}" \
+            -H "Content-Type: application/json" "${URL}"
+          echo "Waiting 90s for server to come back..."
+          sleep 90
+
+      - name: Retry deploy after reboot
+        if: steps.ssh_deploy.outcome == 'failure'
+        env:
+          SSH_KEY: ${{ secrets.OVH2_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p 41022 -H 15.204.59.61 >> ~/.ssh/known_hosts 2>/dev/null
+          rsync -az --delete \
+            -e "ssh -p 41022 -i ~/.ssh/deploy_key" \
             dist/ ubuntu@15.204.59.61:/opt/clawed/site/
           rm -f ~/.ssh/deploy_key
