@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use cc_core::commands::EntityId;
+use cc_core::components::UnitKind;
 use cc_core::math::Fixed;
 
 use crate::snapshot::{GameStateSnapshot, UnitSnapshot};
@@ -23,6 +24,23 @@ pub enum ScriptEvent {
     UnitDied { unit_id: EntityId },
 }
 
+/// How a script is activated.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ActivationMode {
+    /// Runs automatically on matching events/ticks.
+    Auto,
+    /// Triggered by game events only (not on_tick).
+    EventTriggered,
+    /// Only runs when manually triggered from UI.
+    Manual,
+}
+
+impl Default for ActivationMode {
+    fn default() -> Self {
+        Self::Auto
+    }
+}
+
 /// A registered script with its event bindings.
 #[derive(Debug, Clone)]
 pub struct ScriptRegistration {
@@ -33,6 +51,16 @@ pub struct ScriptRegistration {
     pub player_id: u8,
     /// Internal: tick counter for on_tick scheduling.
     pub ticks_since_last_run: u32,
+    /// Whether this script is enabled. Disabled scripts are skipped entirely.
+    pub enabled: bool,
+    /// Filter: only run for these unit kinds (from `@units: Hisser, Nuisance`).
+    pub unit_filter: Option<Vec<UnitKind>>,
+    /// Filter: only run for this squad (from `@squad: skirmishers`).
+    pub squad_filter: Option<String>,
+    /// Condition expression (from `@when: ctx:enemy_units() > 0`).
+    pub when_condition: Option<String>,
+    /// How this script is activated.
+    pub activation_mode: ActivationMode,
 }
 
 impl ScriptRegistration {
@@ -44,12 +72,115 @@ impl ScriptRegistration {
             tick_interval: 5, // default: run every 5 ticks (2Hz at 10Hz sim)
             player_id,
             ticks_since_last_run: 0,
+            enabled: true,
+            unit_filter: None,
+            squad_filter: None,
+            when_condition: None,
+            activation_mode: ActivationMode::Auto,
         }
+    }
+
+    /// Create a ScriptRegistration from raw source using annotation parsing.
+    pub fn from_source(source: &str, fallback_name: &str, player_id: u8) -> Self {
+        let ann = parse_annotations(source, fallback_name);
+        let mut reg = Self::new(ann.name, source.to_string(), ann.events, player_id);
+        reg.tick_interval = ann.interval;
+        reg.unit_filter = ann.unit_filter;
+        reg.squad_filter = ann.squad_filter;
+        reg.when_condition = ann.when_condition;
+        reg.activation_mode = ann.activation_mode;
+        reg
     }
 
     /// Check if this script listens for the given event name.
     pub fn listens_for(&self, event_name: &str) -> bool {
         self.events.iter().any(|e| e == event_name)
+    }
+}
+
+/// Result of parsing script annotation comments.
+#[derive(Debug, Clone)]
+pub struct ParsedAnnotations {
+    pub name: String,
+    pub events: Vec<String>,
+    pub interval: u32,
+    pub unit_filter: Option<Vec<UnitKind>>,
+    pub squad_filter: Option<String>,
+    pub when_condition: Option<String>,
+    pub activation_mode: ActivationMode,
+}
+
+/// Parse annotation comments from a Lua script source.
+///
+/// Recognized annotations:
+/// - `@name: script_name`
+/// - `@events: on_tick, on_enemy_spotted`
+/// - `@interval: 5`
+/// - `@units: Hisser, Nuisance`
+/// - `@squad: skirmishers`
+/// - `@when: #ctx:enemy_units() > 0`
+/// - `@manual`
+pub fn parse_annotations(source: &str, fallback_name: &str) -> ParsedAnnotations {
+    let mut name = fallback_name.to_string();
+    let mut events = vec!["on_tick".to_string()];
+    let mut interval = 5u32;
+    let mut unit_filter = None;
+    let mut squad_filter = None;
+    let mut when_condition = None;
+    let mut activation_mode = ActivationMode::Auto;
+
+    for line in source.lines() {
+        let trimmed = line.trim();
+        if !trimmed.starts_with("--") {
+            if !trimmed.is_empty() {
+                break;
+            }
+            continue;
+        }
+        let comment = trimmed.trim_start_matches("--").trim();
+        if let Some(val) = comment.strip_prefix("@name:") {
+            name = val.trim().to_string();
+        } else if let Some(val) = comment.strip_prefix("@events:") {
+            events = val
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+        } else if let Some(val) = comment.strip_prefix("@interval:") {
+            if let Ok(n) = val.trim().parse::<u32>() {
+                interval = n;
+            }
+        } else if let Some(val) = comment.strip_prefix("@units:") {
+            let kinds: Vec<UnitKind> = val
+                .split(',')
+                .filter_map(|s| s.trim().parse::<UnitKind>().ok())
+                .collect();
+            if !kinds.is_empty() {
+                unit_filter = Some(kinds);
+            }
+        } else if let Some(val) = comment.strip_prefix("@squad:") {
+            let sq = val.trim().to_string();
+            if !sq.is_empty() {
+                squad_filter = Some(sq);
+            }
+        } else if let Some(val) = comment.strip_prefix("@when:") {
+            let cond = val.trim().to_string();
+            if !cond.is_empty() {
+                when_condition = Some(cond);
+            }
+        } else if comment == "@manual" {
+            activation_mode = ActivationMode::Manual;
+        }
+    }
+
+    ParsedAnnotations {
+        name,
+        events,
+        interval,
+        unit_filter,
+        squad_filter,
+        when_condition,
+        activation_mode,
     }
 }
 
@@ -271,5 +402,88 @@ mod tests {
         assert!(reg.listens_for("on_tick"));
         assert!(reg.listens_for("on_enemy_spotted"));
         assert!(!reg.listens_for("on_unit_died"));
+    }
+
+    #[test]
+    fn new_defaults_backward_compatible() {
+        let reg = ScriptRegistration::new("test".into(), "".into(), vec![], 0);
+        assert!(reg.enabled);
+        assert!(reg.unit_filter.is_none());
+        assert!(reg.squad_filter.is_none());
+        assert!(reg.when_condition.is_none());
+        assert_eq!(reg.activation_mode, ActivationMode::Auto);
+    }
+
+    #[test]
+    fn parse_annotations_defaults() {
+        let source = "local x = 1";
+        let ann = parse_annotations(source, "fallback");
+        assert_eq!(ann.name, "fallback");
+        assert_eq!(ann.events, vec!["on_tick"]);
+        assert_eq!(ann.interval, 5);
+        assert!(ann.unit_filter.is_none());
+        assert!(ann.squad_filter.is_none());
+        assert!(ann.when_condition.is_none());
+        assert_eq!(ann.activation_mode, ActivationMode::Auto);
+    }
+
+    #[test]
+    fn parse_annotations_all_fields() {
+        let source = r#"-- @name: kite_script
+-- @events: on_tick, on_enemy_spotted
+-- @interval: 3
+-- @units: Hisser, Nuisance
+-- @squad: skirmishers
+-- @when: #ctx:enemy_units() > 0
+-- @manual
+
+local x = ctx:my_units()
+"#;
+        let ann = parse_annotations(source, "fallback");
+        assert_eq!(ann.name, "kite_script");
+        assert_eq!(ann.events, vec!["on_tick", "on_enemy_spotted"]);
+        assert_eq!(ann.interval, 3);
+        assert_eq!(
+            ann.unit_filter,
+            Some(vec![UnitKind::Hisser, UnitKind::Nuisance])
+        );
+        assert_eq!(ann.squad_filter, Some("skirmishers".to_string()));
+        assert_eq!(
+            ann.when_condition,
+            Some("#ctx:enemy_units() > 0".to_string())
+        );
+        assert_eq!(ann.activation_mode, ActivationMode::Manual);
+    }
+
+    #[test]
+    fn parse_annotations_partial() {
+        let source = "-- @name: gather\n-- @interval: 10\nlocal w = ctx:idle_units()";
+        let ann = parse_annotations(source, "x");
+        assert_eq!(ann.name, "gather");
+        assert_eq!(ann.interval, 10);
+        assert_eq!(ann.events, vec!["on_tick"]); // default preserved
+        assert!(ann.unit_filter.is_none());
+        assert_eq!(ann.activation_mode, ActivationMode::Auto);
+    }
+
+    #[test]
+    fn parse_annotations_invalid_unit_kind_skipped() {
+        let source = "-- @units: Hisser, InvalidUnit, Chonk\nlocal x = 1";
+        let ann = parse_annotations(source, "test");
+        assert_eq!(
+            ann.unit_filter,
+            Some(vec![UnitKind::Hisser, UnitKind::Chonk])
+        );
+    }
+
+    #[test]
+    fn from_source_creates_registration() {
+        let source = "-- @name: test_script\n-- @interval: 3\n-- @manual\nlocal x = 1";
+        let reg = ScriptRegistration::from_source(source, "fallback", 0);
+        assert_eq!(reg.name, "test_script");
+        assert_eq!(reg.tick_interval, 3);
+        assert_eq!(reg.activation_mode, ActivationMode::Manual);
+        assert_eq!(reg.player_id, 0);
+        assert!(reg.enabled);
     }
 }

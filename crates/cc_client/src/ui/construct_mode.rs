@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 
 use cc_agent::construct_mode::{ConstructModeState, ScriptLibrary, ScriptTestResult};
+use cc_agent::events::ActivationMode;
+use cc_agent::script_registry::ScriptRegistry;
 
 use super::LocalPlayer;
 
@@ -195,6 +197,7 @@ pub fn spawn_construct_mode(mut commands: Commands) {
 pub fn update_construct_mode(
     state: Res<ConstructModeState>,
     library: Res<ScriptLibrary>,
+    registry: Res<ScriptRegistry>,
     mut root_vis: Query<
         &mut Visibility,
         (
@@ -245,7 +248,7 @@ pub fn update_construct_mode(
         return;
     }
 
-    // Update script list
+    // Update script list with status indicators from registry
     if let Ok(mut text) = list_q.single_mut() {
         if library.scripts.is_empty() {
             text.0 = "No scripts".to_string();
@@ -260,7 +263,24 @@ pub fn update_construct_mode(
                         .as_ref()
                         .is_some_and(|c| c.name == s.name);
                     let marker = if selected { "> " } else { "  " };
-                    format!("{}[{}] {}", marker, i + 1, s.name)
+
+                    // Look up registry status
+                    let status = if let Some(reg) = registry.find(&s.name) {
+                        match reg.activation_mode {
+                            ActivationMode::Manual => "[M]",
+                            _ => {
+                                if reg.enabled {
+                                    "[*]"
+                                } else {
+                                    "[ ]"
+                                }
+                            }
+                        }
+                    } else {
+                        "[-]" // not registered
+                    };
+
+                    format!("{}[{}]{} {}", marker, i + 1, status, s.name)
                 })
                 .collect();
             text.0 = names.join("\n");
@@ -316,6 +336,7 @@ pub fn construct_mode_keys(
     keys: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<ConstructModeState>,
     library: Res<ScriptLibrary>,
+    mut registry: ResMut<ScriptRegistry>,
     local_player: Res<LocalPlayer>,
 ) {
     if !state.active {
@@ -342,6 +363,25 @@ pub fn construct_mode_keys(
             state.editable_source = script.source.clone();
             state.current_script = Some(script.clone());
             state.test_result = None;
+        }
+    }
+
+    // E = toggle enabled on selected script
+    if keys.just_pressed(KeyCode::KeyE) {
+        if let Some(ref current) = state.current_script {
+            if let Some(reg) = registry.find(&current.name) {
+                let new_state = !reg.enabled;
+                registry.set_enabled(&current.name, new_state);
+                state.test_result = Some(ScriptTestResult {
+                    success: true,
+                    message: format!(
+                        "'{}' {}",
+                        current.name,
+                        if new_state { "enabled" } else { "disabled" }
+                    ),
+                    command_count: 0,
+                });
+            }
         }
     }
 

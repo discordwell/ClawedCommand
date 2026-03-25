@@ -110,27 +110,29 @@ impl Plugin for UiPlugin {
         // Agent-dependent UI systems
         #[cfg(any(feature = "native", feature = "wasm-agent"))]
         {
-            app.add_systems(
-                Startup,
-                (
-                    agent_chat::spawn_agent_chat,
-                    construct_mode::spawn_construct_mode,
-                    prompt_overlay::spawn_prompt_overlay,
-                ),
-            )
-            .add_systems(
-                Update,
-                (
-                    agent_chat::update_agent_chat,
-                    agent_chat::agent_quick_commands,
-                    construct_mode::construct_mode_toggle,
-                    construct_mode::update_construct_mode,
-                    construct_mode::construct_mode_keys,
-                    prompt_overlay::prompt_overlay_visibility,
-                    prompt_overlay::prompt_text_input,
-                    prompt_overlay::update_prompt_display,
-                ),
-            );
+            app.init_resource::<prompt_overlay::ScriptManagerExpanded>()
+                .add_systems(
+                    Startup,
+                    (
+                        agent_chat::spawn_agent_chat,
+                        construct_mode::spawn_construct_mode,
+                        prompt_overlay::spawn_prompt_overlay,
+                    ),
+                )
+                .add_systems(
+                    Update,
+                    (
+                        agent_chat::update_agent_chat,
+                        agent_chat::agent_quick_commands,
+                        construct_mode::construct_mode_toggle,
+                        construct_mode::update_construct_mode,
+                        construct_mode::construct_mode_keys,
+                        prompt_overlay::prompt_overlay_visibility,
+                        prompt_overlay::prompt_text_input,
+                        prompt_overlay::update_prompt_display,
+                        prompt_overlay::update_undo_toast,
+                    ),
+                );
         }
     }
 }

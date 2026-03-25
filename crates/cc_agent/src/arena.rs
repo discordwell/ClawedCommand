@@ -325,36 +325,7 @@ pub fn load_scripts_from_dir(dir: &Path, player_id: u8) -> Vec<ScriptRegistratio
             .unwrap_or("unnamed")
             .to_string();
 
-        let mut name = file_stem;
-        let mut events = vec!["on_tick".to_string()];
-        let mut interval = 5u32;
-
-        for line in source.lines() {
-            let trimmed = line.trim();
-            if !trimmed.starts_with("--") {
-                if !trimmed.is_empty() {
-                    break;
-                }
-                continue;
-            }
-            let comment = trimmed.trim_start_matches("--").trim();
-            if let Some(val) = comment.strip_prefix("@name:") {
-                name = val.trim().to_string();
-            } else if let Some(val) = comment.strip_prefix("@events:") {
-                events = val
-                    .split(',')
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| !s.is_empty())
-                    .collect();
-            } else if let Some(val) = comment.strip_prefix("@interval:") {
-                if let Ok(n) = val.trim().parse::<u32>() {
-                    interval = n;
-                }
-            }
-        }
-
-        let mut reg = ScriptRegistration::new(name, source, events, player_id);
-        reg.tick_interval = interval;
+        let reg = ScriptRegistration::from_source(&source, &file_stem, player_id);
         scripts.push(reg);
     }
 

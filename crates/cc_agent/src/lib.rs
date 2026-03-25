@@ -51,6 +51,7 @@ impl Plugin for AgentPlugin {
         app.init_resource::<construct_mode::ConstructModeState>()
             .insert_resource(construct_mode::ScriptLibrary::with_starters())
             .init_resource::<agent_bridge::AgentChatLog>()
+            .init_resource::<agent_bridge::UndoScriptActivation>()
             .init_resource::<tool_tier::ToolRegistry>()
             .init_resource::<tool_tier::FactionToolStates>()
             .init_resource::<decision::AgentDecisionState>()
@@ -65,7 +66,10 @@ impl Plugin for AgentPlugin {
             app.insert_resource(llm_runner::LlmRunnerChannels(Some(channels)));
             app.insert_resource(llm_client::LlmConfig::from_env());
             app.add_plugins(runner::ScriptRunnerPlugin);
-            app.add_systems(Startup, llm_runner::startup_llm_runner);
+            app.add_systems(
+                Startup,
+                (llm_runner::startup_llm_runner, auto_register_saved_scripts),
+            );
         }
 
         // WASM: dead-channel bridge (wasm_runner handles its own channels)
@@ -84,5 +88,23 @@ impl Plugin for AgentPlugin {
             ),
         )
         .add_systems(FixedUpdate, tool_tier::update_tool_tiers);
+    }
+}
+
+/// Startup system: auto-register all scripts from ScriptLibrary into the ScriptRegistry.
+/// Runs once at game start, after ScriptLibrary::with_starters() is inserted.
+#[cfg(not(target_arch = "wasm32"))]
+fn auto_register_saved_scripts(
+    library: Res<construct_mode::ScriptLibrary>,
+    mut registry: ResMut<script_registry::ScriptRegistry>,
+) {
+    for script in &library.scripts {
+        registry.register_from_source(&script.source, &script.name, 0);
+    }
+    if !library.scripts.is_empty() {
+        info!(
+            "Auto-registered {} scripts from library",
+            library.scripts.len()
+        );
     }
 }

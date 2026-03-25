@@ -1,0 +1,33 @@
+{
+  "draws": 0,
+  "matches": 20,
+  "p0_faction": "catGPT",
+  "p0_win_rate": 0.0,
+  "p0_wins": 0,
+  "p1_faction": "The Clawed",
+  "p1_win_rate": 0.0,
+  "p1_wins": 0,
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+  ],
+  "timeouts": 20
+}

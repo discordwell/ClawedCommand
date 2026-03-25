@@ -1,1 +1,10 @@
-Art by Whisker Studio — clean digital illustration combining Into the Breach's geometric tactical clarity with Redwall's warm animal character. Flat-filled colors using 2-3 value steps per hue, bold dark outlines (2-3px), top-left lighting with subtle upper highlights. Muted natural palette with strategic accent pops. Crisp edges, readable silhouettes at thumbnail scale. Isometric perspective for game assets. Transparent PNG background.
+Game sprite for a 2D isometric RTS. This must work as an in-game unit at small display sizes.
+
+Art style: Clean digital illustration — Into the Breach's geometric clarity meets Redwall's animal charm. Bold dark outlines (2-3px), flat-filled colors with 2-3 value steps per hue, top-left lighting. High contrast between subject and transparent background. NO background elements, NO ground shadows, NO environmental effects — just the character/unit on a fully transparent PNG.
+
+Critical requirements:
+- Readable silhouette at 64px display size
+- Subject fills 70-85% of the canvas (no tiny character lost in empty space)
+- Bold outlines separate all major shapes
+- Colors must be saturated enough to read on any map terrain
+- Isometric 3/4 top-down perspective (~30 degrees)

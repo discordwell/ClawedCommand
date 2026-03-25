@@ -11,7 +11,7 @@ use async_channel::{Receiver, Sender, unbounded};
 use cc_core::commands::GameCommand;
 use cc_sim::resources::CommandQueue;
 
-use crate::construct_mode::{ConstructModeState, LuaScript};
+use crate::construct_mode::{ConstructModeState, LuaScript, ScriptLibrary};
 use crate::llm_client::ChatMessage;
 use crate::snapshot::GameStateSnapshot;
 use crate::tool_tier::ToolTier;
@@ -149,6 +149,13 @@ pub fn poll_streaming_tokens(
     }
 }
 
+/// Resource: tracks pending undo for recently activated scripts.
+#[derive(Resource, Default)]
+pub struct UndoScriptActivation {
+    /// (script_name, remaining_seconds) — None when no undo is pending.
+    pub pending: Option<(String, f32)>,
+}
+
 /// Bevy system: poll for LLM responses and route by source.
 /// Also clears in-flight flags per-player as responses arrive.
 pub fn poll_agent_responses(
@@ -158,6 +165,8 @@ pub fn poll_agent_responses(
     mut chat_log: ResMut<AgentChatLog>,
     mut decision_state: ResMut<crate::decision::AgentDecisionState>,
     mut registry: ResMut<crate::script_registry::ScriptRegistry>,
+    mut library: ResMut<ScriptLibrary>,
+    mut undo: ResMut<UndoScriptActivation>,
 ) {
     while let Ok(response) = bridge.response_rx.try_recv() {
         // Clear in-flight flag for this player so the decision system
@@ -188,15 +197,39 @@ pub fn poll_agent_responses(
                 if let Some(script) = extract_lua_script(&response.content) {
                     construct_state.editable_source = script.source.clone();
 
-                    // Prompt source: auto-register script in the Lua layer
+                    // Prompt source: auto-register + auto-save + add to library
                     if response.source == AgentSource::Prompt {
-                        registry.register_lua_script(
-                            &script.name,
+                        registry.register_from_source(
                             &script.source,
+                            &script.name,
                             response.player_id,
                         );
+
+                        // Auto-save to disk
+                        #[cfg(not(target_arch = "wasm32"))]
+                        if let Err(e) = crate::script_persistence::save_script(&script) {
+                            log::warn!("Auto-save failed for '{}': {e}", script.name);
+                        }
+
+                        // Add to library if not already present
+                        if !library.scripts.iter().any(|s| s.name == script.name) {
+                            library.scripts.push(script.clone());
+                        } else {
+                            // Update existing entry
+                            if let Some(existing) =
+                                library.scripts.iter_mut().find(|s| s.name == script.name)
+                            {
+                                existing.source = script.source.clone();
+                                existing.intents = script.intents.clone();
+                                existing.description = script.description.clone();
+                            }
+                        }
+
+                        // Set undo toast
+                        undo.pending = Some((script.name.clone(), 5.0));
+
                         log::info!(
-                            "Auto-registered prompt script '{}' for player {}",
+                            "Auto-registered & saved prompt script '{}' for player {}",
                             script.name,
                             response.player_id
                         );

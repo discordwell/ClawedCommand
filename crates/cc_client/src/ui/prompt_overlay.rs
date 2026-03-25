@@ -1,14 +1,18 @@
 //! Prompt overlay UI — opened with `/` key, sends prompts to the LLM backend.
 //!
-//! Shares state with ConstructModeState so Tab and `/` views show the same
-//! script/chat data.
+//! Features:
+//! - Collapsible script manager sidebar (Tab toggles)
+//! - Enable/disable scripts, manual trigger, undo toast
+//! - Shares state with ConstructModeState so Tab and `/` views show the same
+//!   script/chat data.
 
 use bevy::input::ButtonState;
 use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::prelude::*;
 
-use cc_agent::agent_bridge::{AgentBridge, AgentRequest, AgentSource};
+use cc_agent::agent_bridge::{AgentBridge, AgentRequest, AgentSource, UndoScriptActivation};
 use cc_agent::construct_mode::{ConstructModeState, ScriptLibrary, ScriptTestResult};
+use cc_agent::events::ActivationMode;
 use cc_agent::script_registry::ScriptRegistry;
 use cc_agent::tool_tier::ToolTier;
 use cc_sim::resources::GameState;
@@ -32,6 +36,22 @@ pub struct PromptResponseArea;
 #[derive(Component)]
 pub struct PromptStatusText;
 
+/// Marker for the script sidebar container.
+#[derive(Component)]
+pub struct ScriptSidebarRoot;
+
+/// Marker for the script sidebar list text.
+#[derive(Component)]
+pub struct ScriptSidebarList;
+
+/// Marker for the undo toast node.
+#[derive(Component)]
+pub struct UndoToastNode;
+
+/// Tracks whether the script manager sidebar is expanded.
+#[derive(Resource, Default)]
+pub struct ScriptManagerExpanded(pub bool);
+
 /// Spawn the prompt overlay (hidden initially).
 pub fn spawn_prompt_overlay(mut commands: Commands) {
     commands
@@ -42,12 +62,12 @@ pub fn spawn_prompt_overlay(mut commands: Commands) {
                 left: Val::Percent(50.0),
                 top: Val::Percent(50.0),
                 margin: UiRect {
-                    left: Val::Px(-350.0),
-                    top: Val::Px(-200.0),
+                    left: Val::Px(-450.0), // wider to accommodate sidebar
+                    top: Val::Px(-250.0),
                     ..default()
                 },
-                width: Val::Px(700.0),
-                height: Val::Px(400.0),
+                width: Val::Px(900.0),
+                height: Val::Px(500.0),
                 padding: UiRect::all(Val::Px(16.0)),
                 flex_direction: FlexDirection::Column,
                 row_gap: Val::Px(8.0),
@@ -62,7 +82,7 @@ pub fn spawn_prompt_overlay(mut commands: Commands) {
         .with_children(|parent| {
             // Title bar
             parent.spawn((
-                Text::new("LE CHAT PROMPT  [/ to open]"),
+                Text::new("LE CHAT PROMPT"),
                 TextColor(Color::srgb(0.95, 0.8, 0.3)),
                 TextFont {
                     font_size: 16.0,
@@ -70,53 +90,112 @@ pub fn spawn_prompt_overlay(mut commands: Commands) {
                 },
             ));
 
-            // Input field area
-            parent
-                .spawn(Node {
-                    min_height: Val::Px(28.0),
-                    padding: UiRect::all(Val::Px(6.0)),
-                    border_radius: BorderRadius::all(Val::Px(4.0)),
-                    ..default()
-                })
-                .insert(BackgroundColor(Color::srgba(0.1, 0.1, 0.15, 0.9)))
-                .with_children(|parent| {
-                    parent.spawn((
-                        PromptInputText,
-                        Text::new("> _"),
-                        TextColor(Color::srgb(0.9, 0.9, 0.9)),
-                        TextFont {
-                            font_size: 13.0,
-                            ..default()
-                        },
-                    ));
-                });
-
-            // Response/script display (scrollable area)
+            // Main content area: sidebar + prompt area
             parent
                 .spawn(Node {
                     flex_grow: 1.0,
-                    padding: UiRect::all(Val::Px(6.0)),
-                    overflow: Overflow::clip_y(),
-                    border_radius: BorderRadius::all(Val::Px(4.0)),
+                    flex_direction: FlexDirection::Row,
+                    column_gap: Val::Px(12.0),
                     ..default()
                 })
-                .insert(BackgroundColor(Color::srgba(0.06, 0.06, 0.1, 0.9)))
                 .with_children(|parent| {
-                    parent.spawn((
-                        PromptResponseArea,
-                        Text::new("Type a request and press Enter.\nExample: \"make my ranged units kite enemies\""),
-                        TextColor(Color::srgb(0.6, 0.7, 0.6)),
-                        TextFont {
-                            font_size: 11.0,
+                    // Script sidebar (hidden by default)
+                    parent
+                        .spawn((
+                            ScriptSidebarRoot,
+                            Node {
+                                width: Val::Px(200.0),
+                                flex_direction: FlexDirection::Column,
+                                padding: UiRect::all(Val::Px(8.0)),
+                                overflow: Overflow::clip_y(),
+                                border_radius: BorderRadius::all(Val::Px(4.0)),
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgba(0.08, 0.08, 0.12, 0.9)),
+                            Visibility::Hidden,
+                        ))
+                        .with_children(|parent| {
+                            parent.spawn((
+                                Text::new("SCRIPTS"),
+                                TextColor(Color::srgb(0.9, 0.8, 0.3)),
+                                TextFont {
+                                    font_size: 13.0,
+                                    ..default()
+                                },
+                                Node {
+                                    margin: UiRect::bottom(Val::Px(6.0)),
+                                    ..default()
+                                },
+                            ));
+                            parent.spawn((
+                                ScriptSidebarList,
+                                Text::new("No scripts"),
+                                TextColor(Color::srgb(0.7, 0.7, 0.7)),
+                                TextFont {
+                                    font_size: 11.0,
+                                    ..default()
+                                },
+                            ));
+                        });
+
+                    // Right side: input + response
+                    parent
+                        .spawn(Node {
+                            flex_grow: 1.0,
+                            flex_direction: FlexDirection::Column,
+                            row_gap: Val::Px(8.0),
                             ..default()
-                        },
-                    ));
+                        })
+                        .with_children(|parent| {
+                            // Input field area
+                            parent
+                                .spawn(Node {
+                                    min_height: Val::Px(28.0),
+                                    padding: UiRect::all(Val::Px(6.0)),
+                                    border_radius: BorderRadius::all(Val::Px(4.0)),
+                                    ..default()
+                                })
+                                .insert(BackgroundColor(Color::srgba(0.1, 0.1, 0.15, 0.9)))
+                                .with_children(|parent| {
+                                    parent.spawn((
+                                        PromptInputText,
+                                        Text::new("> _"),
+                                        TextColor(Color::srgb(0.9, 0.9, 0.9)),
+                                        TextFont {
+                                            font_size: 13.0,
+                                            ..default()
+                                        },
+                                    ));
+                                });
+
+                            // Response/script display (scrollable area)
+                            parent
+                                .spawn(Node {
+                                    flex_grow: 1.0,
+                                    padding: UiRect::all(Val::Px(6.0)),
+                                    overflow: Overflow::clip_y(),
+                                    border_radius: BorderRadius::all(Val::Px(4.0)),
+                                    ..default()
+                                })
+                                .insert(BackgroundColor(Color::srgba(0.06, 0.06, 0.1, 0.9)))
+                                .with_children(|parent| {
+                                    parent.spawn((
+                                        PromptResponseArea,
+                                        Text::new("Type a request and press Enter.\nExample: \"make my ranged units kite enemies\""),
+                                        TextColor(Color::srgb(0.6, 0.7, 0.6)),
+                                        TextFont {
+                                            font_size: 11.0,
+                                            ..default()
+                                        },
+                                    ));
+                                });
+                        });
                 });
 
             // Status bar
             parent.spawn((
                 PromptStatusText,
-                Text::new("Enter=submit | Esc=cancel | T=test | S=save"),
+                Text::new("Enter=submit | Tab=scripts | Esc=close"),
                 TextColor(Color::srgb(0.5, 0.5, 0.6)),
                 TextFont {
                     font_size: 11.0,
@@ -124,6 +203,34 @@ pub fn spawn_prompt_overlay(mut commands: Commands) {
                 },
             ));
         });
+
+    // Undo toast — floating at bottom-center, always on top
+    commands.spawn((
+        UndoToastNode,
+        Node {
+            position_type: PositionType::Absolute,
+            bottom: Val::Px(60.0),
+            left: Val::Percent(50.0),
+            margin: UiRect {
+                left: Val::Px(-180.0),
+                ..default()
+            },
+            width: Val::Px(360.0),
+            padding: UiRect::axes(Val::Px(16.0), Val::Px(10.0)),
+            justify_content: JustifyContent::Center,
+            border_radius: BorderRadius::all(Val::Px(6.0)),
+            ..default()
+        },
+        BackgroundColor(Color::srgba(0.15, 0.4, 0.15, 0.95)),
+        Visibility::Hidden,
+        ZIndex(200),
+        Text::new(""),
+        TextColor(Color::srgb(0.9, 0.95, 0.9)),
+        TextFont {
+            font_size: 13.0,
+            ..default()
+        },
+    ));
 }
 
 /// Show/hide overlay based on InputMode, and toggle GameState pause.
@@ -131,11 +238,22 @@ pub fn prompt_overlay_visibility(
     input_mode: Res<InputMode>,
     mut game_state: ResMut<GameState>,
     mut root_vis: Query<&mut Visibility, With<PromptOverlayRoot>>,
+    sidebar_expanded: Res<ScriptManagerExpanded>,
+    mut sidebar_vis: Query<&mut Visibility, (With<ScriptSidebarRoot>, Without<PromptOverlayRoot>)>,
 ) {
     let show = *input_mode == InputMode::Prompt;
 
     for mut vis in root_vis.iter_mut() {
         *vis = if show {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+    }
+
+    // Show/hide sidebar based on expanded state
+    for mut vis in sidebar_vis.iter_mut() {
+        *vis = if show && sidebar_expanded.0 {
             Visibility::Inherited
         } else {
             Visibility::Hidden
@@ -159,6 +277,11 @@ pub fn prompt_text_input(
     local_player: Res<LocalPlayer>,
     mut registry: ResMut<ScriptRegistry>,
     mut library: ResMut<ScriptLibrary>,
+    mut sidebar_expanded: ResMut<ScriptManagerExpanded>,
+    mut undo: ResMut<UndoScriptActivation>,
+    #[cfg(not(target_arch = "wasm32"))] mut manual_triggers: ResMut<
+        cc_agent::runner::ManualScriptTriggers,
+    >,
 ) {
     if *input_mode != InputMode::Prompt {
         // Drain events so they don't accumulate
@@ -176,6 +299,53 @@ pub fn prompt_text_input(
             Key::Escape => {
                 *input_mode = InputMode::Normal;
                 return;
+            }
+
+            // Tab — toggle script sidebar
+            Key::Tab => {
+                sidebar_expanded.0 = !sidebar_expanded.0;
+            }
+
+            // Z — undo last script activation (while toast is visible)
+            Key::Character(c)
+                if c.as_str() == "z"
+                    && construct_state.chat_input.is_empty()
+                    && undo.pending.is_some() =>
+            {
+                if let Some((ref name, _)) = undo.pending {
+                    registry.set_enabled(name, false);
+                    bevy::log::info!("Undid activation of script '{}'", name);
+                }
+                undo.pending = None;
+            }
+
+            // Number keys 1-9 — toggle enable/disable when sidebar visible and input empty
+            Key::Character(c)
+                if sidebar_expanded.0
+                    && construct_state.chat_input.is_empty()
+                    && c.len() == 1
+                    && c.as_bytes()[0].is_ascii_digit()
+                    && c.as_str() != "0" =>
+            {
+                let idx = (c.as_bytes()[0] - b'1') as usize;
+                let player_scripts: Vec<String> = registry
+                    .scripts_for_player(local_player.0)
+                    .iter()
+                    .map(|s| s.name.clone())
+                    .collect();
+                if let Some(name) = player_scripts.get(idx) {
+                    if let Some(script) = registry.find(name) {
+                        if script.activation_mode == ActivationMode::Manual {
+                            // Manual scripts: fire once
+                            #[cfg(not(target_arch = "wasm32"))]
+                            manual_triggers.triggered.push(name.clone());
+                        } else {
+                            // Auto scripts: toggle enabled
+                            let new_state = !script.enabled;
+                            registry.set_enabled(name, new_state);
+                        }
+                    }
+                }
             }
 
             // Enter — submit prompt
@@ -252,8 +422,6 @@ pub fn prompt_text_input(
             }
 
             // S — save script to disk & library (only when not typing and a script exists)
-            // Note: Prompt scripts are auto-registered on arrival by poll_agent_responses,
-            // so S only persists to disk and adds to library for cross-session persistence.
             Key::Character(c) if c.as_str() == "s" && construct_state.chat_input.is_empty() => {
                 if let Some(script) = &construct_state.current_script {
                     // Save to disk (native) or localStorage (WASM)
@@ -273,7 +441,7 @@ pub fn prompt_text_input(
                     }
 
                     // Ensure registered (idempotent — may already be auto-registered)
-                    registry.register_lua_script(&script.name, &script.source, local_player.0);
+                    registry.register_from_source(&script.source, &script.name, local_player.0);
 
                     // Add to library if not already there
                     if !library.scripts.iter().any(|s| s.name == script.name) {
@@ -309,12 +477,16 @@ pub fn prompt_text_input(
 pub fn update_prompt_display(
     input_mode: Res<InputMode>,
     construct_state: Res<ConstructModeState>,
+    registry: Res<ScriptRegistry>,
+    local_player: Res<LocalPlayer>,
+    sidebar_expanded: Res<ScriptManagerExpanded>,
     mut input_q: Query<
         &mut Text,
         (
             With<PromptInputText>,
             Without<PromptResponseArea>,
             Without<PromptStatusText>,
+            Without<ScriptSidebarList>,
         ),
     >,
     mut response_q: Query<
@@ -323,6 +495,7 @@ pub fn update_prompt_display(
             With<PromptResponseArea>,
             Without<PromptInputText>,
             Without<PromptStatusText>,
+            Without<ScriptSidebarList>,
         ),
     >,
     mut status_q: Query<
@@ -331,6 +504,16 @@ pub fn update_prompt_display(
             With<PromptStatusText>,
             Without<PromptInputText>,
             Without<PromptResponseArea>,
+            Without<ScriptSidebarList>,
+        ),
+    >,
+    mut sidebar_q: Query<
+        &mut Text,
+        (
+            With<ScriptSidebarList>,
+            Without<PromptInputText>,
+            Without<PromptResponseArea>,
+            Without<PromptStatusText>,
         ),
     >,
 ) {
@@ -389,9 +572,67 @@ pub fn update_prompt_display(
         if construct_state.waiting_for_response {
             text.0 = "Waiting for Le Chat...".to_string();
         } else if construct_state.current_script.is_some() {
-            text.0 = "T=test | S=save & activate | Enter=new prompt | Esc=close".to_string();
+            text.0 =
+                "Enter=submit | Tab=scripts | T=test | S=save | Z=undo | Esc=close".to_string();
+        } else if sidebar_expanded.0 {
+            text.0 = "1-9=toggle | Tab=hide scripts | Enter=submit | Esc=close".to_string();
         } else {
-            text.0 = "Enter=submit | Esc=cancel".to_string();
+            text.0 = "Enter=submit | Tab=scripts | Esc=close".to_string();
+        }
+    }
+
+    // Update script sidebar list
+    if sidebar_expanded.0 {
+        if let Ok(mut text) = sidebar_q.single_mut() {
+            let player_scripts = registry.scripts_for_player(local_player.0);
+            if player_scripts.is_empty() {
+                text.0 = "No scripts registered".to_string();
+            } else {
+                let lines: Vec<String> = player_scripts
+                    .iter()
+                    .enumerate()
+                    .map(|(i, s)| {
+                        let indicator = match s.activation_mode {
+                            ActivationMode::Manual => "[M]".to_string(),
+                            _ => {
+                                if s.enabled {
+                                    "[*]".to_string()
+                                } else {
+                                    "[ ]".to_string()
+                                }
+                            }
+                        };
+                        format!("{} {} {}", i + 1, indicator, s.name)
+                    })
+                    .collect();
+                text.0 = lines.join("\n");
+            }
+        }
+    }
+}
+
+/// System: update the undo toast countdown and handle Z key dismissal.
+pub fn update_undo_toast(
+    time: Res<Time>,
+    mut undo: ResMut<UndoScriptActivation>,
+    mut toast_q: Query<(&mut Text, &mut Visibility), With<UndoToastNode>>,
+) {
+    if let Ok((mut text, mut vis)) = toast_q.single_mut() {
+        if let Some((ref name, ref mut remaining)) = undo.pending {
+            *remaining -= time.delta_secs();
+            if *remaining <= 0.0 {
+                // Timeout — script stays active
+                undo.pending = None;
+                *vis = Visibility::Hidden;
+            } else {
+                text.0 = format!(
+                    "\"{}\" activated — press Z to undo ({:.0}s)",
+                    name, remaining
+                );
+                *vis = Visibility::Inherited;
+            }
+        } else {
+            *vis = Visibility::Hidden;
         }
     }
 }

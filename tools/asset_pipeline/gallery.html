@@ -256,7 +256,7 @@ function render() {
           if (searchTerm && !slug.includes(searchTerm) && !slugToName(slug).toLowerCase().includes(searchTerm)) return '';
           totalShown++;
           sectionCount++;
-          return staticCard(slug, `${BASE}/buildings/${slug}.png`, 'building', faction);
+          return buildingCard(slug, faction);
         }).join('');
         if (cards.replace(/\s/g, '')) {
           sectionHtml += `<div class="type-label">Buildings (${buildings.length})</div><div class="grid">${cards}</div>`;
@@ -412,6 +412,27 @@ function staticCard(slug, imgUrl, type, faction) {
   </div>`;
 }
 
+function buildingCard(slug, faction) {
+  const fid = faction ? faction.id : 'general';
+  const tagClass = faction ? faction.tag : 'tag-general';
+  const staticUrl = `${BASE}/buildings/${slug}.png`;
+  const constructUrl = `${BASE}/buildings/${slug}_construct.png`;
+  const ambientUrl = `${BASE}/buildings/${slug}_ambient.png`;
+
+  return `<div class="card" data-slug="${slug}" data-faction="${fid}" data-type="building">
+    <div class="sprite-wrap building-wrap" data-static="${staticUrl}" data-construct="${constructUrl}" data-ambient="${ambientUrl}">
+      <img src="${staticUrl}" alt="${slug}">
+    </div>
+    <div class="card-name" title="${slug}">${slugToName(slug)}</div>
+    <div class="card-tag ${tagClass}">building</div>
+    <div class="phase-tabs">
+      <button class="phase-tab active" data-phase="static">Static</button>
+      <button class="phase-tab" data-phase="construct">Build</button>
+      <button class="phase-tab" data-phase="ambient">Idle</button>
+    </div>
+  </div>`;
+}
+
 // ── Animation ───────────────────────────────────────────────────
 function setupPhaseTabs() {
   document.querySelectorAll('.phase-tabs').forEach(tabs => {
@@ -429,7 +450,16 @@ function setupPhaseTabs() {
         // Clear existing animation on this wrap
         if (wrap._animId) { clearInterval(wrap._animId); wrap._animId = null; }
 
-        if (phase === 'idle') {
+        if (wrap.classList.contains('building-wrap')) {
+          // Building animation phases
+          if (phase === 'static') {
+            wrap.innerHTML = `<img src="${wrap.dataset.static}" alt="">`;
+          } else {
+            const url = phase === 'construct' ? wrap.dataset.construct : wrap.dataset.ambient;
+            const speed = phase === 'construct' ? 800 : 500;
+            startBuildingSheetAnim(wrap, url, speed);
+          }
+        } else if (phase === 'idle') {
           wrap.innerHTML = `<img src="${wrap.dataset.idle}" alt="">`;
         } else {
           const url = phase === 'walk' ? wrap.dataset.walk : wrap.dataset.attack;
@@ -446,6 +476,25 @@ function startSheetAnim(wrap, url, frameMs) {
   wrap.innerHTML = '';
   const el = document.createElement('div');
   el.style.cssText = `width:128px;height:128px;background:url('${url}') 0 0/512px 128px no-repeat;image-rendering:pixelated;`;
+  wrap.appendChild(el);
+
+  let frame = 0;
+  const id = setInterval(() => {
+    frame = (frame + 1) % 4;
+    el.style.backgroundPosition = `${-frame * 128}px 0`;
+  }, frameMs);
+  wrap._animId = id;
+  animTimers.push(id);
+}
+
+function startBuildingSheetAnim(wrap, url, frameMs) {
+  // Building sheets are 4096x1024 (4 frames of 1024x1024)
+  // Scale: each 1024px frame displayed at 128px → total background width = 512px at 128px scale
+  // background-size scales the entire 4096x1024 image proportionally
+  wrap.innerHTML = '';
+  const el = document.createElement('div');
+  // 4096→512px width (4 frames × 128px each), 1024→128px height
+  el.style.cssText = `width:128px;height:128px;background:url('${url}') 0 0/512px 128px no-repeat;image-rendering:auto;`;
   wrap.appendChild(el);
 
   let frame = 0;

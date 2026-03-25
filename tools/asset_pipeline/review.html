@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sprite Review</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #111; color: #ddd; font-family: 'SF Mono', monospace; padding: 20px; }
+
+h1 { font-size: 18px; margin-bottom: 16px; }
+.nav { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; position: sticky; top: 0; background: #111; padding: 8px 0; z-index: 10; }
+.nav-btn {
+  background: #1a1a35; border: 1px solid #333; border-radius: 4px;
+  color: #aaa; padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: inherit;
+}
+.nav-btn:hover { border-color: #555; color: #ddd; }
+.nav-btn.active { background: #2a2a55; border-color: #5577cc; color: #fff; }
+
+.faction-section { display: none; }
+.faction-section.visible { display: block; }
+
+.faction-title { font-size: 16px; margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #333; }
+.type-title { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin: 16px 0 8px; }
+
+.unit-row {
+  display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px;
+  background: #1a1a2a; border: 1px solid #222; border-radius: 6px; padding: 10px;
+}
+.unit-name { width: 140px; font-size: 13px; font-weight: 600; padding-top: 40px; flex-shrink: 0; }
+.phase-box { text-align: center; }
+.phase-label { font-size: 10px; color: #666; margin-bottom: 4px; }
+.sprite-frame {
+  width: 128px; height: 128px; border-radius: 4px; overflow: hidden;
+  background: repeating-conic-gradient(#1a1a30 0% 25%, #151528 0% 50%) 50% / 16px 16px;
+  image-rendering: pixelated;
+}
+.sprite-frame img { width: 128px; height: 128px; image-rendering: pixelated; display: block; }
+.sprite-frame .anim {
+  width: 128px; height: 128px; image-rendering: pixelated;
+  background-size: 512px 128px; background-repeat: no-repeat;
+}
+
+.building-row {
+  display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px;
+  background: #1a1a2a; border: 1px solid #222; border-radius: 6px; padding: 10px;
+}
+.building-name { width: 140px; font-size: 13px; font-weight: 600; padding-top: 40px; flex-shrink: 0; }
+
+/* General assets */
+.general-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.general-card { text-align: center; }
+.general-card .card-name { font-size: 11px; color: #aaa; margin-top: 4px; }
+
+/* Faction colors */
+.fc-catgpt { color: #88aaff; }
+.fc-clawed { color: #88cc77; }
+.fc-murder { color: #bb88ee; }
+.fc-seekers { color: #eebb55; }
+.fc-croak { color: #55ccbb; }
+.fc-llama { color: #ff9955; }
+.fc-general { color: #888; }
+</style>
+</head>
+<body>
+
+<h1>ClawedCommand Sprite Review</h1>
+<div class="nav" id="nav"></div>
+<div id="sections"></div>
+
+<script>
+const BASE = '../../assets/sprites';
+
+const FACTIONS = [
+  { id: 'catgpt',  name: 'catGPT',              fc: 'fc-catgpt' },
+  { id: 'clawed',  name: 'The Clawed',          fc: 'fc-clawed' },
+  { id: 'murder',  name: 'The Murder',          fc: 'fc-murder' },
+  { id: 'seekers', name: 'Seekers of the Deep', fc: 'fc-seekers' },
+  { id: 'croak',   name: 'Croak',               fc: 'fc-croak' },
+  { id: 'llama',   name: 'LLAMA',               fc: 'fc-llama' },
+  { id: 'general', name: 'General Assets',      fc: 'fc-general' },
+];
+
+const UNITS = {
+  catgpt:  ['pawdler','nuisance','chonk','flying_fox','hisser','yowler','mouser','catnapper','ferret_sapper','mech_commander'],
+  clawed:  ['nibblet','swarmer','gnawer','shrieker','tunneler','sparks','quillback','whiskerwitch','plaguetail','warren_marshal'],
+  murder:  ['murder_scrounger','sentinel','rookclaw','magpike','magpyre','jaycaller','jayflicker','dusktalon','hootseer','corvus_rex'],
+  seekers: ['delver','ironhide','cragback','warden','sapjaw','wardenmother','seeker_tunneler','embermaw','dustclaw','gutripper'],
+  croak:   ['ponderer','regeneron','broodmother','gulper','eftsaber','croaker','leapfrog','shellwarden','bogwhisper','murk_commander'],
+  llama:   ['scrounger','bandit','heap_titan','glitch_rat','patch_possum','grease_monkey','dead_drop_unit','wrecker','dumpster_diver','junkyard_king'],
+};
+
+const BUILDINGS = {
+  catgpt:  ['the_box','cat_tree','fish_market','litter_box','server_rack','scratching_post','cat_flap','laser_pointer'],
+  murder:  ['the_parliament','rookery','carrion_cache','antenna_array','panopticon','nest_box','thorn_hedge','watchtower'],
+  clawed:  ['the_burrow','nesting_box','seed_vault','junk_transmitter','gnaw_lab','warren_expansion','mousehole','squeak_tower'],
+  seekers: ['the_sett','war_hollow','burrow_depot','core_tap','claw_marks','deep_warren','bulwark_gate','slag_thrower'],
+  croak:   ['the_grotto','spawning_pools','lily_market','sunken_server','fossil_stones','reed_bed','tidal_gate','spore_tower'],
+  llama:   ['the_dumpster','scrap_heap','chop_shop','junk_server','tinker_bench','trash_pile','dumpster_relay','tetanus_tower'],
+};
+
+const TERRAIN = ['grass_base','dirt_base','sand_base','forest_base','water_base','road_base','rock_base','shallows_base','ramp_base','tech_ruins_base'];
+const RESOURCES = ['berry_bush','fish_pond','gpu_deposit','monkey_mine'];
+const PROJECTILES = ['explosive','generic','laser_beam','mech_shot','sonic_wave','spit'];
+const PORTRAITS = [
+  'ai_geppity','ai_claudeus_maximus','ai_gemineye','ai_deepseek','ai_grok','ai_llhama',
+  'hero_felix_nine','hero_kelpie','hero_king_ringtail','hero_mother_granite',
+  'hero_patches','hero_rex_solstice','hero_the_eternal','hero_thimble'
+];
+
+function slug(s) { return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); }
+
+// Build nav
+const nav = document.getElementById('nav');
+FACTIONS.forEach((f, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'nav-btn' + (i === 0 ? ' active' : '');
+  btn.textContent = f.name;
+  btn.dataset.faction = f.id;
+  btn.onclick = () => showFaction(f.id);
+  nav.appendChild(btn);
+});
+
+// Build sections
+const sections = document.getElementById('sections');
+const animTimers = [];
+
+function showFaction(fid) {
+  animTimers.forEach(id => clearInterval(id));
+  animTimers.length = 0;
+
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.faction === fid));
+
+  let html = '';
+
+  if (fid === 'general') {
+    html += `<div class="type-title">Terrain</div><div class="general-grid">`;
+    TERRAIN.forEach(s => {
+      html += `<div class="general-card"><div class="sprite-frame"><img src="${BASE}/terrain/${s}.png"></div><div class="card-name">${slug(s)}</div></div>`;
+    });
+    html += `</div>`;
+
+    html += `<div class="type-title">Resources</div><div class="general-grid">`;
+    RESOURCES.forEach(s => {
+      html += `<div class="general-card"><div class="sprite-frame"><img src="${BASE}/resources/${s}.png"></div><div class="card-name">${slug(s)}</div></div>`;
+    });
+    html += `</div>`;
+
+    html += `<div class="type-title">Projectiles</div><div class="general-grid">`;
+    PROJECTILES.forEach(s => {
+      html += `<div class="general-card"><div class="sprite-frame"><img src="${BASE}/projectiles/${s}.png"></div><div class="card-name">${slug(s)}</div></div>`;
+    });
+    html += `</div>`;
+
+    html += `<div class="type-title">Portraits</div><div class="general-grid">`;
+    PORTRAITS.forEach(s => {
+      html += `<div class="general-card"><div class="sprite-frame"><img src="${BASE}/portraits/${s}.png"></div><div class="card-name">${slug(s)}</div></div>`;
+    });
+    html += `</div>`;
+  } else {
+    const faction = FACTIONS.find(f => f.id === fid);
+    const units = UNITS[fid] || [];
+    const buildings = BUILDINGS[fid] || [];
+
+    // Units: show first 5, then next 5 (to fit screen)
+    html += `<div class="type-title">Units (${units.length})</div>`;
+    units.forEach(u => {
+      html += `<div class="unit-row">
+        <div class="unit-name ${faction.fc}">${slug(u)}</div>
+        <div class="phase-box"><div class="phase-label">IDLE</div><div class="sprite-frame"><img src="${BASE}/units/${u}_idle.png"></div></div>
+        <div class="phase-box"><div class="phase-label">WALK</div><div class="sprite-frame"><div class="anim" data-sheet="${BASE}/units/${u}_walk.png" data-speed="150"></div></div></div>
+        <div class="phase-box"><div class="phase-label">ATTACK</div><div class="sprite-frame"><div class="anim" data-sheet="${BASE}/units/${u}_attack.png" data-speed="100"></div></div></div>
+      </div>`;
+    });
+
+    // Buildings
+    html += `<div class="type-title">Buildings (${buildings.length})</div>`;
+    buildings.forEach(b => {
+      html += `<div class="building-row">
+        <div class="building-name ${faction.fc}">${slug(b)}</div>
+        <div class="phase-box"><div class="phase-label">STATIC</div><div class="sprite-frame"><img src="${BASE}/buildings/${b}.png"></div></div>
+        <div class="phase-box"><div class="phase-label">CONSTRUCT</div><div class="sprite-frame"><div class="anim" data-sheet="${BASE}/buildings/${b}_construct.png" data-speed="800"></div></div></div>
+        <div class="phase-box"><div class="phase-label">AMBIENT</div><div class="sprite-frame"><div class="anim" data-sheet="${BASE}/buildings/${b}_ambient.png" data-speed="500"></div></div></div>
+      </div>`;
+    });
+  }
+
+  sections.innerHTML = html;
+
+  // Start animations
+  document.querySelectorAll('.anim').forEach(el => {
+    const sheet = el.dataset.sheet;
+    const speed = parseInt(el.dataset.speed);
+    el.style.backgroundImage = `url('${sheet}')`;
+    el.style.backgroundSize = '512px 128px';
+    el.style.backgroundPosition = '0 0';
+    let frame = 0;
+    const id = setInterval(() => {
+      frame = (frame + 1) % 4;
+      el.style.backgroundPosition = `${-frame * 128}px 0`;
+    }, speed);
+    animTimers.push(id);
+  });
+}
+
+// Show first faction
+showFaction('catgpt');
+</script>
+</body>
+</html>

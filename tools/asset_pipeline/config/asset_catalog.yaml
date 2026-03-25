@@ -967,19 +967,19 @@ units:
     status: game_ready
     params:
       name: Pawdler
-      pose: idle standing, slightly slouched, reluctant posture
-      description: Cat worker unit. Tabby cat in a tiny hard hat, holding a fish basket. Looks like it would rather be napping.
-        Motivation meter visible as a small thought bubble (fish vs pillow).
+      pose: standing, holding fish basket, hard hat on head
+      description: Tabby cat worker. Stocky build, orange-brown tabby stripes. Tiny yellow hard hat. Carrying a woven fish
+        basket in one paw. Silver-blue construction vest with electric blue clasps. Sturdy boots. Relaxed but upright stance.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: "Should look civilian/reluctant, not combat-oriented. Cute but lazy. Spite Carry visual \u2014 angry eyebrows\
-        \ when motivated."
+      extra_notes: Worker unit. High contrast against transparent. NO thought bubbles or floating UI. Clean readable silhouette.
+        Warm tabby fur contrasts with cool silver-blue gear.
       faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/pawdler_idle.png
-    style_version: 1
+    style_version: 2
   pawdler_walk:
     template: unit_sheet
     status: game_ready
@@ -1002,24 +1002,26 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/pawdler_walk.png
-    style_version: 1
+    style_version: 2
   nuisance_idle:
     template: unit_static
     status: game_ready
     params:
       name: The Nuisance
-      pose: crouched, ready to pounce, mischievous expression
-      description: Small scrappy cat in light harasser stance. Looks annoyingly persistent. Spiky fur, wide eyes, ready to
-        dart.
+      pose: low crouch, ready to spring, ears back
+      description: Small wiry cat in a combat crouch. Light silver-grey fur, spiky along spine. Electric blue eyes wide open.
+        Wearing minimal silver chest plate and blue-tinted goggles pushed up on forehead. Claws extended, tail kinked up.
+        Compact triangular silhouette.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Core light combat unit. Should look fast and irritating.
+      extra_notes: Fast harasser unit. Must read as small and quick. High contrast silver armor on grey fur. Bright blue eyes
+        are the accent pop. Clean sharp edges.
       faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/nuisance_idle.png
-    style_version: 1
+    style_version: 2
   nuisance_walk:
     template: unit_sheet
     status: game_ready
@@ -1042,7 +1044,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/nuisance_walk.png
-    style_version: 1
+    style_version: 2
   nuisance_attack:
     template: unit_sheet
     status: game_ready
@@ -1065,71 +1067,78 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/nuisance_attack.png
-    style_version: 1
+    style_version: 2
   chonk_idle:
     template: unit_static
     status: game_ready
     params:
       name: The Chonk
-      pose: sitting, immovable, taking up space
-      description: Very fat cat sitting firmly on the ground. Enormous, round, unbothered. Too large to move easily but impossible
-        to move by force. Subtle gravity distortion lines around it.
-      width: 148
-      height: 148
+      pose: sitting upright, front paws together, broad and immovable
+      description: Enormously fat grey cat in heavy silver-plated armor. Round barrel body, tiny stubby legs. Thick silver
+        chestplate with blue LED status lights. Blue-tinted visor pushed up on forehead. Heavy riveted shoulder guards. Sitting
+        firmly with confident grin.
+      width: 128
+      height: 128
       direction: south-east
-      extra_notes: "Visually larger than other units. Should look immovable and content. Loaf Mode variant needed \u2014 fully\
-        \ flattened pancake cat."
+      extra_notes: Tank unit. Must look ARMORED and HEAVY, not just fat. Silver plate armor is key. Wide round silhouette
+        should dominate. NO gravity effects or distortion lines.
       faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/chonk_idle.png
-    style_version: 1
+    style_version: 2
   flying_fox_idle:
     template: unit_static
     status: game_ready
     params:
       name: Flying Fox
-      pose: hovering in air, wings spread
-      description: Fruit bat allied with the cat faction. Large eyes, leathery wings spread, small body. Friendly but alert
-        expression.
+      pose: hovering, wings fully spread, looking down
+      description: "Fruit bat (flying fox) hovering with large brown-grey wings fully spread. Big round amber eyes, small\
+        \ furry body. Silver flight harness with blue LED indicators across chest. Aviator goggles pushed up on head. Wings\
+        \ are the dominant visual \u2014 wide span, membrane detail."
       width: 128
       height: 128
       direction: south-east
-      extra_notes: "Air unit \u2014 should visually read as airborne. Wings are key silhouette."
+      extra_notes: "Air unit. Wings must be the dominant silhouette element \u2014 wide horizontal spread. Warm brown bat\
+        \ against cool silver harness. Goggles and harness tie to faction palette."
       faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/flying_fox_idle.png
-    style_version: 1
+    style_version: 2
   hisser_idle:
     template: unit_static
     status: game_ready
     params:
       name: Hisser
-      pose: arched back, hissing, disgusted expression
-      description: Cat ranged unit with arched back and bared teeth. Looks perpetually disgusted. Spits at enemies from range.
+      pose: arched back, mouth open showing fangs, hackles raised
+      description: Grey-white cat with arched back and bared fangs. Fur standing on end along spine. Silver neck guard and
+        shoulder armor. Bright green acid drops visible at corner of mouth. Electric blue collar with small range-finder lens.
+        Aggressive wide stance, tail puffed.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Medium-range unit. Should look hostile and disgusted.
+      extra_notes: Ranged acid-spit unit. Green acid at mouth is key visual identifier. Silver armor keeps faction palette.
+        Must look hostile and combat-ready, not just angry.
       faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/hisser_idle.png
-    style_version: 1
+    style_version: 2
   yowler_idle:
     template: unit_static
     status: game_ready
     params:
       name: Yowler
-      pose: mid-yowl, mouth wide open, eyes squeezed shut, dramatic pose
-      description: Siamese cat mid-yowl, mouth wide open, eyes squeezed shut. Visible purple sonic rings radiating from mouth.
-        Wearing small silver speaker collar. Sleek build, dramatic pose. Cream and chocolate point coloring.
+      pose: standing tall, mouth wide open in yowl, eyes squeezed shut
+      description: Siamese cat mid-yowl with mouth wide open. Cream body with chocolate brown points on ears, face, paws,
+        tail. Purple-violet sonic rings radiating from open mouth. Silver speaker collar around neck. Sleek athletic build,
+        standing on hind legs in dramatic pose.
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Support unit. Purple sonic rings key visual. Silver speaker collar. Sleek Siamese build. Cool silver-gray
-        tech accents.
+      extra_notes: Support unit. Purple sonic rings are the key visual. Siamese coloring (cream + brown points) makes it instantly
+        distinct from other grey units. Silver collar is faction tie-in.
       faction: catGPT
     output:
       type: single
@@ -1140,71 +1149,78 @@ units:
     status: game_ready
     params:
       name: Mouser
-      pose: low crouch, stalking, nearly invisible
-      description: Sleek black cat in stealth crouch. Almost invisible. Eyes gleaming in the dark. Built for scouting. Small
-        sensor device strapped to collar for Dead Drops.
+      pose: low stalking crouch, weight forward, goggles on
+      description: "Dark grey cat (NOT black) in stealth crouch. Charcoal grey fur with lighter belly. Wearing silver stealth\
+        \ goggles with bright electric blue lenses \u2014 the goggles are the visual anchor. Slim silver tech collar with\
+        \ small antenna. Sleek, lean build. Green eyes visible behind goggles."
       width: 128
       height: 128
       direction: south-east
-      extra_notes: "Stealth scout. Should look sneaky and fast. Dark coloring. Shadow Network visual \u2014 faint connecting\
-        \ lines between paired Mousers."
+      extra_notes: "Stealth scout. MUST be clearly visible against transparent background \u2014 dark GREY not black. Blue\
+        \ goggle lenses provide critical contrast. NO invisibility effects, shadow lines, or connecting lines. Clean solid\
+        \ sprite."
       faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/mouser_idle.png
-    style_version: 1
+    style_version: 2
   catnapper_idle:
     template: unit_static
     status: game_ready
     params:
       name: Catnapper
-      pose: curled up sleeping, Zzz floating above
-      description: Cat siege unit curled up asleep. Zzz symbols floating above. Looks completely harmless but is devastating
-        to buildings.
+      pose: curled up sleeping on top of a silver siege cannon
+      description: "Cat sleeping curled up ON TOP of a compact silver siege cannon. The cannon is the main visual \u2014 chunky\
+        \ silver barrel with blue energy coils and glowing blue muzzle. The cat is a grey tabby napping on it, small Zzz above\
+        \ head. Cannon has stubby legs/treads."
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Siege unit. Sleeps on buildings until they collapse. Should look adorably harmless.
+      extra_notes: "Siege unit. The CANNON is the important part \u2014 the cat sleeping on it is the joke. Cannon must be\
+        \ clearly visible as a weapon. Silver/blue faction colors on the machine. Cat is secondary."
       faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/catnapper_idle.png
-    style_version: 1
+    style_version: 2
   ferret_sapper_idle:
     template: unit_static
     status: game_ready
     params:
       name: Ferret Sapper
-      pose: standing alert with explosives, slightly manic expression
-      description: Ferret ally carrying oversized demolition charges. Wiry, energetic, slightly unhinged expression. Wearing
-        a tiny helmet.
+      pose: standing alert, clutching oversized bomb, manic grin
+      description: "Brown ferret standing upright holding an oversized spherical bomb with a lit fuse. Tiny silver helmet,\
+        \ blue-tinted safety goggles on forehead. Utility belt with smaller charges. Wiry elongated body, huge manic grin\
+        \ showing teeth. One eye bigger than the other \u2014 slightly unhinged."
       width: 128
       height: 128
       direction: south-east
-      extra_notes: Demolitions unit. Should look dangerous and excited about it.
+      extra_notes: "Demo unit. The bomb is the key visual \u2014 round, black, classic with sparking fuse. Ferret's expression\
+        \ should be gleefully dangerous. Brown fur against silver gear for contrast."
       faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/ferret_sapper_idle.png
-    style_version: 1
+    style_version: 2
   mech_commander_idle:
     template: unit_static
     status: game_ready
     params:
       name: Mech Commander
-      pose: standing in oversized mech suit, cat visible in cockpit
-      description: Late-game hero unit. A small cat piloting an oversized mech suit. The cat is clearly too small for it.
-        Mech has weapon arms, command antenna, and a glowing Tactical Uplink dish on its back.
-      width: 192
-      height: 192
+      pose: standing in mech suit, cat visible in open cockpit at chest
+      description: 'Bipedal silver mech suit with a tiny orange cat visible in the open cockpit at chest level. Mech has chunky
+        weapon arms (left: cannon barrel, right: claw grip), thick armored legs, command antenna on back, blue LED joints.
+        Cat is comically small compared to the suit, paws on controls.'
+      width: 128
+      height: 128
       direction: south-east
-      extra_notes: Hero/heavy unit. Cat is comically small inside the mech. Imposing but funny. Tactical Uplink aura should
-        be visible as a faint hex grid around it.
+      extra_notes: "Hero unit. Mech suit is the silhouette \u2014 boxy, imposing, silver with blue accents. Cat in cockpit\
+        \ is the charm. NO hex grids, no auras, no background effects. Clean mech sprite."
       faction: catGPT
     output:
       type: single
       game_path: assets/sprites/units/mech_commander_idle.png
-    style_version: 1
+    style_version: 2
   chonk_walk:
     template: unit_sheet
     status: game_ready
@@ -1227,7 +1243,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/chonk_walk.png
-    style_version: 1
+    style_version: 2
   flying_fox_walk:
     template: unit_sheet
     status: game_ready
@@ -1250,7 +1266,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/flying_fox_walk.png
-    style_version: 1
+    style_version: 2
   hisser_walk:
     template: unit_sheet
     status: game_ready
@@ -1273,7 +1289,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/hisser_walk.png
-    style_version: 1
+    style_version: 2
   yowler_walk:
     template: unit_sheet
     status: game_ready
@@ -1296,7 +1312,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/yowler_walk.png
-    style_version: 1
+    style_version: 2
   mouser_walk:
     template: unit_sheet
     status: game_ready
@@ -1319,7 +1335,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/mouser_walk.png
-    style_version: 1
+    style_version: 2
   catnapper_walk:
     template: unit_sheet
     status: game_ready
@@ -1342,7 +1358,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/catnapper_walk.png
-    style_version: 1
+    style_version: 2
   ferret_sapper_walk:
     template: unit_sheet
     status: game_ready
@@ -1365,7 +1381,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/ferret_sapper_walk.png
-    style_version: 1
+    style_version: 2
   mech_commander_walk:
     template: unit_sheet
     status: game_ready
@@ -1388,7 +1404,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/mech_commander_walk.png
-    style_version: 1
+    style_version: 2
   pawdler_attack:
     template: unit_sheet
     status: game_ready
@@ -1411,7 +1427,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/pawdler_attack.png
-    style_version: 1
+    style_version: 2
   chonk_attack:
     template: unit_sheet
     status: game_ready
@@ -1434,7 +1450,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/chonk_attack.png
-    style_version: 1
+    style_version: 2
   flying_fox_attack:
     template: unit_sheet
     status: game_ready
@@ -1457,7 +1473,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/flying_fox_attack.png
-    style_version: 1
+    style_version: 2
   hisser_attack:
     template: unit_sheet
     status: game_ready
@@ -1480,7 +1496,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/hisser_attack.png
-    style_version: 1
+    style_version: 2
   yowler_attack:
     template: unit_sheet
     status: game_ready
@@ -1503,7 +1519,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/yowler_attack.png
-    style_version: 1
+    style_version: 2
   mouser_attack:
     template: unit_sheet
     status: game_ready
@@ -1526,7 +1542,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/mouser_attack.png
-    style_version: 1
+    style_version: 2
   catnapper_attack:
     template: unit_sheet
     status: game_ready
@@ -1549,7 +1565,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/catnapper_attack.png
-    style_version: 1
+    style_version: 2
   ferret_sapper_attack:
     template: unit_sheet
     status: game_ready
@@ -1572,7 +1588,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/ferret_sapper_attack.png
-    style_version: 1
+    style_version: 2
   mech_commander_attack:
     template: unit_sheet
     status: game_ready
@@ -1595,7 +1611,7 @@ units:
       - 128
       - 128
       game_path: assets/sprites/units/mech_commander_attack.png
-    style_version: 1
+    style_version: 2
   nibblet_idle:
     template: unit_static
     status: game_ready

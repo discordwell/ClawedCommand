@@ -9,7 +9,7 @@ use cc_core::status_effects::StatusEffects;
 use cc_core::terrain::FactionId;
 use cc_sim::resources::{CommandQueue, MapResource, PlayerResources, SimClock};
 
-use crate::events::{self};
+use crate::events::{self, ActivationMode};
 use crate::lua_runtime;
 use crate::script_context::{BlackboardValue, EnemyMemoryEntry, ScriptContext, ScriptEvent};
 pub use crate::script_registry::ScriptRegistry;
@@ -34,6 +34,12 @@ pub struct PlayerScriptState {
     pub squads: HashMap<u8, HashMap<String, Vec<u64>>>,
 }
 
+/// Resource: manual script triggers from the UI. Cleared each tick after processing.
+#[derive(Resource, Default)]
+pub struct ManualScriptTriggers {
+    pub triggered: Vec<String>,
+}
+
 /// Bevy system: runs registered scripts in response to detected events.
 /// Executes after all simulation systems in FixedUpdate.
 pub fn script_runner_system(
@@ -44,6 +50,7 @@ pub fn script_runner_system(
     mut registry: ResMut<ScriptRegistry>,
     mut prev_snapshots: ResMut<PreviousSnapshots>,
     mut script_state: ResMut<PlayerScriptState>,
+    mut manual_triggers: ResMut<ManualScriptTriggers>,
     tool_states: Res<FactionToolStates>,
     #[cfg(feature = "harness")] mut arena_stats: Option<ResMut<crate::arena::ArenaStats>>,
     units: Query<
@@ -144,37 +151,99 @@ pub fn script_runner_system(
 
         let faction = FactionId::from_u8(player_id).unwrap_or(FactionId::CatGPT);
 
+        // Drain manual triggers for this player
+        let manual_names: Vec<String> = manual_triggers.triggered.drain(..).collect();
+
         // Run scripts that match fired events
         for script in registry.scripts.iter_mut() {
             if script.player_id != player_id {
                 continue;
             }
 
-            // Check tick interval for on_tick events
-            let should_run_tick = if script.listens_for("on_tick") {
-                script.ticks_since_last_run += 1;
-                if script.ticks_since_last_run >= script.tick_interval {
-                    script.ticks_since_last_run = 0;
-                    true
-                } else {
-                    false
-                }
-            } else {
-                false
-            };
-
-            // Check if any non-tick event matches
-            let has_matching_event = fired_events.iter().any(|event| {
-                let name = events::event_name(event);
-                if name == "on_tick" {
-                    return false; // Handled separately above
-                }
-                script.listens_for(name)
-            });
-
-            if !should_run_tick && !has_matching_event {
+            // --- Filter 1: Enabled check ---
+            if !script.enabled {
                 continue;
             }
+
+            // --- Filter 2: Manual mode ---
+            if script.activation_mode == ActivationMode::Manual {
+                if !manual_names.iter().any(|n| n == &script.name) {
+                    continue;
+                }
+                // Manual scripts bypass tick/event checks — run immediately
+            } else {
+                // --- Normal tick/event scheduling ---
+                // Check tick interval for on_tick events
+                let should_run_tick = if script.listens_for("on_tick") {
+                    script.ticks_since_last_run += 1;
+                    if script.ticks_since_last_run >= script.tick_interval {
+                        script.ticks_since_last_run = 0;
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                };
+
+                // Check if any non-tick event matches
+                let has_matching_event = fired_events.iter().any(|event| {
+                    let name = events::event_name(event);
+                    if name == "on_tick" {
+                        return false; // Handled separately above
+                    }
+                    script.listens_for(name)
+                });
+
+                if !should_run_tick && !has_matching_event {
+                    continue;
+                }
+            }
+
+            // --- Filter 3: @when condition ---
+            if let Some(ref condition) = script.when_condition {
+                match lua_runtime::evaluate_condition(
+                    condition,
+                    &current_snapshot,
+                    player_id,
+                    &map_res.map,
+                ) {
+                    Ok(true) => {} // condition met, proceed
+                    Ok(false) => continue,
+                    Err(e) => {
+                        log::warn!("Script '{}' @when condition error: {}", script.name, e);
+                        continue;
+                    }
+                }
+            }
+
+            // --- Filter 4: Unit/squad snapshot filtering ---
+            let filtered_snapshot = if script.unit_filter.is_some() || script.squad_filter.is_some()
+            {
+                let mut snap = current_snapshot.clone();
+
+                if let Some(ref kinds) = script.unit_filter {
+                    snap.my_units.retain(|u| kinds.contains(&u.kind));
+                }
+
+                if let Some(ref squad_name) = script.squad_filter {
+                    let squad_ids: Vec<u64> = script_state
+                        .squads
+                        .get(&player_id)
+                        .and_then(|sq| sq.get(squad_name))
+                        .cloned()
+                        .unwrap_or_default();
+                    if !squad_ids.is_empty() {
+                        snap.my_units.retain(|u| squad_ids.contains(&u.id.0));
+                    }
+                }
+
+                Some(snap)
+            } else {
+                None
+            };
+
+            let snapshot_ref = filtered_snapshot.as_ref().unwrap_or(&current_snapshot);
 
             // Get persistent per-player state for this script invocation.
             // We destructure script_state to get independent mutable borrows.
@@ -192,7 +261,7 @@ pub fn script_runner_system(
 
             // Create ScriptContext with all optional features wired
             let mut ctx = ScriptContext::new_with_blackboard(
-                &current_snapshot,
+                snapshot_ref,
                 &map_res.map,
                 player_id,
                 faction,
@@ -246,6 +315,7 @@ impl Plugin for ScriptRunnerPlugin {
         app.init_resource::<ScriptRegistry>()
             .init_resource::<PreviousSnapshots>()
             .init_resource::<PlayerScriptState>()
+            .init_resource::<ManualScriptTriggers>()
             .add_systems(
                 FixedUpdate,
                 script_runner_system.run_if(|state: Res<cc_sim::resources::GameState>| {

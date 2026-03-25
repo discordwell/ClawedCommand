@@ -1878,6 +1878,122 @@ fn script_event_to_lua_table(lua: &Lua, event: &ScriptEvent) -> LuaResult<LuaTab
 }
 
 // ---------------------------------------------------------------------------
+// @when condition evaluation
+// ---------------------------------------------------------------------------
+
+/// Evaluate a `@when` condition expression in a minimal Lua VM.
+/// Provides read-only ctx queries (my_units, enemy_units, tick, etc.)
+/// and returns whether the expression evaluates to a truthy value.
+pub fn evaluate_condition(
+    expr: &str,
+    snapshot: &crate::snapshot::GameStateSnapshot,
+    _player_id: u8,
+    _map: &cc_core::map::GameMap,
+) -> Result<bool, LuaScriptError> {
+    let lua = Lua::new();
+
+    // Tight instruction limit — conditions should be simple
+    lua.set_interrupt(move |_| {
+        static COUNT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+        let c = COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        if c > 1000 {
+            COUNT.store(0, std::sync::atomic::Ordering::Relaxed);
+            Err(mlua::Error::runtime(
+                "@when condition exceeded instruction limit",
+            ))
+        } else {
+            Ok(mlua::VmState::Continue)
+        }
+    });
+
+    let result: Result<bool, mlua::Error> = lua.scope(|scope| {
+        let ctx_table = lua.create_table()?;
+
+        // Bind read-only query methods needed for conditions
+        {
+            let snap = snapshot.clone();
+            let f = scope.create_function(
+                move |lua, (_self, filter): (LuaValue, Option<String>)| {
+                    let kind = filter.and_then(|s| s.parse::<UnitKind>().ok());
+                    let units: Vec<_> = snap
+                        .my_units
+                        .iter()
+                        .filter(|u| kind.is_none_or(|k| u.kind == k))
+                        .collect();
+                    let tbl = lua.create_table()?;
+                    for (i, unit) in units.iter().enumerate() {
+                        tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
+                    }
+                    Ok(tbl)
+                },
+            )?;
+            ctx_table.set("my_units", f)?;
+        }
+
+        {
+            let snap = snapshot.clone();
+            let f = scope.create_function(move |lua, _self: LuaValue| {
+                let tbl = lua.create_table()?;
+                for (i, unit) in snap.enemy_units.iter().enumerate() {
+                    tbl.set(i + 1, unit_to_lua_table(lua, unit)?)?;
+                }
+                Ok(tbl)
+            })?;
+            ctx_table.set("enemy_units", f)?;
+        }
+
+        {
+            let tick = snapshot.tick;
+            let f = scope.create_function(move |_, _self: LuaValue| Ok(tick))?;
+            ctx_table.set("tick", f)?;
+        }
+
+        {
+            let snap = snapshot.clone();
+            let f = scope.create_function(move |lua, _self: LuaValue| {
+                let tbl = lua.create_table()?;
+                tbl.set("food", snap.my_resources.food)?;
+                tbl.set("gpu_cores", snap.my_resources.gpu_cores)?;
+                tbl.set("nfts", snap.my_resources.nfts)?;
+                tbl.set("supply", snap.my_resources.supply)?;
+                tbl.set("supply_cap", snap.my_resources.supply_cap)?;
+                Ok(tbl)
+            })?;
+            ctx_table.set("get_resources", f)?;
+        }
+
+        {
+            let snap = snapshot.clone();
+            let f =
+                scope.create_function(move |_, (_self, filter): (LuaValue, Option<String>)| {
+                    let kind = filter.and_then(|s| s.parse::<UnitKind>().ok());
+                    let count = snap
+                        .my_units
+                        .iter()
+                        .filter(|u| kind.is_none_or(|k| u.kind == k))
+                        .count();
+                    Ok(count)
+                })?;
+            ctx_table.set("count_units", f)?;
+        }
+
+        lua.globals().set("ctx", ctx_table)?;
+
+        let wrapped = format!("return ({})", expr);
+        let val: LuaValue = lua.load(&wrapped).eval()?;
+
+        // Lua truthiness: false and nil are falsy, everything else is truthy
+        Ok(match val {
+            LuaValue::Boolean(b) => b,
+            LuaValue::Nil => false,
+            _ => true,
+        })
+    });
+
+    result.map_err(LuaScriptError::Lua)
+}
+
+// ---------------------------------------------------------------------------
 // Error type
 // ---------------------------------------------------------------------------
 
@@ -2948,5 +3064,83 @@ mod tests {
             end
         "#;
         execute_script_with_context(script, &mut ctx).unwrap();
+    }
+
+    // -----------------------------------------------------------------------
+    // evaluate_condition tests
+    // -----------------------------------------------------------------------
+
+    fn empty_snapshot_for_condition() -> GameStateSnapshot {
+        GameStateSnapshot {
+            tick: 100,
+            map_width: 32,
+            map_height: 32,
+            player_id: 0,
+            my_units: vec![],
+            enemy_units: vec![],
+            my_buildings: vec![],
+            enemy_buildings: vec![],
+            resource_deposits: vec![],
+            my_resources: PlayerResourceState::default(),
+        }
+    }
+
+    #[test]
+    fn evaluate_condition_simple_true() {
+        let snap = empty_snapshot_for_condition();
+        let map = GameMap::new(32, 32);
+        assert!(evaluate_condition("true", &snap, 0, &map).unwrap());
+    }
+
+    #[test]
+    fn evaluate_condition_simple_false() {
+        let snap = empty_snapshot_for_condition();
+        let map = GameMap::new(32, 32);
+        assert!(!evaluate_condition("false", &snap, 0, &map).unwrap());
+    }
+
+    #[test]
+    fn evaluate_condition_enemy_count() {
+        let mut snap = empty_snapshot_for_condition();
+        snap.enemy_units
+            .push(make_unit(10, UnitKind::Nuisance, 5, 5, 1));
+        let map = GameMap::new(32, 32);
+        // Should be true: 1 enemy > 0
+        assert!(evaluate_condition("#ctx:enemy_units() > 0", &snap, 0, &map).unwrap());
+    }
+
+    #[test]
+    fn evaluate_condition_no_enemies() {
+        let snap = empty_snapshot_for_condition();
+        let map = GameMap::new(32, 32);
+        // Should be false: 0 enemies > 0
+        assert!(!evaluate_condition("#ctx:enemy_units() > 0", &snap, 0, &map).unwrap());
+    }
+
+    #[test]
+    fn evaluate_condition_tick_check() {
+        let mut snap = empty_snapshot_for_condition();
+        snap.tick = 5000;
+        let map = GameMap::new(32, 32);
+        assert!(evaluate_condition("ctx:tick() >= 4000", &snap, 0, &map).unwrap());
+        snap.tick = 100;
+        assert!(!evaluate_condition("ctx:tick() >= 4000", &snap, 0, &map).unwrap());
+    }
+
+    #[test]
+    fn evaluate_condition_count_units() {
+        let mut snap = empty_snapshot_for_condition();
+        snap.my_units.push(make_unit(1, UnitKind::Hisser, 5, 5, 0));
+        snap.my_units.push(make_unit(2, UnitKind::Hisser, 6, 6, 0));
+        let map = GameMap::new(32, 32);
+        assert!(evaluate_condition("ctx:count_units('Hisser') >= 2", &snap, 0, &map).unwrap());
+        assert!(!evaluate_condition("ctx:count_units('Hisser') >= 3", &snap, 0, &map).unwrap());
+    }
+
+    #[test]
+    fn evaluate_condition_nil_is_falsy() {
+        let snap = empty_snapshot_for_condition();
+        let map = GameMap::new(32, 32);
+        assert!(!evaluate_condition("nil", &snap, 0, &map).unwrap());
     }
 }
