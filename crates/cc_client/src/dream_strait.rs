@@ -201,6 +201,8 @@ pub struct StraitState {
     // Mission phase
     pub mission_tick: u64,
     pub mission_complete: bool,
+    /// Convoy doesn't launch until the player presses Enter.
+    pub convoy_launched: bool,
 
     // Scripts registered for execution each tick
     pub active_scripts: Vec<StraitScript>,
@@ -238,6 +240,7 @@ impl Default for StraitState {
             enemy_launchers_spawned: false,
             mission_tick: 0,
             mission_complete: false,
+            convoy_launched: false,
             active_scripts: Vec::new(),
         }
     }
@@ -457,23 +460,27 @@ fn strait_init_system(
     // -- Spawn HUD --
     spawn_strait_hud(&mut commands);
 
-    // -- Spawn patrol drones --
+    // -- Spawn patrol drones at Dubai base (SE corner) --
+    // All drones start at the Dubai station. Player deploys them manually
+    // or via the coverage script before launching the convoy.
     let map_width = 300;
+    let dubai_x = 50; // Dubai base position
+    let dubai_y = 50;
     let drone_count = INITIAL_PATROL_DRONES;
-    let spacing = map_width as f32 / drone_count as f32;
 
     for i in 0..drone_count {
-        let base_x = (i as f32 * spacing + spacing * 0.5) as i32;
-        let patrol_y = 25; // patrol zone between hostile shallows and shipping lane
-        let sector_w = (spacing * 0.33) as i32;
+        // Slight spread around the base so they don't stack
+        let offset_x = (i % 4) as i32 * 2 - 3;
+        let offset_y = (i / 4) as i32 * 2 - 3;
+        let start_x = dubai_x + offset_x;
+        let start_y = dubai_y + offset_y;
+
+        // Initial waypoint: just hover at base
         let waypoints = vec![
-            GridPos::new(base_x, patrol_y - 10),
-            GridPos::new((base_x + sector_w).min(299), patrol_y),
-            GridPos::new(base_x, patrol_y + 10),
-            GridPos::new((base_x - sector_w).max(1), patrol_y),
+            GridPos::new(start_x, start_y),
         ];
 
-        let pos = strait_screen_from_world(base_x as f32, patrol_y as f32);
+        let pos = strait_screen_from_world(start_x as f32, start_y as f32);
         let drone_mesh = meshes.add(Circle::new(4.0));
         let drone_mat = materials.add(ColorMaterial::from_color(TERM_GREEN));
 
@@ -762,8 +769,8 @@ fn strait_spawn_tankers(
         return;
     }
 
-    // Wait for initial delay
-    if state.mission_tick < 200 {
+    // Convoy doesn't launch until the player presses Enter
+    if !state.convoy_launched {
         return;
     }
 
@@ -1408,6 +1415,8 @@ fn strait_update_hud(
                 "MISSION FAILED"
             };
             **text = format!("WAVE {} | {}", state.current_wave, outcome);
+        } else if !state.convoy_launched {
+            **text = "DEPLOYMENT PHASE | Deploy drones, then press ENTER to launch convoy".to_string();
         } else {
             **text = format!(
                 "WAVE {} | DRONES: {} | TICK {}",
@@ -1754,6 +1763,12 @@ fn strait_input_system(
         }
     }
 
+    // Enter: launch the convoy (deployment → active phase)
+    if keyboard.just_pressed(KeyCode::Enter) && !state.convoy_launched {
+        state.convoy_launched = true;
+        info!("Convoy launched! Tankers entering the strait.");
+    }
+
     // Escape: clear selection / revert to normal mode
     if keyboard.just_pressed(KeyCode::Escape) {
         input_state.selected_drones.clear();
@@ -1811,7 +1826,8 @@ fn strait_input_system(
             StraitInputMode::Normal => {
                 // Hit-test against drones for selection
                 let mut hit: Option<Entity> = None;
-                let hit_dist_sq = 20.0 * 20.0; // 20 pixel hit radius
+                let hit_dist_sq = 40.0 * 40.0; // 40 pixel hit radius (generous for zoomed-out view)
+                let mut closest_dist = f32::MAX;
                 for (entity, drone, xform) in drones.iter() {
                     if !drone.alive {
                         continue;
@@ -1819,9 +1835,9 @@ fn strait_input_system(
                     let dx = world_pos.x - xform.translation.x;
                     let dy = world_pos.y - xform.translation.y;
                     let d2 = dx * dx + dy * dy;
-                    if d2 < hit_dist_sq {
+                    if d2 < hit_dist_sq && d2 < closest_dist {
+                        closest_dist = d2;
                         hit = Some(entity);
-                        break;
                     }
                 }
 

@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
-"""Generate dream_strait.ron with a 300x60 inline map.
+"""Generate dream_strait.ron — Strait of Hormuz geography.
 
-Strait layout (y-axis):
-  y=0-7:    Hostile coastline (Rock). Irregular southern edge via sin() jitter.
-  y=8-10:   Hostile shallows (launcher staging). Rocky peninsulas at x=50,120,200,260.
-  y=11-48:  Deep water (38 rows). Shipping lane runs at y=30 (center).
-  y=49-51:  Friendly shallows.
-  y=52-59:  Friendly coastline (Rock). Irregular northern edge.
+Map: 300x60 tiles. Ships transit west→east through the narrows.
 
-Coastline irregularity:
-  hostile_coast_edge(x) = 7 + round(1.5*sin(x*0.12) + sin(x*0.05+1.3))
-  friendly_coast_edge(x) = 52 - round(1.2*sin(x*0.1+0.7) + 0.8*sin(x*0.04+2.1))
-  Peninsulas at specific x-ranges push 3-4 tiles into shallows.
+Geography (based on Strait of Hormuz):
+  NORTH (y=0): Iran — hostile coast. Rocky, mountainous, jagged.
+    - Qeshm-like island around x=160-200
+    - Larak-like island around x=220-240
+    - Multiple peninsulas and inlets for launcher concealment
+  CENTER: The strait proper — deep water shipping lane.
+    - Narrowest point around x=180 (coasts pinch to ~20 tiles apart)
+    - Western opening (x<60) is wider (Persian Gulf)
+    - Eastern opening (x>240) is wider (Gulf of Oman)
+  SOUTH (y=59): UAE/Oman — friendly coast. Smoother, with Dubai base.
+    - Dubai base area around x=50, y=50 (southwest)
+    - Smoother coastline with gentle bays
+    - Musandam-like peninsula around x=200 (Oman)
+
+Shipping lane: y=30 (center), ships enter at x=0, exit at x=299.
 """
 
 import math
@@ -24,86 +30,87 @@ ROCK = "Rock"
 SHALLOWS = "Shallows"
 WATER = "Water"
 
-# Peninsula x-ranges (hostile coast): rocky features jutting into shallows
-HOSTILE_PENINSULAS = [
-    range(48, 56),    # x=48-55
-    range(118, 126),  # x=118-125
-    range(198, 206),  # x=198-205
-    range(258, 266),  # x=258-265
-]
 
-# Peninsula x-ranges (friendly coast)
-FRIENDLY_PENINSULAS = [
-    range(30, 38),
-    range(90, 98),
-    range(160, 168),
-    range(230, 238),
-    range(280, 288),
-]
+def iran_coast_south_edge(x: int) -> int:
+    """Y of Iran's southernmost Rock tile (higher y = further south into strait).
+    Iran starts at y=0 and extends south to this edge."""
+    # Base coast depth varies by region
+    if x < 60:
+        # Western Persian Gulf approach — coast is far north, wide opening
+        base = 8 + round(3.0 * math.sin(x * 0.08))
+    elif x < 140:
+        # Coast starts pushing south — approaching the narrows
+        base = 10 + round(2.0 * math.sin(x * 0.06 + 1.0)) + (x - 60) // 20
+    elif x < 220:
+        # The narrows — Iran coast pushes furthest south
+        base = 18 + round(3.0 * math.sin(x * 0.1 + 0.5))
+    else:
+        # Eastern exit to Gulf of Oman — coast retreats north
+        base = 18 - (x - 220) // 8 + round(2.0 * math.sin(x * 0.07))
+
+    # Qeshm-like island (large, x=155-195): extends the "coast" further south
+    if 155 <= x <= 195:
+        island_center_x = 175
+        dist = abs(x - island_center_x)
+        island_extent = max(0, 5 - dist // 4)
+        base = max(base, 20 + island_extent)
+
+    # Larak-like island (small, x=225-240)
+    if 225 <= x <= 240:
+        island_center_x = 232
+        dist = abs(x - island_center_x)
+        island_extent = max(0, 3 - dist // 3)
+        base = max(base, 15 + island_extent)
+
+    # Small rocky outcrops
+    for cx in [80, 120, 150, 210, 260]:
+        if abs(x - cx) <= 3:
+            base = max(base, base + 2 - abs(x - cx))
+
+    return min(base, 35)  # Never past the shipping lane
 
 
-def hostile_coast_edge(x: int) -> int:
-    """Y coordinate of the hostile coast's southern boundary (inclusive Rock)."""
-    base = 7
-    jitter = round(1.5 * math.sin(x * 0.12) + math.sin(x * 0.05 + 1.3))
-    # Peninsulas push further south
-    for pen in HOSTILE_PENINSULAS:
-        if x in pen:
-            center = (pen.start + pen.stop) // 2
-            dist = abs(x - center)
-            jitter += max(0, 3 - dist)
-            break
-    return base + jitter
+def uae_coast_north_edge(x: int) -> int:
+    """Y of UAE/Oman's northernmost Rock tile (lower y = further north into strait).
+    Friendly coast extends from this edge south to y=59."""
+    # Base coast
+    if x < 80:
+        # Dubai region — coast stays far south, gentle
+        base = 50 - round(1.5 * math.sin(x * 0.05 + 0.3))
+    elif x < 180:
+        # Approaching the narrows — coast pushes north
+        base = 48 - (x - 80) // 15 + round(1.5 * math.sin(x * 0.07 + 2.0))
+    elif x < 220:
+        # Musandam peninsula (Oman) — dramatic northward push
+        musandam_center = 200
+        dist = abs(x - musandam_center)
+        push = max(0, 8 - dist // 3)
+        base = 42 - push + round(1.0 * math.sin(x * 0.12))
+    else:
+        # Eastern Gulf of Oman — coast retreats south
+        base = 45 + (x - 220) // 10 + round(1.5 * math.sin(x * 0.06 + 1.0))
 
-
-def friendly_coast_edge(x: int) -> int:
-    """Y coordinate of the friendly coast's northern boundary (inclusive Rock)."""
-    base = 52
-    jitter = round(1.2 * math.sin(x * 0.1 + 0.7) + 0.8 * math.sin(x * 0.04 + 2.1))
-    for pen in FRIENDLY_PENINSULAS:
-        if x in pen:
-            center = (pen.start + pen.stop) // 2
-            dist = abs(x - center)
-            jitter -= max(0, 3 - dist)
-            break
-    return base - jitter
+    return max(base, 30)  # Never past the shipping lane
 
 
 def generate_tile(x: int, y: int) -> tuple:
     """Return (terrain_type, elevation) for tile at (x, y)."""
-    h_edge = hostile_coast_edge(x)
-    f_edge = friendly_coast_edge(x)
+    iran_edge = iran_coast_south_edge(x)
+    uae_edge = uae_coast_north_edge(x)
 
-    # Hostile coast
-    if y <= h_edge - 3:
+    # Iran (hostile) coast
+    if y <= iran_edge - 3:
         return (ROCK, 0)
-
-    # Hostile shallows band (3 tiles south of coast edge)
-    if y <= h_edge:
-        # Within peninsula zones, these can be Rock instead
-        for pen in HOSTILE_PENINSULAS:
-            if x in pen:
-                center = (pen.start + pen.stop) // 2
-                dist = abs(x - center)
-                if dist <= 1:
-                    return (ROCK, 0)
+    if y <= iran_edge:
         return (SHALLOWS, 0)
 
-    # Friendly coast
-    if y >= f_edge + 3:
+    # UAE/Oman (friendly) coast
+    if y >= uae_edge + 3:
         return (ROCK, 0)
-
-    # Friendly shallows band
-    if y >= f_edge:
-        for pen in FRIENDLY_PENINSULAS:
-            if x in pen:
-                center = (pen.start + pen.stop) // 2
-                dist = abs(x - center)
-                if dist <= 1:
-                    return (ROCK, 0)
+    if y >= uae_edge:
         return (SHALLOWS, 0)
 
-    # Deep water (the strait itself)
+    # Deep water (the strait)
     return (WATER, 0)
 
 
@@ -119,18 +126,28 @@ def main():
     tiles_str = ", ".join(tiles)
     elev_str = ", ".join(str(e) for e in elevations)
 
-    # Count terrain distribution
+    # Stats
     from collections import Counter
     counts = Counter(tiles)
     print(f"Map: {WIDTH}x{HEIGHT} = {WIDTH*HEIGHT} tiles", file=sys.stderr)
     for t, c in sorted(counts.items(), key=lambda x: -x[1]):
         print(f"  {t}: {c} ({100*c/(WIDTH*HEIGHT):.1f}%)", file=sys.stderr)
 
-    ron = f'''// Dream Sequence Part 3: The Strait
+    # Measure narrowest point
+    min_gap = WIDTH
+    min_gap_x = 0
+    for x in range(WIDTH):
+        gap = uae_coast_north_edge(x) - iran_coast_south_edge(x)
+        if gap < min_gap:
+            min_gap = gap
+            min_gap_x = x
+    print(f"Narrowest point: x={min_gap_x}, gap={min_gap} tiles", file=sys.stderr)
+
+    ron = f'''// Dream Sequence Part 3: The Strait of Hormuz
 // DEFCON-style drone warfare interlude.
-// 300x60 procedurally-generated strait map.
-// Cmdr. Kell Fisher wakes from the code sword dream and runs a drone op
-// to protect oil tankers transiting a narrow strait.
+// 300x60 map based on Strait of Hormuz geography.
+// Iran (north, hostile) — UAE/Dubai (south, friendly).
+// Ships transit west→east through the narrows.
 (
     id: "dream_strait",
     name: "The Strait",
@@ -146,7 +163,7 @@ def main():
         heroes: [
             (
                 hero_id: KellFisher,
-                position: (x: 150, y: 55),
+                position: (x: 50, y: 53),
                 mission_critical: true,
             ),
         ],
@@ -172,45 +189,45 @@ def main():
         ),
     ],
     triggers: [
-        // Opening: Kell wakes up at the console
+        // Opening: Kell wakes up at the C2 console
         (
             id: "opening",
             condition: AtTick(5),
             actions: [ShowDialogue([0, 1, 2, 3])],
             once: true,
         ),
-        // Tutorial: first tanker enters
+        // Deployment hint
         (
-            id: "first_tanker",
-            condition: AtTick(65),
+            id: "deploy_hint",
+            condition: AtTick(60),
             actions: [ShowDialogue([4, 5])],
             once: true,
         ),
         // Mid-mission: escalation
         (
             id: "escalation_wave2",
-            condition: AtTick(400),
+            condition: AtTick(2000),
             actions: [ShowDialogue([6, 7])],
             once: true,
         ),
-        // Rex periodic commentary
+        // Rex check-in
         (
             id: "rex_check_in",
-            condition: AtTick(700),
+            condition: AtTick(4000),
             actions: [ShowDialogue([8])],
             once: true,
         ),
-        // Late game tension
+        // Late game
         (
             id: "late_game",
-            condition: AtTick(1000),
+            condition: AtTick(6000),
             actions: [ShowDialogue([9, 10])],
             once: true,
         ),
-        // Zero-day tutorial hint
+        // Zero-day hint
         (
             id: "zero_day_hint",
-            condition: AtTick(250),
+            condition: AtTick(1200),
             actions: [ShowDialogue([11, 12])],
             once: true,
         ),
@@ -223,87 +240,87 @@ def main():
             voice_style: Normal,
             portrait: "portrait_kell_fisher",
         ),
-        // 1: Rex briefs the situation
+        // 1: Rex briefs — Hormuz specifics
         (
             speaker: "Lt. Rex Harmon",
-            text: "Twelve tankers queued for strait transit. Hostile coast is hot — mobile launchers, AA screen, the usual. Three hundred klicks of coastline to cover.",
+            text: "Twelve tankers queued for strait transit. Iranian coast is hot — mobile launchers in the islands, AA screen covering the narrows. Three hundred klicks of hostile coastline.",
             voice_style: Normal,
             portrait: "portrait_rex_human",
         ),
         // 2: Kell takes charge
         (
             speaker: "Cmdr. Kell Fisher",
-            text: "Compute allocation: sixty percent drone vision, twenty satellite reserve, twenty to the zero-day pipeline. Get my drones in the air.",
+            text: "Compute allocation: sixty percent drone vision, twenty satellite reserve, twenty to the zero-day pipeline. Deploy drones from Dubai station.",
             voice_style: Normal,
             portrait: "portrait_kell_fisher",
         ),
         // 3: Rex confirms
         (
             speaker: "Lt. Rex Harmon",
-            text: "Sixteen drones launching. First tanker enters the strait in sixty seconds. That\\'s a lot of water to cover, Commander.",
+            text: "Sixteen drones standing by at Dubai. Deploy them to patrol positions, then give the all-clear to launch the convoy. Press Enter when ready.",
             voice_style: Normal,
             portrait: "portrait_rex_human",
         ),
-        // 4: First tanker enters
+        // 4: Deployment tutorial
+        (
+            speaker: "Lt. Rex Harmon",
+            text: "Click drones to select, right-click to deploy. Or activate the coverage script from the terminal. When your screen is covered, press Enter to launch the convoy.",
+            voice_style: Normal,
+            portrait: "portrait_rex_human",
+        ),
+        // 5: Script hint
         (
             speaker: "Cmdr. Kell Fisher",
-            text: "First tanker in the lane. Keep drone coverage tight on the shipping channel. Any launcher that sets up, I want eyes on it.",
+            text: "Three hundred klicks is too much to micro by hand. Load the coverage script — let the code do the watching.",
             voice_style: Normal,
             portrait: "portrait_kell_fisher",
         ),
-        // 5: Tutorial — drone patrol
+        // 6: Escalation
         (
             speaker: "Lt. Rex Harmon",
-            text: "Drone patrol routes are scripted through the terminal. Click a drone to select, right-click to redirect. Or write a coverage script — you\\'ll need one for this much coastline.",
-            voice_style: Normal,
-            portrait: "portrait_rex_human",
-        ),
-        // 6: Escalation — wave 2
-        (
-            speaker: "Lt. Rex Harmon",
-            text: "Multiple contacts on the northern coast. They\\'re setting up in pairs now. And I\\'m picking up AA signatures — they\\'re hunting our drones.",
+            text: "Multiple contacts on the Iranian coast. They\\'re setting up in the Qeshm island shadow. AA drones inbound — they\\'re hunting our birds.",
             voice_style: Normal,
             portrait: "portrait_rex_human",
         ),
         // 7: Kell adapts
         (
             speaker: "Cmdr. Kell Fisher",
-            text: "They\\'re adapting. Good. So are we. If they knock out a drone, switch to satellite in that sector. V key, click the gap.",
+            text: "They\\'re adapting. Good. So are we. If they knock out a drone in the narrows, switch to satellite. V key, click the gap.",
             voice_style: Normal,
             portrait: "portrait_kell_fisher",
         ),
         // 8: Rex check-in
         (
             speaker: "Lt. Rex Harmon",
-            text: "Halfway through. Interceptor count is looking thin, Kell. And we\\'ve got blind spots opening up on the eastern flank.",
+            text: "Halfway through. Interceptor count is thin, Kell. Blind spots opening up east of Qeshm.",
             voice_style: Normal,
             portrait: "portrait_rex_human",
         ),
-        // 9: Late game — Kell clinical
+        // 9: Late game
         (
             speaker: "Cmdr. Kell Fisher",
-            text: "Last batch coming through. They\\'ll throw everything they have. Stay clinical.",
+            text: "Last batch coming through the narrows. They\\'ll throw everything. Stay clinical.",
             voice_style: Normal,
             portrait: "portrait_kell_fisher",
         ),
-        // 10: Rex\\'s humanity
+        // 10: Rex humanity
         (
             speaker: "Lt. Rex Harmon",
             text: "Those tankers have crew, Kell. Just... keeping that in mind.",
             voice_style: Whisper,
             portrait: "portrait_rex_human",
         ),
-        // 11: Zero-day tutorial
+        // 11: Zero-day hint
         (
             speaker: "Cmdr. Kell Fisher",
-            text: "Zero-day pipeline should be cooking. When it\\'s ready, we can brick their launchers permanently — if we can see them.",
+            text: "Zero-day pipeline should be cooking. When it\\'s ready, brick their launchers on Qeshm. That\\'s where the real threat is.",
             voice_style: Normal,
             portrait: "portrait_kell_fisher",
         ),
         // 12: Rex on zero-days
         (
             speaker: "Lt. Rex Harmon",
-            text: "Build exploits during lulls. Deploy when you\\'ve got a confirmed launcher position. Don\\'t waste them on decoys.",
+            text: "Build exploits during lulls. Deploy when you\\'ve got a confirmed launcher. Don\\'t waste them on decoys.",
             voice_style: Normal,
             portrait: "portrait_rex_human",
         ),
@@ -323,7 +340,6 @@ def main():
 )
 '''
 
-    # Write to file
     out_path = "assets/campaign/dream_strait.ron"
     with open(out_path, "w") as f:
         f.write(ron)

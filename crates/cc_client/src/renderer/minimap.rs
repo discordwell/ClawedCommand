@@ -128,6 +128,7 @@ pub fn update_minimap(
     map_res: Res<MapResource>,
     units: Query<(&Position, &Owner), With<UnitMesh>>,
     camera_q: Single<(&Transform, &Projection), With<Camera2d>>,
+    strait_state: Option<Res<crate::dream_strait::StraitState>>,
 ) {
     timer.0.tick(time.delta());
     if !timer.0.just_finished() {
@@ -150,7 +151,13 @@ pub fn update_minimap(
         return;
     };
 
-    paint_terrain(data, map);
+    // DEFCON minimap: dark background with green coastline contours
+    let is_strait = strait_state.as_ref().is_some_and(|s| s.initialized);
+    if is_strait {
+        paint_terrain_defcon(data, map);
+    } else {
+        paint_terrain(data, map);
+    }
 
     // Write unit dots
     for (pos, owner) in units.iter() {
@@ -303,6 +310,49 @@ pub fn minimap_click(
     let screen_pos = coords::world_to_screen(world_pos);
     camera_q.translation.x = screen_pos.x;
     camera_q.translation.y = -screen_pos.y; // Flip for Bevy's Y-up
+}
+
+/// DEFCON-style minimap: dark background, green coastline contours.
+/// DEFCON-style minimap: dark background, green coastline contours.
+fn paint_terrain_defcon(data: &mut [u8], map: &cc_core::map::GameMap) {
+    let w = map.width as usize;
+    let h = map.height as usize;
+    for y in 0..h {
+        for x in 0..w {
+            let idx = y * w + x;
+            let gp = cc_core::coords::GridPos::new(x as i32, y as i32);
+            let t = map.terrain_at(gp).unwrap_or_default();
+            let is_water = matches!(t, TerrainType::Water | TerrainType::Shallows);
+            let is_rock = matches!(t, TerrainType::Rock);
+
+            // Check if this tile is on a coastline boundary
+            let mut is_coast = false;
+            if is_water || is_rock {
+                for (dx, dy) in [(1i32, 0), (-1, 0), (0, 1), (0, -1)] {
+                    let np = cc_core::coords::GridPos::new(x as i32 + dx, y as i32 + dy);
+                    if let Some(nt) = map.terrain_at(np) {
+                        let n_water = matches!(nt, TerrainType::Water | TerrainType::Shallows);
+                        let n_rock = matches!(nt, TerrainType::Rock);
+                        if (is_water && n_rock) || (is_rock && n_water) {
+                            is_coast = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            let (r, g, b) = if is_coast {
+                (25, 200, 75) // Bright green coastline
+            } else if is_rock {
+                (8, 12, 8) // Very dark (land)
+            } else if matches!(t, TerrainType::Shallows) {
+                (5, 20, 10) // Slightly brighter than deep water
+            } else {
+                (3, 5, 10) // Near-black (deep water)
+            };
+            write_pixel(data, idx, r, g, b);
+        }
+    }
 }
 
 fn minimap_terrain_color(terrain: TerrainType) -> (u8, u8, u8) {
