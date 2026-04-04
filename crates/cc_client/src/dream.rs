@@ -45,19 +45,22 @@ const FORCED_ACTION_THRESHOLD: u32 = 6;
 // Ops center desk positions + occupancy curve
 // ---------------------------------------------------------------------------
 
-/// 20 control desk positions in the CarpetTile area (rows 6-8, cols 2-17).
-/// Laid out in 3 rows of ~7 desks each, staggered.
+/// 20 control desk positions in the ops center (rows 13-26, cols 10-44).
+/// Spread across 4 rows with spacing, skip Kell's position (20,20).
 fn ops_desk_positions() -> Vec<GridPos> {
     vec![
-        // Back row (row 6)
-        GridPos::new(3, 6), GridPos::new(5, 6), GridPos::new(7, 6),
-        GridPos::new(11, 6), GridPos::new(13, 6), GridPos::new(15, 6), GridPos::new(17, 6),
-        // Middle row (row 7) — Kell's row, skip (10,7) where he sits
-        GridPos::new(3, 7), GridPos::new(5, 7), GridPos::new(7, 7),
-        GridPos::new(13, 7), GridPos::new(15, 7), GridPos::new(17, 7),
-        // Front row (row 8)
-        GridPos::new(3, 8), GridPos::new(5, 8), GridPos::new(7, 8),
-        GridPos::new(11, 8), GridPos::new(13, 8), GridPos::new(15, 8), GridPos::new(17, 8),
+        // Row 14 (back row)
+        GridPos::new(12, 14), GridPos::new(16, 14), GridPos::new(20, 14),
+        GridPos::new(24, 14), GridPos::new(28, 14), GridPos::new(32, 14),
+        // Row 18
+        GridPos::new(12, 18), GridPos::new(16, 18),
+        GridPos::new(24, 18), GridPos::new(28, 18), GridPos::new(32, 18),
+        // Row 22 — skip (20,20) where Kell sits
+        GridPos::new(12, 22), GridPos::new(16, 22),
+        GridPos::new(24, 22), GridPos::new(28, 22), GridPos::new(32, 22),
+        // Row 26 (front row)
+        GridPos::new(12, 26), GridPos::new(16, 26), GridPos::new(20, 26),
+        GridPos::new(24, 26),
     ]
 }
 
@@ -98,13 +101,13 @@ const INTERACT_RADIUS: i32 = 3;
 /// Must be on passable tiles and reachable from the central hallway.
 fn office_location_positions() -> Vec<(OfficeAction, GridPos, &'static str)> {
     vec![
-        (OfficeAction::Work, GridPos::new(10, 7), "Work"),            // desk area center
-        (OfficeAction::EnergyDrink, GridPos::new(14, 2), "Get Energy Drink"), // vending alcove (north)
-        (OfficeAction::WorkOut, GridPos::new(3, 12), "Work Out"),     // gym area (south)
-        (OfficeAction::CallAda, GridPos::new(18, 2), "Call Ada"),     // phone nook (north-east)
-        (OfficeAction::Sleep, GridPos::new(2, 2), "Sleep"),           // cot nook (north-west)
-        (OfficeAction::Eat, GridPos::new(16, 12), "Eat"),             // eat area (south-east)
-        (OfficeAction::Talk, GridPos::new(8, 2), "Talk to Someone"),  // talk area (north-center)
+        (OfficeAction::Work, GridPos::new(20, 20), "Work"),             // ops center — Kell's desk
+        (OfficeAction::EnergyDrink, GridPos::new(21, 29), "Get Energy Drink"), // south corridor vending
+        (OfficeAction::WorkOut, GridPos::new(13, 32), "Work Out"),      // gym (south wing)
+        (OfficeAction::CallAda, GridPos::new(11, 6), "Call Ada"),       // comms room (north wing)
+        (OfficeAction::Sleep, GridPos::new(33, 6), "Sleep"),            // barracks (north wing)
+        (OfficeAction::Eat, GridPos::new(30, 32), "Eat"),              // mess hall (south wing)
+        (OfficeAction::Talk, GridPos::new(19, 6), "Talk to Someone"),  // break room (north wing)
     ]
 }
 

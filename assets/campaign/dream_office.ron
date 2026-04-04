@@ -1,93 +1,100 @@
 // Dream Sequence Part 1: Cmdr. Kell Fisher's Office
-// Military base — the war is not going great.
-// Kell is a technical desk officer who works obsessively.
+// Military base (48x36) — ops center, barracks, gym, mess hall, comms.
 (
     id: "dream_office",
     name: "The Desk",
     act: 3,
     mission_index: 14,
     map: Inline(
-        width: 20,
-        height: 15,
-        // Row-major, y=0 is top (north wall)
-        // Open-plan military office. All rooms accessible from central hallway.
-        // D=DryWall C=Concrete L=Linoleum T=CarpetTile M=MetalGrate
+width: 48,
+        height: 36,
         tiles: [
-            // Row 0: north exterior wall
-            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
-            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
-            // Row 1: north interior — cot nook | concrete hall | talk area | vending | phone nook
-            DryWall, Linoleum, Linoleum, Linoleum, Concrete, Concrete, Concrete, Linoleum, Linoleum, Concrete,
-            Concrete, Concrete, Concrete, Concrete, MetalGrate, MetalGrate, Concrete, Linoleum, Linoleum, DryWall,
-            // Row 2: same rooms continued with full hallway access
-            DryWall, Linoleum, Linoleum, Linoleum, Concrete, Concrete, Concrete, Linoleum, Linoleum, Concrete,
-            Concrete, Concrete, Concrete, Concrete, MetalGrate, MetalGrate, Concrete, Linoleum, Linoleum, DryWall,
-            // Row 3: main east-west hallway
-            DryWall, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete,
-            Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, DryWall,
-            // Row 4: hallway / transition to desk area
-            DryWall, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete,
-            Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, DryWall,
-            // Row 5: desk area starts — thin DryWall accent strip with wide opening
-            DryWall, DryWall, DryWall, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete,
-            Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, DryWall, DryWall, DryWall,
-            // Row 6: desk area
-            DryWall, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile,
-            CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall,
-            // Row 7: desk area (Kell's desk at col 10)
-            DryWall, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile,
-            CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall,
-            // Row 8: desk area south
-            DryWall, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile,
-            CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall,
-            // Row 9: south transition — wide opening to south rooms
-            DryWall, DryWall, DryWall, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete,
-            Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, DryWall, DryWall, DryWall,
-            // Row 10: south hallway
-            DryWall, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete,
-            Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, DryWall,
-            // Row 11: south rooms — gym area | hallway | eat area
-            DryWall, MetalGrate, MetalGrate, MetalGrate, MetalGrate, Concrete, Concrete, Concrete, Concrete, Concrete,
-            Concrete, Concrete, Concrete, Concrete, Concrete, Linoleum, Linoleum, Linoleum, Linoleum, DryWall,
-            // Row 12: south rooms continued
-            DryWall, MetalGrate, MetalGrate, MetalGrate, MetalGrate, Concrete, Concrete, Concrete, Concrete, Concrete,
-            Concrete, Concrete, Concrete, Concrete, Concrete, Linoleum, Linoleum, Linoleum, Linoleum, DryWall,
-            // Row 13: south rooms
-            DryWall, MetalGrate, MetalGrate, MetalGrate, MetalGrate, Concrete, Concrete, Concrete, Concrete, Concrete,
-            Concrete, Concrete, Concrete, Concrete, Concrete, Linoleum, Linoleum, Linoleum, Linoleum, DryWall,
-            // Row 14: south exterior wall
-            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
-            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
+            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, // exterior wall
+            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, // exterior wall
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, DryWall, // entrance corridor
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, DryWall, // entrance corridor
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Concrete, Concrete, Concrete, Concrete, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, // north wing: comms | break | corridor | barracks | storage
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Concrete, Concrete, Concrete, Concrete, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, // north wing: comms | break | corridor | barracks | storage
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Concrete, Concrete, Concrete, Concrete, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, // north wing: comms | break | corridor | barracks | storage
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Concrete, Concrete, Concrete, Concrete, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, // north wing: comms | break | corridor | barracks | storage
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Concrete, Concrete, Concrete, Concrete, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, // north wing: comms | break | corridor | barracks | storage
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, DryWall, DryWall, DryWall, Concrete, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, Concrete, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, Concrete, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, Concrete, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, Concrete, DryWall, DryWall, DryWall, DryWall, // wall + doorways
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, DryWall, // central corridor
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, DryWall, // central corridor
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall, // OPS CENTER
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall, // OPS CENTER
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall, // OPS CENTER
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall, // OPS CENTER
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall, // OPS CENTER
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall, // OPS CENTER
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall, // OPS CENTER
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall, // OPS CENTER
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall, // OPS CENTER
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall, // OPS CENTER
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall, // OPS CENTER
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall, // OPS CENTER
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall, // OPS CENTER
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall, // OPS CENTER
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall, // OPS CENTER
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall, // OPS CENTER
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, DryWall, DryWall, DryWall, DryWall, Concrete, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, Concrete, DryWall, DryWall, DryWall, DryWall, DryWall, Concrete, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, Concrete, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, Concrete, DryWall, DryWall, DryWall, DryWall, DryWall, // wall + doorways
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, DryWall, // south corridor
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, DryWall, Concrete, Concrete, Concrete, Concrete, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Concrete, Concrete, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, // south wing: gym | corridor | mess | corridor | lounge
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, DryWall, Concrete, Concrete, Concrete, Concrete, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Concrete, Concrete, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, // south wing: gym | corridor | mess | corridor | lounge
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, DryWall, Concrete, Concrete, Concrete, Concrete, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Concrete, Concrete, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, // south wing: gym | corridor | mess | corridor | lounge
+            DryWall, Road, Road, Road, Road, Road, Road, Concrete, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, MetalGrate, DryWall, Concrete, Concrete, Concrete, Concrete, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, Concrete, Concrete, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, Linoleum, DryWall, // south wing: gym | corridor | mess | corridor | lounge
+            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, // exterior wall
+            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, // exterior wall
         ],
-        // All flat (single-story interior)
         elevation: [
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
         ],
     ),
     player_setup: (
         heroes: [
             (
                 hero_id: KellFisher,
-                position: (x: 10, y: 7),
+                position: (x: 20, y: 20),
                 mission_critical: true,
             ),
             (
                 hero_id: RexHarmon,
-                position: (x: 12, y: 7),
+                position: (x: 22, y: 20),
                 mission_critical: false,
                 player_id: 0,
             ),
@@ -108,7 +115,6 @@
         ),
     ],
     triggers: [
-        // Opening dialogue: Kell rants to Rex's human form
         (
             id: "opening_dialogue",
             condition: AtTick(5),
@@ -117,76 +123,16 @@
         ),
     ],
     dialogue: [
-        // 0: Rex (human) opens casually
-        (
-            speaker: "Lt. Rex Harmon",
-            text: "Another sixteen-hour shift, Kell? Command's going to bench you if you collapse at your desk again.",
-            voice_style: Normal,
-            portrait: "portrait_rex_human",
-        ),
-        // 1: Kell dismisses it
-        (
-            speaker: "Cmdr. Kell Fisher",
-            text: "Let them try. Nobody else in this building can read these intercepts half as fast.",
-            voice_style: Normal,
-            portrait: "portrait_kell_fisher",
-        ),
-        // 2: Rex tries to connect
-        (
-            speaker: "Lt. Rex Harmon",
-            text: "You hear about Third Battalion? Took heavy casualties near the ridge. Mortar fire.",
-            voice_style: Normal,
-            portrait: "portrait_rex_human",
-        ),
-        // 3: Kell — the mask slips
-        (
-            speaker: "Cmdr. Kell Fisher",
-            text: "Third Battalion was always sloppy. You know what I love about this job, Rex?",
-            voice_style: Normal,
-            portrait: "portrait_kell_fisher",
-        ),
-        // 4: The rant begins
-        (
-            speaker: "Cmdr. Kell Fisher",
-            text: "We get to sit here in air conditioning while our birds drop JDAMs on their heads from thirty thousand feet.",
-            voice_style: Normal,
-            portrait: "portrait_kell_fisher",
-        ),
-        // 5: Kell continues
-        (
-            speaker: "Cmdr. Kell Fisher",
-            text: "They look up. Maybe they hear a whistle. Then they're just... gone. Shows them they're just arrogant sacks of monkey.",
-            voice_style: Normal,
-            portrait: "portrait_kell_fisher",
-        ),
-        // 6: Rex is visibly uncomfortable
-        (
-            speaker: "Lt. Rex Harmon",
-            text: "Jesus, Kell.",
-            voice_style: Whisper,
-            portrait: "portrait_rex_human",
-        ),
-        // 7: Kell doesn't notice
-        (
-            speaker: "Cmdr. Kell Fisher",
-            text: "Don't give me that look. We're the ones who built the machines. We're the ones who get to push the button. That's not cruelty — that's just how it works.",
-            voice_style: Normal,
-            portrait: "portrait_kell_fisher",
-        ),
-        // 8: Rex exits
-        (
-            speaker: "Lt. Rex Harmon",
-            text: "I'm going to get some air. Try to sleep at some point, Kell.",
-            voice_style: Normal,
-            portrait: "portrait_rex_human",
-        ),
-        // 9: Kell alone — back to work
-        (
-            speaker: "Cmdr. Kell Fisher",
-            text: "Sleep is for people who aren't winning a war.",
-            voice_style: Normal,
-            portrait: "portrait_kell_fisher",
-        ),
+        (speaker: "Lt. Rex Harmon", text: "Another sixteen-hour shift, Kell? Command's going to bench you if you collapse at your desk again.", voice_style: Normal, portrait: "portrait_rex_human"),
+        (speaker: "Cmdr. Kell Fisher", text: "Let them try. Nobody else in this building can read these intercepts half as fast.", voice_style: Normal, portrait: "portrait_kell_fisher"),
+        (speaker: "Lt. Rex Harmon", text: "You hear about Third Battalion? Took heavy casualties near the ridge. Mortar fire.", voice_style: Normal, portrait: "portrait_rex_human"),
+        (speaker: "Cmdr. Kell Fisher", text: "Third Battalion was always sloppy. You know what I love about this job, Rex?", voice_style: Normal, portrait: "portrait_kell_fisher"),
+        (speaker: "Cmdr. Kell Fisher", text: "We get to sit here in air conditioning while our birds drop JDAMs on their heads from thirty thousand feet.", voice_style: Normal, portrait: "portrait_kell_fisher"),
+        (speaker: "Cmdr. Kell Fisher", text: "They look up. Maybe they hear a whistle. Then they're just... gone. Shows them they're just arrogant sacks of monkey.", voice_style: Normal, portrait: "portrait_kell_fisher"),
+        (speaker: "Lt. Rex Harmon", text: "Jesus, Kell.", voice_style: Whisper, portrait: "portrait_rex_human"),
+        (speaker: "Cmdr. Kell Fisher", text: "Don't give me that look. We're the ones who built the machines. We're the ones who get to push the button. That's not cruelty — that's just how it works.", voice_style: Normal, portrait: "portrait_kell_fisher"),
+        (speaker: "Lt. Rex Harmon", text: "I'm going to get some air. Try to sleep at some point, Kell.", voice_style: Normal, portrait: "portrait_rex_human"),
+        (speaker: "Cmdr. Kell Fisher", text: "Sleep is for people who aren't winning a war.", voice_style: Normal, portrait: "portrait_kell_fisher"),
     ],
     briefing_text: "You dream of who you were before.",
     debrief_text: "",
