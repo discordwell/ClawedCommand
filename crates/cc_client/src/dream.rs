@@ -239,6 +239,11 @@ impl Plugin for DreamPlugin {
         app.init_resource::<DreamOfficeState>()
             .init_resource::<DreamUiHidden>()
             .add_systems(
+                Startup,
+                dream_swap_sprites
+                    .after(crate::renderer::hero_sprites::load_hero_sprites),
+            )
+            .add_systems(
             Update,
             (
                 dream_init_system,
@@ -304,12 +309,10 @@ fn dream_init_system(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut dream: ResMut<DreamOfficeState>,
-    mut hero_sprites: Option<ResMut<HeroSprites>>,
     mut cmd_queue: ResMut<CommandQueue>,
     campaign: Res<CampaignState>,
     asset_server: Res<AssetServer>,
     heroes: Query<(Entity, &HeroIdentity, &Owner)>,
-    mut hero_sprites_live: Query<(&HeroIdentity, &mut Sprite)>,
 ) {
     if campaign.phase != CampaignPhase::InMission {
         if dream.initialized {
@@ -329,28 +332,8 @@ fn dream_init_system(
     }
     dream.initialized = true;
 
-    // Swap Kelpie's sprite to Kell Fisher during dream
-    if let Some(ref mut sprites) = hero_sprites {
-        dream.original_kelpie_sprite = sprites.sprites.get(&HeroId::Kelpie).cloned();
-        let kell_path = "sprites/heroes/kell_fisher_idle.png";
-        if crate::renderer::asset_exists_on_disk(kell_path) {
-            sprites.sprites.insert(HeroId::Kelpie, asset_server.load(kell_path));
-        }
-
-        // Swap Rex's sprite to his human form
-        dream.original_rex_sprite = sprites.sprites.get(&HeroId::RexSolstice).cloned();
-        let rex_path = "sprites/heroes/rex_harmon_idle.png";
-        if crate::renderer::asset_exists_on_disk(rex_path) {
-            sprites.sprites.insert(HeroId::RexSolstice, asset_server.load(rex_path));
-        }
-
-        // Update live Sprite components on already-spawned hero entities
-        for (hi, mut sprite) in hero_sprites_live.iter_mut() {
-            if let Some(handle) = sprites.sprites.get(&hi.hero_id) {
-                sprite.image = handle.clone();
-            }
-        }
-    }
+    // Sprite swap is handled by dream_swap_sprites at Startup —
+    // by the time spawn_unit_visuals runs, HeroSprites already has the human handles.
 
     match scene_type {
         DreamSceneType::Office => {
@@ -917,40 +900,59 @@ fn dream_cleanup_system(
     }
 }
 
-/// Keep Kelpie selected and ensure human sprites stay applied every frame.
-/// spawn_unit_visuals can run after dream_init_system, overwriting the image.
+/// Swap hero sprite handles at Startup so spawn_unit_visuals picks up
+/// the human sprites from the beginning. No per-frame enforcement needed.
+fn dream_swap_sprites(
+    mut hero_sprites: Option<ResMut<HeroSprites>>,
+    mut dream: ResMut<DreamOfficeState>,
+    campaign: Res<CampaignState>,
+    asset_server: Res<AssetServer>,
+) {
+    // Only swap if the current mission is a dream sequence
+    let is_dream = campaign
+        .current_mission
+        .as_ref()
+        .is_some_and(|m| cc_core::mutator::is_dream_mission(&m.mutators));
+
+    if !is_dream {
+        return;
+    }
+
+    let Some(ref mut sprites) = hero_sprites else {
+        return;
+    };
+
+    // Swap Kelpie → Kell Fisher
+    dream.original_kelpie_sprite = sprites.sprites.get(&HeroId::Kelpie).cloned();
+    let kell_path = "sprites/heroes/kell_fisher_idle.png";
+    if crate::renderer::asset_exists_on_disk(kell_path) {
+        sprites
+            .sprites
+            .insert(HeroId::Kelpie, asset_server.load(kell_path));
+    }
+
+    // Swap RexSolstice → Rex Harmon
+    dream.original_rex_sprite = sprites.sprites.get(&HeroId::RexSolstice).cloned();
+    let rex_path = "sprites/heroes/rex_harmon_idle.png";
+    if crate::renderer::asset_exists_on_disk(rex_path) {
+        sprites
+            .sprites
+            .insert(HeroId::RexSolstice, asset_server.load(rex_path));
+    }
+}
+
+/// Keep Kelpie selected during dream — re-insert Selected if removed.
 fn dream_keep_selected(
     mut commands: Commands,
     dream: Res<DreamOfficeState>,
-    hero_sprites: Option<Res<HeroSprites>>,
-    mut heroes: Query<(Entity, &HeroIdentity, &Owner, Option<&mut Sprite>, Has<Selected>)>,
+    heroes: Query<(Entity, &HeroIdentity, &Owner), Without<Selected>>,
 ) {
     if !dream.initialized {
         return;
     }
-    let sprites = hero_sprites.as_ref();
-    for (entity, hi, owner, sprite_opt, has_selected) in heroes.iter_mut() {
+    for (entity, hi, owner) in heroes.iter() {
         if hi.hero_id == HeroId::Kelpie && owner.player_id == 0 {
-            if !has_selected {
-                commands.entity(entity).insert(Selected);
-            }
-            // Ensure Kell's human sprite stays applied
-            if let (Some(mut sprite), Some(sprites)) = (sprite_opt, sprites) {
-                if let Some(expected) = sprites.sprites.get(&HeroId::Kelpie) {
-                    if sprite.image != *expected {
-                        sprite.image = expected.clone();
-                    }
-                }
-            }
-        } else if hi.hero_id == HeroId::RexSolstice && !dream.rex_departed {
-            // Also keep Rex's human sprite
-            if let (Some(mut sprite), Some(sprites)) = (sprite_opt, sprites) {
-                if let Some(expected) = sprites.sprites.get(&HeroId::RexSolstice) {
-                    if sprite.image != *expected {
-                        sprite.image = expected.clone();
-                    }
-                }
-            }
+            commands.entity(entity).insert(Selected);
         }
     }
 }
