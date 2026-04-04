@@ -125,16 +125,11 @@ pub enum DreamSceneType {
     Lake,
 }
 
-/// Check if a list of mutators contains a DreamSequence.
-pub fn find_dream_mutator(mutators: &[MissionMutator]) -> Option<&MissionMutator> {
-    mutators
-        .iter()
-        .find(|m| matches!(m, MissionMutator::DreamSequence { .. }))
-}
-
 /// Check if a list of mutators indicates an active dream mission.
 pub fn is_dream_mission(mutators: &[MissionMutator]) -> bool {
-    find_dream_mutator(mutators).is_some()
+    mutators
+        .iter()
+        .any(|m| matches!(m, MissionMutator::DreamSequence { .. }))
 }
 
 /// Direction from which a hazard advances.

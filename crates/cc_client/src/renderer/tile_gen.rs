@@ -11,7 +11,7 @@ const TILE_H: usize = 32;
 #[derive(Resource)]
 pub struct ProceduralTiles {
     /// One image handle per TerrainType (indexed by `terrain as usize`).
-    pub terrain: [Handle<Image>; 10],
+    pub terrain: [Handle<Image>; 15],
     /// Second water variant for animation.
     pub water_alt: Handle<Image>,
     /// Second shallows variant for animation.
@@ -20,7 +20,7 @@ pub struct ProceduralTiles {
 
 /// Generate procedural terrain tile images at startup.
 pub fn generate_terrain_tiles(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
-    let mut handles: Vec<Handle<Image>> = Vec::with_capacity(10);
+    let mut handles: Vec<Handle<Image>> = Vec::with_capacity(15);
 
     for terrain in TerrainType::ALL {
         let img = generate_tile_image(terrain, 0);
@@ -42,6 +42,11 @@ pub fn generate_terrain_tiles(mut commands: Commands, mut images: ResMut<Assets<
             handles[7].clone(),
             handles[8].clone(),
             handles[9].clone(),
+            handles[10].clone(),
+            handles[11].clone(),
+            handles[12].clone(),
+            handles[13].clone(),
+            handles[14].clone(),
         ],
         water_alt,
         shallows_alt,

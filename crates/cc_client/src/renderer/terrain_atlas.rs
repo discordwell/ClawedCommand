@@ -27,7 +27,7 @@ impl TerrainAtlas {
         let mut atlas = Self::default();
 
         // Try loading base terrain tile sheet
-        // Expected: assets/terrain/terrain_base_atlas.png (10 tiles in a row, 128x128 each)
+        // Expected: assets/terrain/terrain_base_atlas.png (15 tiles in a row, 128x128 each)
         let base_path = "terrain/terrain_base_atlas.png";
         if asset_server.get_handle::<Image>(base_path).is_some() {
             let layout = TextureAtlasLayout::from_grid(UVec2::new(128, 128), 15, 1, None, None);

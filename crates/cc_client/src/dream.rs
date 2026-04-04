@@ -86,6 +86,10 @@ pub struct DreamSessionHud;
 #[derive(Component)]
 pub struct DreamEntity;
 
+/// Tracks whether RTS UI was hidden by the dream system (so we can restore it).
+#[derive(Resource, Default)]
+pub struct DreamUiHidden(pub bool);
+
 // ---------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------
@@ -172,7 +176,9 @@ pub struct DreamPlugin;
 
 impl Plugin for DreamPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<DreamOfficeState>().add_systems(
+        app.init_resource::<DreamOfficeState>()
+            .init_resource::<DreamUiHidden>()
+            .add_systems(
             Update,
             (
                 dream_init_system,
@@ -347,9 +353,10 @@ fn dream_init_system(
     }
 }
 
-/// Hide RTS UI elements during dream missions.
+/// Hide RTS UI elements during dream missions, restore when dream ends.
 fn dream_hide_rts_ui(
     campaign: Res<CampaignState>,
+    mut ui_hidden: ResMut<DreamUiHidden>,
     mut resource_bar: Query<&mut Visibility, (With<ResourceBarRoot>, Without<BuildMenuRoot>)>,
     mut build_menu: Query<
         &mut Visibility,
@@ -401,9 +408,33 @@ fn dream_hide_rts_ui(
             });
 
     if !is_dream {
+        // Restore UI visibility if we previously hid it
+        if ui_hidden.0 {
+            ui_hidden.0 = false;
+            let show = Visibility::Inherited;
+            for mut vis in resource_bar.iter_mut() {
+                *vis = show;
+            }
+            for mut vis in build_menu.iter_mut() {
+                *vis = show;
+            }
+            for mut vis in cmd_card.iter_mut() {
+                *vis = show;
+            }
+            for mut vis in ability_bar.iter_mut() {
+                *vis = show;
+            }
+            for mut vis in unit_info.iter_mut() {
+                *vis = show;
+            }
+            for mut vis in building_info.iter_mut() {
+                *vis = show;
+            }
+        }
         return;
     }
 
+    ui_hidden.0 = true;
     let hide = Visibility::Hidden;
     for mut vis in resource_bar.iter_mut() {
         *vis = hide;
@@ -457,7 +488,9 @@ fn dream_office_click_system(
         return;
     };
 
-    // Find nearest location within click radius
+    // Find nearest location within click radius.
+    // Labels are positioned at (screen.x, -screen.y + offset, z) which matches
+    // Bevy's world-space convention (camera.viewport_to_world_2d returns same space).
     let click_radius = 30.0f32;
     let mut best: Option<(OfficeAction, f32)> = None;
     for (loc, transform) in locations.iter() {
@@ -628,9 +661,14 @@ fn dream_passout_system(
     }
 
     if dream.passout_timer <= 0.0 {
-        // Complete the mission objective — trigger victory
-        // The simplest approach: directly set the campaign to debriefing
-        // since the debrief auto-skip will chain to dream_lake.
+        // Mark the Manual objective as complete before triggering victory
+        if let Some(status) = campaign
+            .objective_status
+            .iter_mut()
+            .find(|s| s.id == "complete_work")
+        {
+            status.completed = true;
+        }
         campaign.last_mission_result =
             Some(cc_sim::campaign::state::MissionResult::Victory);
         campaign.phase = CampaignPhase::Debriefing;
