@@ -75,6 +75,16 @@ fn prop_appearance(action: OfficeAction) -> (Color, &'static str) {
     }
 }
 
+/// Sprite asset path for each location's prop (if art exists).
+fn prop_sprite_path(action: OfficeAction) -> Option<&'static str> {
+    match action {
+        OfficeAction::Work => Some("sprites/dream/desk_pc.png"),
+        OfficeAction::EnergyDrink => Some("sprites/dream/vending_machine.png"),
+        OfficeAction::WorkOut => Some("sprites/dream/gym_rack.png"),
+        _ => None, // fallback to colored rectangle for ungenerated props
+    }
+}
+
 /// Dismissive lines Kell says when you try a disabled action.
 fn kell_refusal(action: OfficeAction) -> &'static str {
     match action {
@@ -348,11 +358,10 @@ fn dream_init_system(
             }
 
             // Spawn location markers with visible prop objects
-            let prop_mesh = meshes.add(Rectangle::new(10.0, 10.0));
+            let fallback_mesh = meshes.add(Rectangle::new(10.0, 10.0));
             for (action, pos, _label) in office_location_positions() {
                 let (color, icon) = prop_appearance(action);
                 let screen = world_to_screen(WorldPos::from_grid(pos));
-                let elev_offset = 0.0; // flat map
 
                 // Data-only location marker
                 commands.spawn((
@@ -363,28 +372,51 @@ fn dream_init_system(
                     },
                 ));
 
-                // Visible prop: colored square on the map
-                let prop_mat = materials.add(ColorMaterial::from_color(color));
-                commands.spawn((
-                    DreamEntity,
-                    DreamProp,
-                    Mesh2d(prop_mesh.clone()),
-                    MeshMaterial2d(prop_mat),
-                    Transform::from_xyz(screen.x, -screen.y + elev_offset, -5.0),
-                ));
-
-                // Small label above the prop
-                commands.spawn((
-                    DreamEntity,
-                    DreamProp,
-                    Text2d::new(icon),
-                    TextColor(color),
-                    TextFont {
-                        font_size: 9.0,
-                        ..default()
-                    },
-                    Transform::from_xyz(screen.x, -screen.y + elev_offset + 10.0, 50.0),
-                ));
+                // Visible prop: use sprite if art exists, else colored rectangle fallback
+                if let Some(path) = prop_sprite_path(action) {
+                    if crate::renderer::asset_exists_on_disk(path) {
+                        commands.spawn((
+                            DreamEntity,
+                            DreamProp,
+                            Sprite {
+                                image: asset_server.load(path),
+                                ..default()
+                            },
+                            Transform::from_xyz(screen.x, -screen.y + 8.0, -5.0)
+                                .with_scale(Vec3::splat(0.5)),
+                        ));
+                    } else {
+                        let prop_mat = materials.add(ColorMaterial::from_color(color));
+                        commands.spawn((
+                            DreamEntity,
+                            DreamProp,
+                            Mesh2d(fallback_mesh.clone()),
+                            MeshMaterial2d(prop_mat),
+                            Transform::from_xyz(screen.x, -screen.y, -5.0),
+                        ));
+                    }
+                } else {
+                    // No sprite defined — use fallback with label
+                    let prop_mat = materials.add(ColorMaterial::from_color(color));
+                    commands.spawn((
+                        DreamEntity,
+                        DreamProp,
+                        Mesh2d(fallback_mesh.clone()),
+                        MeshMaterial2d(prop_mat),
+                        Transform::from_xyz(screen.x, -screen.y, -5.0),
+                    ));
+                    commands.spawn((
+                        DreamEntity,
+                        DreamProp,
+                        Text2d::new(icon),
+                        TextColor(color),
+                        TextFont {
+                            font_size: 9.0,
+                            ..default()
+                        },
+                        Transform::from_xyz(screen.x, -screen.y + 10.0, 50.0),
+                    ));
+                }
             }
 
             // "Press F to <action>" prompt (hidden by default)
