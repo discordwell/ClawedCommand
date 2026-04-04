@@ -1078,7 +1078,7 @@ mod tests {
             crate::mutator::MissionMutator::SpeedMultiplier { .. }
         ));
         assert!(
-            matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "act4_m14_junkyard_fort")
+            matches!(mission.next_mission, NextMission::Fixed(ref id) if id == "dream_office")
         );
         mission
             .validate()
@@ -1709,6 +1709,85 @@ mod tests {
     #[test]
     fn act2_m8_positions_on_passable_terrain() {
         let mission = load_act2_m8();
+        assert_all_positions_passable(&mission);
+    }
+
+    // -----------------------------------------------------------------------
+    // Dream sequence mission parse tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn dream_office_ron_parses() {
+        let ron_str = include_str!("../../../assets/campaign/dream_office.ron");
+        let mission: MissionDefinition =
+            ron::from_str(ron_str).expect("Failed to parse dream_office.ron");
+        assert_eq!(mission.id, "dream_office");
+        assert_eq!(mission.act, 3);
+        assert!(matches!(
+            mission.next_mission,
+            NextMission::Fixed(ref id) if id == "dream_lake"
+        ));
+        // Must have DreamSequence mutator with Office scene type
+        assert!(mission.mutators.iter().any(|m| matches!(
+            m,
+            crate::mutator::MissionMutator::DreamSequence {
+                scene_type: crate::mutator::DreamSceneType::Office,
+                ..
+            }
+        )));
+        // Inline map dimensions
+        if let MissionMap::Inline { width, height, ref tiles, ref elevation } = mission.map {
+            assert_eq!(width, 20);
+            assert_eq!(height, 15);
+            assert_eq!(tiles.len(), (width * height) as usize);
+            assert_eq!(elevation.len(), (width * height) as usize);
+        } else {
+            panic!("Expected Inline map for dream_office");
+        }
+        assert_eq!(mission.dialogue.len(), 10);
+        mission.validate().expect("dream_office validation failed");
+    }
+
+    #[test]
+    fn dream_office_hero_on_passable_terrain() {
+        let ron_str = include_str!("../../../assets/campaign/dream_office.ron");
+        let mission: MissionDefinition = ron::from_str(ron_str).unwrap();
+        assert_all_positions_passable(&mission);
+    }
+
+    #[test]
+    fn dream_lake_ron_parses() {
+        let ron_str = include_str!("../../../assets/campaign/dream_lake.ron");
+        let mission: MissionDefinition =
+            ron::from_str(ron_str).expect("Failed to parse dream_lake.ron");
+        assert_eq!(mission.id, "dream_lake");
+        assert_eq!(mission.act, 3);
+        assert!(matches!(
+            mission.next_mission,
+            NextMission::Fixed(ref id) if id == "act4_m14_junkyard_fort"
+        ));
+        // Must have DreamSequence mutator with Lake scene type
+        assert!(mission.mutators.iter().any(|m| matches!(
+            m,
+            crate::mutator::MissionMutator::DreamSequence {
+                scene_type: crate::mutator::DreamSceneType::Lake,
+                ..
+            }
+        )));
+        // HeroReachesPos objective
+        assert!(mission.objectives.iter().any(|o| matches!(
+            o.condition,
+            ObjectiveCondition::HeroReachesPos { .. }
+        )));
+        // Claude dialogue
+        assert_eq!(mission.dialogue.len(), 5);
+        mission.validate().expect("dream_lake validation failed");
+    }
+
+    #[test]
+    fn dream_lake_hero_on_passable_terrain() {
+        let ron_str = include_str!("../../../assets/campaign/dream_lake.ron");
+        let mission: MissionDefinition = ron::from_str(ron_str).unwrap();
         assert_all_positions_passable(&mission);
     }
 }

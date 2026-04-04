@@ -19,6 +19,12 @@ pub enum TerrainType {
     Ramp = 7,
     Road = 8,
     TechRuins = 9,
+    // -- Modern military (dream sequence) --
+    Concrete = 10,
+    Linoleum = 11,
+    CarpetTile = 12,
+    MetalGrate = 13,
+    DryWall = 14,
 }
 
 impl TerrainType {
@@ -35,12 +41,17 @@ impl TerrainType {
             Self::Ramp => Fixed::from_bits(72089),      // 1.1x
             Self::Road => Fixed::from_bits(45875),      // 0.7x
             Self::TechRuins => Fixed::from_bits(75366), // 1.15x
+            Self::Concrete => Fixed::from_bits(55705),  // 0.85x
+            Self::Linoleum => Fixed::from_bits(58982),  // 0.9x
+            Self::CarpetTile => FIXED_ONE,              // 1.0x
+            Self::MetalGrate => Fixed::from_bits(72089),// 1.1x
+            Self::DryWall => FIXED_ZERO,                // impassable
         }
     }
 
     /// Whether this terrain is passable by default (ignoring faction rules).
     pub fn base_passable(self) -> bool {
-        !matches!(self, Self::Rock | Self::Water)
+        !matches!(self, Self::Rock | Self::Water | Self::DryWall)
     }
 
     /// Whether this terrain is water (for faction-specific traversal).
@@ -53,6 +64,7 @@ impl TerrainType {
         match self {
             Self::Forest => CoverLevel::Light,
             Self::TechRuins => CoverLevel::Heavy,
+            Self::MetalGrate => CoverLevel::Light,
             _ => CoverLevel::None,
         }
     }
@@ -76,6 +88,11 @@ impl TerrainType {
             Self::TechRuins => 7,
             Self::Rock => 8,
             Self::Ramp => 4, // Same as grass for blending
+            Self::Concrete => 5,
+            Self::Linoleum => 5,
+            Self::CarpetTile => 6,
+            Self::MetalGrate => 7,
+            Self::DryWall => 9,
         }
     }
 
@@ -92,12 +109,17 @@ impl TerrainType {
             7 => Some(Self::Ramp),
             8 => Some(Self::Road),
             9 => Some(Self::TechRuins),
+            10 => Some(Self::Concrete),
+            11 => Some(Self::Linoleum),
+            12 => Some(Self::CarpetTile),
+            13 => Some(Self::MetalGrate),
+            14 => Some(Self::DryWall),
             _ => None,
         }
     }
 
     /// All terrain type variants.
-    pub const ALL: [TerrainType; 10] = [
+    pub const ALL: [TerrainType; 15] = [
         Self::Grass,
         Self::Dirt,
         Self::Sand,
@@ -108,6 +130,11 @@ impl TerrainType {
         Self::Ramp,
         Self::Road,
         Self::TechRuins,
+        Self::Concrete,
+        Self::Linoleum,
+        Self::CarpetTile,
+        Self::MetalGrate,
+        Self::DryWall,
     ];
 }
 
@@ -131,6 +158,11 @@ impl std::str::FromStr for TerrainType {
             "Ramp" => Ok(Self::Ramp),
             "Road" => Ok(Self::Road),
             "TechRuins" => Ok(Self::TechRuins),
+            "Concrete" => Ok(Self::Concrete),
+            "Linoleum" => Ok(Self::Linoleum),
+            "CarpetTile" => Ok(Self::CarpetTile),
+            "MetalGrate" => Ok(Self::MetalGrate),
+            "DryWall" => Ok(Self::DryWall),
             _ => Err(()),
         }
     }
@@ -301,6 +333,11 @@ mod tests {
         assert!(TerrainType::Ramp.base_passable());
         assert!(TerrainType::Road.base_passable());
         assert!(TerrainType::TechRuins.base_passable());
+        assert!(TerrainType::Concrete.base_passable());
+        assert!(TerrainType::Linoleum.base_passable());
+        assert!(TerrainType::CarpetTile.base_passable());
+        assert!(TerrainType::MetalGrate.base_passable());
+        assert!(!TerrainType::DryWall.base_passable());
     }
 
     #[test]
@@ -315,6 +352,11 @@ mod tests {
         assert!(TerrainType::Shallows.movement_cost() > TerrainType::Forest.movement_cost());
         // Dirt slightly faster than grass
         assert!(TerrainType::Dirt.movement_cost() < TerrainType::Grass.movement_cost());
+        // Modern terrain: Concrete fast, MetalGrate slow, CarpetTile == Grass
+        assert!(TerrainType::Concrete.movement_cost() < TerrainType::Grass.movement_cost());
+        assert!(TerrainType::Linoleum.movement_cost() < TerrainType::Grass.movement_cost());
+        assert_eq!(TerrainType::CarpetTile.movement_cost(), TerrainType::Grass.movement_cost());
+        assert!(TerrainType::MetalGrate.movement_cost() > TerrainType::Grass.movement_cost());
     }
 
     #[test]
@@ -323,6 +365,8 @@ mod tests {
         assert_eq!(TerrainType::Forest.cover(), CoverLevel::Light);
         assert_eq!(TerrainType::TechRuins.cover(), CoverLevel::Heavy);
         assert_eq!(TerrainType::Water.cover(), CoverLevel::None);
+        assert_eq!(TerrainType::MetalGrate.cover(), CoverLevel::Light);
+        assert_eq!(TerrainType::Concrete.cover(), CoverLevel::None);
     }
 
     #[test]
@@ -362,6 +406,7 @@ mod tests {
         for faction_id in 0..6u8 {
             let faction = FactionId::from_u8(faction_id).unwrap();
             assert!(!is_passable_for_faction(TerrainType::Rock, faction));
+            assert!(!is_passable_for_faction(TerrainType::DryWall, faction));
         }
     }
 

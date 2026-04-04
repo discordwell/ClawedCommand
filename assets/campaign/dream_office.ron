@@ -1,0 +1,204 @@
+// Dream Sequence Part 1: Cmdr. Kell Fisher's Office
+// Military base — the war is not going great.
+// Kell is a technical desk officer who works obsessively.
+(
+    id: "dream_office",
+    name: "The Desk",
+    act: 3,
+    mission_index: 14,
+    map: Inline(
+        width: 20,
+        height: 15,
+        // Row-major, y=0 is top (north wall)
+        // Layout:
+        //   Row 0-1:  DryWall (north exterior wall)
+        //   Row 2:    DryWall border, Concrete hallway
+        //   Row 3-5:  Rooms: Sleep(Linoleum) | Talk(Linoleum) | Hallway(Concrete) | Drink(MetalGrate) | Phone(Linoleum)
+        //   Row 6:    DryWall divider
+        //   Row 7-9:  Main work area: CarpetTile desk zone
+        //   Row 10:   DryWall divider
+        //   Row 11-13: Gym(MetalGrate) | Hallway(Concrete) | Eat(Linoleum)
+        //   Row 14:   DryWall (south exterior wall)
+        tiles: [
+            // Row 0: north wall
+            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
+            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
+            // Row 1: north wall inner
+            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
+            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
+            // Row 2: hall entrance
+            DryWall, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete,
+            Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, DryWall,
+            // Row 3: rooms north - Sleep | Talk | Hall | Drink area | Phone
+            DryWall, Linoleum, Linoleum, Linoleum, DryWall, Linoleum, Linoleum, DryWall, Concrete, Concrete,
+            Concrete, Concrete, Concrete, DryWall, MetalGrate, MetalGrate, DryWall, Linoleum, Linoleum, DryWall,
+            // Row 4: rooms - same layout
+            DryWall, Linoleum, Linoleum, Linoleum, DryWall, Linoleum, Linoleum, DryWall, Concrete, Concrete,
+            Concrete, Concrete, Concrete, DryWall, MetalGrate, MetalGrate, DryWall, Linoleum, Linoleum, DryWall,
+            // Row 5: rooms - with door openings (Concrete gaps in DryWall)
+            DryWall, Linoleum, Linoleum, Linoleum, DryWall, Linoleum, Linoleum, Concrete, Concrete, Concrete,
+            Concrete, Concrete, Concrete, Concrete, MetalGrate, MetalGrate, Concrete, Linoleum, Linoleum, DryWall,
+            // Row 6: divider wall (with doorways)
+            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, Concrete, Concrete,
+            Concrete, Concrete, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
+            // Row 7: desk area north
+            DryWall, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile,
+            CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall,
+            // Row 8: desk area (Kell's desk at col 10)
+            DryWall, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile,
+            CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall,
+            // Row 9: desk area south
+            DryWall, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile,
+            CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall,
+            // Row 10: divider wall (with doorways)
+            DryWall, DryWall, DryWall, DryWall, DryWall, Concrete, DryWall, DryWall, DryWall, DryWall,
+            DryWall, DryWall, DryWall, DryWall, Concrete, DryWall, DryWall, DryWall, DryWall, DryWall,
+            // Row 11: south rooms - Gym | Hall | Eat room
+            DryWall, MetalGrate, MetalGrate, MetalGrate, MetalGrate, Concrete, Concrete, Concrete, Concrete, Concrete,
+            Concrete, Concrete, Concrete, Concrete, Concrete, Linoleum, Linoleum, Linoleum, Linoleum, DryWall,
+            // Row 12: south rooms continued
+            DryWall, MetalGrate, MetalGrate, MetalGrate, MetalGrate, Concrete, Concrete, Concrete, Concrete, Concrete,
+            Concrete, Concrete, Concrete, Concrete, Concrete, Linoleum, Linoleum, Linoleum, Linoleum, DryWall,
+            // Row 13: south rooms
+            DryWall, MetalGrate, MetalGrate, MetalGrate, MetalGrate, DryWall, Concrete, Concrete, Concrete, Concrete,
+            Concrete, Concrete, Concrete, DryWall, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, DryWall,
+            // Row 14: south wall
+            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
+            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
+        ],
+        // All flat (single-story interior)
+        elevation: [
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        ],
+    ),
+    player_setup: (
+        heroes: [
+            (
+                hero_id: Kelpie,
+                position: (x: 10, y: 8),
+                mission_critical: true,
+            ),
+        ],
+        units: [],
+        buildings: [],
+        starting_food: 0,
+        starting_gpu: 0,
+        starting_nfts: 0,
+    ),
+    enemy_waves: [],
+    objectives: [
+        (
+            id: "complete_work",
+            description: "Complete work sessions",
+            primary: true,
+            condition: Manual,
+        ),
+    ],
+    triggers: [
+        // Opening dialogue: Kell rants to Rex's human form
+        (
+            id: "opening_dialogue",
+            condition: AtTick(5),
+            actions: [ShowDialogue([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])],
+            once: true,
+        ),
+    ],
+    dialogue: [
+        // 0: Rex (human) opens casually
+        (
+            speaker: "Lt. Rex Harmon",
+            text: "Another sixteen-hour shift, Kell? Command's going to bench you if you collapse at your desk again.",
+            voice_style: Normal,
+            portrait: "portrait_rex_human",
+        ),
+        // 1: Kell dismisses it
+        (
+            speaker: "Cmdr. Kell Fisher",
+            text: "Let them try. Nobody else in this building can read these intercepts half as fast.",
+            voice_style: Normal,
+            portrait: "portrait_kell_fisher",
+        ),
+        // 2: Rex tries to connect
+        (
+            speaker: "Lt. Rex Harmon",
+            text: "You hear about Third Battalion? Took heavy casualties near the ridge. Mortar fire.",
+            voice_style: Normal,
+            portrait: "portrait_rex_human",
+        ),
+        // 3: Kell — the mask slips
+        (
+            speaker: "Cmdr. Kell Fisher",
+            text: "Third Battalion was always sloppy. You know what I love about this job, Rex?",
+            voice_style: Normal,
+            portrait: "portrait_kell_fisher",
+        ),
+        // 4: The rant begins
+        (
+            speaker: "Cmdr. Kell Fisher",
+            text: "We get to sit here in air conditioning while our birds drop JDAMs on their heads from thirty thousand feet.",
+            voice_style: Normal,
+            portrait: "portrait_kell_fisher",
+        ),
+        // 5: Kell continues
+        (
+            speaker: "Cmdr. Kell Fisher",
+            text: "They look up. Maybe they hear a whistle. Then they're just... gone. Shows them they're just arrogant sacks of monkey.",
+            voice_style: Normal,
+            portrait: "portrait_kell_fisher",
+        ),
+        // 6: Rex is visibly uncomfortable
+        (
+            speaker: "Lt. Rex Harmon",
+            text: "Jesus, Kell.",
+            voice_style: Whisper,
+            portrait: "portrait_rex_human",
+        ),
+        // 7: Kell doesn't notice
+        (
+            speaker: "Cmdr. Kell Fisher",
+            text: "Don't give me that look. We're the ones who built the machines. We're the ones who get to push the button. That's not cruelty — that's just how it works.",
+            voice_style: Normal,
+            portrait: "portrait_kell_fisher",
+        ),
+        // 8: Rex exits
+        (
+            speaker: "Lt. Rex Harmon",
+            text: "I'm going to get some air. Try to sleep at some point, Kell.",
+            voice_style: Normal,
+            portrait: "portrait_rex_human",
+        ),
+        // 9: Kell alone — back to work
+        (
+            speaker: "Cmdr. Kell Fisher",
+            text: "Sleep is for people who aren't winning a war.",
+            voice_style: Normal,
+            portrait: "portrait_kell_fisher",
+        ),
+    ],
+    briefing_text: "You dream of who you were before.",
+    debrief_text: "",
+    next_mission: Fixed("dream_lake"),
+    mutators: [
+        DreamSequence(
+            skip_briefing: false,
+            skip_debrief: true,
+            scene_type: Office,
+        ),
+        NoBuildMode,
+        NoAiControl,
+    ],
+)

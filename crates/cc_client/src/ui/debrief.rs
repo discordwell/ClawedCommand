@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use cc_core::mission::NextMission;
+use cc_core::mutator::MissionMutator;
 use cc_sim::campaign::state::{CampaignPhase, CampaignState, MissionResult};
 
 const TYPEWRITER_SPEED: f32 = 40.0;
@@ -168,6 +169,83 @@ pub fn spawn_debrief(mut commands: Commands) {
                         });
                 });
         });
+}
+
+/// Dream sequence auto-skip: immediately load next mission without showing debrief UI.
+pub fn dream_debrief_auto_skip(mut campaign: ResMut<CampaignState>) {
+    if campaign.phase != CampaignPhase::Debriefing {
+        return;
+    }
+
+    let Some(mission) = &campaign.current_mission else {
+        return;
+    };
+
+    let should_skip = mission.mutators.iter().any(|m| {
+        matches!(
+            m,
+            MissionMutator::DreamSequence {
+                skip_debrief: true,
+                ..
+            }
+        )
+    });
+
+    if !should_skip {
+        return;
+    }
+
+    // Replicate NextMission resolution from debrief_interaction
+    let next_id = match &mission.next_mission {
+        NextMission::Fixed(id) => Some(id.clone()),
+        NextMission::Branching {
+            flag,
+            on_true,
+            on_false,
+        } => {
+            if campaign.persistent.has_flag(flag) {
+                Some(on_true.clone())
+            } else {
+                Some(on_false.clone())
+            }
+        }
+        NextMission::None => None,
+    };
+
+    if let Some(next_id) = next_id {
+        let ron_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../assets/campaign")
+            .join(format!("{next_id}.ron"));
+        match std::fs::read_to_string(&ron_path) {
+            Ok(ron_str) => {
+                match ron::from_str::<cc_core::mission::MissionDefinition>(&ron_str) {
+                    Ok(next_mission) => {
+                        let new_act = next_mission.act;
+                        let old_act = campaign
+                            .current_mission
+                            .as_ref()
+                            .map(|m| m.act)
+                            .unwrap_or(0);
+                        campaign.load_mission(next_mission);
+                        if new_act != old_act {
+                            campaign.entering_act = Some(new_act);
+                            campaign.phase = CampaignPhase::ActTitleCard;
+                        }
+                    }
+                    Err(e) => {
+                        warn!("Dream auto-skip: failed to parse {next_id}.ron: {e}");
+                        campaign.phase = CampaignPhase::WorldMap;
+                    }
+                }
+            }
+            Err(e) => {
+                warn!("Dream auto-skip: failed to read {next_id}.ron: {e}");
+                campaign.phase = CampaignPhase::WorldMap;
+            }
+        }
+    } else {
+        campaign.phase = CampaignPhase::WorldMap;
+    }
 }
 
 /// Update debrief visibility and content.

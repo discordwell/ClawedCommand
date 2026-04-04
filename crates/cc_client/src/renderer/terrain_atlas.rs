@@ -10,7 +10,7 @@ pub struct TerrainAtlas {
     pub base_atlas: Option<Handle<TextureAtlasLayout>>,
     pub base_image: Option<Handle<Image>>,
     /// Transition overlay atlases per terrain type. None = skip overlays.
-    pub transition_atlases: [Option<TransitionAtlasEntry>; 10],
+    pub transition_atlases: [Option<TransitionAtlasEntry>; 15],
     /// Whether real art is loaded (false = fallback to colored rects).
     pub art_loaded: bool,
 }
@@ -30,7 +30,7 @@ impl TerrainAtlas {
         // Expected: assets/terrain/terrain_base_atlas.png (10 tiles in a row, 128x128 each)
         let base_path = "terrain/terrain_base_atlas.png";
         if asset_server.get_handle::<Image>(base_path).is_some() {
-            let layout = TextureAtlasLayout::from_grid(UVec2::new(128, 128), 10, 1, None, None);
+            let layout = TextureAtlasLayout::from_grid(UVec2::new(128, 128), 15, 1, None, None);
             let layout_handle = layouts.add(layout);
             atlas.base_atlas = Some(layout_handle);
             atlas.base_image = Some(asset_server.load(base_path));
@@ -68,5 +68,10 @@ pub fn terrain_name(terrain: TerrainType) -> &'static str {
         TerrainType::Ramp => "ramp",
         TerrainType::Road => "road",
         TerrainType::TechRuins => "tech_ruins",
+        TerrainType::Concrete => "concrete",
+        TerrainType::Linoleum => "linoleum",
+        TerrainType::CarpetTile => "carpet_tile",
+        TerrainType::MetalGrate => "metal_grate",
+        TerrainType::DryWall => "drywall",
     }
 }

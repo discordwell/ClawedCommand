@@ -93,7 +93,9 @@ impl Plugin for UiPlugin {
             .add_systems(
                 Update,
                 (
-                    debrief::update_debrief,
+                    debrief::dream_debrief_auto_skip,
+                    debrief::update_debrief
+                        .after(debrief::dream_debrief_auto_skip),
                     debrief::debrief_typewriter,
                     debrief::debrief_interaction,
                     act_title_card::update_act_title_card,

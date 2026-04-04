@@ -20,6 +20,11 @@ fn terrain_color(terrain: TerrainType) -> (u8, u8, u8) {
         TerrainType::Ramp => (128, 115, 97),
         TerrainType::Road => (158, 138, 107),
         TerrainType::TechRuins => (110, 110, 122),
+        TerrainType::Concrete => (184, 179, 173),
+        TerrainType::Linoleum => (199, 189, 166),
+        TerrainType::CarpetTile => (115, 122, 140),
+        TerrainType::MetalGrate => (97, 102, 107),
+        TerrainType::DryWall => (217, 212, 204),
     }
 }
 

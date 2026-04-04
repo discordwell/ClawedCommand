@@ -248,6 +248,78 @@ fn terrain_pixel(terrain: TerrainType, px: usize, py: usize, variant: u8) -> (u8
                 )
             }
         }
+        TerrainType::Concrete => {
+            let base_r = 184u8;
+            let base_g = 179u8;
+            let base_b = 173u8;
+            // Subtle crack lines and aggregate texture
+            let crack = if (px + py * 7) % 31 == 0 { -18i16 } else { 0 };
+            let variation = ((noise as i16) - 128) / 12;
+            (
+                clamp_u8(base_r as i16 + variation + crack),
+                clamp_u8(base_g as i16 + variation + crack),
+                clamp_u8(base_b as i16 + variation + crack),
+            )
+        }
+        TerrainType::Linoleum => {
+            let base_r = 199u8;
+            let base_g = 189u8;
+            let base_b = 166u8;
+            // Faint grid lines every 16px
+            let grid = if px.is_multiple_of(16) || py.is_multiple_of(16) {
+                -8i16
+            } else {
+                0
+            };
+            let variation = ((fine as i16) - 128) / 16;
+            (
+                clamp_u8(base_r as i16 + variation + grid),
+                clamp_u8(base_g as i16 + variation + grid),
+                clamp_u8(base_b as i16 + variation + grid),
+            )
+        }
+        TerrainType::CarpetTile => {
+            let base_r = 115u8;
+            let base_g = 122u8;
+            let base_b = 140u8;
+            // Fine carpet fiber noise
+            let variation = ((noise as i16) - 128) / 10;
+            let fiber = ((fine as i16) - 128) / 14;
+            (
+                clamp_u8(base_r as i16 + variation + fiber),
+                clamp_u8(base_g as i16 + variation + fiber),
+                clamp_u8(base_b as i16 + variation / 2 + fiber),
+            )
+        }
+        TerrainType::MetalGrate => {
+            let base_r = 97u8;
+            let base_g = 102u8;
+            let base_b = 107u8;
+            // Diamond-plate cross-hatch pattern
+            let diamond = if ((px + py) % 8 < 2) || ((px.wrapping_add(8).wrapping_sub(py)) % 8 < 2) {
+                12i16
+            } else {
+                0
+            };
+            let variation = ((noise as i16) - 128) / 14;
+            (
+                clamp_u8(base_r as i16 + variation + diamond),
+                clamp_u8(base_g as i16 + variation + diamond),
+                clamp_u8(base_b as i16 + variation + diamond),
+            )
+        }
+        TerrainType::DryWall => {
+            let base_r = 217u8;
+            let base_g = 212u8;
+            let base_b = 204u8;
+            // Very subtle stucco texture
+            let variation = ((fine as i16) - 128) / 20;
+            (
+                clamp_u8(base_r as i16 + variation),
+                clamp_u8(base_g as i16 + variation),
+                clamp_u8(base_b as i16 + variation),
+            )
+        }
     }
 }
 

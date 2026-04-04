@@ -103,6 +103,38 @@ pub enum MissionMutator {
         player_multiplier: Fixed,
         enemy_multiplier: Fixed,
     },
+
+    // -- Dream Sequence --
+    /// Activates dream sequence mode with special UI and gameplay overrides.
+    DreamSequence {
+        /// Skip the standard briefing screen (auto-advance to InMission).
+        skip_briefing: bool,
+        /// Skip the standard debrief screen (auto-advance to next mission).
+        skip_debrief: bool,
+        /// Which dream sub-scene this mission represents.
+        scene_type: DreamSceneType,
+    },
+}
+
+/// Dream sequence sub-scene identifier.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DreamSceneType {
+    /// Military office desk grind loop.
+    Office,
+    /// Lake walk to Claude of the Lake.
+    Lake,
+}
+
+/// Check if a list of mutators contains a DreamSequence.
+pub fn find_dream_mutator(mutators: &[MissionMutator]) -> Option<&MissionMutator> {
+    mutators
+        .iter()
+        .find(|m| matches!(m, MissionMutator::DreamSequence { .. }))
+}
+
+/// Check if a list of mutators indicates an active dream mission.
+pub fn is_dream_mission(mutators: &[MissionMutator]) -> bool {
+    find_dream_mutator(mutators).is_some()
 }
 
 /// Direction from which a hazard advances.
@@ -438,5 +470,51 @@ mod tests {
         let s = ron::to_string(&mutators).unwrap();
         let parsed: Vec<MissionMutator> = ron::from_str(&s).unwrap();
         assert_eq!(parsed.len(), 3);
+    }
+
+    #[test]
+    fn ron_round_trip_dream_sequence_office() {
+        let m = MissionMutator::DreamSequence {
+            skip_briefing: false,
+            skip_debrief: true,
+            scene_type: DreamSceneType::Office,
+        };
+        let s = ron::to_string(&m).unwrap();
+        let parsed: MissionMutator = ron::from_str(&s).unwrap();
+        assert!(matches!(
+            parsed,
+            MissionMutator::DreamSequence {
+                skip_briefing: false,
+                skip_debrief: true,
+                scene_type: DreamSceneType::Office,
+            }
+        ));
+    }
+
+    #[test]
+    fn ron_round_trip_dream_sequence_lake() {
+        let m = MissionMutator::DreamSequence {
+            skip_briefing: true,
+            skip_debrief: true,
+            scene_type: DreamSceneType::Lake,
+        };
+        let s = ron::to_string(&m).unwrap();
+        let parsed: MissionMutator = ron::from_str(&s).unwrap();
+        assert!(matches!(
+            parsed,
+            MissionMutator::DreamSequence {
+                scene_type: DreamSceneType::Lake,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn ron_round_trip_dream_scene_type() {
+        for scene in [DreamSceneType::Office, DreamSceneType::Lake] {
+            let s = ron::to_string(&scene).unwrap();
+            let parsed: DreamSceneType = ron::from_str(&s).unwrap();
+            assert_eq!(parsed, scene);
+        }
     }
 }

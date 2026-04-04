@@ -278,5 +278,40 @@ fn terrain_base_color(terrain: TerrainType, x: i32, y: i32) -> Color {
                 Color::srgb(0.43, 0.43, 0.48)
             }
         }
+        TerrainType::Concrete => {
+            if checker {
+                Color::srgb(0.72, 0.70, 0.68)
+            } else {
+                Color::srgb(0.74, 0.72, 0.70)
+            }
+        }
+        TerrainType::Linoleum => {
+            if checker {
+                Color::srgb(0.78, 0.74, 0.65)
+            } else {
+                Color::srgb(0.80, 0.76, 0.67)
+            }
+        }
+        TerrainType::CarpetTile => {
+            if checker {
+                Color::srgb(0.45, 0.48, 0.55)
+            } else {
+                Color::srgb(0.47, 0.50, 0.57)
+            }
+        }
+        TerrainType::MetalGrate => {
+            if checker {
+                Color::srgb(0.38, 0.40, 0.42)
+            } else {
+                Color::srgb(0.40, 0.42, 0.44)
+            }
+        }
+        TerrainType::DryWall => {
+            if checker {
+                Color::srgb(0.85, 0.83, 0.80)
+            } else {
+                Color::srgb(0.87, 0.85, 0.82)
+            }
+        }
     }
 }

@@ -2,7 +2,7 @@ use bevy::asset::AssetPlugin;
 use bevy::prelude::*;
 #[cfg(any(feature = "native", feature = "wasm-agent"))]
 use cc_agent::AgentPlugin;
-use cc_client::{cutscene, input, loading, renderer, setup, showcase, ui, voice_demo};
+use cc_client::{cutscene, dream, input, loading, renderer, setup, showcase, ui, voice_demo};
 use cc_sim::SimPlugin;
 use cc_sim::campaign::state::{CampaignPhase, CampaignState};
 #[cfg(feature = "native")]
@@ -124,6 +124,7 @@ fn main() {
         .add_plugins(renderer::RenderPlugin)
         .add_plugins(input::InputPlugin)
         .add_plugins(ui::UiPlugin)
+        .add_plugins(dream::DreamPlugin)
         .add_plugins(loading::LoadingPlugin)
         .add_systems(
             PreStartup,

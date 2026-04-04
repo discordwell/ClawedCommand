@@ -22,6 +22,11 @@ fn terrain_color(terrain: TerrainType, elevation: u8) -> (u8, u8, u8) {
         TerrainType::Ramp => (150, 140, 100),
         TerrainType::Road => (160, 150, 130),
         TerrainType::TechRuins => (90, 70, 120),
+        TerrainType::Concrete => (184, 179, 173),
+        TerrainType::Linoleum => (199, 189, 166),
+        TerrainType::CarpetTile => (115, 122, 140),
+        TerrainType::MetalGrate => (97, 102, 107),
+        TerrainType::DryWall => (217, 212, 204),
     };
 
     // Brighten by elevation
@@ -180,7 +185,7 @@ fn main() {
     println!("Written to: {}", output_path);
 
     // Also output terrain stats
-    let mut counts = [0u32; 10];
+    let mut counts = [0u32; 15];
     for &(t, _) in &map_def.tiles {
         if (t as usize) < counts.len() {
             counts[t as usize] += 1;

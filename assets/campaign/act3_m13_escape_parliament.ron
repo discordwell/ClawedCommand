@@ -189,7 +189,7 @@
     ],
     briefing_text: "The Seekers of the Deep have attacked Murder Parliament. Mother Granite has decided the otter is too dangerous to leave uncontrolled. Escape south through burning crow's nests to the LLAMA border. The fire advances from the east. Stay ahead of it.",
     debrief_text: "Parliament burns behind them. Mother Granite's silhouette stands against the fire, Deepseek's voice rolling like thunder. Kelpie crosses into LLAMA territory carrying a fragment of their former self and the weight of a choice that echoes across every AI channel.",
-    next_mission: Fixed("act4_m14_junkyard_fort"),
+    next_mission: Fixed("dream_office"),
     mutators: [
         LavaRise(
             interval_ticks: 40,

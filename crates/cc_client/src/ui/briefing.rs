@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use cc_core::mutator::MissionMutator;
 use cc_sim::campaign::state::{CampaignPhase, CampaignState};
 
 use super::cinematic::{FadeIn, act_display_name, faction_accent_color, faction_hero_portrait};
@@ -361,6 +362,20 @@ pub fn briefing_input_system(
 ) {
     if campaign.phase != CampaignPhase::Briefing {
         return;
+    }
+
+    // Dream sequence auto-skip: if the mission has skip_briefing, advance immediately.
+    if let Some(mission) = &campaign.current_mission {
+        for mutator in &mission.mutators {
+            if let MissionMutator::DreamSequence {
+                skip_briefing: true,
+                ..
+            } = mutator
+            {
+                campaign.phase = CampaignPhase::InMission;
+                return;
+            }
+        }
     }
 
     let button_pressed = interactions.iter().any(|(_, i)| *i == Interaction::Pressed);

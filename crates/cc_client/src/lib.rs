@@ -3,6 +3,7 @@
 #![allow(clippy::too_many_arguments)]
 
 pub mod cutscene;
+pub mod dream;
 pub mod input;
 pub mod loading;
 pub mod renderer;

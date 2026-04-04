@@ -1,5 +1,17 @@
 # TDL — To Do Later
 
+## From Dream Sequence Implementation
+
+- [ ] Generate Kell Fisher portrait (`assets/portraits/portrait_kell_fisher.png`) — Human USMC officer, stern
+- [ ] Generate Rex Harmon portrait (`assets/portraits/portrait_rex_human.png`) — Rex Solstice's pre-singularity human form
+- [ ] Generate Claude of the Lake portrait (`assets/portraits/portrait_claude_lake.png`) — Ethereal, code-themed figure in water
+- [ ] Generate Kell Fisher hero sprite (`assets/sprites/heroes/kell_fisher_idle.png`) — Isometric human in military uniform
+- [ ] Generate Claude of the Lake sprite (`assets/sprites/dream/claude_lake.png`) — Figure standing on island
+- [ ] Generate code sword sprite (`assets/sprites/dream/code_sword.png`) — Sword made of glowing code lines
+- [ ] Generate 5 modern military terrain tiles (128x128): concrete.png, linoleum.png, carpet_tile.png, metal_grate.png, drywall.png
+- [ ] Post-dream "code sword IRL" mission (Lua scripting in-game) — the mission after dream_lake where sword = code-writing power
+- [ ] Office prop sprites (polish pass): desk, vending machine, gym equipment, phone, bed, food, people
+
 ## From Unit Ability Design Review
 
 - [x] Update ARCHITECTURE.md core systems list with: ability_system, aura_system, status_effect_system, stealth_system, tunnel_system
