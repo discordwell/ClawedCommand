@@ -188,8 +188,8 @@ impl EnemyWaveConfig {
 pub const TOTAL_TANKERS: u32 = 12;
 /// Minimum tankers that must arrive for victory.
 pub const MIN_TANKERS_WIN: u32 = 8;
-/// Maximum tankers that can be lost before defeat.
-pub const MAX_TANKERS_LOST: u32 = 7;
+/// Maximum tankers that can be lost before defeat (12 - 5 = 7 < 8 required).
+pub const MAX_TANKERS_LOST: u32 = 5;
 
 /// Starting compute budget.
 pub const INITIAL_COMPUTE: f32 = 100.0;
@@ -221,9 +221,6 @@ pub const TANKER_SPEED: f32 = 0.15;
 
 /// Missile flight time in ticks.
 pub const MISSILE_FLIGHT_TICKS: u32 = 40;
-/// Interception range (tiles) for interceptor drones.
-pub const INTERCEPTION_RANGE: f32 = 3.0;
-
 /// Build cost (compute ticks) for each zero-day type.
 pub fn zero_day_build_cost(zd: ZeroDayType) -> f32 {
     match zd {

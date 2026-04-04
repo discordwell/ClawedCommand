@@ -79,6 +79,7 @@ pub struct StraitLauncher {
     pub firing_pos: GridPos,
     pub is_decoy: bool,
     pub salvo_count: u32,
+    pub has_fired_this_phase: bool,
 }
 
 /// An enemy AA drone that hunts player patrol drones.
@@ -165,7 +166,6 @@ pub struct StraitState {
     // Enemy escalation
     pub current_wave: u32,
     pub wave_config: EnemyWaveConfig,
-    pub enemy_salvo_timer: f32,
     pub enemy_launchers_spawned: bool,
 
     // Mission phase
@@ -190,9 +190,8 @@ impl Default for StraitState {
             drones_alive: 0,
             zero_day_slot: ZeroDayState::default(),
             zero_days_deployed: [false; 4],
-            current_wave: 0,
+            current_wave: 1,
             wave_config: EnemyWaveConfig::wave_1(),
-            enemy_salvo_timer: 0.0,
             enemy_launchers_spawned: false,
             mission_tick: 0,
             mission_complete: false,
@@ -306,8 +305,11 @@ pub fn register_strait_systems(app: &mut App) {
                 strait_enemy_director
                     .after(strait_tick_system)
                     .run_if(is_dream_strait_active),
-                strait_launcher_fsm
+                strait_spawn_wave_entities
                     .after(strait_enemy_director)
+                    .run_if(is_dream_strait_active),
+                strait_launcher_fsm
+                    .after(strait_spawn_wave_entities)
                     .run_if(is_dream_strait_active),
                 strait_spawn_missiles
                     .after(strait_launcher_fsm)
@@ -554,6 +556,7 @@ fn spawn_enemy_wave(
                 firing_pos: GridPos::new(x, firing_y),
                 is_decoy,
                 salvo_count: 0,
+                has_fired_this_phase: false,
             },
             Mesh2d(launcher_mesh.clone()),
             MeshMaterial2d(if is_decoy { decoy_mat.clone() } else { launcher_mat.clone() }),
@@ -747,16 +750,18 @@ fn strait_update_vision(
 ) {
     vision.clear();
 
-    // Reveal around alive drones
-    for (drone, _xform) in drones.iter() {
+    // Reveal around alive drones using actual screen position → approximate grid
+    for (drone, xform) in drones.iter() {
         if !drone.alive {
             continue;
         }
-        let wp = &drone.patrol_waypoints;
-        if let Some(pos) = wp.get(drone.current_wp_index.saturating_sub(1).min(wp.len().saturating_sub(1))) {
-            // Use the drone's current approximate grid position from its target waypoint
-            vision.reveal(pos.x, pos.y, DRONE_VISION_RADIUS);
-        }
+        // Reverse the isometric projection to get approximate grid coords
+        use cc_core::coords::{TILE_HALF_WIDTH, TILE_HALF_HEIGHT};
+        let sx = xform.translation.x;
+        let sy = -xform.translation.y; // un-flip Bevy Y
+        let wx = (sx / TILE_HALF_WIDTH + sy / TILE_HALF_HEIGHT) / 2.0;
+        let wy = (sy / TILE_HALF_HEIGHT - sx / TILE_HALF_WIDTH) / 2.0;
+        vision.reveal(wx as i32, wy as i32, DRONE_VISION_RADIUS);
     }
 
     // Reveal around satellite scans
@@ -796,6 +801,22 @@ fn strait_enemy_director(
     }
 }
 
+fn strait_spawn_wave_entities(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut state: ResMut<StraitState>,
+) {
+    if state.mission_complete || state.enemy_launchers_spawned {
+        return;
+    }
+    state.enemy_launchers_spawned = true;
+
+    let map_width = 60;
+    spawn_enemy_wave(&mut commands, &mut meshes, &mut materials, &state.wave_config, map_width);
+    info!("Spawned enemy wave {} entities", state.current_wave);
+}
+
 fn strait_launcher_fsm(
     mut launchers: Query<(&mut StraitLauncher, &mut Transform, &mut Visibility)>,
     time: Res<Time>,
@@ -826,7 +847,8 @@ fn strait_launcher_fsm(
         match launcher.phase {
             LauncherPhase::Hidden => {
                 launcher.phase = LauncherPhase::Setting;
-                launcher.phase_timer = 3.0; // 3 seconds to set up
+                launcher.phase_timer = 3.0;
+                launcher.has_fired_this_phase = false;
                 let new_pos = strait_screen_from_world(launcher.firing_pos.x as f32, launcher.firing_pos.y as f32);
                 xform.translation = new_pos;
             }
@@ -858,21 +880,22 @@ fn strait_spawn_missiles(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    launchers: Query<&StraitLauncher>,
+    mut launchers: Query<&mut StraitLauncher>,
     tankers: Query<(Entity, &StraitTanker)>,
 ) {
     let missile_mesh = meshes.add(Circle::new(2.5));
     let missile_mat = materials.add(ColorMaterial::from_color(WARNING_AMBER));
 
-    for launcher in launchers.iter() {
+    for mut launcher in launchers.iter_mut() {
         if launcher.phase != LauncherPhase::Firing || launcher.is_decoy {
             continue;
         }
 
-        // Only fire once per firing phase (check phase_timer near start)
-        if !(1.9..2.0).contains(&launcher.phase_timer) {
+        // Fire exactly once per firing phase
+        if launcher.has_fired_this_phase {
             continue;
         }
+        launcher.has_fired_this_phase = true;
 
         // Find nearest active tanker
         let fx = launcher.firing_pos.x as f32;
@@ -957,7 +980,7 @@ fn strait_missile_interception(
                 if progress > 0.3 {
                     state.interceptor_count -= 1;
                     missile.state = MissileState::Intercepted;
-                    commands.entity(entity).insert(Visibility::Hidden);
+                    commands.entity(entity).despawn();
                 }
             }
         }
@@ -966,7 +989,7 @@ fn strait_missile_interception(
 
 fn strait_missile_impact(
     mut commands: Commands,
-    missiles: Query<(Entity, &StraitMissile)>,
+    mut missiles: Query<(Entity, &mut StraitMissile)>,
     mut tankers: Query<(Entity, &mut StraitTanker)>,
     mut state: ResMut<StraitState>,
 ) {
@@ -974,13 +997,20 @@ fn strait_missile_impact(
         return;
     }
 
-    for (missile_entity, missile) in missiles.iter() {
+    for (missile_entity, mut missile) in missiles.iter_mut() {
+        // Skip already-resolved missiles
+        if matches!(missile.state, MissileState::Intercepted | MissileState::Impact) {
+            continue;
+        }
+
         if let MissileState::InFlight { progress, .. } = missile.state {
             if progress < 1.0 {
                 continue;
             }
 
-            // Missile reached target
+            // Missile reached target — transition to Impact and deal damage once
+            missile.state = MissileState::Impact;
+
             if let Some(target_entity) = missile.target_tanker {
                 if let Ok((_, mut tanker)) = tankers.get_mut(target_entity) {
                     if !tanker.destroyed && !tanker.arrived {
@@ -994,7 +1024,8 @@ fn strait_missile_impact(
                 }
             }
 
-            commands.entity(missile_entity).insert(Visibility::Hidden);
+            // Despawn resolved missile entity
+            commands.entity(missile_entity).despawn();
         }
     }
 }
