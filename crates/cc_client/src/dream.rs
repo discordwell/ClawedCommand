@@ -14,7 +14,6 @@ use cc_core::mutator::{DreamSceneType, MissionMutator};
 use cc_sim::campaign::state::{CampaignPhase, CampaignState};
 use cc_sim::resources::CommandQueue;
 
-use crate::renderer::hero_sprites::HeroSprites;
 use crate::ui::ability_bar::AbilityBarRoot;
 use crate::ui::build_menu::BuildMenuRoot;
 use crate::ui::building_info::BuildingInfoRoot;
@@ -194,10 +193,6 @@ pub struct DreamOfficeState {
     pub nearby_action: Option<OfficeAction>,
     /// Timer for refusal dialogue display.
     pub refusal_timer: f32,
-    /// Saved Kelpie sprite handle for restoration after dream.
-    pub original_kelpie_sprite: Option<Handle<Image>>,
-    /// Saved Rex sprite handle for restoration after dream.
-    pub original_rex_sprite: Option<Handle<Image>>,
     /// Whether Rex has departed the office scene.
     pub rex_departed: bool,
     /// Countdown timer for Rex's departure after opening dialogue.
@@ -220,8 +215,6 @@ impl Default for DreamOfficeState {
             passout_timer: 0.0,
             nearby_action: None,
             refusal_timer: 0.0,
-            original_kelpie_sprite: None,
-            original_rex_sprite: None,
             rex_departed: false,
             rex_departure_timer: 4.0,
         }
@@ -238,11 +231,6 @@ impl Plugin for DreamPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<DreamOfficeState>()
             .init_resource::<DreamUiHidden>()
-            .add_systems(
-                Startup,
-                dream_swap_sprites
-                    .after(crate::renderer::hero_sprites::load_hero_sprites),
-            )
             .add_systems(
             Update,
             (
@@ -332,14 +320,11 @@ fn dream_init_system(
     }
     dream.initialized = true;
 
-    // Sprite swap is handled by dream_swap_sprites at Startup —
-    // by the time spawn_unit_visuals runs, HeroSprites already has the human handles.
-
     match scene_type {
         DreamSceneType::Office => {
             // Auto-select Kell so click-to-move works immediately
             if let Some(kelpie_entity) = heroes.iter().find_map(|(e, hi, owner)| {
-                (hi.hero_id == cc_core::hero::HeroId::Kelpie && owner.player_id == 0)
+                (hi.hero_id == cc_core::hero::HeroId::KellFisher && owner.player_id == 0)
                     .then_some(e)
             }) {
                 commands.entity(kelpie_entity).insert(Selected);
@@ -537,7 +522,7 @@ fn dream_proximity_system(
 
     // Find Kelpie's grid position
     let kelpie_pos = heroes.iter().find_map(|(hi, owner, pos)| {
-        if hi.hero_id == cc_core::hero::HeroId::Kelpie && owner.player_id == 0 {
+        if hi.hero_id == cc_core::hero::HeroId::KellFisher && owner.player_id == 0 {
             Some(pos.world.to_grid())
         } else {
             None
@@ -873,7 +858,6 @@ fn format_session_hud(sessions: u32, hour: f32, day: u32) -> String {
 fn dream_cleanup_system(
     mut commands: Commands,
     dream: Res<DreamOfficeState>,
-    mut hero_sprites: Option<ResMut<HeroSprites>>,
     campaign: Res<CampaignState>,
     dream_entities: Query<Entity, With<DreamEntity>>,
 ) {
@@ -884,64 +868,13 @@ fn dream_cleanup_system(
         return;
     }
 
-    // Restore original Kelpie sprite
-    if let Some(ref mut sprites) = hero_sprites {
-        if let Some(original) = &dream.original_kelpie_sprite {
-            sprites.sprites.insert(HeroId::Kelpie, original.clone());
-        }
-        if let Some(original) = &dream.original_rex_sprite {
-            sprites.sprites.insert(HeroId::RexSolstice, original.clone());
-        }
-    }
-
     // Despawn all dream-specific entities
     for entity in dream_entities.iter() {
         commands.entity(entity).despawn();
     }
 }
 
-/// Swap hero sprite handles at Startup so spawn_unit_visuals picks up
-/// the human sprites from the beginning. No per-frame enforcement needed.
-fn dream_swap_sprites(
-    mut hero_sprites: Option<ResMut<HeroSprites>>,
-    mut dream: ResMut<DreamOfficeState>,
-    campaign: Res<CampaignState>,
-    asset_server: Res<AssetServer>,
-) {
-    // Only swap if the current mission is a dream sequence
-    let is_dream = campaign
-        .current_mission
-        .as_ref()
-        .is_some_and(|m| cc_core::mutator::is_dream_mission(&m.mutators));
-
-    if !is_dream {
-        return;
-    }
-
-    let Some(ref mut sprites) = hero_sprites else {
-        return;
-    };
-
-    // Swap Kelpie → Kell Fisher
-    dream.original_kelpie_sprite = sprites.sprites.get(&HeroId::Kelpie).cloned();
-    let kell_path = "sprites/heroes/kell_fisher_idle.png";
-    if crate::renderer::asset_exists_on_disk(kell_path) {
-        sprites
-            .sprites
-            .insert(HeroId::Kelpie, asset_server.load(kell_path));
-    }
-
-    // Swap RexSolstice → Rex Harmon
-    dream.original_rex_sprite = sprites.sprites.get(&HeroId::RexSolstice).cloned();
-    let rex_path = "sprites/heroes/rex_harmon_idle.png";
-    if crate::renderer::asset_exists_on_disk(rex_path) {
-        sprites
-            .sprites
-            .insert(HeroId::RexSolstice, asset_server.load(rex_path));
-    }
-}
-
-/// Keep Kelpie selected during dream — re-insert Selected if removed.
+/// Keep Kell Fisher selected during dream — re-insert Selected if removed.
 fn dream_keep_selected(
     mut commands: Commands,
     dream: Res<DreamOfficeState>,
@@ -951,7 +884,7 @@ fn dream_keep_selected(
         return;
     }
     for (entity, hi, owner) in heroes.iter() {
-        if hi.hero_id == HeroId::Kelpie && owner.player_id == 0 {
+        if hi.hero_id == HeroId::KellFisher && owner.player_id == 0 {
             commands.entity(entity).insert(Selected);
         }
     }
@@ -970,7 +903,7 @@ fn dream_npc_departure(
     dream.rex_departure_timer -= time.delta_secs();
     if dream.rex_departure_timer <= 0.0 {
         for (entity, hi) in heroes.iter() {
-            if hi.hero_id == HeroId::RexSolstice {
+            if hi.hero_id == HeroId::RexHarmon {
                 commands.entity(entity).despawn();
                 dream.rex_departed = true;
             }

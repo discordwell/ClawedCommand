@@ -99,7 +99,7 @@
     player_setup: (
         heroes: [
             (
-                hero_id: Kelpie,
+                hero_id: KellFisher,
                 position: (x: 10, y: 16),
                 mission_critical: true,
             ),
@@ -117,7 +117,7 @@
             description: "Walk to the island",
             primary: true,
             condition: HeroReachesPos(
-                hero: Kelpie,
+                hero: KellFisher,
                 position: (x: 9, y: 10),
                 radius: 2,
             ),
@@ -128,7 +128,7 @@
         (
             id: "claude_dialogue",
             condition: HeroAtPos(
-                hero: Kelpie,
+                hero: KellFisher,
                 position: (x: 9, y: 10),
                 radius: 2,
             ),

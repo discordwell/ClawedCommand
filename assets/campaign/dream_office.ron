@@ -81,12 +81,12 @@
     player_setup: (
         heroes: [
             (
-                hero_id: Kelpie,
+                hero_id: KellFisher,
                 position: (x: 10, y: 7),
                 mission_critical: true,
             ),
             (
-                hero_id: RexSolstice,
+                hero_id: RexHarmon,
                 position: (x: 12, y: 7),
                 mission_critical: false,
                 player_id: 2,

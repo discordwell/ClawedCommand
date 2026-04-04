@@ -218,7 +218,7 @@ pub fn dream_test_driver_system(
 
         TestAction::MoveTo(target) => {
             if let Some((entity, _, _, _)) = heroes.iter().find(|(_, hi, owner, _)| {
-                hi.hero_id == HeroId::Kelpie && owner.player_id == 0
+                hi.hero_id == HeroId::KellFisher && owner.player_id == 0
             }) {
                 cmd_queue.push(GameCommand::Move {
                     unit_ids: vec![EntityId::from_entity(entity)],

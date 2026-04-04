@@ -22,6 +22,10 @@ pub enum HeroId {
     TheEternal,
     /// Patches — catGPT Mouser scout, secondary hero.
     Patches,
+    /// Cmdr. Kell Fisher — Kelpie's human past life (dream sequence only).
+    KellFisher,
+    /// Lt. Rex Harmon — Rex Solstice's human past life (dream sequence only).
+    RexHarmon,
 }
 
 /// Additive/multiplicative stat modifiers for heroes on top of base unit stats.
@@ -142,11 +146,33 @@ pub fn hero_data(hero: HeroId) -> HeroData {
             name: "Patches",
             faction: Faction::CatGpt,
         },
+        HeroId::KellFisher => HeroData {
+            base_kind: UnitKind::Nuisance, // same template as Kelpie
+            modifiers: HeroStatModifiers {
+                health_bonus: Fixed::from_bits(40 << 16),
+                speed_multiplier: Fixed::from_bits(78643), // 1.2x
+                damage_bonus: Fixed::from_bits(4 << 16),
+                range_bonus: Fixed::ZERO,
+            },
+            name: "Cmdr. Kell Fisher",
+            faction: Faction::Neutral,
+        },
+        HeroId::RexHarmon => HeroData {
+            base_kind: UnitKind::FlyingFox, // same template as Rex Solstice
+            modifiers: HeroStatModifiers {
+                health_bonus: Fixed::from_bits(30 << 16),
+                speed_multiplier: Fixed::from_bits(72089), // 1.1x
+                damage_bonus: Fixed::from_bits(10 << 16),
+                range_bonus: Fixed::from_bits(2 << 16),
+            },
+            name: "Lt. Rex Harmon",
+            faction: Faction::Neutral,
+        },
     }
 }
 
 /// All hero IDs in canonical order.
-pub const ALL_HEROES: [HeroId; 8] = [
+pub const ALL_HEROES: [HeroId; 10] = [
     HeroId::Kelpie,
     HeroId::FelixNine,
     HeroId::Thimble,
@@ -155,6 +181,8 @@ pub const ALL_HEROES: [HeroId; 8] = [
     HeroId::KingRingtail,
     HeroId::TheEternal,
     HeroId::Patches,
+    HeroId::KellFisher,
+    HeroId::RexHarmon,
 ];
 
 /// Returns the file-name slug for a hero (e.g. "king_ringtail", "the_eternal").
@@ -168,6 +196,8 @@ pub fn hero_slug(hero: HeroId) -> &'static str {
         HeroId::KingRingtail => "king_ringtail",
         HeroId::TheEternal => "the_eternal",
         HeroId::Patches => "patches",
+        HeroId::KellFisher => "kell_fisher",
+        HeroId::RexHarmon => "rex_harmon",
     }
 }
 
@@ -312,8 +342,8 @@ mod tests {
     }
 
     #[test]
-    fn all_heroes_constant_has_eight_entries() {
-        assert_eq!(ALL_HEROES.len(), 8);
+    fn all_heroes_constant_has_correct_count() {
+        assert_eq!(ALL_HEROES.len(), 10);
     }
 
     #[test]
