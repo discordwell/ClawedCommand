@@ -101,13 +101,21 @@ const INTERACT_RADIUS: i32 = 3;
 /// Must be on passable tiles and reachable from the central hallway.
 fn office_location_positions() -> Vec<(OfficeAction, GridPos, &'static str)> {
     vec![
-        (OfficeAction::Work, GridPos::new(20, 20), "Work"),             // ops center — Kell's desk
-        (OfficeAction::EnergyDrink, GridPos::new(21, 29), "Get Energy Drink"), // south corridor vending
-        (OfficeAction::WorkOut, GridPos::new(13, 32), "Work Out"),      // gym (south wing)
-        (OfficeAction::CallAda, GridPos::new(11, 6), "Call Ada"),       // comms room (north wing)
-        (OfficeAction::Sleep, GridPos::new(33, 6), "Sleep"),            // barracks (north wing)
-        (OfficeAction::Eat, GridPos::new(30, 32), "Eat"),              // mess hall (south wing)
-        (OfficeAction::Talk, GridPos::new(19, 6), "Talk to Someone"),  // break room (north wing)
+        // Enabled actions
+        (OfficeAction::Work, GridPos::new(20, 20), "Work"),
+        (OfficeAction::EnergyDrink, GridPos::new(21, 29), "Get Energy Drink"),
+        (OfficeAction::WorkOut, GridPos::new(13, 32), "Work Out"),
+        // Disabled — personal needs
+        (OfficeAction::CallAda, GridPos::new(11, 6), "Call Ada"),
+        (OfficeAction::Sleep, GridPos::new(33, 6), "Sleep"),
+        (OfficeAction::Eat, GridPos::new(30, 32), "Eat"),
+        (OfficeAction::Talk, GridPos::new(19, 6), "Talk to Someone"),
+        // Disabled — base exploration
+        (OfficeAction::LeaveBase, GridPos::new(4, 18), "Leave the Base"),
+        (OfficeAction::Storage, GridPos::new(43, 6), "Check Storage"),
+        (OfficeAction::BulletinBoard, GridPos::new(36, 11), "Read Bulletin Board"),
+        (OfficeAction::WaterFountain, GridPos::new(15, 29), "Get Water"),
+        (OfficeAction::Window, GridPos::new(3, 10), "Look Outside"),
     ]
 }
 
@@ -121,6 +129,11 @@ fn prop_appearance(action: OfficeAction) -> (Color, &'static str) {
         OfficeAction::Sleep => (Color::srgb(0.4, 0.4, 0.6), "[COT]"),
         OfficeAction::Eat => (Color::srgb(0.6, 0.5, 0.3), "[FOOD]"),
         OfficeAction::Talk => (Color::srgb(0.5, 0.5, 0.5), "[PPL]"),
+        OfficeAction::LeaveBase => (Color::srgb(0.3, 0.6, 0.3), "[EXIT]"),
+        OfficeAction::Storage => (Color::srgb(0.5, 0.4, 0.3), "[CRATE]"),
+        OfficeAction::BulletinBoard => (Color::srgb(0.7, 0.6, 0.3), "[BOARD]"),
+        OfficeAction::WaterFountain => (Color::srgb(0.3, 0.5, 0.7), "[H2O]"),
+        OfficeAction::Window => (Color::srgb(0.5, 0.6, 0.7), "[WIN]"),
     }
 }
 
@@ -141,6 +154,11 @@ fn kell_refusal(action: OfficeAction) -> &'static str {
         OfficeAction::Sleep => "Sleep is for people who aren't winning a war.",
         OfficeAction::Eat => "I'll eat when the targeting data is processed.",
         OfficeAction::Talk => "I don't need a pep talk. I need another four hours.",
+        OfficeAction::LeaveBase => "Leave? We're in the middle of a war. Not now.",
+        OfficeAction::Storage => "Nothing in there but MREs and regret.",
+        OfficeAction::BulletinBoard => "Safety briefing, morale poster, safety briefing. Pass.",
+        OfficeAction::WaterFountain => "Water's for quitters. Where's my energy drink?",
+        OfficeAction::Window => "I know what's out there. That's why I'm in here.",
         _ => "",
     }
 }
@@ -215,6 +233,11 @@ pub enum OfficeAction {
     Sleep,
     Eat,
     Talk,
+    LeaveBase,
+    Storage,
+    BulletinBoard,
+    WaterFountain,
+    Window,
 }
 
 impl OfficeAction {
@@ -316,7 +339,7 @@ impl Plugin for DreamPlugin {
                 dream_day_night_system.run_if(is_dream_office_active),
                 dream_prompt_system.run_if(is_dream_office_active),
                 dream_session_hud_system.run_if(is_dream_office_active),
-                dream_desk_occupancy_system.run_if(is_dream_office_active),
+                // dream_desk_occupancy_system.run_if(is_dream_office_active),
                 dream_passout_system.run_if(is_dream_office_active),
                 dream_cleanup_system,
             ),
@@ -366,12 +389,12 @@ fn dream_init_system(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut dream: ResMut<DreamOfficeState>,
     mut cmd_queue: ResMut<CommandQueue>,
     campaign: Res<CampaignState>,
     asset_server: Res<AssetServer>,
     heroes: Query<(Entity, &HeroIdentity, &Owner)>,
+    // Note: TextureAtlasLayout is created via world.resource_mut in the desk section
 ) {
     if campaign.phase != CampaignPhase::InMission {
         if dream.initialized {
@@ -504,29 +527,9 @@ fn dream_init_system(
                 ZIndex(25),
             ));
 
-            // Spawn 20 ops center desks in the CarpetTile area
-            let empty_desk_path: &str = "sprites/dream/desk_pc.png";
-            let occupied_sheet_path: &str = "sprites/dream/desk_occupied_sheet.png";
-            let has_empty = crate::renderer::asset_exists_on_disk(empty_desk_path);
-            let has_occupied_sheet = crate::renderer::asset_exists_on_disk(occupied_sheet_path);
-
-            // Load occupied desk atlas (4 frames, 128x128 each in a 512x128 sheet)
-            let occupied_atlas = if has_occupied_sheet {
-                let layout = atlas_layouts.add(TextureAtlasLayout::from_grid(
-                    UVec2::new(128, 128), 4, 1, None, None,
-                ));
-                let image = asset_server.load(occupied_sheet_path);
-                Some((layout, image))
-            } else {
-                None
-            };
-
-            let empty_image = if has_empty {
-                Some(asset_server.load(empty_desk_path))
-            } else {
-                None
-            };
-
+            // Spawn 20 ops center desks — empty desk sprite, dimmed if unoccupied
+            let desk_path: &str = "sprites/dream/desk_pc.png";
+            let has_desk_sprite = crate::renderer::asset_exists_on_disk(desk_path);
             let desk_fallback_mat = materials.add(ColorMaterial::from_color(Color::srgb(0.35, 0.38, 0.42)));
             let desk_fallback_mesh = meshes.add(Rectangle::new(8.0, 6.0));
             let initial_occupied = desk_occupancy_at_hour(START_HOUR);
@@ -536,36 +539,14 @@ fn dream_init_system(
                 let base_z = cc_core::coords::depth_z(WorldPos::from_grid(*pos)) - 3.5;
                 let occupied = i < initial_occupied;
 
-                if let Some((ref layout, ref image)) = occupied_atlas {
-                    // Use atlas sprite — frame 0 for empty look, cycling frames for occupied
+                if has_desk_sprite {
                     commands.spawn((
                         DreamEntity,
                         OpsDesk { index: i, occupied },
                         OpsDeskAnim { timer: 0.0, frame: 0 },
                         Sprite {
-                            image: if occupied { image.clone() } else {
-                                empty_image.clone().unwrap_or_else(|| image.clone())
-                            },
-                            texture_atlas: if occupied {
-                                Some(TextureAtlas {
-                                    layout: layout.clone(),
-                                    index: 0,
-                                })
-                            } else {
-                                None
-                            },
-                            ..default()
-                        },
-                        Transform::from_xyz(screen.x, -screen.y + 6.0, base_z)
-                            .with_scale(Vec3::splat(0.35)),
-                    ));
-                } else if let Some(ref img) = empty_image {
-                    commands.spawn((
-                        DreamEntity,
-                        OpsDesk { index: i, occupied },
-                        OpsDeskAnim { timer: 0.0, frame: 0 },
-                        Sprite {
-                            image: img.clone(),
+                            image: asset_server.load(desk_path),
+                            color: if occupied { Color::WHITE } else { Color::srgba(0.6, 0.6, 0.6, 0.8) },
                             ..default()
                         },
                         Transform::from_xyz(screen.x, -screen.y + 6.0, base_z)
