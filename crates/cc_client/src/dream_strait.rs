@@ -200,6 +200,19 @@ pub struct StraitState {
     // Mission phase
     pub mission_tick: u64,
     pub mission_complete: bool,
+
+    // Scripts registered for execution each tick
+    pub active_scripts: Vec<StraitScript>,
+}
+
+/// A Lua script registered for execution during the strait dream.
+pub struct StraitScript {
+    pub name: String,
+    pub source: String,
+    /// Ticks between executions.
+    pub interval: u64,
+    /// Tick counter since last run.
+    pub ticks_since_run: u64,
 }
 
 impl Default for StraitState {
@@ -224,6 +237,7 @@ impl Default for StraitState {
             enemy_launchers_spawned: false,
             mission_tick: 0,
             mission_complete: false,
+            active_scripts: Vec::new(),
         }
     }
 }
@@ -383,10 +397,17 @@ pub fn register_strait_systems(app: &mut App) {
                     .run_if(is_dream_strait_active),
             ),
         );
+
+    // Script runner on FixedUpdate (native only — mlua not available on WASM)
+    #[cfg(not(target_arch = "wasm32"))]
+    app.add_systems(
+        FixedUpdate,
+        strait_script_runner.run_if(is_dream_strait_active),
+    );
 }
 
 // ---------------------------------------------------------------------------
-// Helper: world position from grid for the 60x20 strait map
+// Helper: world position from grid for the strait map
 // ---------------------------------------------------------------------------
 
 /// Convert fractional world coords to screen position (isometric).
@@ -1235,6 +1256,211 @@ fn strait_check_win_lose(
 }
 
 // ===========================================================================
+// STRAIT SCRIPT RUNNER (Phase E)
+// ===========================================================================
+
+/// Build a StraitSnapshot from current ECS state for Lua consumption.
+fn build_strait_snapshot(
+    state: &StraitState,
+    drones: &Query<(Entity, &StraitDrone, &Transform)>,
+    tankers: &Query<&StraitTanker>,
+    launchers: &Query<(&StraitLauncher, &Transform, &Visibility)>,
+    _vision: &StraitVision,
+) -> cc_agent::strait_bindings::StraitSnapshot {
+    use cc_agent::strait_bindings::*;
+
+    let drone_positions: Vec<DroneInfo> = drones
+        .iter()
+        .map(|(_, drone, xform)| {
+            let (gx, gy) = screen_to_grid(xform.translation.x, xform.translation.y);
+            DroneInfo {
+                id: drone.drone_id,
+                x: gx as f32,
+                y: gy as f32,
+                alive: drone.alive,
+            }
+        })
+        .collect();
+
+    let tanker_positions: Vec<TankerInfo> = tankers
+        .iter()
+        .map(|t| TankerInfo {
+            index: t.tanker_index,
+            x: t.world_x,
+            y: t.lane_y,
+            hp: t.hp,
+            arrived: t.arrived,
+            destroyed: t.destroyed,
+        })
+        .collect();
+
+    let visible_enemies: Vec<EnemyInfo> = launchers
+        .iter()
+        .filter(|(launcher, _, vis)| {
+            !launcher.is_decoy
+                && *vis != &Visibility::Hidden
+                && launcher.phase != LauncherPhase::Hidden
+        })
+        .map(|(_launcher, xform, _)| {
+            let (gx, gy) = screen_to_grid(xform.translation.x, xform.translation.y);
+            EnemyInfo {
+                kind: "launcher".to_string(),
+                x: gx as f32,
+                y: gy as f32,
+            }
+        })
+        .collect();
+
+    StraitSnapshot {
+        compute: state.compute,
+        max_compute: state.max_compute,
+        allocation: state.allocation,
+        interceptor_count: state.interceptor_count,
+        tankers_arrived: state.tankers_arrived,
+        tankers_destroyed: state.tankers_destroyed,
+        tankers_spawned: state.tankers_spawned,
+        drones_alive: state.drones_alive,
+        zero_day_slot: state.zero_day_slot,
+        mission_tick: state.mission_tick,
+        drone_positions,
+        tanker_positions,
+        visible_enemies,
+    }
+}
+
+/// Execute registered Lua scripts and apply their strait commands.
+#[cfg(not(target_arch = "wasm32"))]
+fn strait_script_runner(
+    mut state: ResMut<StraitState>,
+    map_res: Res<cc_sim::resources::MapResource>,
+    drones_q: Query<(Entity, &StraitDrone, &Transform)>,
+    tankers_q: Query<&StraitTanker>,
+    launchers_q: Query<(&StraitLauncher, &Transform, &Visibility)>,
+    vision: Res<StraitVision>,
+    mut drone_mut: Query<&mut StraitDrone, Without<StraitAaDrone>>,
+    mut commands: Commands,
+) {
+    if state.mission_complete || state.active_scripts.is_empty() {
+        return;
+    }
+
+    let snapshot = build_strait_snapshot(&state, &drones_q, &tankers_q, &launchers_q, &vision);
+
+    // Build a minimal GameStateSnapshot (empty — strait doesn't use standard units)
+    let empty_snapshot = cc_agent::snapshot::GameStateSnapshot {
+        tick: state.mission_tick,
+        map_width: 300,
+        map_height: 60,
+        player_id: 0,
+        my_units: Vec::new(),
+        enemy_units: Vec::new(),
+        my_buildings: Vec::new(),
+        enemy_buildings: Vec::new(),
+        resource_deposits: Vec::new(),
+        my_resources: cc_sim::resources::PlayerResourceState::default(),
+    };
+
+    // Collect scripts to run this tick
+    let mut scripts_to_run: Vec<(usize, String)> = Vec::new();
+    for (i, script) in state.active_scripts.iter_mut().enumerate() {
+        script.ticks_since_run += 1;
+        if script.ticks_since_run >= script.interval {
+            script.ticks_since_run = 0;
+            scripts_to_run.push((i, script.source.clone()));
+        }
+    }
+
+    for (_idx, source) in &scripts_to_run {
+        let mut ctx = cc_agent::script_context::ScriptContext::new(
+            &empty_snapshot,
+            &map_res.map,
+            0,
+            cc_core::terrain::FactionId::CatGPT, // placeholder faction
+        )
+        .with_strait_snapshot(snapshot.clone());
+
+        match cc_agent::lua_runtime::execute_script_with_context_tiered(
+            source,
+            &mut ctx,
+            cc_agent::tool_tier::ToolTier::Advanced,
+        ) {
+            Ok(_game_commands) => {
+                // Apply strait-specific commands
+                for cmd in std::mem::take(&mut ctx.strait_commands) {
+                    apply_strait_command(cmd, &mut state, &mut drone_mut, &mut commands);
+                }
+            }
+            Err(e) => {
+                warn!("Strait script error: {}", e);
+            }
+        }
+    }
+}
+
+/// Apply a single StraitCommand to the ECS.
+fn apply_strait_command(
+    cmd: cc_agent::strait_bindings::StraitCommand,
+    state: &mut StraitState,
+    drone_mut: &mut Query<&mut StraitDrone, Without<StraitAaDrone>>,
+    commands: &mut Commands,
+) {
+    use cc_agent::strait_bindings::StraitCommand;
+
+    match cmd {
+        StraitCommand::SetPatrol { drone_id, waypoints } => {
+            for mut drone in drone_mut.iter_mut() {
+                if drone.drone_id == drone_id && drone.alive {
+                    drone.patrol_waypoints = waypoints
+                        .iter()
+                        .map(|&(x, y)| GridPos::new(x, y))
+                        .collect();
+                    drone.current_wp_index = 0;
+                    break;
+                }
+            }
+        }
+        StraitCommand::SatelliteScan { x, y } => {
+            let scan_cost = 15.0;
+            if state.compute >= scan_cost {
+                state.compute -= scan_cost;
+                commands.spawn((
+                    DreamEntity,
+                    StraitSatelliteScan {
+                        center: GridPos::new(x, y),
+                        remaining_ticks: SATELLITE_SCAN_DURATION,
+                    },
+                ));
+            }
+        }
+        StraitCommand::AllocateCompute(alloc) => {
+            state.allocation = alloc;
+        }
+        StraitCommand::BuildZeroDay(zd_type) => {
+            if matches!(state.zero_day_slot, ZeroDayState::Idle) {
+                state.zero_day_slot = ZeroDayState::Building {
+                    exploit_type: zd_type,
+                    progress: 0.0,
+                    required: zero_day_build_cost(zd_type),
+                };
+            }
+        }
+        StraitCommand::DeployZeroDay { exploit_type, target_x: _, target_y: _ } => {
+            if matches!(state.zero_day_slot, ZeroDayState::Ready(_)) {
+                state.zero_day_slot = ZeroDayState::Idle;
+                let idx = match exploit_type {
+                    ZeroDayType::Spoof => 0,
+                    ZeroDayType::Blind => 1,
+                    ZeroDayType::Hijack => 2,
+                    ZeroDayType::Brick => 3,
+                };
+                state.zero_days_deployed[idx] = true;
+                info!("Script deployed zero-day {:?}", exploit_type);
+            }
+        }
+    }
+}
+
+// ===========================================================================
 // PLAYER INPUT (Phase B + C)
 // ===========================================================================
 
@@ -1265,8 +1491,6 @@ fn strait_input_system(
     mut consumed: ResMut<StraitMouseConsumed>,
     mut drones: Query<(Entity, &mut StraitDrone, &Transform)>,
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     if state.mission_complete {
         return;

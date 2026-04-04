@@ -159,6 +159,10 @@ pub struct ScriptContext<'a> {
     pub events: Option<&'a mut Vec<ScriptEvent>>,
     /// Named squads of units (optional, externally owned).
     pub squads: Option<&'a mut HashMap<String, Vec<u64>>>,
+    /// Strait dream sequence state snapshot (optional).
+    pub strait_snapshot: Option<crate::strait_bindings::StraitSnapshot>,
+    /// Commands produced by strait Lua bindings.
+    pub strait_commands: Vec<crate::strait_bindings::StraitCommand>,
 }
 
 impl<'a> ScriptContext<'a> {
@@ -195,6 +199,8 @@ impl<'a> ScriptContext<'a> {
             enemy_memory: None,
             events: None,
             squads: None,
+            strait_snapshot: None,
+            strait_commands: Vec::new(),
         }
     }
 
@@ -213,6 +219,12 @@ impl<'a> ScriptContext<'a> {
     /// Attach an externally-owned squad map. Builder pattern.
     pub fn with_squads(mut self, squads: &'a mut HashMap<String, Vec<u64>>) -> Self {
         self.squads = Some(squads);
+        self
+    }
+
+    /// Attach a strait snapshot for DEFCON dream bindings. Builder pattern.
+    pub fn with_strait_snapshot(mut self, snapshot: crate::strait_bindings::StraitSnapshot) -> Self {
+        self.strait_snapshot = Some(snapshot);
         self
     }
 

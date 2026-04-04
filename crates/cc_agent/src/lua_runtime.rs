@@ -1382,6 +1382,257 @@ pub fn execute_script_with_context_tiered(
         }
 
         // -------------------------------------------------------------------
+        // Strait dream bindings (ctx.strait:*)
+        // -------------------------------------------------------------------
+        // Only registered when a StraitSnapshot is present in the ScriptContext.
+        {
+            let cell = &ctx_cell;
+            let has_strait = cell.borrow().strait_snapshot.is_some();
+            if has_strait {
+                let strait_table = lua.create_table()?;
+
+                // ctx.strait:my_drones() -> [{id, x, y, alive}]
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(|lua, _self: LuaValue| {
+                        let ctx = cell.borrow();
+                        let snap = ctx.strait_snapshot.as_ref().unwrap();
+                        let tbl = lua.create_table()?;
+                        for (i, d) in snap.drone_positions.iter().enumerate() {
+                            let dt = lua.create_table()?;
+                            dt.set("id", d.id)?;
+                            dt.set("x", d.x)?;
+                            dt.set("y", d.y)?;
+                            dt.set("alive", d.alive)?;
+                            tbl.set(i + 1, dt)?;
+                        }
+                        Ok(tbl)
+                    })?;
+                    strait_table.set("my_drones", f)?;
+                }
+
+                // ctx.strait:tanker_status() -> [{index, x, y, hp, arrived, destroyed}]
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(|lua, _self: LuaValue| {
+                        let ctx = cell.borrow();
+                        let snap = ctx.strait_snapshot.as_ref().unwrap();
+                        let tbl = lua.create_table()?;
+                        for (i, t) in snap.tanker_positions.iter().enumerate() {
+                            let tt = lua.create_table()?;
+                            tt.set("index", t.index)?;
+                            tt.set("x", t.x)?;
+                            tt.set("y", t.y)?;
+                            tt.set("hp", t.hp)?;
+                            tt.set("arrived", t.arrived)?;
+                            tt.set("destroyed", t.destroyed)?;
+                            tbl.set(i + 1, tt)?;
+                        }
+                        Ok(tbl)
+                    })?;
+                    strait_table.set("tanker_status", f)?;
+                }
+
+                // ctx.strait:visible_enemies() -> [{kind, x, y}]
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(|lua, _self: LuaValue| {
+                        let ctx = cell.borrow();
+                        let snap = ctx.strait_snapshot.as_ref().unwrap();
+                        let tbl = lua.create_table()?;
+                        for (i, e) in snap.visible_enemies.iter().enumerate() {
+                            let et = lua.create_table()?;
+                            et.set("kind", e.kind.as_str())?;
+                            et.set("x", e.x)?;
+                            et.set("y", e.y)?;
+                            tbl.set(i + 1, et)?;
+                        }
+                        Ok(tbl)
+                    })?;
+                    strait_table.set("visible_enemies", f)?;
+                }
+
+                // ctx.strait:compute_status() -> {compute, max, allocation}
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(|lua, _self: LuaValue| {
+                        let ctx = cell.borrow();
+                        let snap = ctx.strait_snapshot.as_ref().unwrap();
+                        let tbl = lua.create_table()?;
+                        tbl.set("compute", snap.compute)?;
+                        tbl.set("max", snap.max_compute)?;
+                        let alloc = lua.create_table()?;
+                        alloc.set("drone_vision", snap.allocation.drone_vision)?;
+                        alloc.set("satellite", snap.allocation.satellite)?;
+                        alloc.set("zero_day", snap.allocation.zero_day)?;
+                        tbl.set("allocation", alloc)?;
+                        Ok(tbl)
+                    })?;
+                    strait_table.set("compute_status", f)?;
+                }
+
+                // ctx.strait:interceptor_count() -> number
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(|_, _self: LuaValue| {
+                        let ctx = cell.borrow();
+                        let snap = ctx.strait_snapshot.as_ref().unwrap();
+                        Ok(snap.interceptor_count)
+                    })?;
+                    strait_table.set("interceptor_count", f)?;
+                }
+
+                // ctx.strait:zero_day_status() -> {state, type?, progress?}
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(|lua, _self: LuaValue| {
+                        let ctx = cell.borrow();
+                        let snap = ctx.strait_snapshot.as_ref().unwrap();
+                        let tbl = lua.create_table()?;
+                        tbl.set("state", crate::strait_bindings::zero_day_state_string(&snap.zero_day_slot))?;
+                        match &snap.zero_day_slot {
+                            cc_core::strait::ZeroDayState::Building { exploit_type, progress, required } => {
+                                tbl.set("type", format!("{:?}", exploit_type).to_lowercase())?;
+                                tbl.set("progress", *progress / *required)?;
+                            }
+                            cc_core::strait::ZeroDayState::Ready(zt) => {
+                                tbl.set("type", format!("{:?}", zt).to_lowercase())?;
+                                tbl.set("progress", 1.0f32)?;
+                            }
+                            _ => {}
+                        }
+                        Ok(tbl)
+                    })?;
+                    strait_table.set("zero_day_status", f)?;
+                }
+
+                // ctx.strait:mission_tick() -> number
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(|_, _self: LuaValue| {
+                        let ctx = cell.borrow();
+                        let snap = ctx.strait_snapshot.as_ref().unwrap();
+                        Ok(snap.mission_tick)
+                    })?;
+                    strait_table.set("mission_tick", f)?;
+                }
+
+                // ctx.strait:map_size() -> width, height
+                {
+                    let f = scope.create_function(|_, _self: LuaValue| {
+                        // Strait map is always 300x60
+                        Ok((300u32, 60u32))
+                    })?;
+                    strait_table.set("map_size", f)?;
+                }
+
+                // --- Command bindings ---
+
+                // ctx.strait:set_patrol(drone_id, waypoints)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, drone_id, waypoints): (LuaValue, u32, Vec<mlua::Table>)| {
+                            let wps: Vec<(i32, i32)> = waypoints
+                                .iter()
+                                .filter_map(|wp| {
+                                    let x: i32 = wp.get("x").ok()?;
+                                    let y: i32 = wp.get("y").ok()?;
+                                    Some((x, y))
+                                })
+                                .collect();
+                            let mut ctx = cell.borrow_mut();
+                            ctx.strait_commands.push(
+                                crate::strait_bindings::StraitCommand::SetPatrol { drone_id, waypoints: wps }
+                            );
+                            Ok(())
+                        },
+                    )?;
+                    strait_table.set("set_patrol", f)?;
+                }
+
+                // ctx.strait:satellite_scan(x, y)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, x, y): (LuaValue, i32, i32)| {
+                            let mut ctx = cell.borrow_mut();
+                            ctx.strait_commands.push(
+                                crate::strait_bindings::StraitCommand::SatelliteScan { x, y }
+                            );
+                            Ok(())
+                        },
+                    )?;
+                    strait_table.set("satellite_scan", f)?;
+                }
+
+                // ctx.strait:allocate_compute({drone_vision, satellite, zero_day})
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, tbl): (LuaValue, mlua::Table)| {
+                            let dv: f32 = tbl.get("drone_vision").unwrap_or(0.33);
+                            let sat: f32 = tbl.get("satellite").unwrap_or(0.33);
+                            let zd: f32 = tbl.get("zero_day").unwrap_or(0.34);
+                            let mut ctx = cell.borrow_mut();
+                            ctx.strait_commands.push(
+                                crate::strait_bindings::StraitCommand::AllocateCompute(
+                                    cc_core::strait::ComputeAllocation {
+                                        drone_vision: dv,
+                                        satellite: sat,
+                                        zero_day: zd,
+                                    }
+                                )
+                            );
+                            Ok(())
+                        },
+                    )?;
+                    strait_table.set("allocate_compute", f)?;
+                }
+
+                // ctx.strait:build_zero_day(type_str)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, type_str): (LuaValue, String)| {
+                            if let Some(zd_type) = crate::strait_bindings::parse_zero_day_type(&type_str) {
+                                let mut ctx = cell.borrow_mut();
+                                ctx.strait_commands.push(
+                                    crate::strait_bindings::StraitCommand::BuildZeroDay(zd_type)
+                                );
+                            }
+                            Ok(())
+                        },
+                    )?;
+                    strait_table.set("build_zero_day", f)?;
+                }
+
+                // ctx.strait:deploy_exploit(type_str, x, y)
+                {
+                    let cell = &ctx_cell;
+                    let f = scope.create_function(
+                        |_, (_self, type_str, x, y): (LuaValue, String, i32, i32)| {
+                            if let Some(zd_type) = crate::strait_bindings::parse_zero_day_type(&type_str) {
+                                let mut ctx = cell.borrow_mut();
+                                ctx.strait_commands.push(
+                                    crate::strait_bindings::StraitCommand::DeployZeroDay {
+                                        exploit_type: zd_type,
+                                        target_x: x,
+                                        target_y: y,
+                                    }
+                                );
+                            }
+                            Ok(())
+                        },
+                    )?;
+                    strait_table.set("deploy_exploit", f)?;
+                }
+
+                ctx_table.set("strait", strait_table)?;
+            }
+        }
+
+        // -------------------------------------------------------------------
         // Extended command bindings
         // -------------------------------------------------------------------
 
