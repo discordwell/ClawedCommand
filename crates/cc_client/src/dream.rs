@@ -46,7 +46,7 @@ const FORCED_ACTION_THRESHOLD: u32 = 6;
 // ---------------------------------------------------------------------------
 
 /// Proximity radius (in grid tiles) for interaction prompt to appear.
-const INTERACT_RADIUS: i32 = 2;
+const INTERACT_RADIUS: i32 = 3;
 
 /// Grid positions for each interactable location on the office map.
 /// Must be on passable tiles and reachable from the central hallway.
@@ -309,6 +309,7 @@ fn dream_init_system(
     campaign: Res<CampaignState>,
     asset_server: Res<AssetServer>,
     heroes: Query<(Entity, &HeroIdentity, &Owner)>,
+    mut hero_sprites_live: Query<(&HeroIdentity, &mut Sprite)>,
 ) {
     if campaign.phase != CampaignPhase::InMission {
         if dream.initialized {
@@ -341,6 +342,13 @@ fn dream_init_system(
         let rex_path = "sprites/heroes/rex_harmon_idle.png";
         if crate::renderer::asset_exists_on_disk(rex_path) {
             sprites.sprites.insert(HeroId::RexSolstice, asset_server.load(rex_path));
+        }
+
+        // Update live Sprite components on already-spawned hero entities
+        for (hi, mut sprite) in hero_sprites_live.iter_mut() {
+            if let Some(handle) = sprites.sprites.get(&hi.hero_id) {
+                sprite.image = handle.clone();
+            }
         }
     }
 
@@ -909,18 +917,40 @@ fn dream_cleanup_system(
     }
 }
 
-/// Keep Kelpie selected during dream — re-insert Selected if removed.
+/// Keep Kelpie selected and ensure human sprites stay applied every frame.
+/// spawn_unit_visuals can run after dream_init_system, overwriting the image.
 fn dream_keep_selected(
     mut commands: Commands,
     dream: Res<DreamOfficeState>,
-    heroes: Query<(Entity, &HeroIdentity, &Owner), Without<Selected>>,
+    hero_sprites: Option<Res<HeroSprites>>,
+    mut heroes: Query<(Entity, &HeroIdentity, &Owner, Option<&mut Sprite>, Has<Selected>)>,
 ) {
     if !dream.initialized {
         return;
     }
-    for (entity, hi, owner) in heroes.iter() {
+    let sprites = hero_sprites.as_ref();
+    for (entity, hi, owner, sprite_opt, has_selected) in heroes.iter_mut() {
         if hi.hero_id == HeroId::Kelpie && owner.player_id == 0 {
-            commands.entity(entity).insert(Selected);
+            if !has_selected {
+                commands.entity(entity).insert(Selected);
+            }
+            // Ensure Kell's human sprite stays applied
+            if let (Some(mut sprite), Some(sprites)) = (sprite_opt, sprites) {
+                if let Some(expected) = sprites.sprites.get(&HeroId::Kelpie) {
+                    if sprite.image != *expected {
+                        sprite.image = expected.clone();
+                    }
+                }
+            }
+        } else if hi.hero_id == HeroId::RexSolstice && !dream.rex_departed {
+            // Also keep Rex's human sprite
+            if let (Some(mut sprite), Some(sprites)) = (sprite_opt, sprites) {
+                if let Some(expected) = sprites.sprites.get(&HeroId::RexSolstice) {
+                    if sprite.image != *expected {
+                        sprite.image = expected.clone();
+                    }
+                }
+            }
         }
     }
 }
