@@ -1,8 +1,9 @@
 //! Dream sequence systems — Cmdr. Kell Fisher office grind + Claude of the Lake.
 //!
-//! Activated by the `DreamSequence` mission mutator. Two sub-scenes:
+//! Activated by the `DreamSequence` mission mutator. Three sub-scenes:
 //! - **Office**: click-to-interact desk grind loop with day/night overlay.
 //! - **Lake**: walk through water to meet Claude of the Lake.
+//! - **Strait**: DEFCON-style drone warfare (see `dream_strait.rs`).
 
 use bevy::prelude::*;
 
@@ -254,6 +255,9 @@ impl Plugin for DreamPlugin {
                 dream_cleanup_system,
             ),
         );
+
+        // Register strait (DEFCON) dream sequence systems
+        crate::dream_strait::register_strait_systems(app);
     }
 }
 
@@ -470,6 +474,9 @@ fn dream_init_system(
         }
         DreamSceneType::Lake => {
             // Lake scene needs no special spawn — just the fog + map + hero
+        }
+        DreamSceneType::Strait => {
+            // Strait scene initialization handled by dream_strait systems
         }
     }
 }

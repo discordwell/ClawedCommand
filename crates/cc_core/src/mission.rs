@@ -1764,7 +1764,7 @@ mod tests {
         assert_eq!(mission.act, 3);
         assert!(matches!(
             mission.next_mission,
-            NextMission::Fixed(ref id) if id == "act4_m14_junkyard_fort"
+            NextMission::Fixed(ref id) if id == "dream_strait"
         ));
         // Must have DreamSequence mutator with Lake scene type
         assert!(mission.mutators.iter().any(|m| matches!(
@@ -1789,5 +1789,35 @@ mod tests {
         let ron_str = include_str!("../../../assets/campaign/dream_lake.ron");
         let mission: MissionDefinition = ron::from_str(ron_str).unwrap();
         assert_all_positions_passable(&mission);
+    }
+
+    #[test]
+    fn dream_strait_ron_parses() {
+        let ron_str = include_str!("../../../assets/campaign/dream_strait.ron");
+        let mission: MissionDefinition =
+            ron::from_str(ron_str).expect("Failed to parse dream_strait.ron");
+        assert_eq!(mission.id, "dream_strait");
+        assert_eq!(mission.act, 3);
+        assert!(matches!(
+            mission.next_mission,
+            NextMission::Fixed(ref id) if id == "act4_m14_junkyard_fort"
+        ));
+        // Must have DreamSequence mutator with Strait scene type
+        assert!(mission.mutators.iter().any(|m| matches!(
+            m,
+            crate::mutator::MissionMutator::DreamSequence {
+                scene_type: crate::mutator::DreamSceneType::Strait,
+                ..
+            }
+        )));
+        // 60x20 map
+        if let MissionMap::Inline { width, height, .. } = &mission.map {
+            assert_eq!(*width, 60);
+            assert_eq!(*height, 20);
+        } else {
+            panic!("Expected inline map");
+        }
+        assert_eq!(mission.dialogue.len(), 13);
+        mission.validate().expect("dream_strait validation failed");
     }
 }

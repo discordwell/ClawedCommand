@@ -410,6 +410,25 @@ Data-driven mission modifiers that make each campaign mission mechanically uniqu
 
 **Command Filtering**: Commands carry `CommandSource` (PlayerInput/VoiceCommand/AiAgent/Script). `process_commands` filters based on `ControlRestrictions`. Client input handlers (keyboard, mouse, voice) also gate early via `Option<Res<ControlRestrictions>>`.
 
+### 8. Dream Sequence System
+
+Special non-RTS missions activated by `DreamSequence` mutator with `DreamSceneType` variant. Three sub-scenes:
+
+- **Office** (`DreamSceneType::Office`): Click-to-interact desk grind loop. Kell Fisher works at a military office until passout. FSM-driven with day/night overlay.
+- **Lake** (`DreamSceneType::Lake`): Walk-to-interact meeting with Claude of the Lake.
+- **Strait** (`DreamSceneType::Strait`): DEFCON-style drone warfare interlude. Kell protects oil tankers transiting a narrow strait from hostile coastal launchers.
+
+**Strait mission architecture** (`cc_client::dream_strait`):
+- **Compute budget**: shared resource pool split between drone vision (cheap/local), satellite vision (expensive/global), and zero-day exploit building (slow-build, powerful one-shot effects: Spoof/Blind/Hijack/Brick).
+- **Interceptor economy**: finite pool of interceptor drones that auto-engage missiles, slowly replenished.
+- **Enemy AI**: 4-wave escalation with hide-launch-relocate launcher cycle, AA drones, decoys, and coordinated diversions.
+- **Win/lose**: 8/12 tankers must arrive safely; >7 destroyed = failure.
+- **Data types**: `cc_core::strait` (pure data, no Bevy dependency), Bevy components in `dream_strait.rs`.
+- **Lua bindings**: `cc_agent::strait_bindings` provides `StraitSnapshot`, `StraitCommand`, and helpers for the `ctx.strait:` Lua table.
+- **Visual style**: dark DEFCON overlay (full-screen Node), dot-icon Mesh2d entities, terminal-green HUD, radar sweep rotation.
+
+**System registration**: `DreamPlugin::build()` calls `dream_strait::register_strait_systems(app)`. All strait systems gated by `is_dream_strait_active` run condition.
+
 ---
 
 ## Project Structure

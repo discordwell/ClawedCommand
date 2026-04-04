@@ -11,6 +11,7 @@ pub mod math;
 pub mod mission;
 pub mod mutator;
 pub mod status_effects;
+pub mod strait;
 pub mod terrain;
 pub mod tuning;
 pub mod unit_stats;

@@ -178,7 +178,7 @@
     ],
     briefing_text: "",
     debrief_text: "",
-    next_mission: Fixed("act4_m14_junkyard_fort"),
+    next_mission: Fixed("dream_strait"),
     mutators: [
         DreamSequence(
             skip_briefing: true,

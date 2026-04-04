@@ -9,8 +9,27 @@
 - [ ] Generate Claude of the Lake sprite (`assets/sprites/dream/claude_lake.png`) — Figure standing on island
 - [ ] Generate code sword sprite (`assets/sprites/dream/code_sword.png`) — Sword made of glowing code lines
 - [ ] Generate 5 modern military terrain tiles (128x128): concrete.png, linoleum.png, carpet_tile.png, metal_grate.png, drywall.png
-- [ ] Post-dream "code sword IRL" mission (Lua scripting in-game) — the mission after dream_lake where sword = code-writing power
+- [x] Post-dream "code sword IRL" mission (Lua scripting in-game) — implemented as "The Strait" DEFCON-style drone warfare interlude
 - [ ] Office prop sprites (polish pass): desk, vending machine, gym equipment, phone, bed, food, people
+
+## From Strait Dream Sequence (DEFCON Interlude)
+
+- [ ] DEFCON map background — dark navy, glowing coastline contours (or generated from terrain data)
+- [ ] Drone icon sprite (friendly patrol) — small green glowing dot with range circle
+- [ ] Enemy drone icon sprite (AA) — small red dot
+- [ ] Tanker icon sprite — larger blue rectangle/ship silhouette
+- [ ] Enemy launcher icon sprite — blinking red triangle when visible
+- [ ] Missile trail VFX — bright amber arcing line
+- [ ] Explosion flash VFX — tanker hit / missile intercept
+- [ ] Radar sweep overlay animation — rotating green sector
+- [ ] Compute budget bar UI elements — terminal-style green-on-dark
+- [ ] Terminal HUD frame — dark translucent panel with monospace font
+- [ ] Satellite scan visual — expanding ring/pulse effect
+- [ ] Implement Lua `ctx.strait:` bindings in `lua_runtime.rs` (data types in `strait_bindings.rs`)
+- [ ] Wire StraitCommand outputs from Lua back into Bevy ECS (patrol updates, satellite scans, zero-day builds)
+- [ ] Add "scan", "exploit", "deploy" to voice keyword vocabulary
+- [ ] Player click-to-interact: click drone to select, click map to set satellite scan target
+- [ ] Strait mission sound design: radar ping, missile warning, intercept beep, ops center ambient
 
 ## From Unit Ability Design Review
 

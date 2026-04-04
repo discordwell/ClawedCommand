@@ -123,6 +123,8 @@ pub enum DreamSceneType {
     Office,
     /// Lake walk to Claude of the Lake.
     Lake,
+    /// DEFCON-style drone warfare over a narrow strait.
+    Strait,
 }
 
 /// Check if a list of mutators indicates an active dream mission.
@@ -506,7 +508,7 @@ mod tests {
 
     #[test]
     fn ron_round_trip_dream_scene_type() {
-        for scene in [DreamSceneType::Office, DreamSceneType::Lake] {
+        for scene in [DreamSceneType::Office, DreamSceneType::Lake, DreamSceneType::Strait] {
             let s = ron::to_string(&scene).unwrap();
             let parsed: DreamSceneType = ron::from_str(&s).unwrap();
             assert_eq!(parsed, scene);

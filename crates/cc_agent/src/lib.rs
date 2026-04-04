@@ -16,6 +16,7 @@ pub mod spatial;
 pub mod tool_tier;
 
 pub mod script_context;
+pub mod strait_bindings;
 
 // Native-only modules (depend on mlua/tokio/crossbeam)
 #[cfg(not(target_arch = "wasm32"))]
