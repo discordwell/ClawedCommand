@@ -325,6 +325,7 @@ fn setup_cutscene(app: &mut App, scenario: u8) {
 fn setup_dream(app: &mut App, scene: &str) {
     let ron_name = match scene {
         "lake" => "dream_lake",
+        "strait" => "dream_strait",
         _ => "dream_office",
     };
     eprintln!("Dream sequence: {ron_name}");

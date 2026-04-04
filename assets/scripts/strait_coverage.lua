@@ -32,6 +32,9 @@ local ZERO_DAY_PRIORITY = { "brick", "blind", "hijack", "spoof" }
 
 -- ===== MAIN LOGIC =====
 
+-- Guard: only run when strait bindings are available
+if not ctx.strait then return end
+
 -- Get current state
 local drones = ctx.strait:my_drones()
 local tankers = ctx.strait:tanker_status()

@@ -213,14 +213,14 @@ pub const SATELLITE_VISION_RADIUS: i32 = 8;
 pub const SATELLITE_SCAN_DURATION: u32 = 30;
 
 /// Ticks between tanker spawns.
-pub const TANKER_SPAWN_INTERVAL: u32 = 100;
+pub const TANKER_SPAWN_INTERVAL: u32 = 300;
 /// Tanker HP.
 pub const TANKER_HP: u32 = 3;
 /// Tanker movement speed (tiles per tick).
-pub const TANKER_SPEED: f32 = 0.15;
+pub const TANKER_SPEED: f32 = 0.06;
 
 /// Missile flight time in ticks.
-pub const MISSILE_FLIGHT_TICKS: u32 = 40;
+pub const MISSILE_FLIGHT_TICKS: u32 = 80;
 /// Build cost (compute ticks) for each zero-day type.
 pub fn zero_day_build_cost(zd: ZeroDayType) -> f32 {
     match zd {
