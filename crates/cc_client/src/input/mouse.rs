@@ -49,6 +49,7 @@ pub fn handle_mouse_input(
     map_res: Res<MapResource>,
     mut state: InputState,
     minimap_consumed: Res<MinimapClickConsumed>,
+    strait_consumed: Option<Res<crate::dream_strait::StraitMouseConsumed>>,
     restrictions: Option<Res<cc_sim::campaign::mutator_state::ControlRestrictions>>,
     campaign: Res<CampaignState>,
     hero_q: Query<(Entity, &HeroIdentity, &Owner)>,
@@ -71,6 +72,11 @@ pub fn handle_mouse_input(
         return;
     }
 
+    // Skip if strait dream consumed this click
+    if strait_consumed.as_ref().is_some_and(|s| s.0) {
+        return;
+    }
+
     let Some(cursor_pos) = window.cursor_position() else {
         return;
     };
@@ -90,11 +96,15 @@ pub fn handle_mouse_input(
     let cursor_grid = iso_world.to_grid();
 
     // --- Dream sequence override: left-click moves Kell, suppress all other RTS mouse logic ---
+    // (Strait dream has its own input system, so exclude it here)
     let is_dream = campaign.phase == CampaignPhase::InMission
-        && campaign
-            .current_mission
-            .as_ref()
-            .is_some_and(|m| cc_core::mutator::is_dream_mission(&m.mutators));
+        && campaign.current_mission.as_ref().is_some_and(|m| {
+            m.mutators.iter().any(|mt| matches!(
+                mt,
+                cc_core::mutator::MissionMutator::DreamSequence { scene_type, .. }
+                    if *scene_type != cc_core::mutator::DreamSceneType::Strait
+            ))
+        });
 
     if is_dream {
         if mouse_button.just_pressed(MouseButton::Left) {

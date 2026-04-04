@@ -204,7 +204,7 @@ pub const MAX_INTERCEPTORS: u32 = 20;
 pub const INTERCEPTOR_REGEN_TICKS: u32 = 60;
 
 /// Initial patrol drone count.
-pub const INITIAL_PATROL_DRONES: u32 = 8;
+pub const INITIAL_PATROL_DRONES: u32 = 16;
 /// Vision radius (in tiles) for a patrol drone.
 pub const DRONE_VISION_RADIUS: i32 = 4;
 /// Vision radius (in tiles) for a satellite scan.

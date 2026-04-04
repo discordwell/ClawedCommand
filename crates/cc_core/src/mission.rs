@@ -1810,10 +1810,10 @@ mod tests {
                 ..
             }
         )));
-        // 60x20 map
+        // 300x60 map
         if let MissionMap::Inline { width, height, .. } = &mission.map {
-            assert_eq!(*width, 60);
-            assert_eq!(*height, 20);
+            assert_eq!(*width, 300);
+            assert_eq!(*height, 60);
         } else {
             panic!("Expected inline map");
         }

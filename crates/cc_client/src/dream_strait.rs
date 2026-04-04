@@ -112,6 +112,35 @@ pub struct StraitOverlayBg;
 #[derive(Component)]
 pub struct StraitCoastline;
 
+/// Marker for a selected drone (visual feedback).
+#[derive(Component)]
+pub struct StraitDroneSelected;
+
+// ---------------------------------------------------------------------------
+// Input resources
+// ---------------------------------------------------------------------------
+
+/// Whether the strait input system consumed this frame's mouse click.
+/// Mirrors the `MinimapClickConsumed` pattern in `input/mouse.rs`.
+#[derive(Resource, Default)]
+pub struct StraitMouseConsumed(pub bool);
+
+/// Current input mode for the strait mission.
+#[derive(Default, PartialEq, Debug)]
+pub enum StraitInputMode {
+    #[default]
+    Normal,
+    SatelliteScan,
+    ZeroDayDeploy(ZeroDayType),
+}
+
+/// Player input state for the strait dream.
+#[derive(Resource, Default)]
+pub struct StraitInputState {
+    pub selected_drones: Vec<Entity>,
+    pub mode: StraitInputMode,
+}
+
 // ---------------------------------------------------------------------------
 // HUD marker components
 // ---------------------------------------------------------------------------
@@ -273,7 +302,18 @@ pub fn is_dream_strait_active(campaign: Res<CampaignState>) -> bool {
 /// Register all strait systems. Called from `DreamPlugin::build()`.
 pub fn register_strait_systems(app: &mut App) {
     app.init_resource::<StraitState>()
-        .insert_resource(StraitVision::new(60, 20))
+        .init_resource::<StraitInputState>()
+        .init_resource::<StraitMouseConsumed>()
+        .insert_resource(StraitVision::new(300, 60))
+        .add_systems(
+            PreUpdate,
+            (
+                strait_reset_consumed.run_if(is_dream_strait_active),
+                strait_input_system
+                    .after(strait_reset_consumed)
+                    .run_if(is_dream_strait_active),
+            ),
+        )
         .add_systems(
             Update,
             (
@@ -332,6 +372,9 @@ pub fn register_strait_systems(app: &mut App) {
                     .run_if(is_dream_strait_active),
                 strait_update_hud
                     .after(strait_move_tankers)
+                    .run_if(is_dream_strait_active),
+                // Satellite decay
+                strait_satellite_decay
                     .run_if(is_dream_strait_active),
                 // Win/lose
                 strait_check_win_lose
@@ -394,18 +437,19 @@ fn strait_init_system(
     spawn_strait_hud(&mut commands);
 
     // -- Spawn patrol drones --
-    let map_width = 60;
+    let map_width = 300;
     let drone_count = INITIAL_PATROL_DRONES;
     let spacing = map_width as f32 / drone_count as f32;
 
     for i in 0..drone_count {
         let base_x = (i as f32 * spacing + spacing * 0.5) as i32;
-        let patrol_y = 8; // middle of the strait
+        let patrol_y = 25; // patrol zone between hostile shallows and shipping lane
+        let sector_w = (spacing * 0.33) as i32;
         let waypoints = vec![
-            GridPos::new(base_x, patrol_y - 2),
-            GridPos::new(base_x + 3, patrol_y),
-            GridPos::new(base_x, patrol_y + 2),
-            GridPos::new(base_x.saturating_sub(3).max(1), patrol_y),
+            GridPos::new(base_x, patrol_y - 10),
+            GridPos::new((base_x + sector_w).min(299), patrol_y),
+            GridPos::new(base_x, patrol_y + 10),
+            GridPos::new((base_x - sector_w).max(1), patrol_y),
         ];
 
         let pos = strait_screen_from_world(base_x as f32, patrol_y as f32);
@@ -542,8 +586,8 @@ fn spawn_enemy_wave(
     for i in 0..total {
         let is_decoy = i >= config.launcher_count;
         let x = ((i + 1) as f32 * spacing) as i32;
-        let hidden_y = 1; // deep in hostile shore
-        let firing_y = 3; // at the shallows edge
+        let hidden_y = 4; // deep in hostile shore
+        let firing_y = 9; // at the shallows edge
 
         let pos = strait_screen_from_world(x as f32, hidden_y as f32);
 
@@ -571,7 +615,7 @@ fn spawn_enemy_wave(
 
     for i in 0..config.aa_drone_count {
         let x = (map_width as f32 * (i as f32 + 1.0) / (config.aa_drone_count as f32 + 1.0)) as f32;
-        let y = 5.0; // patrol in the upper strait
+        let y = 14.0; // patrol in the upper strait
         let pos = strait_screen_from_world(x, y);
 
         commands.spawn((
@@ -661,7 +705,7 @@ fn strait_spawn_tankers(
     state.tankers_spawned += 1;
 
     // Tankers enter at the west (x=0) and travel east along the shipping lane (y=10)
-    let lane_y = 9 + (tanker_index % 3) as i32; // slight lane variation
+    let lane_y = 29 + (tanker_index % 3) as i32; // slight lane variation around shipping lane center
     let pos = strait_screen_from_world(0.0, lane_y as f32);
     let tanker_mesh = meshes.add(Rectangle::new(10.0, 5.0));
     let tanker_mat = materials.add(ColorMaterial::from_color(TANKER_BLUE));
@@ -672,7 +716,7 @@ fn strait_spawn_tankers(
             hp: TANKER_HP,
             lane_y,
             world_x: 0.0,
-            target_x: 59.0,
+            target_x: 299.0,
             arrived: false,
             destroyed: false,
             tanker_index,
@@ -866,7 +910,7 @@ fn strait_launcher_fsm(
                 launcher.phase = LauncherPhase::Hidden;
                 // Relocate hidden position slightly
                 let jitter = (launcher.salvo_count as i32 * 3) % 7;
-                launcher.hidden_pos.x = (launcher.hidden_pos.x + jitter).clamp(1, 58);
+                launcher.hidden_pos.x = (launcher.hidden_pos.x + jitter).clamp(1, 298);
                 launcher.phase_timer = 8.0 + launcher.salvo_count as f32 * 2.0; // longer gaps as game progresses
                 launcher.salvo_count += 1;
                 let new_pos = strait_screen_from_world(launcher.hidden_pos.x as f32, launcher.hidden_pos.y as f32);
@@ -975,7 +1019,7 @@ fn strait_missile_interception(
             let cur_y = origin_y + (target_y - origin_y) * progress;
 
             // Interceptors cover the shipping lane area (y 7-13)
-            if cur_y >= 6.0 && cur_y <= 14.0 && state.interceptor_count > 0 {
+            if cur_y >= 20.0 && cur_y <= 40.0 && state.interceptor_count > 0 {
                 // Higher chance to intercept when missile is further along
                 if progress > 0.3 {
                     state.interceptor_count -= 1;
@@ -1187,6 +1231,241 @@ fn strait_check_win_lose(
         campaign.complete_objective("protect_convoy");
     } else {
         info!("Strait mission FAILED: only {}/{} tankers arrived", state.tankers_arrived, MIN_TANKERS_WIN);
+    }
+}
+
+// ===========================================================================
+// PLAYER INPUT (Phase B + C)
+// ===========================================================================
+
+/// Reset the consumed flag each frame.
+fn strait_reset_consumed(mut consumed: ResMut<StraitMouseConsumed>) {
+    consumed.0 = false;
+}
+
+/// Reverse isometric projection: screen pixel → approximate grid coordinates.
+fn screen_to_grid(screen_x: f32, screen_y: f32) -> (i32, i32) {
+    use cc_core::coords::{TILE_HALF_WIDTH, TILE_HALF_HEIGHT};
+    let sx = screen_x;
+    let sy = -screen_y; // un-flip Bevy Y
+    let wx = (sx / TILE_HALF_WIDTH + sy / TILE_HALF_HEIGHT) / 2.0;
+    let wy = (sy / TILE_HALF_HEIGHT - sx / TILE_HALF_WIDTH) / 2.0;
+    (wx as i32, wy as i32)
+}
+
+/// Main input system for the strait dream. Handles drone selection, movement,
+/// satellite scans, zero-day deployment, and compute allocation.
+fn strait_input_system(
+    mouse_button: Res<ButtonInput<MouseButton>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    window: Single<&Window>,
+    camera_q: Single<(&Camera, &GlobalTransform), With<Camera2d>>,
+    mut input_state: ResMut<StraitInputState>,
+    mut state: ResMut<StraitState>,
+    mut consumed: ResMut<StraitMouseConsumed>,
+    mut drones: Query<(Entity, &mut StraitDrone, &Transform)>,
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    if state.mission_complete {
+        return;
+    }
+
+    // --- Keyboard shortcuts ---
+
+    // Tab: cycle compute allocation preset
+    if keyboard.just_pressed(KeyCode::Tab) {
+        let alloc = &mut state.allocation;
+        if alloc.drone_vision > 0.5 {
+            // 60/20/20 → 20/60/20 (satellite focus)
+            *alloc = ComputeAllocation { drone_vision: 0.2, satellite: 0.6, zero_day: 0.2 };
+        } else if alloc.satellite > 0.5 {
+            // 20/60/20 → 20/20/60 (zero-day focus)
+            *alloc = ComputeAllocation { drone_vision: 0.2, satellite: 0.2, zero_day: 0.6 };
+        } else {
+            // 20/20/60 → 60/20/20 (drone focus)
+            *alloc = ComputeAllocation { drone_vision: 0.6, satellite: 0.2, zero_day: 0.2 };
+        }
+    }
+
+    // V: toggle satellite scan mode
+    if keyboard.just_pressed(KeyCode::KeyV) {
+        input_state.mode = if input_state.mode == StraitInputMode::SatelliteScan {
+            StraitInputMode::Normal
+        } else {
+            StraitInputMode::SatelliteScan
+        };
+    }
+
+    // 1-4: zero-day build or deploy mode
+    for (key, zd_type) in [
+        (KeyCode::Digit1, ZeroDayType::Spoof),
+        (KeyCode::Digit2, ZeroDayType::Blind),
+        (KeyCode::Digit3, ZeroDayType::Hijack),
+        (KeyCode::Digit4, ZeroDayType::Brick),
+    ] {
+        if keyboard.just_pressed(key) {
+            match &state.zero_day_slot {
+                ZeroDayState::Idle => {
+                    state.zero_day_slot = ZeroDayState::Building {
+                        exploit_type: zd_type,
+                        progress: 0.0,
+                        required: zero_day_build_cost(zd_type),
+                    };
+                }
+                ZeroDayState::Ready(ready_type) if *ready_type == zd_type => {
+                    input_state.mode = StraitInputMode::ZeroDayDeploy(zd_type);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    // Ctrl+A: select all alive drones
+    if keyboard.just_pressed(KeyCode::KeyA)
+        && (keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight))
+    {
+        input_state.selected_drones.clear();
+        for (entity, drone, _) in drones.iter() {
+            if drone.alive {
+                input_state.selected_drones.push(entity);
+            }
+        }
+    }
+
+    // Escape: clear selection / revert to normal mode
+    if keyboard.just_pressed(KeyCode::Escape) {
+        input_state.selected_drones.clear();
+        input_state.mode = StraitInputMode::Normal;
+    }
+
+    // --- Mouse input ---
+
+    let Some(cursor_pos) = window.cursor_position() else {
+        return;
+    };
+    let (camera, camera_transform) = *camera_q;
+    let Ok(world_pos) = camera.viewport_to_world_2d(camera_transform, cursor_pos) else {
+        return;
+    };
+
+    let (grid_x, grid_y) = screen_to_grid(world_pos.x, world_pos.y);
+
+    // Left-click
+    if mouse_button.just_pressed(MouseButton::Left) {
+        consumed.0 = true;
+
+        match input_state.mode {
+            StraitInputMode::SatelliteScan => {
+                // Spawn satellite scan at cursor position
+                let scan_cost = 15.0;
+                if state.compute >= scan_cost {
+                    state.compute -= scan_cost;
+                    commands.spawn((
+                        DreamEntity,
+                        StraitSatelliteScan {
+                            center: GridPos::new(grid_x, grid_y),
+                            remaining_ticks: SATELLITE_SCAN_DURATION,
+                        },
+                    ));
+                }
+                input_state.mode = StraitInputMode::Normal;
+            }
+            StraitInputMode::ZeroDayDeploy(zd_type) => {
+                // Deploy zero-day at cursor position
+                if matches!(state.zero_day_slot, ZeroDayState::Ready(_)) {
+                    state.zero_day_slot = ZeroDayState::Idle;
+                    let idx = match zd_type {
+                        ZeroDayType::Spoof => 0,
+                        ZeroDayType::Blind => 1,
+                        ZeroDayType::Hijack => 2,
+                        ZeroDayType::Brick => 3,
+                    };
+                    state.zero_days_deployed[idx] = true;
+                    info!("Deployed zero-day {:?} at ({}, {})", zd_type, grid_x, grid_y);
+                    // TODO: Apply zero-day effects (brick launcher, blind area, etc.)
+                }
+                input_state.mode = StraitInputMode::Normal;
+            }
+            StraitInputMode::Normal => {
+                // Hit-test against drones for selection
+                let mut hit: Option<Entity> = None;
+                let hit_dist_sq = 20.0 * 20.0; // 20 pixel hit radius
+                for (entity, drone, xform) in drones.iter() {
+                    if !drone.alive {
+                        continue;
+                    }
+                    let dx = world_pos.x - xform.translation.x;
+                    let dy = world_pos.y - xform.translation.y;
+                    let d2 = dx * dx + dy * dy;
+                    if d2 < hit_dist_sq {
+                        hit = Some(entity);
+                        break;
+                    }
+                }
+
+                if let Some(entity) = hit {
+                    // Toggle selection
+                    if let Some(pos) = input_state.selected_drones.iter().position(|&e| e == entity) {
+                        input_state.selected_drones.remove(pos);
+                    } else {
+                        if !keyboard.pressed(KeyCode::ShiftLeft) && !keyboard.pressed(KeyCode::ShiftRight) {
+                            input_state.selected_drones.clear();
+                        }
+                        input_state.selected_drones.push(entity);
+                    }
+                } else {
+                    // Click on empty space: clear selection
+                    if !keyboard.pressed(KeyCode::ShiftLeft) && !keyboard.pressed(KeyCode::ShiftRight) {
+                        input_state.selected_drones.clear();
+                    }
+                }
+            }
+        }
+    }
+
+    // Right-click: move selected drones
+    if mouse_button.just_pressed(MouseButton::Right) && !input_state.selected_drones.is_empty() {
+        consumed.0 = true;
+
+        let target = GridPos::new(grid_x, grid_y);
+
+        // Retain only entities that still exist and are alive
+        let selected: Vec<Entity> = input_state
+            .selected_drones
+            .iter()
+            .copied()
+            .filter(|&e| drones.get(e).map_or(false, |(_, d, _)| d.alive))
+            .collect();
+        input_state.selected_drones = selected.clone();
+
+        for entity in &selected {
+            if let Ok((_, mut drone, xform)) = drones.get_mut(*entity) {
+                // Get drone's current approximate grid position
+                let (cur_x, cur_y) = screen_to_grid(xform.translation.x, xform.translation.y);
+                // Set one-shot move: current → target
+                drone.patrol_waypoints = vec![
+                    GridPos::new(cur_x, cur_y),
+                    target,
+                ];
+                drone.current_wp_index = 0;
+            }
+        }
+    }
+}
+
+/// Decay satellite scans and despawn expired ones.
+fn strait_satellite_decay(
+    mut commands: Commands,
+    mut scans: Query<(Entity, &mut StraitSatelliteScan)>,
+) {
+    for (entity, mut scan) in scans.iter_mut() {
+        if scan.remaining_ticks == 0 {
+            commands.entity(entity).despawn();
+        } else {
+            scan.remaining_ticks -= 1;
+        }
     }
 }
 

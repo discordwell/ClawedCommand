@@ -51,6 +51,12 @@ impl ScriptLibrary {
                 intents: vec!["build".into(), "construct".into()],
                 description: "Order a Pawdler to build a Cat Tree near the base".into(),
             },
+            LuaScript {
+                name: "strait_coverage".into(),
+                source: include_str!("../../../assets/scripts/strait_coverage.lua").into(),
+                intents: vec!["patrol".into(), "coverage".into(), "coastline".into(), "strait".into()],
+                description: "Sector-based drone patrol for strait coastline coverage".into(),
+            },
         ];
 
         // Load player-saved scripts from disk (native) or localStorage (WASM)
