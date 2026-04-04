@@ -1,7 +1,24 @@
 #!/usr/bin/env python3
-"""Generate the dream office inline map (48x36) for dream_office.ron."""
+"""Generate the dream office inline map (64x48) for dream_office.ron.
 
-W, H = 48, 36
+A full military operations base with:
+- Large ops center (20+ desks) — the heart of the base
+- Barracks wing (bunks, lockers)
+- Mess hall + kitchen
+- Gym / PT area
+- Comms room (secure phones, radio)
+- Break room / lounge (TV, couches)
+- Medical bay
+- Armory / storage
+- CO's office (Kell's boss)
+- Briefing room (maps, screens)
+- Hallways connecting everything
+- Main entrance / guard post
+- Parking lot / exterior
+- Courtyard / smoking area
+"""
+
+W, H = 64, 48
 
 # Terrain aliases
 D = "DryWall"
@@ -14,91 +31,121 @@ R = "Road"
 tiles = [[D] * W for _ in range(H)]
 
 def fill(x1, y1, x2, y2, t):
-    """Fill rectangle [x1..x2) x [y1..y2) with terrain t."""
     for y in range(y1, y2):
         for x in range(x1, x2):
             if 0 <= x < W and 0 <= y < H:
                 tiles[y][x] = t
 
-# === EXTERIOR WALLS (rows 0-1, 34-35, cols 0, 47) ===
-# Already DryWall by default
+def hwall(y, x1, x2, doors=None):
+    """Horizontal wall with optional door positions."""
+    doors = doors or []
+    for x in range(x1, x2):
+        tiles[y][x] = C if x in doors else D
 
-# === PARKING LOT / EXTERIOR (left side) ===
-fill(1, 2, 7, 34, R)  # parking area cols 1-6
+def vwall(x, y1, y2, doors=None):
+    """Vertical wall with optional door positions."""
+    doors = doors or []
+    for y in range(y1, y2):
+        tiles[y][x] = C if y in doors else D
 
-# === MAIN ENTRANCE CORRIDOR (row 2-3, full width) ===
-fill(8, 2, 47, 4, C)  # wide corridor across top
+# ============================================================
+# EXTERIOR
+# ============================================================
 
-# === NORTH WING (rows 4-9) ===
-# Comms room (phone)
-fill(8, 4, 15, 9, L)
-# Break room (talk)
-fill(16, 4, 23, 9, L)
+# Rows 0-1: North exterior wall (already DryWall)
+# Rows 46-47: South exterior wall
+# Cols 0, 63: East/West exterior walls
+
+# Parking lot (west side, cols 1-8)
+fill(1, 2, 9, 46, R)
+
+# Courtyard / smoking area (south-west, between parking and building)
+fill(1, 38, 9, 46, R)
+
+# Main entrance corridor (col 9, full height access)
+fill(9, 2, 11, 46, C)
+
+# ============================================================
+# NORTH WING (rows 2-13) — admin, comms, briefing
+# ============================================================
+
+# Guard post / reception (just inside entrance)
+fill(11, 2, 19, 6, L)
+
+# CO's office (top-right of north wing)
+fill(50, 2, 62, 8, T)
+
+# Briefing room (large, center-right)
+fill(30, 2, 49, 8, T)
+
+# Comms room (secure)
+fill(20, 2, 29, 8, L)
+
 # North corridor
-fill(24, 4, 28, 9, C)
-# Barracks (sleep)
-fill(29, 4, 38, 9, L)
-# Storage/utility
-fill(39, 4, 47, 9, L)
+fill(11, 8, 62, 10, C)
 
-# Interior walls between north rooms
-for y in range(4, 9):
-    tiles[y][15] = D  # between comms and break
-    tiles[y][23] = D  # between break and corridor
-    tiles[y][28] = D  # between corridor and barracks
-    tiles[y][38] = D  # between barracks and storage
+# Break room / lounge
+fill(11, 10, 22, 14, L)
 
-# Doorways in south wall of north wing (row 9 → corridor row 10)
-fill(8, 9, 47, 10, D)  # wall between north wing and corridor
-# Doorways
-for x in [11, 19, 26, 33, 43]:
-    tiles[9][x] = C
+# Medical bay
+fill(23, 10, 34, 14, L)
 
-# === CENTRAL CORRIDOR (row 10) ===
-fill(8, 10, 47, 12, C)
+# Armory / storage
+fill(50, 10, 62, 14, M)
 
-# === OPS CENTER (rows 12-27, cols 8-47) — the big room ===
-fill(8, 12, 47, 28, T)
+# Secondary corridor between armory area and briefing
+fill(35, 10, 49, 14, C)
 
-# Left-side corridor (cols 7-8, connecting parking to ops)
-fill(7, 2, 8, 34, C)
+# Walls between north rooms (row 8 = corridor, rooms above)
+hwall(8, 11, 62, doors=[15, 25, 35, 45, 55])
+# Walls between row-10-14 rooms
+hwall(14, 11, 62, doors=[16, 28, 40, 55])
+# Vertical walls in north rooms
+vwall(19, 2, 8, doors=[5])   # guard | comms
+vwall(29, 2, 8, doors=[5])   # comms | briefing
+vwall(49, 2, 8, doors=[5])   # briefing | CO office
+vwall(22, 10, 14, doors=[12])  # break | medical
+vwall(34, 10, 14, doors=[12])  # medical | corridor
+vwall(49, 10, 14, doors=[12])  # corridor | armory
 
-# === WALL between ops center and south wing (row 28) ===
-fill(8, 28, 47, 29, D)
-# Doorways in this wall
-for x in [12, 20, 26, 35, 42]:
-    tiles[28][x] = C
+# ============================================================
+# OPS CENTER (rows 15-33) — the big room
+# ============================================================
 
-# === SOUTH CORRIDOR (row 29) ===
-fill(8, 29, 47, 30, C)
+fill(11, 15, 62, 34, T)
 
-# === SOUTH WING (rows 30-33) ===
-# Gym (workout)
-fill(8, 30, 18, 34, M)
-# South corridor segment
-fill(19, 30, 23, 34, C)
-# Mess hall (eat)
-fill(24, 30, 36, 34, L)
-# South corridor segment
-fill(37, 30, 39, 34, C)
-# Recreation / lounge
-fill(40, 30, 47, 34, L)
+# Walls around ops center
+hwall(15, 11, 62, doors=[20, 30, 40, 50])  # north wall of ops
+hwall(34, 11, 62, doors=[20, 30, 40, 50])  # south wall of ops
 
-# Interior walls between south rooms
-for y in range(30, 34):
-    tiles[y][18] = D
-    tiles[y][23] = D
-    tiles[y][36] = D
-    tiles[y][39] = D
+# ============================================================
+# SOUTH WING (rows 35-45) — gym, mess, barracks
+# ============================================================
 
-# Doorways in north wall of south wing
-for x in [13, 21, 30, 38, 43]:
-    tiles[29][x] = C  # already concrete from corridor fill, but explicit
+# South corridor
+fill(11, 35, 62, 37, C)
 
-# === BASE EXIT corridor (left side, connecting parking to corridor) ===
-# Already handled by the left corridor fill
+# Gym / PT area (south-west)
+fill(11, 37, 24, 45, M)
 
-# === Verify all border tiles are DryWall ===
+# Locker room (next to gym)
+fill(25, 37, 32, 45, L)
+
+# Mess hall + kitchen (center-south)
+fill(33, 37, 48, 45, L)
+
+# Barracks (south-east, bunks)
+fill(49, 37, 62, 45, L)
+
+# Walls between south rooms
+hwall(37, 11, 62, doors=[17, 28, 40, 55])
+vwall(24, 37, 45, doors=[41])   # gym | lockers
+vwall(32, 37, 45, doors=[41])   # lockers | mess
+vwall(48, 37, 45, doors=[41])   # mess | barracks
+
+# ============================================================
+# Ensure borders are DryWall
+# ============================================================
 for x in range(W):
     tiles[0][x] = D
     tiles[1][x] = D
@@ -108,44 +155,69 @@ for y in range(H):
     tiles[y][0] = D
     tiles[y][W-1] = D
 
-# Print RON tile array
+# ============================================================
+# Output
+# ============================================================
+
 print(f"        width: {W},")
 print(f"        height: {H},")
 print("        tiles: [")
 for y in range(H):
     row_str = ", ".join(tiles[y])
-    comment = ""
-    if y <= 1: comment = " // exterior wall"
-    elif y <= 3: comment = " // entrance corridor"
-    elif y <= 8: comment = " // north wing: comms | break | corridor | barracks | storage"
-    elif y == 9: comment = " // wall + doorways"
-    elif y <= 11: comment = " // central corridor"
-    elif y <= 27: comment = " // OPS CENTER"
-    elif y == 28: comment = " // wall + doorways"
-    elif y == 29: comment = " // south corridor"
-    elif y <= 33: comment = " // south wing: gym | corridor | mess | corridor | lounge"
-    else: comment = " // exterior wall"
-    print(f"            {row_str},{comment}")
+    # Compact comments
+    if y <= 1: c = "// north wall"
+    elif y <= 7: c = "// north wing: guard | comms | briefing | CO office"
+    elif y <= 9: c = "// north corridor"
+    elif y <= 13: c = "// break room | medical | corridor | armory"
+    elif y == 14: c = "// wall"
+    elif y <= 33: c = "// OPS CENTER"
+    elif y <= 36: c = "// south corridor"
+    elif y <= 44: c = "// south wing: gym | lockers | mess hall | barracks"
+    else: c = "// south wall"
+    print(f"            {row_str}, {c}")
 print("        ],")
-
-# Elevation: all flat
 print("        elevation: [")
 for y in range(H):
     print(f"            {','.join(['0']*W)},")
 print("        ],")
 
-# Also print updated location positions for the bigger map
-print("\n// Suggested interaction locations:")
-print(f"//   Work:         (20, 20) — center of ops center")
-print(f"//   EnergyDrink:  (21, 29) — south corridor vending")
-print(f"//   WorkOut:      (13, 32) — gym")
-print(f"//   CallAda:      (11, 6)  — comms room")
-print(f"//   Sleep:        (33, 6)  — barracks")
-print(f"//   Eat:          (30, 32) — mess hall")
-print(f"//   Talk:         (19, 6)  — break room")
-print(f"//   Base exit:    (4, 18)  — parking lot")
+# ============================================================
+# Interaction locations + NPC patrol positions
+# ============================================================
+print("""
+// === INTERACTION LOCATIONS ===
+// Enabled:
+//   Work:           (35, 24) — ops center, Kell's desk
+//   EnergyDrink:    (30, 36) — south corridor vending machine
+//   WorkOut:        (17, 41) — gym
+// Disabled (personal):
+//   CallAda:        (24, 5)  — comms room, secure phone
+//   Sleep:          (55, 41) — barracks, bunk
+//   Eat:            (40, 41) — mess hall
+//   Talk:           (16, 12) — break room, couch
+// Disabled (explore):
+//   LeaveBase:      (5, 24)  — parking lot
+//   Storage:        (55, 12) — armory
+//   BulletinBoard:  (15, 9)  — north corridor, notice board
+//   WaterFountain:  (30, 9)  — north corridor, fountain
+//   Window:         (5, 10)  — parking lot, look outside
+//   Briefing room:  (39, 5)  — briefing room, maps
+//   CO office:      (55, 5)  — CO's office, door
+//   Medical bay:    (28, 12) — medical bay
+//   Locker room:    (28, 41) — locker room
+//   Courtyard:      (5, 42)  — smoking area outside
 
-# Hero positions
-print(f"\n// Hero positions:")
-print(f"//   KellFisher:  (20, 20) — at his desk in ops center")
-print(f"//   RexHarmon:   (22, 20) — next to Kell")
+// === HERO POSITIONS ===
+//   KellFisher:  (35, 24) — at his desk
+//   RexHarmon:   (37, 24) — next to Kell
+
+// === NPC PATROL ROUTES (soldiers walking around) ===
+// Corridor walker 1: (11,9) → (60,9) → loop
+// Corridor walker 2: (11,36) → (60,36) → loop
+// Ops center wanderer: random within (12,16)-(61,33)
+// Guard at entrance: stationary at (15, 4)
+// Gym user: stationary at (17, 40)
+// Mess hall eater: stationary at (40, 40)
+// Barracks sleeper: stationary at (55, 40)
+// Medic: stationary at (28, 11)
+""")

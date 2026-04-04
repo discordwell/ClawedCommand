@@ -1737,8 +1737,8 @@ mod tests {
         )));
         // Inline map dimensions
         if let MissionMap::Inline { width, height, ref tiles, ref elevation } = mission.map {
-            assert_eq!(width, 48);
-            assert_eq!(height, 36);
+            assert_eq!(width, 64);
+            assert_eq!(height, 48);
             assert_eq!(tiles.len(), (width * height) as usize);
             assert_eq!(elevation.len(), (width * height) as usize);
         } else {

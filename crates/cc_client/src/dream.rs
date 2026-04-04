@@ -45,22 +45,24 @@ const FORCED_ACTION_THRESHOLD: u32 = 6;
 // Ops center desk positions + occupancy curve
 // ---------------------------------------------------------------------------
 
-/// 20 control desk positions in the ops center (rows 13-26, cols 10-44).
-/// Spread across 4 rows with spacing, skip Kell's position (20,20).
+/// 24 control desk positions in the ops center (rows 16-32, cols 13-59).
+/// Spread across 5 rows, skip Kell's position (35,24).
 fn ops_desk_positions() -> Vec<GridPos> {
     vec![
-        // Row 14 (back row)
-        GridPos::new(12, 14), GridPos::new(16, 14), GridPos::new(20, 14),
-        GridPos::new(24, 14), GridPos::new(28, 14), GridPos::new(32, 14),
-        // Row 18
-        GridPos::new(12, 18), GridPos::new(16, 18),
-        GridPos::new(24, 18), GridPos::new(28, 18), GridPos::new(32, 18),
-        // Row 22 — skip (20,20) where Kell sits
-        GridPos::new(12, 22), GridPos::new(16, 22),
-        GridPos::new(24, 22), GridPos::new(28, 22), GridPos::new(32, 22),
-        // Row 26 (front row)
-        GridPos::new(12, 26), GridPos::new(16, 26), GridPos::new(20, 26),
-        GridPos::new(24, 26),
+        // Row 17 (back)
+        GridPos::new(15, 17), GridPos::new(21, 17), GridPos::new(27, 17),
+        GridPos::new(35, 17), GridPos::new(41, 17), GridPos::new(47, 17),
+        GridPos::new(53, 17),
+        // Row 21
+        GridPos::new(15, 21), GridPos::new(21, 21), GridPos::new(27, 21),
+        GridPos::new(41, 21), GridPos::new(47, 21),
+        // Row 25 — skip (35,24) area where Kell sits
+        GridPos::new(15, 25), GridPos::new(21, 25), GridPos::new(27, 25),
+        GridPos::new(47, 25), GridPos::new(53, 25),
+        // Row 29
+        GridPos::new(15, 29), GridPos::new(21, 29), GridPos::new(27, 29),
+        GridPos::new(35, 29), GridPos::new(41, 29), GridPos::new(47, 29),
+        GridPos::new(53, 29),
     ]
 }
 
@@ -101,21 +103,30 @@ const INTERACT_RADIUS: i32 = 3;
 /// Must be on passable tiles and reachable from the central hallway.
 fn office_location_positions() -> Vec<(OfficeAction, GridPos, &'static str)> {
     vec![
-        // Enabled actions
-        (OfficeAction::Work, GridPos::new(20, 20), "Work"),
-        (OfficeAction::EnergyDrink, GridPos::new(21, 29), "Get Energy Drink"),
-        (OfficeAction::WorkOut, GridPos::new(13, 32), "Work Out"),
-        // Disabled — personal needs
-        (OfficeAction::CallAda, GridPos::new(11, 6), "Call Ada"),
-        (OfficeAction::Sleep, GridPos::new(33, 6), "Sleep"),
-        (OfficeAction::Eat, GridPos::new(30, 32), "Eat"),
-        (OfficeAction::Talk, GridPos::new(19, 6), "Talk to Someone"),
-        // Disabled — base exploration
-        (OfficeAction::LeaveBase, GridPos::new(4, 18), "Leave the Base"),
-        (OfficeAction::Storage, GridPos::new(43, 6), "Check Storage"),
-        (OfficeAction::BulletinBoard, GridPos::new(36, 11), "Read Bulletin Board"),
-        (OfficeAction::WaterFountain, GridPos::new(15, 29), "Get Water"),
-        (OfficeAction::Window, GridPos::new(3, 10), "Look Outside"),
+        // === Enabled (the grind) ===
+        (OfficeAction::Work, GridPos::new(35, 24), "Work"),
+        (OfficeAction::EnergyDrink, GridPos::new(30, 36), "Get Energy Drink"),
+        (OfficeAction::WorkOut, GridPos::new(17, 41), "Work Out"),
+        // === Disabled — personal needs ===
+        (OfficeAction::CallAda, GridPos::new(24, 5), "Call Ada"),
+        (OfficeAction::Sleep, GridPos::new(55, 41), "Sleep"),
+        (OfficeAction::Eat, GridPos::new(40, 41), "Eat Something"),
+        (OfficeAction::Talk, GridPos::new(16, 12), "Sit Down and Talk"),
+        // === Disabled — base exploration ===
+        (OfficeAction::LeaveBase, GridPos::new(5, 24), "Leave the Base"),
+        (OfficeAction::Storage, GridPos::new(55, 12), "Check the Armory"),
+        (OfficeAction::BulletinBoard, GridPos::new(15, 9), "Read Bulletin Board"),
+        (OfficeAction::WaterFountain, GridPos::new(30, 9), "Get Water"),
+        (OfficeAction::Window, GridPos::new(5, 10), "Look Outside"),
+        (OfficeAction::BriefingRoom, GridPos::new(39, 5), "Review the Briefing"),
+        (OfficeAction::CoOffice, GridPos::new(55, 5), "Visit the CO"),
+        (OfficeAction::MedicalBay, GridPos::new(28, 12), "See the Medic"),
+        (OfficeAction::LockerRoom, GridPos::new(28, 41), "Check Your Locker"),
+        (OfficeAction::Courtyard, GridPos::new(5, 42), "Step Outside"),
+        (OfficeAction::GuardPost, GridPos::new(15, 4), "Talk to the Guard"),
+        (OfficeAction::Tv, GridPos::new(13, 11), "Watch the News"),
+        (OfficeAction::PhotoWall, GridPos::new(20, 9), "Look at the Photos"),
+        (OfficeAction::CoffeeMachine, GridPos::new(45, 36), "Get Coffee"),
     ]
 }
 
@@ -126,14 +137,23 @@ fn prop_appearance(action: OfficeAction) -> (Color, &'static str) {
         OfficeAction::EnergyDrink => (Color::srgb(0.1, 0.8, 0.3), "[VEND]"),
         OfficeAction::WorkOut => (Color::srgb(0.8, 0.4, 0.1), "[GYM]"),
         OfficeAction::CallAda => (Color::srgb(0.5, 0.5, 0.5), "[PHONE]"),
-        OfficeAction::Sleep => (Color::srgb(0.4, 0.4, 0.6), "[COT]"),
+        OfficeAction::Sleep => (Color::srgb(0.4, 0.4, 0.6), "[BED]"),
         OfficeAction::Eat => (Color::srgb(0.6, 0.5, 0.3), "[FOOD]"),
-        OfficeAction::Talk => (Color::srgb(0.5, 0.5, 0.5), "[PPL]"),
+        OfficeAction::Talk => (Color::srgb(0.5, 0.5, 0.5), "[COUCH]"),
         OfficeAction::LeaveBase => (Color::srgb(0.3, 0.6, 0.3), "[EXIT]"),
         OfficeAction::Storage => (Color::srgb(0.5, 0.4, 0.3), "[CRATE]"),
         OfficeAction::BulletinBoard => (Color::srgb(0.7, 0.6, 0.3), "[BOARD]"),
         OfficeAction::WaterFountain => (Color::srgb(0.3, 0.5, 0.7), "[H2O]"),
         OfficeAction::Window => (Color::srgb(0.5, 0.6, 0.7), "[WIN]"),
+        OfficeAction::BriefingRoom => (Color::srgb(0.4, 0.5, 0.6), "[MAP]"),
+        OfficeAction::CoOffice => (Color::srgb(0.6, 0.4, 0.3), "[DOOR]"),
+        OfficeAction::MedicalBay => (Color::srgb(0.8, 0.2, 0.2), "[MED]"),
+        OfficeAction::LockerRoom => (Color::srgb(0.4, 0.4, 0.5), "[LOCK]"),
+        OfficeAction::Courtyard => (Color::srgb(0.3, 0.5, 0.3), "[OUT]"),
+        OfficeAction::GuardPost => (Color::srgb(0.5, 0.5, 0.4), "[GUARD]"),
+        OfficeAction::Tv => (Color::srgb(0.3, 0.4, 0.6), "[TV]"),
+        OfficeAction::PhotoWall => (Color::srgb(0.6, 0.5, 0.4), "[PHOTO]"),
+        OfficeAction::CoffeeMachine => (Color::srgb(0.4, 0.3, 0.2), "[COFFEE]"),
     }
 }
 
@@ -150,15 +170,26 @@ fn prop_sprite_path(action: OfficeAction) -> Option<&'static str> {
 /// Dismissive lines Kell says when you try a disabled action.
 fn kell_refusal(action: OfficeAction) -> &'static str {
     match action {
+        // Personal needs — shows he neglects himself
         OfficeAction::CallAda => "Ada can wait. The intercepts won't read themselves.",
         OfficeAction::Sleep => "Sleep is for people who aren't winning a war.",
         OfficeAction::Eat => "I'll eat when the targeting data is processed.",
-        OfficeAction::Talk => "I don't need a pep talk. I need another four hours.",
-        OfficeAction::LeaveBase => "Leave? We're in the middle of a war. Not now.",
-        OfficeAction::Storage => "Nothing in there but MREs and regret.",
-        OfficeAction::BulletinBoard => "Safety briefing, morale poster, safety briefing. Pass.",
+        OfficeAction::Talk => "Sit on a couch? What am I, on vacation?",
+        // Base exploration — reveals worldview and obsession
+        OfficeAction::LeaveBase => "The war doesn't pause because I want fresh air.",
+        OfficeAction::Storage => "Sixty thousand rounds in there. I know. I counted them Tuesday.",
+        OfficeAction::BulletinBoard => "Safety briefing, morale poster, safety briefing. Same as last week.",
         OfficeAction::WaterFountain => "Water's for quitters. Where's my energy drink?",
         OfficeAction::Window => "I know what's out there. That's why I'm in here.",
+        OfficeAction::BriefingRoom => "I wrote that briefing. I don't need to read my own work.",
+        OfficeAction::CoOffice => "The Colonel's asleep. Smart man. Wrong priorities, but smart.",
+        OfficeAction::MedicalBay => "Doc says my blood pressure's high. Doc can file a report about it.",
+        OfficeAction::LockerRoom => "Everything I need is at my desk.",
+        OfficeAction::Courtyard => "The smokers are out there swapping rumors. I deal in data, not gossip.",
+        OfficeAction::GuardPost => "Henderson's been on gate duty for nine hours. At least he gets to sit.",
+        OfficeAction::Tv => "CNN's running the same loop they ran six hours ago. Nothing new.",
+        OfficeAction::PhotoWall => "Unit photo from '09. Half those guys are out. The other half wish they were.",
+        OfficeAction::CoffeeMachine => "That machine's been broken since March. Energy drinks are better anyway.",
         _ => "",
     }
 }
@@ -185,6 +216,13 @@ pub struct DreamRefusalNode;
 /// Marker for a visible prop at an interaction location.
 #[derive(Component)]
 pub struct DreamProp;
+
+/// An ambient NPC (soldier) placed around the base for atmosphere.
+#[derive(Component)]
+pub struct AmbientNpc {
+    /// Grid position this NPC hangs out near.
+    pub home: GridPos,
+}
 
 /// An ops center desk that can be empty or occupied.
 #[derive(Component)]
@@ -225,19 +263,30 @@ pub struct DreamUiHidden(pub bool);
 /// Actions available in the office.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OfficeAction {
+    // === Enabled (the grind) ===
     Work,
     EnergyDrink,
     WorkOut,
-    // Visible but disabled:
+    // === Disabled — personal needs (Kell refuses) ===
     CallAda,
     Sleep,
     Eat,
     Talk,
+    // === Disabled — base exploration (character-revealing) ===
     LeaveBase,
     Storage,
     BulletinBoard,
     WaterFountain,
     Window,
+    BriefingRoom,
+    CoOffice,
+    MedicalBay,
+    LockerRoom,
+    Courtyard,
+    GuardPost,
+    Tv,
+    PhotoWall,
+    CoffeeMachine,
 }
 
 impl OfficeAction {
@@ -562,6 +611,33 @@ fn dream_init_system(
                         Transform::from_xyz(screen.x, -screen.y, base_z),
                     ));
                 }
+            }
+
+            // Ambient NPCs — soldiers around the base for atmosphere
+            let npc_positions = vec![
+                GridPos::new(15, 4),   // guard at entrance
+                GridPos::new(28, 12),  // medic in medical bay
+                GridPos::new(17, 40),  // soldier in gym
+                GridPos::new(40, 40),  // soldier eating in mess
+                GridPos::new(55, 40),  // soldier sleeping in barracks
+                GridPos::new(13, 11),  // soldier watching TV in break room
+                GridPos::new(25, 9),   // soldier in north corridor
+                GridPos::new(50, 9),   // soldier near CO office
+                GridPos::new(20, 36),  // soldier in south corridor
+                GridPos::new(55, 36),  // soldier near barracks entrance
+            ];
+            let npc_mesh = meshes.add(Circle::new(4.0));
+            let npc_mat = materials.add(ColorMaterial::from_color(Color::srgb(0.5, 0.55, 0.4)));
+            for pos in &npc_positions {
+                let screen = world_to_screen(WorldPos::from_grid(*pos));
+                let base_z = cc_core::coords::depth_z(WorldPos::from_grid(*pos)) - 1.0;
+                commands.spawn((
+                    DreamEntity,
+                    AmbientNpc { home: *pos },
+                    Mesh2d(npc_mesh.clone()),
+                    MeshMaterial2d(npc_mat.clone()),
+                    Transform::from_xyz(screen.x, -screen.y, base_z),
+                ));
             }
 
             // Day/night overlay (full-screen UI node)
