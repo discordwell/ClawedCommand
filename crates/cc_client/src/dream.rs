@@ -366,6 +366,7 @@ fn dream_init_system(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut dream: ResMut<DreamOfficeState>,
     mut cmd_queue: ResMut<CommandQueue>,
     campaign: Res<CampaignState>,
@@ -504,10 +505,28 @@ fn dream_init_system(
             ));
 
             // Spawn 20 ops center desks in the CarpetTile area
-            let empty_desk_path = "sprites/dream/desk_pc.png";
-            let occupied_desk_path = "sprites/dream/desk_occupied.png";
+            let empty_desk_path: &str = "sprites/dream/desk_pc.png";
+            let occupied_sheet_path: &str = "sprites/dream/desk_occupied_sheet.png";
             let has_empty = crate::renderer::asset_exists_on_disk(empty_desk_path);
-            let has_occupied = crate::renderer::asset_exists_on_disk(occupied_desk_path);
+            let has_occupied_sheet = crate::renderer::asset_exists_on_disk(occupied_sheet_path);
+
+            // Load occupied desk atlas (4 frames, 128x128 each in a 512x128 sheet)
+            let occupied_atlas = if has_occupied_sheet {
+                let layout = atlas_layouts.add(TextureAtlasLayout::from_grid(
+                    UVec2::new(128, 128), 4, 1, None, None,
+                ));
+                let image = asset_server.load(occupied_sheet_path);
+                Some((layout, image))
+            } else {
+                None
+            };
+
+            let empty_image = if has_empty {
+                Some(asset_server.load(empty_desk_path))
+            } else {
+                None
+            };
+
             let desk_fallback_mat = materials.add(ColorMaterial::from_color(Color::srgb(0.35, 0.38, 0.42)));
             let desk_fallback_mesh = meshes.add(Rectangle::new(8.0, 6.0));
             let initial_occupied = desk_occupancy_at_hour(START_HOUR);
@@ -517,13 +536,36 @@ fn dream_init_system(
                 let base_z = cc_core::coords::depth_z(WorldPos::from_grid(*pos)) - 3.5;
                 let occupied = i < initial_occupied;
 
-                if has_empty {
+                if let Some((ref layout, ref image)) = occupied_atlas {
+                    // Use atlas sprite — frame 0 for empty look, cycling frames for occupied
                     commands.spawn((
                         DreamEntity,
                         OpsDesk { index: i, occupied },
                         OpsDeskAnim { timer: 0.0, frame: 0 },
                         Sprite {
-                            image: asset_server.load(empty_desk_path),
+                            image: if occupied { image.clone() } else {
+                                empty_image.clone().unwrap_or_else(|| image.clone())
+                            },
+                            texture_atlas: if occupied {
+                                Some(TextureAtlas {
+                                    layout: layout.clone(),
+                                    index: 0,
+                                })
+                            } else {
+                                None
+                            },
+                            ..default()
+                        },
+                        Transform::from_xyz(screen.x, -screen.y + 6.0, base_z)
+                            .with_scale(Vec3::splat(0.35)),
+                    ));
+                } else if let Some(ref img) = empty_image {
+                    commands.spawn((
+                        DreamEntity,
+                        OpsDesk { index: i, occupied },
+                        OpsDeskAnim { timer: 0.0, frame: 0 },
+                        Sprite {
+                            image: img.clone(),
                             ..default()
                         },
                         Transform::from_xyz(screen.x, -screen.y + 6.0, base_z)
@@ -969,32 +1011,32 @@ fn format_session_hud(sessions: u32, hour: f32, day: u32) -> String {
 fn dream_desk_occupancy_system(
     time: Res<Time>,
     dream: Res<DreamOfficeState>,
-    mut desks: Query<(&mut OpsDesk, &mut OpsDeskAnim, Option<&mut Sprite>)>,
+    mut desks: Query<(&mut OpsDesk, &mut OpsDeskAnim, &mut Sprite)>,
 ) {
     let target = desk_occupancy_at_hour(dream.current_hour);
 
-    for (mut desk, mut anim, sprite_opt) in desks.iter_mut() {
-        // Update occupied state
+    for (mut desk, mut anim, mut sprite) in desks.iter_mut() {
+        let was_occupied = desk.occupied;
         desk.occupied = desk.index < target;
 
-        // Cycle animation for occupied desks
         if desk.occupied {
+            // Cycle animation frame
             anim.timer += time.delta_secs();
             if anim.timer >= 2.0 {
                 anim.timer = 0.0;
                 anim.frame = (anim.frame + 1) % 4;
             }
-            // Tint occupied desks slightly to show activity (until we have sprite sheets)
-            if let Some(mut sprite) = sprite_opt {
-                sprite.color = Color::WHITE;
+            // Update atlas frame index if sprite has an atlas
+            if let Some(ref mut atlas) = sprite.texture_atlas {
+                atlas.index = anim.frame;
             }
+            sprite.color = Color::WHITE;
         } else {
             anim.frame = 0;
             anim.timer = 0.0;
-            // Dim empty desks
-            if let Some(mut sprite) = sprite_opt {
-                sprite.color = Color::srgba(0.6, 0.6, 0.6, 0.8);
-            }
+            // Remove atlas (show empty desk) and dim
+            sprite.texture_atlas = None;
+            sprite.color = Color::srgba(0.6, 0.6, 0.6, 0.8);
         }
     }
 }
