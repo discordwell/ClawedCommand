@@ -104,13 +104,14 @@ pub struct StraitRadarSweep {
     pub angle: f32,
 }
 
-/// Marker for the dark DEFCON background overlay.
-#[derive(Component)]
-pub struct StraitOverlayBg;
-
-/// Marker for coastline visual mesh.
-#[derive(Component)]
-pub struct StraitCoastline;
+/// Pre-cached coastline contour lines for DEFCON rendering.
+#[derive(Resource, Default)]
+pub struct StraitContourCache {
+    /// Line segments for coastline contours (start, end in screen space).
+    pub coastline_segments: Vec<(Vec2, Vec2)>,
+    /// Shipping lane line (start, end).
+    pub shipping_lane: Option<(Vec2, Vec2)>,
+}
 
 /// Marker for a selected drone (visual feedback).
 #[derive(Component)]
@@ -319,6 +320,7 @@ pub fn register_strait_systems(app: &mut App) {
         .init_resource::<StraitInputState>()
         .init_resource::<StraitMouseConsumed>()
         .insert_resource(StraitVision::new(300, 60))
+        .init_resource::<StraitContourCache>()
         .add_systems(
             PreUpdate,
             (
@@ -328,11 +330,11 @@ pub fn register_strait_systems(app: &mut App) {
                     .run_if(is_dream_strait_active),
             ),
         )
+        // Simulation systems (group 1: init, core loop, drones, tankers)
         .add_systems(
             Update,
             (
                 strait_init_system.run_if(is_dream_strait_active),
-                // Core simulation (Phase 3)
                 strait_tick_system
                     .after(strait_init_system)
                     .run_if(is_dream_strait_active),
@@ -348,22 +350,25 @@ pub fn register_strait_systems(app: &mut App) {
                 strait_move_tankers
                     .after(strait_spawn_tankers)
                     .run_if(is_dream_strait_active),
-                // Drone patrol (Phase 4)
                 strait_move_drones
                     .after(strait_tick_system)
                     .run_if(is_dream_strait_active),
                 strait_update_vision
                     .after(strait_move_drones)
                     .run_if(is_dream_strait_active),
-                // Enemy AI (Phase 5)
                 strait_enemy_director
                     .after(strait_tick_system)
                     .run_if(is_dream_strait_active),
                 strait_spawn_wave_entities
                     .after(strait_enemy_director)
                     .run_if(is_dream_strait_active),
+            ),
+        )
+        // Simulation systems (group 2: combat, rendering, win/lose)
+        .add_systems(
+            Update,
+            (
                 strait_launcher_fsm
-                    .after(strait_spawn_wave_entities)
                     .run_if(is_dream_strait_active),
                 strait_spawn_missiles
                     .after(strait_launcher_fsm)
@@ -378,22 +383,16 @@ pub fn register_strait_systems(app: &mut App) {
                     .after(strait_missile_interception)
                     .run_if(is_dream_strait_active),
                 strait_enemy_aa
-                    .after(strait_tick_system)
                     .run_if(is_dream_strait_active),
-                // Visuals (Phase 2)
+                strait_render_defcon
+                    .run_if(is_dream_strait_active),
                 strait_radar_sweep
-                    .after(strait_move_drones)
                     .run_if(is_dream_strait_active),
                 strait_update_hud
-                    .after(strait_move_tankers)
                     .run_if(is_dream_strait_active),
-                // Satellite decay
                 strait_satellite_decay
                     .run_if(is_dream_strait_active),
-                // Win/lose
                 strait_check_win_lose
-                    .after(strait_missile_impact)
-                    .after(strait_move_tankers)
                     .run_if(is_dream_strait_active),
             ),
         );
@@ -432,27 +431,28 @@ fn strait_init_system(
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut state: ResMut<StraitState>,
     _campaign: Res<CampaignState>,
+    mut clear_color: ResMut<ClearColor>,
+    // Hide all normal world-space rendering
+    mut tile_sprites: Query<&mut Visibility, With<crate::renderer::tilemap::TileSprite>>,
+    mut fog_overlays: Query<&mut Visibility, (With<crate::renderer::fog::FogOverlay>, Without<crate::renderer::tilemap::TileSprite>)>,
 ) {
     if state.initialized {
         return;
     }
     state.initialized = true;
 
-    // -- Dark DEFCON background overlay --
-    commands.spawn((
-        DreamEntity,
-        StraitOverlayBg,
-        Node {
-            position_type: PositionType::Absolute,
-            left: Val::Px(0.0),
-            top: Val::Px(0.0),
-            right: Val::Px(0.0),
-            bottom: Val::Px(0.0),
-            ..default()
-        },
-        BackgroundColor(DEFCON_BG),
-        ZIndex(3),
-    ));
+    // -- DEFCON aesthetic: pitch black background, hide all terrain --
+    *clear_color = ClearColor(Color::srgb(0.01, 0.01, 0.02));
+
+    // Hide all terrain tiles — DEFCON shows lines, not tiles
+    for mut vis in tile_sprites.iter_mut() {
+        *vis = Visibility::Hidden;
+    }
+
+    // Hide fog overlays — strait has its own vision system
+    for mut vis in fog_overlays.iter_mut() {
+        *vis = Visibility::Hidden;
+    }
 
     // -- Spawn HUD --
     spawn_strait_hud(&mut commands);
@@ -499,6 +499,57 @@ fn strait_init_system(
     // -- Spawn initial enemy launchers for wave 1 --
     spawn_enemy_wave(&mut commands, &mut meshes, &mut materials, &state.wave_config, map_width);
     state.enemy_launchers_spawned = true;
+
+    // -- Build coastline contour cache --
+    // Scan the map for Water↔Rock and Shallows↔Rock transitions to draw DEFCON-style vector coastlines.
+    // We check 4 cardinal neighbors of each tile; if a neighbor is a different "zone" we draw an edge.
+    let mut contour = StraitContourCache::default();
+    let map_w = 300usize;
+    let map_h = 60usize;
+    if let Some(mission) = _campaign.current_mission.as_ref() {
+        if let cc_core::mission::MissionMap::Inline { tiles, .. } = &mission.map {
+            for y in 0..map_h {
+                for x in 0..map_w {
+                    let t = tiles[y * map_w + x];
+                    let is_water = matches!(t, cc_core::terrain::TerrainType::Water | cc_core::terrain::TerrainType::Shallows);
+                    let is_rock = matches!(t, cc_core::terrain::TerrainType::Rock);
+
+                    // Check right neighbor
+                    if x + 1 < map_w {
+                        let r = tiles[y * map_w + x + 1];
+                        let r_water = matches!(r, cc_core::terrain::TerrainType::Water | cc_core::terrain::TerrainType::Shallows);
+                        let r_rock = matches!(r, cc_core::terrain::TerrainType::Rock);
+                        if (is_water && r_rock) || (is_rock && r_water) {
+                            let edge_x = x as f32 + 0.5;
+                            let a = strait_screen_from_world(edge_x, y as f32).truncate();
+                            let b = strait_screen_from_world(edge_x, y as f32 + 1.0).truncate();
+                            contour.coastline_segments.push((a, b));
+                        }
+                    }
+                    // Check bottom neighbor
+                    if y + 1 < map_h {
+                        let d = tiles[(y + 1) * map_w + x];
+                        let d_water = matches!(d, cc_core::terrain::TerrainType::Water | cc_core::terrain::TerrainType::Shallows);
+                        let d_rock = matches!(d, cc_core::terrain::TerrainType::Rock);
+                        if (is_water && d_rock) || (is_rock && d_water) {
+                            let edge_y = y as f32 + 0.5;
+                            let a = strait_screen_from_world(x as f32, edge_y).truncate();
+                            let b = strait_screen_from_world(x as f32 + 1.0, edge_y).truncate();
+                            contour.coastline_segments.push((a, b));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Shipping lane (horizontal line across the full strait at y=30)
+    let lane_start = strait_screen_from_world(0.0, 30.0).truncate();
+    let lane_end = strait_screen_from_world(299.0, 30.0).truncate();
+    contour.shipping_lane = Some((lane_start, lane_end));
+
+    info!("DEFCON contour cache: {} coastline segments", contour.coastline_segments.len());
+    commands.insert_resource(contour);
 
     info!("Strait dream sequence initialized: {} patrol drones, {} interceptors",
         drone_count, state.interceptor_count);
@@ -1169,6 +1220,102 @@ fn strait_radar_sweep(
     }
 }
 
+/// DEFCON-style rendering using Gizmos: coastline contours, shipping lane,
+/// radar sweeps, and missile trails. Runs every frame.
+fn strait_render_defcon(
+    mut gizmos: Gizmos,
+    contour: Option<Res<StraitContourCache>>,
+    drones: Query<(&StraitDrone, &Transform, &StraitRadarSweep)>,
+    missiles: Query<(&StraitMissile, &Transform)>,
+    tankers: Query<(&StraitTanker, &Transform)>,
+    input_state: Res<StraitInputState>,
+    state: Res<StraitState>,
+) {
+    let Some(contour) = contour else { return; };
+
+    // -- Coastline contours (glowing green lines) --
+    let coast_color = Color::srgba(0.1, 0.8, 0.3, 0.7);
+    for (a, b) in &contour.coastline_segments {
+        gizmos.line_2d(*a, *b, coast_color);
+    }
+
+    // -- Shipping lane (dim blue dashed) --
+    if let Some((start, end)) = contour.shipping_lane {
+        let lane_color = Color::srgba(0.2, 0.3, 0.7, 0.25);
+        gizmos.line_2d(start, end, lane_color);
+    }
+
+    // -- Radar sweep circles around alive drones --
+    let sweep_color = Color::srgba(0.15, 0.7, 0.25, 0.3);
+    let drone_vision_px = DRONE_VISION_RADIUS as f32 * 28.0; // approximate tile size in pixels
+    for (drone, xform, sweep) in drones.iter() {
+        if !drone.alive {
+            continue;
+        }
+        let center = xform.translation.truncate();
+
+        // Vision circle
+        gizmos.circle_2d(center, drone_vision_px, sweep_color);
+
+        // Radar sweep line (rotating)
+        let sweep_end = center + Vec2::new(sweep.angle.cos(), sweep.angle.sin()) * drone_vision_px;
+        gizmos.line_2d(center, sweep_end, Color::srgba(0.2, 0.9, 0.3, 0.5));
+    }
+
+    // -- Selection rings on selected drones --
+    let select_color = Color::srgba(0.3, 1.0, 0.4, 0.9);
+    for &entity in &input_state.selected_drones {
+        if let Ok((_, xform, _)) = drones.get(entity) {
+            let center = xform.translation.truncate();
+            gizmos.circle_2d(center, 12.0, select_color);
+        }
+    }
+
+    // -- Missile trails (amber arcs) --
+    let missile_color = Color::srgba(0.95, 0.6, 0.1, 0.8);
+    for (missile, xform) in missiles.iter() {
+        if matches!(missile.state, MissileState::InFlight { .. }) {
+            let pos = xform.translation.truncate();
+            // Draw a small bright dot at missile head
+            gizmos.circle_2d(pos, 3.0, missile_color);
+            // Trail line back toward origin
+            if let MissileState::InFlight { origin_x, origin_y, progress, .. } = missile.state {
+                if progress > 0.1 {
+                    let trail_start = strait_screen_from_world(origin_x, origin_y).truncate();
+                    gizmos.line_2d(trail_start, pos, Color::srgba(0.95, 0.5, 0.1, 0.3));
+                }
+            }
+        }
+    }
+
+    // -- Tanker indicators (blue dots with direction) --
+    let tanker_color = Color::srgba(0.3, 0.5, 0.95, 0.8);
+    for (tanker, xform) in tankers.iter() {
+        if tanker.arrived || tanker.destroyed {
+            continue;
+        }
+        let pos = xform.translation.truncate();
+        gizmos.circle_2d(pos, 5.0, tanker_color);
+        // Direction indicator (small line pointing east)
+        gizmos.line_2d(pos, pos + Vec2::new(8.0, 0.0), tanker_color);
+    }
+
+    // -- Mode indicator text would go here in a real implementation --
+    // (Gizmos can't render text, so mode is shown in HUD)
+
+    // -- Sector grid (very faint vertical lines) --
+    if state.drones_alive > 0 {
+        let sector_width = 300.0 / state.drones_alive as f32;
+        let grid_color = Color::srgba(0.1, 0.3, 0.15, 0.1);
+        for i in 1..state.drones_alive {
+            let x = i as f32 * sector_width;
+            let top = strait_screen_from_world(x, 0.0).truncate();
+            let bottom = strait_screen_from_world(x, 59.0).truncate();
+            gizmos.line_2d(top, bottom, grid_color);
+        }
+    }
+}
+
 fn strait_update_hud(
     state: Res<StraitState>,
     mut compute_hud: Query<&mut Text, (With<StraitComputeHud>, Without<StraitInterceptorHud>, Without<StraitTankerHud>, Without<StraitZeroDayHud>, Without<StraitStatusHud>)>,
@@ -1262,7 +1409,7 @@ fn strait_check_win_lose(
 /// Build a StraitSnapshot from current ECS state for Lua consumption.
 fn build_strait_snapshot(
     state: &StraitState,
-    drones: &Query<(Entity, &StraitDrone, &Transform)>,
+    drones: &Query<(Entity, &StraitDrone, &Transform), Without<StraitAaDrone>>,
     tankers: &Query<&StraitTanker>,
     launchers: &Query<(&StraitLauncher, &Transform, &Visibility)>,
     _vision: &StraitVision,
@@ -1333,7 +1480,7 @@ fn build_strait_snapshot(
 fn strait_script_runner(
     mut state: ResMut<StraitState>,
     map_res: Res<cc_sim::resources::MapResource>,
-    drones_q: Query<(Entity, &StraitDrone, &Transform)>,
+    drones_q: Query<(Entity, &StraitDrone, &Transform), Without<StraitAaDrone>>,
     tankers_q: Query<&StraitTanker>,
     launchers_q: Query<(&StraitLauncher, &Transform, &Visibility)>,
     vision: Res<StraitVision>,
