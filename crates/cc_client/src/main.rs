@@ -22,6 +22,8 @@ enum DemoMode {
     Voice,
     /// AI mirror match — two scripted AI armies fight each other.
     Match,
+    /// Dream sequence (Kell Fisher office or lake).
+    Dream(String),
 }
 
 /// Parse `--demo <mode>` from CLI args.
@@ -54,6 +56,13 @@ fn parse_demo_mode() -> Option<DemoMode> {
                 Some("voice") => DemoMode::Voice,
                 Some("match") => DemoMode::Match,
                 Some("4") => DemoMode::Match,
+                Some("dream") => {
+                    let scene = args
+                        .get(i + 2)
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| "office".to_string());
+                    DemoMode::Dream(scene)
+                }
                 Some(n) if n.parse::<u8>().is_ok() => {
                     DemoMode::Canyon(n.parse::<u8>().unwrap().clamp(1, 3))
                 }
@@ -113,6 +122,9 @@ fn main() {
         }
         Some(DemoMode::Match) => {
             setup_match(&mut app);
+        }
+        Some(DemoMode::Dream(scene)) => {
+            setup_dream(&mut app, scene);
         }
         None => {
             // No demo mode — show campaign menu on startup
@@ -298,6 +310,26 @@ fn setup_cutscene(app: &mut App, scenario: u8) {
     app.insert_resource(cutscene::cutscene_camera());
 
     app.insert_resource(demo_player_resources());
+}
+
+/// Set up the dream sequence demo (office or lake).
+#[cfg(not(target_arch = "wasm32"))]
+fn setup_dream(app: &mut App, scene: &str) {
+    let ron_name = match scene {
+        "lake" => "dream_lake",
+        _ => "dream_office",
+    };
+    eprintln!("Dream sequence: {ron_name}");
+
+    let ron_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../assets/campaign")
+        .join(format!("{ron_name}.ron"));
+    let ron_str = std::fs::read_to_string(&ron_path)
+        .unwrap_or_else(|e| panic!("Failed to read {}: {e}", ron_path.display()));
+    let mission: cc_core::mission::MissionDefinition =
+        ron::from_str(&ron_str).unwrap_or_else(|e| panic!("Failed to parse {ron_name}.ron: {e}"));
+
+    load_demo_mission(app, mission, "Dream");
 }
 
 /// Set up the voice command demo.

@@ -357,102 +357,34 @@ fn dream_init_system(
 fn dream_hide_rts_ui(
     campaign: Res<CampaignState>,
     mut ui_hidden: ResMut<DreamUiHidden>,
-    mut resource_bar: Query<&mut Visibility, (With<ResourceBarRoot>, Without<BuildMenuRoot>)>,
-    mut build_menu: Query<
+    mut rts_roots: Query<
         &mut Visibility,
-        (
+        Or<(
+            With<ResourceBarRoot>,
             With<BuildMenuRoot>,
-            Without<ResourceBarRoot>,
-            Without<CommandCardRoot>,
-        ),
-    >,
-    mut cmd_card: Query<
-        &mut Visibility,
-        (
             With<CommandCardRoot>,
-            Without<BuildMenuRoot>,
-            Without<AbilityBarRoot>,
-        ),
-    >,
-    mut ability_bar: Query<
-        &mut Visibility,
-        (
             With<AbilityBarRoot>,
-            Without<CommandCardRoot>,
-            Without<UnitInfoRoot>,
-        ),
-    >,
-    mut unit_info: Query<
-        &mut Visibility,
-        (
             With<UnitInfoRoot>,
-            Without<AbilityBarRoot>,
-            Without<BuildingInfoRoot>,
-        ),
-    >,
-    mut building_info: Query<
-        &mut Visibility,
-        (
             With<BuildingInfoRoot>,
-            Without<UnitInfoRoot>,
-            Without<ResourceBarRoot>,
-        ),
+        )>,
     >,
 ) {
     let is_dream = campaign.phase == CampaignPhase::InMission
         && campaign
             .current_mission
             .as_ref()
-            .is_some_and(|m| {
-                cc_core::mutator::is_dream_mission(&m.mutators)
-            });
+            .is_some_and(|m| cc_core::mutator::is_dream_mission(&m.mutators));
 
-    if !is_dream {
-        // Restore UI visibility if we previously hid it
-        if ui_hidden.0 {
-            ui_hidden.0 = false;
-            let show = Visibility::Inherited;
-            for mut vis in resource_bar.iter_mut() {
-                *vis = show;
-            }
-            for mut vis in build_menu.iter_mut() {
-                *vis = show;
-            }
-            for mut vis in cmd_card.iter_mut() {
-                *vis = show;
-            }
-            for mut vis in ability_bar.iter_mut() {
-                *vis = show;
-            }
-            for mut vis in unit_info.iter_mut() {
-                *vis = show;
-            }
-            for mut vis in building_info.iter_mut() {
-                *vis = show;
-            }
+    if is_dream && !ui_hidden.0 {
+        ui_hidden.0 = true;
+        for mut vis in rts_roots.iter_mut() {
+            *vis = Visibility::Hidden;
         }
-        return;
-    }
-
-    ui_hidden.0 = true;
-    let hide = Visibility::Hidden;
-    for mut vis in resource_bar.iter_mut() {
-        *vis = hide;
-    }
-    for mut vis in build_menu.iter_mut() {
-        *vis = hide;
-    }
-    for mut vis in cmd_card.iter_mut() {
-        *vis = hide;
-    }
-    for mut vis in ability_bar.iter_mut() {
-        *vis = hide;
-    }
-    for mut vis in unit_info.iter_mut() {
-        *vis = hide;
-    }
-    for mut vis in building_info.iter_mut() {
-        *vis = hide;
+    } else if !is_dream && ui_hidden.0 {
+        ui_hidden.0 = false;
+        for mut vis in rts_roots.iter_mut() {
+            *vis = Visibility::Inherited;
+        }
     }
 }
 
