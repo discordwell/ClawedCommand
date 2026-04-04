@@ -82,7 +82,13 @@ impl Plugin for RenderPlugin {
                     .after(crate::setup::setup_game),
             )
             // Phase 3: Systems that depend on the tilemap being spawned
-            .add_systems(Startup, props::spawn_props.after(tilemap::spawn_tilemap))
+            .add_systems(
+                Startup,
+                (
+                    props::spawn_props.after(tilemap::spawn_tilemap),
+                    props::spawn_wall_props.after(tilemap::spawn_tilemap),
+                ),
+            )
             .add_systems(
                 Startup,
                 minimap::setup_minimap.after(tilemap::spawn_tilemap),
