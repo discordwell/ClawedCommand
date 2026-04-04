@@ -2,7 +2,7 @@ use bevy::asset::AssetPlugin;
 use bevy::prelude::*;
 #[cfg(any(feature = "native", feature = "wasm-agent"))]
 use cc_agent::AgentPlugin;
-use cc_client::{cutscene, dream, input, loading, renderer, setup, showcase, ui, voice_demo};
+use cc_client::{cutscene, dream, dream_test, input, loading, renderer, setup, showcase, ui, voice_demo};
 use cc_sim::SimPlugin;
 use cc_sim::campaign::state::{CampaignPhase, CampaignState};
 #[cfg(feature = "native")]
@@ -24,6 +24,8 @@ enum DemoMode {
     Match,
     /// Dream sequence (Kell Fisher office or lake).
     Dream(String),
+    /// Dream sequence with automated test driver (no keyboard needed).
+    DreamTest,
 }
 
 /// Parse `--demo <mode>` from CLI args.
@@ -56,6 +58,7 @@ fn parse_demo_mode() -> Option<DemoMode> {
                 Some("voice") => DemoMode::Voice,
                 Some("match") => DemoMode::Match,
                 Some("4") => DemoMode::Match,
+                Some("dream-test") => DemoMode::DreamTest,
                 Some("dream") => {
                     let scene = args
                         .get(i + 2)
@@ -125,6 +128,11 @@ fn main() {
         }
         Some(DemoMode::Dream(scene)) => {
             setup_dream(&mut app, scene);
+        }
+        Some(DemoMode::DreamTest) => {
+            setup_dream(&mut app, "office");
+            app.insert_resource(dream_test::DreamTestDriver::default());
+            app.add_systems(Update, dream_test::dream_test_driver_system);
         }
         None => {
             // No demo mode — show campaign menu on startup

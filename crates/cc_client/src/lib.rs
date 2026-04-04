@@ -4,6 +4,7 @@
 
 pub mod cutscene;
 pub mod dream;
+pub mod dream_test;
 pub mod input;
 pub mod loading;
 pub mod renderer;
