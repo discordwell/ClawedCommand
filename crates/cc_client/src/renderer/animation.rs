@@ -1,9 +1,10 @@
 use bevy::prelude::*;
 
-use cc_core::components::{AttackStats, Dead, UnitType, Velocity};
+use cc_core::components::{AttackStats, Dead, HeroIdentity, UnitType, Velocity};
 use cc_core::math::FIXED_ZERO;
 
 use crate::renderer::anim_assets::AnimSheets;
+use crate::renderer::hero_sprites::{HeroAnimSheets, HeroSprites};
 use crate::renderer::unit_gen::{UnitSprites, kind_index};
 use crate::setup::UnitMesh;
 
@@ -86,6 +87,8 @@ pub fn advance_animation(
     time: Res<Time>,
     anim_sheets: Option<Res<AnimSheets>>,
     unit_sprites: Option<Res<UnitSprites>>,
+    hero_sprites: Option<Res<HeroSprites>>,
+    hero_anim_sheets: Option<Res<HeroAnimSheets>>,
     mut query: Query<
         (
             &UnitType,
@@ -94,11 +97,12 @@ pub fn advance_animation(
             &mut AnimIndices,
             &mut AnimTimer,
             &mut Sprite,
+            Option<&HeroIdentity>,
         ),
         With<UnitMesh>,
     >,
 ) {
-    for (unit_type, anim_state, mut prev_state, mut indices, mut timer, mut sprite) in
+    for (unit_type, anim_state, mut prev_state, mut indices, mut timer, mut sprite, hero_id) in
         query.iter_mut()
     {
         // Detect state transition
@@ -109,13 +113,28 @@ pub fn advance_animation(
             )));
             timer.reset();
 
-            // Look up the sheet for this state (if any)
-            let idx = kind_index(unit_type.kind);
-            let sheet_opt = anim_sheets.as_ref().and_then(|sheets| match anim_state {
-                AnimState::Walk => sheets.walk[idx].as_ref(),
-                AnimState::Attack => sheets.attack[idx].as_ref(),
-                AnimState::Idle => None,
+            // Check hero-specific sheets first
+            let hero_sheet_opt = hero_id.and_then(|hi| {
+                hero_anim_sheets.as_ref()?.walk.get(&hi.hero_id).cloned()
             });
+            let hero_idle_opt = hero_id.and_then(|hi| {
+                hero_sprites.as_ref()?.sprites.get(&hi.hero_id).cloned()
+            });
+
+            // Look up the sheet for this state
+            let sheet_opt = if let Some(ref hero_sheet) = hero_sheet_opt {
+                match anim_state {
+                    AnimState::Walk => Some(hero_sheet),
+                    _ => None,
+                }
+            } else {
+                let idx = kind_index(unit_type.kind);
+                anim_sheets.as_ref().and_then(|sheets| match anim_state {
+                    AnimState::Walk => sheets.walk[idx].as_ref(),
+                    AnimState::Attack => sheets.attack[idx].as_ref(),
+                    AnimState::Idle => None,
+                })
+            };
 
             if let Some((img, layout)) = sheet_opt {
                 // Swap to animation sheet
@@ -128,7 +147,11 @@ pub fn advance_animation(
                 indices.last = 3;
             } else {
                 // No sheet for this state (or Idle) — fallback to idle sprite
-                if let Some(ref sprites) = unit_sprites {
+                // Use hero idle if available, otherwise unit kind idle
+                if let Some(hero_img) = hero_idle_opt {
+                    sprite.image = hero_img;
+                } else if let Some(ref sprites) = unit_sprites {
+                    let idx = kind_index(unit_type.kind);
                     sprite.image = sprites.sprites[idx].clone();
                 }
                 sprite.texture_atlas = None;

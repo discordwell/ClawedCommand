@@ -11,15 +11,45 @@ pub struct HeroSprites {
     pub sprites: HashMap<HeroId, Handle<Image>>,
 }
 
-/// Load hero sprites at startup by scanning `assets/sprites/heroes/{slug}_idle.png`.
-/// Only loads sprites that exist on disk.
-pub fn load_hero_sprites(mut commands: Commands, asset_server: Res<AssetServer>) {
+/// Resource holding hero-specific walk animation sheets.
+#[derive(Resource, Default)]
+pub struct HeroAnimSheets {
+    pub walk: HashMap<HeroId, (Handle<Image>, Handle<TextureAtlasLayout>)>,
+}
+
+/// Load hero sprites + walk sheets at startup.
+pub fn load_hero_sprites(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut layouts: ResMut<Assets<TextureAtlasLayout>>,
+) {
     let mut sprites = HashMap::new();
+    let mut walk_sheets = HashMap::new();
+
+    let walk_layout = layouts.add(TextureAtlasLayout::from_grid(
+        UVec2::new(128, 128),
+        4,
+        1,
+        None,
+        None,
+    ));
+
     for hero in ALL_HEROES {
-        let path = format!("sprites/heroes/{}_idle.png", hero_slug(hero));
-        if super::asset_exists_on_disk(&path) {
-            sprites.insert(hero, asset_server.load(path));
+        let slug = hero_slug(hero);
+
+        // Idle sprite
+        let idle_path = format!("sprites/heroes/{slug}_idle.png");
+        if super::asset_exists_on_disk(&idle_path) {
+            sprites.insert(hero, asset_server.load(idle_path));
+        }
+
+        // Walk sheet
+        let walk_path = format!("sprites/heroes/{slug}_walk.png");
+        if super::asset_exists_on_disk(&walk_path) {
+            walk_sheets.insert(hero, (asset_server.load(walk_path), walk_layout.clone()));
         }
     }
+
     commands.insert_resource(HeroSprites { sprites });
+    commands.insert_resource(HeroAnimSheets { walk: walk_sheets });
 }

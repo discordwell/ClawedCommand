@@ -433,7 +433,7 @@ fn strait_init_system(
     _campaign: Res<CampaignState>,
     mut clear_color: ResMut<ClearColor>,
     // Hide all normal world-space rendering
-    mut tile_sprites: Query<&mut Visibility, With<crate::renderer::tilemap::TileSprite>>,
+    mut tile_sprites: Query<&mut Visibility, (With<crate::renderer::tilemap::TileSprite>, Without<crate::renderer::fog::FogOverlay>)>,
     mut fog_overlays: Query<&mut Visibility, (With<crate::renderer::fog::FogOverlay>, Without<crate::renderer::tilemap::TileSprite>)>,
 ) {
     if state.initialized {
@@ -763,7 +763,7 @@ fn strait_spawn_tankers(
     }
 
     // Wait for initial delay
-    if state.mission_tick < 60 {
+    if state.mission_tick < 200 {
         return;
     }
 
@@ -1147,7 +1147,7 @@ fn strait_missile_impact(
 }
 
 fn strait_enemy_aa(
-    mut aa_drones: Query<(&mut StraitAaDrone, &mut Transform)>,
+    mut aa_drones: Query<(&mut StraitAaDrone, &mut Transform), Without<StraitDrone>>,
     mut patrol_drones: Query<(Entity, &mut StraitDrone, &Transform), Without<StraitAaDrone>>,
     mut state: ResMut<StraitState>,
     time: Res<Time>,
@@ -1228,8 +1228,11 @@ fn strait_render_defcon(
     drones: Query<(&StraitDrone, &Transform, &StraitRadarSweep)>,
     missiles: Query<(&StraitMissile, &Transform)>,
     tankers: Query<(&StraitTanker, &Transform)>,
+    launchers: Query<(&StraitLauncher, &Transform, &Visibility)>,
+    aa_drones: Query<(&StraitAaDrone, &Transform)>,
     input_state: Res<StraitInputState>,
     state: Res<StraitState>,
+    vision: Res<StraitVision>,
 ) {
     let Some(contour) = contour else { return; };
 
@@ -1302,6 +1305,53 @@ fn strait_render_defcon(
 
     // -- Mode indicator text would go here in a real implementation --
     // (Gizmos can't render text, so mode is shown in HUD)
+
+    // -- Enemy launchers (red triangles when visible) --
+    let launcher_color = Color::srgba(0.9, 0.15, 0.1, 0.9);
+    let launcher_setup_color = Color::srgba(0.9, 0.5, 0.1, 0.7);
+    for (launcher, xform, vis) in launchers.iter() {
+        // Only draw if in player vision
+        let (gx, gy) = screen_to_grid(xform.translation.x, xform.translation.y);
+        if !vision.is_visible(gx, gy) && *vis == Visibility::Hidden {
+            continue;
+        }
+        let pos = xform.translation.truncate();
+        let color = if launcher.phase == LauncherPhase::Firing {
+            launcher_color
+        } else {
+            launcher_setup_color
+        };
+        let label = if launcher.is_decoy { "?" } else { "!" };
+        // Draw triangle pointing up
+        let size = 8.0;
+        let top = pos + Vec2::new(0.0, size);
+        let bl = pos + Vec2::new(-size * 0.7, -size * 0.5);
+        let br = pos + Vec2::new(size * 0.7, -size * 0.5);
+        gizmos.line_2d(top, bl, color);
+        gizmos.line_2d(bl, br, color);
+        gizmos.line_2d(br, top, color);
+        // Firing indicator: pulsing circle
+        if launcher.phase == LauncherPhase::Firing {
+            gizmos.circle_2d(pos, 12.0, launcher_color);
+        }
+    }
+
+    // -- Enemy AA drones (small red dots) --
+    let aa_color = Color::srgba(0.8, 0.2, 0.2, 0.8);
+    for (aa, xform) in aa_drones.iter() {
+        if !aa.alive {
+            continue;
+        }
+        let pos = xform.translation.truncate();
+        gizmos.circle_2d(pos, 3.0, aa_color);
+        // Movement direction indicator
+        if let Some(target) = aa.target_drone {
+            if let Ok((_, target_xform, _)) = drones.get(target) {
+                let dir = (target_xform.translation.truncate() - pos).normalize_or_zero() * 10.0;
+                gizmos.line_2d(pos, pos + dir, Color::srgba(0.8, 0.2, 0.2, 0.4));
+            }
+        }
+    }
 
     // -- Sector grid (very faint vertical lines) --
     if state.drones_alive > 0 {
@@ -1409,7 +1459,7 @@ fn strait_check_win_lose(
 /// Build a StraitSnapshot from current ECS state for Lua consumption.
 fn build_strait_snapshot(
     state: &StraitState,
-    drones: &Query<(Entity, &StraitDrone, &Transform), Without<StraitAaDrone>>,
+    drones: &Query<(Entity, &mut StraitDrone, &Transform), Without<StraitAaDrone>>,
     tankers: &Query<&StraitTanker>,
     launchers: &Query<(&StraitLauncher, &Transform, &Visibility)>,
     _vision: &StraitVision,
@@ -1480,18 +1530,17 @@ fn build_strait_snapshot(
 fn strait_script_runner(
     mut state: ResMut<StraitState>,
     map_res: Res<cc_sim::resources::MapResource>,
-    drones_q: Query<(Entity, &StraitDrone, &Transform), Without<StraitAaDrone>>,
     tankers_q: Query<&StraitTanker>,
     launchers_q: Query<(&StraitLauncher, &Transform, &Visibility)>,
     vision: Res<StraitVision>,
-    mut drone_mut: Query<&mut StraitDrone, Without<StraitAaDrone>>,
+    mut drone_mut: Query<(Entity, &mut StraitDrone, &Transform), Without<StraitAaDrone>>,
     mut commands: Commands,
 ) {
     if state.mission_complete || state.active_scripts.is_empty() {
         return;
     }
 
-    let snapshot = build_strait_snapshot(&state, &drones_q, &tankers_q, &launchers_q, &vision);
+    let snapshot = build_strait_snapshot(&state, &drone_mut, &tankers_q, &launchers_q, &vision);
 
     // Build a minimal GameStateSnapshot (empty — strait doesn't use standard units)
     let empty_snapshot = cc_agent::snapshot::GameStateSnapshot {
@@ -1548,14 +1597,14 @@ fn strait_script_runner(
 fn apply_strait_command(
     cmd: cc_agent::strait_bindings::StraitCommand,
     state: &mut StraitState,
-    drone_mut: &mut Query<&mut StraitDrone, Without<StraitAaDrone>>,
+    drone_mut: &mut Query<(Entity, &mut StraitDrone, &Transform), Without<StraitAaDrone>>,
     commands: &mut Commands,
 ) {
     use cc_agent::strait_bindings::StraitCommand;
 
     match cmd {
         StraitCommand::SetPatrol { drone_id, waypoints } => {
-            for mut drone in drone_mut.iter_mut() {
+            for (_, mut drone, _) in drone_mut.iter_mut() {
                 if drone.drone_id == drone_id && drone.alive {
                     drone.patrol_waypoints = waypoints
                         .iter()
