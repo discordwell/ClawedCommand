@@ -65,7 +65,10 @@ pub fn spawn_unit_visuals(
                     ..default()
                 },
                 Transform::from_xyz(screen.x, -screen.y + elev, depth_z(pos.world))
-                    .with_scale(Vec3::splat(scale)),
+                    .with_scale(Vec3::splat(
+                        // Hero sprites with custom art render bigger for visibility
+                        if has_hero_sprite { scale.max(0.75) } else { scale },
+                    )),
                 AnimState::default(),
                 PrevAnimState::default(),
                 AnimIndices::default(),

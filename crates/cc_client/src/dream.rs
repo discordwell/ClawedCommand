@@ -42,6 +42,52 @@ const HOURS_PER_SESSION: f32 = 4.0;
 const FORCED_ACTION_THRESHOLD: u32 = 6;
 
 // ---------------------------------------------------------------------------
+// Ops center desk positions + occupancy curve
+// ---------------------------------------------------------------------------
+
+/// 20 control desk positions in the CarpetTile area (rows 6-8, cols 2-17).
+/// Laid out in 3 rows of ~7 desks each, staggered.
+fn ops_desk_positions() -> Vec<GridPos> {
+    vec![
+        // Back row (row 6)
+        GridPos::new(3, 6), GridPos::new(5, 6), GridPos::new(7, 6),
+        GridPos::new(11, 6), GridPos::new(13, 6), GridPos::new(15, 6), GridPos::new(17, 6),
+        // Middle row (row 7) — Kell's row, skip (10,7) where he sits
+        GridPos::new(3, 7), GridPos::new(5, 7), GridPos::new(7, 7),
+        GridPos::new(13, 7), GridPos::new(15, 7), GridPos::new(17, 7),
+        // Front row (row 8)
+        GridPos::new(3, 8), GridPos::new(5, 8), GridPos::new(7, 8),
+        GridPos::new(11, 8), GridPos::new(13, 8), GridPos::new(15, 8), GridPos::new(17, 8),
+    ]
+}
+
+/// How many desks should be occupied at a given hour (0-23).
+/// Night: 1-2, transitions: 7-8, day: ~15.
+fn desk_occupancy_at_hour(hour: f32) -> usize {
+    let h = hour % 24.0;
+    let count = if h >= 0.0 && h < 5.0 {
+        // Deep night: 1-2
+        1.5 + 0.5 * (h / 5.0)
+    } else if h >= 5.0 && h < 8.0 {
+        // Dawn ramp-up: 2 → 8
+        2.0 + 6.0 * ((h - 5.0) / 3.0)
+    } else if h >= 8.0 && h < 12.0 {
+        // Morning: 8 → 15
+        8.0 + 7.0 * ((h - 8.0) / 4.0)
+    } else if h >= 12.0 && h < 17.0 {
+        // Peak day: ~15
+        15.0
+    } else if h >= 17.0 && h < 20.0 {
+        // Evening wind-down: 15 → 7
+        15.0 - 8.0 * ((h - 17.0) / 3.0)
+    } else {
+        // Late night: 7 → 2
+        7.0 - 5.0 * ((h - 20.0) / 4.0)
+    };
+    (count as usize).clamp(1, 20)
+}
+
+// ---------------------------------------------------------------------------
 // Clickable office locations (grid positions)
 // ---------------------------------------------------------------------------
 
@@ -118,6 +164,22 @@ pub struct DreamRefusalNode;
 /// Marker for a visible prop at an interaction location.
 #[derive(Component)]
 pub struct DreamProp;
+
+/// An ops center desk that can be empty or occupied.
+#[derive(Component)]
+pub struct OpsDesk {
+    /// Index into ops_desk_positions() for stable identity.
+    pub index: usize,
+    /// Currently occupied (has person at desk).
+    pub occupied: bool,
+}
+
+/// Timer for cycling the occupied desk animation frame.
+#[derive(Component)]
+pub struct OpsDeskAnim {
+    pub timer: f32,
+    pub frame: usize,
+}
 
 /// Marker for the day/night overlay node.
 #[derive(Component)]
@@ -251,6 +313,7 @@ impl Plugin for DreamPlugin {
                 dream_day_night_system.run_if(is_dream_office_active),
                 dream_prompt_system.run_if(is_dream_office_active),
                 dream_session_hud_system.run_if(is_dream_office_active),
+                dream_desk_occupancy_system.run_if(is_dream_office_active),
                 dream_passout_system.run_if(is_dream_office_active),
                 dream_cleanup_system,
             ),
@@ -436,6 +499,44 @@ fn dream_init_system(
                 },
                 ZIndex(25),
             ));
+
+            // Spawn 20 ops center desks in the CarpetTile area
+            let empty_desk_path = "sprites/dream/desk_pc.png";
+            let occupied_desk_path = "sprites/dream/desk_occupied.png";
+            let has_empty = crate::renderer::asset_exists_on_disk(empty_desk_path);
+            let has_occupied = crate::renderer::asset_exists_on_disk(occupied_desk_path);
+            let desk_fallback_mat = materials.add(ColorMaterial::from_color(Color::srgb(0.35, 0.38, 0.42)));
+            let desk_fallback_mesh = meshes.add(Rectangle::new(8.0, 6.0));
+            let initial_occupied = desk_occupancy_at_hour(START_HOUR);
+
+            for (i, pos) in ops_desk_positions().iter().enumerate() {
+                let screen = world_to_screen(WorldPos::from_grid(*pos));
+                let base_z = cc_core::coords::depth_z(WorldPos::from_grid(*pos)) - 3.5;
+                let occupied = i < initial_occupied;
+
+                if has_empty {
+                    commands.spawn((
+                        DreamEntity,
+                        OpsDesk { index: i, occupied },
+                        OpsDeskAnim { timer: 0.0, frame: 0 },
+                        Sprite {
+                            image: asset_server.load(empty_desk_path),
+                            ..default()
+                        },
+                        Transform::from_xyz(screen.x, -screen.y + 6.0, base_z)
+                            .with_scale(Vec3::splat(0.35)),
+                    ));
+                } else {
+                    commands.spawn((
+                        DreamEntity,
+                        OpsDesk { index: i, occupied },
+                        OpsDeskAnim { timer: 0.0, frame: 0 },
+                        Mesh2d(desk_fallback_mesh.clone()),
+                        MeshMaterial2d(desk_fallback_mat.clone()),
+                        Transform::from_xyz(screen.x, -screen.y, base_z),
+                    ));
+                }
+            }
 
             // Day/night overlay (full-screen UI node)
             commands.spawn((
@@ -859,6 +960,40 @@ fn format_session_hud(sessions: u32, hour: f32, day: u32) -> String {
     let h = hour as u32 % 24;
     let m = ((hour.fract()) * 60.0) as u32;
     format!("SESSION {sessions}/{MAX_WORK_SESSIONS}  |  Day {day}  |  {:02}:{:02}", h, m)
+}
+
+/// Update desk occupancy based on current hour + cycle animation frames.
+fn dream_desk_occupancy_system(
+    time: Res<Time>,
+    dream: Res<DreamOfficeState>,
+    mut desks: Query<(&mut OpsDesk, &mut OpsDeskAnim, Option<&mut Sprite>)>,
+) {
+    let target = desk_occupancy_at_hour(dream.current_hour);
+
+    for (mut desk, mut anim, sprite_opt) in desks.iter_mut() {
+        // Update occupied state
+        desk.occupied = desk.index < target;
+
+        // Cycle animation for occupied desks
+        if desk.occupied {
+            anim.timer += time.delta_secs();
+            if anim.timer >= 2.0 {
+                anim.timer = 0.0;
+                anim.frame = (anim.frame + 1) % 4;
+            }
+            // Tint occupied desks slightly to show activity (until we have sprite sheets)
+            if let Some(mut sprite) = sprite_opt {
+                sprite.color = Color::WHITE;
+            }
+        } else {
+            anim.frame = 0;
+            anim.timer = 0.0;
+            // Dim empty desks
+            if let Some(mut sprite) = sprite_opt {
+                sprite.color = Color::srgba(0.6, 0.6, 0.6, 0.8);
+            }
+        }
+    }
 }
 
 /// Clean up dream entities when leaving a dream mission.
