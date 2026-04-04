@@ -36,9 +36,9 @@ enum TestAction {
     AdvanceDialogue,
     /// Take a screenshot with a label.
     Screenshot(&'static str),
-    /// Move Kell to a grid position.
-    MoveTo(GridPos),
-    /// Wait N real seconds for movement to complete.
+    /// Move Kell to a grid position and wait until he arrives (within radius).
+    MoveToAndWait(GridPos),
+    /// Wait N real seconds.
     WaitSecs(f32),
     /// Simulate pressing F (trigger nearby interaction).
     PressF,
@@ -61,6 +61,10 @@ pub struct DreamTestDriver {
     /// Whether we've started (wait for first frame to render).
     started: bool,
     start_delay: f32,
+    /// Grid position we're waiting for Kell to reach.
+    move_target: Option<GridPos>,
+    /// Timeout for movement (bail after this many seconds).
+    move_timeout: f32,
 }
 
 impl Default for DreamTestDriver {
@@ -72,7 +76,9 @@ impl Default for DreamTestDriver {
             screenshot_counter: 0,
             output_dir: PathBuf::from(TEST_OUTPUT_DIR),
             started: false,
-            start_delay: 2.0, // wait for first render frame + asset loading
+            start_delay: 2.0,
+            move_target: None,
+            move_timeout: 0.0,
         }
     }
 }
@@ -85,74 +91,59 @@ fn build_test_script() -> Vec<TestAction> {
         TestAction::AdvanceDialogue,
         TestAction::Screenshot("02_post_dialogue"),
         // === Work at desk ===
-        TestAction::Log("Moving to desk (Work)"),
-        TestAction::MoveTo(GridPos::new(20, 20)),
-        TestAction::WaitSecs(3.0),
+        TestAction::Log("Walking to desk"),
+        TestAction::MoveToAndWait(GridPos::new(20, 20)),
         TestAction::Screenshot("03_at_desk"),
         TestAction::PressF,
         TestAction::WaitForFreeRoam,
-        TestAction::Screenshot("04_after_work_1"),
-        // === Explore north wing ===
-        TestAction::Log("Exploring barracks (Sleep)"),
-        TestAction::MoveTo(GridPos::new(33, 6)),
-        TestAction::WaitSecs(8.0),
+        TestAction::Screenshot("04_after_work"),
+        // === Walk to barracks (screenshot en route to show walking) ===
+        TestAction::Log("Walking to barracks"),
+        TestAction::MoveToAndWait(GridPos::new(33, 6)),
         TestAction::Screenshot("05_barracks"),
         TestAction::PressF,
         TestAction::WaitSecs(2.0),
         TestAction::Screenshot("06_sleep_refusal"),
-        TestAction::Log("Exploring comms room (Call Ada)"),
-        TestAction::MoveTo(GridPos::new(11, 6)),
-        TestAction::WaitSecs(8.0),
+        // === Walk across to comms (long walk, take mid-journey screenshot) ===
+        TestAction::Log("Walking to comms room"),
+        TestAction::MoveToAndWait(GridPos::new(11, 6)),
         TestAction::Screenshot("07_comms"),
         TestAction::PressF,
         TestAction::WaitSecs(2.0),
-        TestAction::Log("Exploring break room (Talk)"),
-        TestAction::MoveTo(GridPos::new(19, 6)),
-        TestAction::WaitSecs(5.0),
+        // === Try to leave the base ===
+        TestAction::Log("Walking to parking lot"),
+        TestAction::MoveToAndWait(GridPos::new(4, 18)),
+        TestAction::Screenshot("08_parking"),
         TestAction::PressF,
         TestAction::WaitSecs(2.0),
-        TestAction::Screenshot("08_break_room"),
-        // === Try to leave ===
-        TestAction::Log("Trying to leave the base"),
-        TestAction::MoveTo(GridPos::new(4, 18)),
-        TestAction::WaitSecs(10.0),
-        TestAction::Screenshot("09_parking_lot"),
-        TestAction::PressF,
-        TestAction::WaitSecs(2.0),
-        TestAction::Screenshot("10_leave_refusal"),
-        // === Look outside ===
-        TestAction::Log("Looking outside"),
-        TestAction::MoveTo(GridPos::new(3, 10)),
-        TestAction::WaitSecs(5.0),
-        TestAction::PressF,
-        TestAction::WaitSecs(2.0),
-        TestAction::Screenshot("11_window"),
+        TestAction::Screenshot("09_leave_refusal"),
         // === South wing — gym ===
-        TestAction::Log("Heading to gym"),
-        TestAction::MoveTo(GridPos::new(13, 32)),
-        TestAction::WaitSecs(12.0),
-        TestAction::Screenshot("12_gym"),
+        TestAction::Log("Walking to gym"),
+        TestAction::MoveToAndWait(GridPos::new(13, 32)),
+        TestAction::Screenshot("10_gym"),
         TestAction::PressF,
         TestAction::WaitForFreeRoam,
-        TestAction::Screenshot("13_after_workout"),
-        // === Get energy drink ===
-        TestAction::Log("Getting energy drink"),
-        TestAction::MoveTo(GridPos::new(21, 29)),
-        TestAction::WaitSecs(6.0),
+        TestAction::Screenshot("11_after_workout"),
+        // === Mess hall ===
+        TestAction::Log("Walking to mess hall"),
+        TestAction::MoveToAndWait(GridPos::new(30, 32)),
+        TestAction::Screenshot("12_mess"),
+        TestAction::PressF,
+        TestAction::WaitSecs(2.0),
+        // === Energy drink ===
+        TestAction::Log("Walking to vending machine"),
+        TestAction::MoveToAndWait(GridPos::new(21, 29)),
+        TestAction::Screenshot("13_vending"),
         TestAction::PressF,
         TestAction::WaitForFreeRoam,
-        TestAction::Screenshot("14_after_drink"),
         // === Back to work ===
-        TestAction::Log("Back to work — several sessions"),
-        TestAction::MoveTo(GridPos::new(20, 20)),
-        TestAction::WaitSecs(8.0),
+        TestAction::Log("Back to desk for more work"),
+        TestAction::MoveToAndWait(GridPos::new(20, 20)),
         TestAction::PressF,
         TestAction::WaitForFreeRoam,
-        TestAction::PressF,
-        TestAction::WaitForFreeRoam,
-        TestAction::Screenshot("15_work_sessions"),
+        TestAction::Screenshot("14_work_done"),
         TestAction::Log("=== Dream Test: complete ==="),
-        TestAction::Screenshot("16_final"),
+        TestAction::Screenshot("15_final"),
         TestAction::Exit,
     ]
 }
@@ -246,17 +237,43 @@ pub fn dream_test_driver_system(
             }
         }
 
-        TestAction::MoveTo(target) => {
-            if let Some((entity, _, _, _)) = heroes.iter().find(|(_, hi, owner, _)| {
-                hi.hero_id == HeroId::KellFisher && owner.player_id == 0
-            }) {
-                cmd_queue.push(GameCommand::Move {
-                    unit_ids: vec![EntityId::from_entity(entity)],
-                    target,
-                });
-                eprintln!("[dream-test] Move to ({}, {})", target.x, target.y);
+        TestAction::MoveToAndWait(target) => {
+            if driver.move_target.is_none() {
+                // Issue the move command
+                if let Some((entity, _, _, _)) = heroes.iter().find(|(_, hi, owner, _)| {
+                    hi.hero_id == HeroId::KellFisher && owner.player_id == 0
+                }) {
+                    cmd_queue.push(GameCommand::Move {
+                        unit_ids: vec![EntityId::from_entity(entity)],
+                        target,
+                    });
+                    eprintln!("[dream-test] Move to ({}, {}) — waiting for arrival", target.x, target.y);
+                }
+                driver.move_target = Some(target);
+                driver.move_timeout = 30.0; // bail after 30s
+            } else {
+                // Poll: check if Kell is near the target
+                driver.move_timeout -= time.delta_secs();
+                if let Some((_, _, _, pos)) = heroes.iter().find(|(_, hi, owner, _)| {
+                    hi.hero_id == HeroId::KellFisher && owner.player_id == 0
+                }) {
+                    let grid = pos.world.to_grid();
+                    let dx = (grid.x - target.x).abs();
+                    let dy = (grid.y - target.y).abs();
+                    if dx.max(dy) <= 3 {
+                        eprintln!("[dream-test] Arrived at ({}, {})", target.x, target.y);
+                        driver.move_target = None;
+                        driver.current += 1;
+                    } else if driver.move_timeout <= 0.0 {
+                        eprintln!("[dream-test] Timeout reaching ({}, {}), at ({}, {})", target.x, target.y, grid.x, grid.y);
+                        driver.move_target = None;
+                        driver.current += 1;
+                    }
+                } else {
+                    driver.move_target = None;
+                    driver.current += 1;
+                }
             }
-            driver.current += 1;
         }
 
         TestAction::WaitSecs(secs) => {

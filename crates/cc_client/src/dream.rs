@@ -305,7 +305,7 @@ impl Default for DreamOfficeState {
             nearby_action: None,
             refusal_timer: 0.0,
             rex_departed: false,
-            rex_departure_timer: 4.0,
+            rex_departure_timer: 0.0, // despawn immediately when dialogue ends
         }
     }
 }

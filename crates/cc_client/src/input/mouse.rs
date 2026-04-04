@@ -109,9 +109,9 @@ pub fn handle_mouse_input(
     if is_dream {
         if mouse_button.just_pressed(MouseButton::Left) {
             let target = iso_world.to_grid();
-            // Find the player hero (Kell Fisher in dream)
-            if let Some((kelpie_entity, _, _)) = hero_q.iter().find(|(_, _hi, owner)| {
-                owner.player_id == LOCAL_PLAYER
+            // Find Kell Fisher specifically (not Rex or other heroes)
+            if let Some((kelpie_entity, _, _)) = hero_q.iter().find(|(_, hi, owner)| {
+                hi.hero_id == cc_core::hero::HeroId::KellFisher && owner.player_id == LOCAL_PLAYER
             }) {
                 state.cmd_queue.push(GameCommand::Move {
                     unit_ids: vec![EntityId::from_entity(kelpie_entity)],
