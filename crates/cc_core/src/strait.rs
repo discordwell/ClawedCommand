@@ -221,6 +221,22 @@ pub const TANKER_SPEED: f32 = 0.06;
 
 /// Missile flight time in ticks.
 pub const MISSILE_FLIGHT_TICKS: u32 = 80;
+
+/// Compute cost to rebuild a destroyed drone from Dubai base.
+pub const DRONE_REBUILD_COST: f32 = 25.0;
+/// Ticks to rebuild a drone once started.
+pub const DRONE_REBUILD_TICKS: u32 = 120;
+
+/// Compute cost to call an airstrike on a visible target.
+pub const AIRSTRIKE_COST: f32 = 30.0;
+/// Ticks for airstrike to arrive after calling it.
+pub const AIRSTRIKE_DELAY_TICKS: u32 = 40;
+/// Airstrike damage radius in tiles.
+pub const AIRSTRIKE_RADIUS: i32 = 3;
+
+/// Maximum ticks after convoy launch before mission auto-fails (time pressure).
+pub const CONVOY_TIME_LIMIT: u64 = 8000;
+
 /// Build cost (compute ticks) for each zero-day type.
 pub fn zero_day_build_cost(zd: ZeroDayType) -> f32 {
     match zd {

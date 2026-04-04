@@ -133,6 +133,8 @@ pub enum StraitInputMode {
     Normal,
     SatelliteScan,
     ZeroDayDeploy(ZeroDayType),
+    /// Click to call an airstrike on a visible position.
+    Airstrike,
 }
 
 /// Player input state for the strait dream.
@@ -203,6 +205,18 @@ pub struct StraitState {
     pub mission_complete: bool,
     /// Convoy doesn't launch until the player presses Enter.
     pub convoy_launched: bool,
+    /// Ticks since convoy launched (for time limit).
+    pub convoy_ticks: u64,
+
+    // Drone rebuilding
+    /// Whether a drone is currently being rebuilt at Dubai.
+    pub drone_rebuilding: bool,
+    /// Remaining ticks until the drone rebuild completes.
+    pub drone_rebuild_timer: u32,
+
+    // Airstrikes
+    /// Pending airstrikes: (grid_x, grid_y, ticks_remaining).
+    pub pending_airstrikes: Vec<(i32, i32, u32)>,
 
     // Scripts registered for execution each tick
     pub active_scripts: Vec<StraitScript>,
@@ -241,6 +255,10 @@ impl Default for StraitState {
             mission_tick: 0,
             mission_complete: false,
             convoy_launched: false,
+            convoy_ticks: 0,
+            drone_rebuilding: false,
+            drone_rebuild_timer: 0,
+            pending_airstrikes: Vec::new(),
             active_scripts: Vec::new(),
         }
     }
@@ -394,6 +412,10 @@ pub fn register_strait_systems(app: &mut App) {
                 strait_update_hud
                     .run_if(is_dream_strait_active),
                 strait_satellite_decay
+                    .run_if(is_dream_strait_active),
+                strait_drone_rebuild
+                    .run_if(is_dream_strait_active),
+                strait_airstrike_system
                     .run_if(is_dream_strait_active),
                 strait_check_win_lose
                     .run_if(is_dream_strait_active),
@@ -1416,11 +1438,27 @@ fn strait_update_hud(
             };
             **text = format!("WAVE {} | {}", state.current_wave, outcome);
         } else if !state.convoy_launched {
-            **text = "DEPLOYMENT PHASE | Deploy drones, then press ENTER to launch convoy".to_string();
+            let rebuild_str = if state.drone_rebuilding {
+                format!(" | REBUILDING: {}t", state.drone_rebuild_timer)
+            } else {
+                String::new()
+            };
+            **text = format!("DEPLOYMENT | Deploy drones, ENTER to launch{}", rebuild_str);
         } else {
+            let time_left = CONVOY_TIME_LIMIT.saturating_sub(state.convoy_ticks);
+            let rebuild_str = if state.drone_rebuilding {
+                format!(" | REBUILD: {}t", state.drone_rebuild_timer)
+            } else {
+                String::new()
+            };
+            let strikes = if state.pending_airstrikes.is_empty() {
+                String::new()
+            } else {
+                format!(" | STRIKES: {}", state.pending_airstrikes.len())
+            };
             **text = format!(
-                "WAVE {} | DRONES: {} | TICK {}",
-                state.current_wave, state.drones_alive, state.mission_tick
+                "WAVE {} | DRONES: {} | TIME: {}{}{} | A=airstrike R=rebuild",
+                state.current_wave, state.drones_alive, time_left, rebuild_str, strikes
             );
         }
     }
@@ -1438,14 +1476,22 @@ fn strait_check_win_lose(
         return;
     }
 
+    // Convoy time limit
+    if state.convoy_launched {
+        state.convoy_ticks += 1;
+        if state.convoy_ticks >= CONVOY_TIME_LIMIT {
+            state.mission_complete = true;
+            info!("Strait mission FAILED: convoy time limit exceeded");
+            return;
+        }
+    }
+
     let all_resolved = state.tankers_arrived + state.tankers_destroyed >= state.tankers_spawned
         && state.tankers_spawned >= TOTAL_TANKERS;
 
     if !all_resolved {
-        // Early fail check: if too many already lost
         if state.tankers_destroyed >= MAX_TANKERS_LOST {
             state.mission_complete = true;
-            // Mission failure handled by campaign system
             info!("Strait mission FAILED: {} tankers destroyed", state.tankers_destroyed);
         }
         return;
@@ -1458,6 +1504,110 @@ fn strait_check_win_lose(
         campaign.complete_objective("protect_convoy");
     } else {
         info!("Strait mission FAILED: only {}/{} tankers arrived", state.tankers_arrived, MIN_TANKERS_WIN);
+    }
+}
+
+/// Rebuild drones at Dubai base. Press R to start, costs compute, takes time.
+fn strait_drone_rebuild(
+    mut state: ResMut<StraitState>,
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    if !state.drone_rebuilding || state.mission_complete {
+        return;
+    }
+
+    if state.drone_rebuild_timer > 0 {
+        state.drone_rebuild_timer -= 1;
+        return;
+    }
+
+    // Rebuild complete — spawn a new drone at Dubai
+    state.drone_rebuilding = false;
+    let dubai_x = 50;
+    let dubai_y = 50;
+    let drone_id = state.next_drone_id;
+    state.next_drone_id += 1;
+    state.drones_alive += 1;
+
+    let pos = strait_screen_from_world(dubai_x as f32, dubai_y as f32);
+    let drone_mesh = meshes.add(Circle::new(4.0));
+    let drone_mat = materials.add(ColorMaterial::from_color(TERM_GREEN));
+
+    commands.spawn((
+        DreamEntity,
+        StraitDrone {
+            patrol_waypoints: vec![GridPos::new(dubai_x, dubai_y)],
+            current_wp_index: 0,
+            alive: true,
+            drone_id,
+        },
+        Mesh2d(drone_mesh),
+        MeshMaterial2d(drone_mat),
+        Transform::from_translation(pos),
+        StraitRadarSweep { angle: 0.0 },
+    ));
+
+    info!("Drone #{} rebuilt at Dubai station", drone_id);
+}
+
+/// Process pending airstrikes — countdown then destroy enemies in radius.
+fn strait_airstrike_system(
+    mut state: ResMut<StraitState>,
+    mut commands: Commands,
+    mut gizmos: Gizmos,
+    launchers: Query<(Entity, &StraitLauncher, &Transform)>,
+    aa_drones: Query<(Entity, &StraitAaDrone, &Transform)>,
+) {
+    if state.mission_complete {
+        return;
+    }
+
+    let mut completed = Vec::new();
+    for (i, strike) in state.pending_airstrikes.iter_mut().enumerate() {
+        // Draw incoming airstrike indicator
+        let center = strait_screen_from_world(strike.0 as f32, strike.1 as f32).truncate();
+        let progress = 1.0 - strike.2 as f32 / AIRSTRIKE_DELAY_TICKS as f32;
+        let ring_color = Color::srgba(1.0, 0.3, 0.1, 0.5 + progress * 0.5);
+        let radius = AIRSTRIKE_RADIUS as f32 * 28.0 * (1.0 - progress * 0.5); // shrinking ring
+        gizmos.circle_2d(center, radius, ring_color);
+
+        if strike.2 > 0 {
+            strike.2 -= 1;
+        } else {
+            completed.push(i);
+
+            // Destroy enemies within radius
+            let strike_x = strike.0;
+            let strike_y = strike.1;
+            for (entity, launcher, xform) in launchers.iter() {
+                let (lx, ly) = screen_to_grid(xform.translation.x, xform.translation.y);
+                let dx = lx - strike_x;
+                let dy = ly - strike_y;
+                if dx * dx + dy * dy <= AIRSTRIKE_RADIUS * AIRSTRIKE_RADIUS {
+                    commands.entity(entity).despawn();
+                    info!("Airstrike destroyed launcher at ({}, {})", lx, ly);
+                }
+            }
+            for (entity, aa, xform) in aa_drones.iter() {
+                if !aa.alive { continue; }
+                let (ax, ay) = screen_to_grid(xform.translation.x, xform.translation.y);
+                let dx = ax - strike_x;
+                let dy = ay - strike_y;
+                if dx * dx + dy * dy <= AIRSTRIKE_RADIUS * AIRSTRIKE_RADIUS {
+                    commands.entity(entity).despawn();
+                    info!("Airstrike destroyed AA drone at ({}, {})", ax, ay);
+                }
+            }
+
+            info!("Airstrike impact at ({}, {})", strike_x, strike_y);
+        }
+    }
+
+    // Remove completed strikes in reverse order
+    for i in completed.into_iter().rev() {
+        state.pending_airstrikes.remove(i);
     }
 }
 
@@ -1769,6 +1919,29 @@ fn strait_input_system(
         info!("Convoy launched! Tankers entering the strait.");
     }
 
+    // A: toggle airstrike mode
+    if keyboard.just_pressed(KeyCode::KeyA)
+        && !keyboard.pressed(KeyCode::ControlLeft)
+        && !keyboard.pressed(KeyCode::ControlRight)
+    {
+        input_state.mode = if input_state.mode == StraitInputMode::Airstrike {
+            StraitInputMode::Normal
+        } else {
+            StraitInputMode::Airstrike
+        };
+    }
+
+    // R: start rebuilding a drone at Dubai (if not already rebuilding)
+    if keyboard.just_pressed(KeyCode::KeyR)
+        && !state.drone_rebuilding
+        && state.compute >= DRONE_REBUILD_COST
+    {
+        state.compute -= DRONE_REBUILD_COST;
+        state.drone_rebuilding = true;
+        state.drone_rebuild_timer = DRONE_REBUILD_TICKS;
+        info!("Drone rebuild started ({:.0} compute spent)", DRONE_REBUILD_COST);
+    }
+
     // Escape: clear selection / revert to normal mode
     if keyboard.just_pressed(KeyCode::Escape) {
         input_state.selected_drones.clear();
@@ -1820,6 +1993,15 @@ fn strait_input_system(
                     state.zero_days_deployed[idx] = true;
                     info!("Deployed zero-day {:?} at ({}, {})", zd_type, grid_x, grid_y);
                     // TODO: Apply zero-day effects (brick launcher, blind area, etc.)
+                }
+                input_state.mode = StraitInputMode::Normal;
+            }
+            StraitInputMode::Airstrike => {
+                // Call airstrike at cursor position
+                if state.compute >= AIRSTRIKE_COST {
+                    state.compute -= AIRSTRIKE_COST;
+                    state.pending_airstrikes.push((grid_x, grid_y, AIRSTRIKE_DELAY_TICKS));
+                    info!("Airstrike called at ({}, {}), ETA {} ticks", grid_x, grid_y, AIRSTRIKE_DELAY_TICKS);
                 }
                 input_state.mode = StraitInputMode::Normal;
             }
