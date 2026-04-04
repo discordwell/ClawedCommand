@@ -10,59 +10,52 @@
         width: 20,
         height: 15,
         // Row-major, y=0 is top (north wall)
-        // Layout:
-        //   Row 0-1:  DryWall (north exterior wall)
-        //   Row 2:    DryWall border, Concrete hallway
-        //   Row 3-5:  Rooms: Sleep(Linoleum) | Talk(Linoleum) | Hallway(Concrete) | Drink(MetalGrate) | Phone(Linoleum)
-        //   Row 6:    DryWall divider
-        //   Row 7-9:  Main work area: CarpetTile desk zone
-        //   Row 10:   DryWall divider
-        //   Row 11-13: Gym(MetalGrate) | Hallway(Concrete) | Eat(Linoleum)
-        //   Row 14:   DryWall (south exterior wall)
+        // Open-plan military office. All rooms accessible from central hallway.
+        // D=DryWall C=Concrete L=Linoleum T=CarpetTile M=MetalGrate
         tiles: [
-            // Row 0: north wall
+            // Row 0: north exterior wall
             DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
             DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
-            // Row 1: north wall inner
-            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
-            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
-            // Row 2: hall entrance
+            // Row 1: north interior — cot nook | concrete hall | talk area | vending | phone nook
+            DryWall, Linoleum, Linoleum, Linoleum, Concrete, Concrete, Concrete, Linoleum, Linoleum, Concrete,
+            Concrete, Concrete, Concrete, Concrete, MetalGrate, MetalGrate, Concrete, Linoleum, Linoleum, DryWall,
+            // Row 2: same rooms continued with full hallway access
+            DryWall, Linoleum, Linoleum, Linoleum, Concrete, Concrete, Concrete, Linoleum, Linoleum, Concrete,
+            Concrete, Concrete, Concrete, Concrete, MetalGrate, MetalGrate, Concrete, Linoleum, Linoleum, DryWall,
+            // Row 3: main east-west hallway
             DryWall, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete,
             Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, DryWall,
-            // Row 3: rooms north - Sleep | Talk | Hall | Drink area | Phone
-            DryWall, Linoleum, Linoleum, Linoleum, DryWall, Linoleum, Linoleum, DryWall, Concrete, Concrete,
-            Concrete, Concrete, Concrete, DryWall, MetalGrate, MetalGrate, DryWall, Linoleum, Linoleum, DryWall,
-            // Row 4: rooms - same layout
-            DryWall, Linoleum, Linoleum, Linoleum, DryWall, Linoleum, Linoleum, DryWall, Concrete, Concrete,
-            Concrete, Concrete, Concrete, DryWall, MetalGrate, MetalGrate, DryWall, Linoleum, Linoleum, DryWall,
-            // Row 5: rooms - with door openings (Concrete gaps in DryWall)
-            DryWall, Linoleum, Linoleum, Linoleum, DryWall, Linoleum, Linoleum, Concrete, Concrete, Concrete,
-            Concrete, Concrete, Concrete, Concrete, MetalGrate, MetalGrate, Concrete, Linoleum, Linoleum, DryWall,
-            // Row 6: divider wall (with doorways)
-            DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, Concrete, Concrete,
-            Concrete, Concrete, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
-            // Row 7: desk area north
+            // Row 4: hallway / transition to desk area
+            DryWall, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete,
+            Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, DryWall,
+            // Row 5: desk area starts — thin DryWall accent strip with wide opening
+            DryWall, DryWall, DryWall, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete,
+            Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, DryWall, DryWall, DryWall,
+            // Row 6: desk area
             DryWall, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile,
             CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall,
-            // Row 8: desk area (Kell's desk at col 10)
+            // Row 7: desk area (Kell's desk at col 10)
             DryWall, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile,
             CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall,
-            // Row 9: desk area south
+            // Row 8: desk area south
             DryWall, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile,
             CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, CarpetTile, DryWall,
-            // Row 10: divider wall (with doorways)
-            DryWall, DryWall, DryWall, DryWall, DryWall, Concrete, DryWall, DryWall, DryWall, DryWall,
-            DryWall, DryWall, DryWall, DryWall, Concrete, DryWall, DryWall, DryWall, DryWall, DryWall,
-            // Row 11: south rooms - Gym | Hall | Eat room
+            // Row 9: south transition — wide opening to south rooms
+            DryWall, DryWall, DryWall, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete,
+            Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, DryWall, DryWall, DryWall,
+            // Row 10: south hallway
+            DryWall, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete,
+            Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, Concrete, DryWall,
+            // Row 11: south rooms — gym area | hallway | eat area
             DryWall, MetalGrate, MetalGrate, MetalGrate, MetalGrate, Concrete, Concrete, Concrete, Concrete, Concrete,
             Concrete, Concrete, Concrete, Concrete, Concrete, Linoleum, Linoleum, Linoleum, Linoleum, DryWall,
             // Row 12: south rooms continued
             DryWall, MetalGrate, MetalGrate, MetalGrate, MetalGrate, Concrete, Concrete, Concrete, Concrete, Concrete,
             Concrete, Concrete, Concrete, Concrete, Concrete, Linoleum, Linoleum, Linoleum, Linoleum, DryWall,
             // Row 13: south rooms
-            DryWall, MetalGrate, MetalGrate, MetalGrate, MetalGrate, DryWall, Concrete, Concrete, Concrete, Concrete,
-            Concrete, Concrete, Concrete, DryWall, DryWall, Linoleum, Linoleum, Linoleum, Linoleum, DryWall,
-            // Row 14: south wall
+            DryWall, MetalGrate, MetalGrate, MetalGrate, MetalGrate, Concrete, Concrete, Concrete, Concrete, Concrete,
+            Concrete, Concrete, Concrete, Concrete, Concrete, Linoleum, Linoleum, Linoleum, Linoleum, DryWall,
+            // Row 14: south exterior wall
             DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
             DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall, DryWall,
         ],
@@ -89,8 +82,14 @@
         heroes: [
             (
                 hero_id: Kelpie,
-                position: (x: 10, y: 8),
+                position: (x: 10, y: 7),
                 mission_critical: true,
+            ),
+            (
+                hero_id: RexSolstice,
+                position: (x: 12, y: 7),
+                mission_critical: false,
+                player_id: 2,
             ),
         ],
         units: [],

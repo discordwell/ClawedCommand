@@ -3,9 +3,11 @@ use bevy::prelude::*;
 
 use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::{
-    Building, CursorGridPos, Owner, Position, Producer, ResourceDeposit, Selected, UnitType,
+    Building, CursorGridPos, HeroIdentity, Owner, Position, Producer, ResourceDeposit, Selected,
+    UnitType,
 };
 use cc_core::coords::{ScreenPos, screen_to_world};
+use cc_sim::campaign::state::{CampaignPhase, CampaignState};
 use cc_sim::resources::{CommandQueue, MapResource};
 
 use crate::renderer::minimap::MinimapClickConsumed;
@@ -48,6 +50,8 @@ pub fn handle_mouse_input(
     mut state: InputState,
     minimap_consumed: Res<MinimapClickConsumed>,
     restrictions: Option<Res<cc_sim::campaign::mutator_state::ControlRestrictions>>,
+    campaign: Res<CampaignState>,
+    hero_q: Query<(Entity, &HeroIdentity, &Owner)>,
 ) {
     // Gate: skip all mouse commands (except camera, handled separately) if restricted
     if restrictions
@@ -84,6 +88,30 @@ pub fn handle_mouse_input(
     });
 
     let cursor_grid = iso_world.to_grid();
+
+    // --- Dream sequence override: left-click moves Kell, suppress all other RTS mouse logic ---
+    let is_dream = campaign.phase == CampaignPhase::InMission
+        && campaign
+            .current_mission
+            .as_ref()
+            .is_some_and(|m| cc_core::mutator::is_dream_mission(&m.mutators));
+
+    if is_dream {
+        if mouse_button.just_pressed(MouseButton::Left) {
+            let target = iso_world.to_grid();
+            // Find Kelpie hero entity (always the player hero in dream)
+            if let Some((kelpie_entity, _, _)) = hero_q.iter().find(|(_, hi, owner)| {
+                hi.hero_id == cc_core::hero::HeroId::Kelpie && owner.player_id == LOCAL_PLAYER
+            }) {
+                state.cmd_queue.push(GameCommand::Move {
+                    unit_ids: vec![EntityId::from_entity(kelpie_entity)],
+                    target,
+                });
+            }
+        }
+        // Suppress all normal RTS mouse behavior during dream
+        return;
+    }
 
     // --- BuildPlacement mode ---
     if let InputMode::BuildPlacement { kind } = *state.input_mode {

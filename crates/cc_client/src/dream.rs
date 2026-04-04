@@ -7,8 +7,9 @@
 use bevy::prelude::*;
 
 use cc_core::commands::{EntityId, GameCommand};
-use cc_core::components::{HeroIdentity, Owner, Position};
+use cc_core::components::{HeroIdentity, Owner, Position, Selected};
 use cc_core::coords::{GridPos, WorldPos, world_to_screen};
+use cc_core::hero::HeroId;
 use cc_core::mutator::{DreamSceneType, MissionMutator};
 use cc_sim::campaign::state::{CampaignPhase, CampaignState};
 use cc_sim::resources::CommandQueue;
@@ -44,35 +45,69 @@ const FORCED_ACTION_THRESHOLD: u32 = 6;
 // Clickable office locations (grid positions)
 // ---------------------------------------------------------------------------
 
+/// Proximity radius (in grid tiles) for interaction prompt to appear.
+const INTERACT_RADIUS: i32 = 2;
+
 /// Grid positions for each interactable location on the office map.
+/// Must be on passable tiles and reachable from the central hallway.
 fn office_location_positions() -> Vec<(OfficeAction, GridPos, &'static str)> {
     vec![
-        (OfficeAction::Work, GridPos::new(10, 7), "WORK"),
-        (OfficeAction::EnergyDrink, GridPos::new(15, 4), "ENERGY DRINK"),
-        (OfficeAction::WorkOut, GridPos::new(4, 11), "WORK OUT"),
-        (OfficeAction::CallAda, GridPos::new(17, 10), "CALL ADA"),
-        (OfficeAction::Sleep, GridPos::new(3, 4), "SLEEP"),
-        (OfficeAction::Eat, GridPos::new(15, 11), "EAT"),
-        (OfficeAction::Talk, GridPos::new(7, 4), "TALK"),
+        (OfficeAction::Work, GridPos::new(10, 7), "Work"),            // desk area center
+        (OfficeAction::EnergyDrink, GridPos::new(14, 2), "Get Energy Drink"), // vending alcove (north)
+        (OfficeAction::WorkOut, GridPos::new(3, 12), "Work Out"),     // gym area (south)
+        (OfficeAction::CallAda, GridPos::new(18, 2), "Call Ada"),     // phone nook (north-east)
+        (OfficeAction::Sleep, GridPos::new(2, 2), "Sleep"),           // cot nook (north-west)
+        (OfficeAction::Eat, GridPos::new(16, 12), "Eat"),             // eat area (south-east)
+        (OfficeAction::Talk, GridPos::new(8, 2), "Talk to Someone"),  // talk area (north-center)
     ]
+}
+
+/// Color and short label for each location's visible prop marker.
+fn prop_appearance(action: OfficeAction) -> (Color, &'static str) {
+    match action {
+        OfficeAction::Work => (Color::srgb(0.3, 0.5, 0.8), "[PC]"),
+        OfficeAction::EnergyDrink => (Color::srgb(0.1, 0.8, 0.3), "[VEND]"),
+        OfficeAction::WorkOut => (Color::srgb(0.8, 0.4, 0.1), "[GYM]"),
+        OfficeAction::CallAda => (Color::srgb(0.5, 0.5, 0.5), "[PHONE]"),
+        OfficeAction::Sleep => (Color::srgb(0.4, 0.4, 0.6), "[COT]"),
+        OfficeAction::Eat => (Color::srgb(0.6, 0.5, 0.3), "[FOOD]"),
+        OfficeAction::Talk => (Color::srgb(0.5, 0.5, 0.5), "[PPL]"),
+    }
+}
+
+/// Dismissive lines Kell says when you try a disabled action.
+fn kell_refusal(action: OfficeAction) -> &'static str {
+    match action {
+        OfficeAction::CallAda => "Ada can wait. The intercepts won't read themselves.",
+        OfficeAction::Sleep => "Sleep is for people who aren't winning a war.",
+        OfficeAction::Eat => "I'll eat when the targeting data is processed.",
+        OfficeAction::Talk => "I don't need a pep talk. I need another four hours.",
+        _ => "",
+    }
 }
 
 // ---------------------------------------------------------------------------
 // Components
 // ---------------------------------------------------------------------------
 
-/// Marker for a clickable dream location entity.
+/// Marker for an interactable location entity (invisible, just holds data).
 #[derive(Component)]
 pub struct DreamLocation {
     pub action: OfficeAction,
     pub grid_pos: GridPos,
 }
 
-/// Marker for the floating label text above a DreamLocation.
+/// Marker for the "Press F to <action>" prompt UI node.
 #[derive(Component)]
-pub struct DreamLabel {
-    pub action: OfficeAction,
-}
+pub struct DreamPromptNode;
+
+/// Marker for the brief refusal dialogue text.
+#[derive(Component)]
+pub struct DreamRefusalNode;
+
+/// Marker for a visible prop at an interaction location.
+#[derive(Component)]
+pub struct DreamProp;
 
 /// Marker for the day/night overlay node.
 #[derive(Component)]
@@ -145,8 +180,18 @@ pub struct DreamOfficeState {
     pub forced_action: Option<OfficeAction>,
     pub initialized: bool,
     pub passout_timer: f32,
+    /// Which action Kelpie is currently near (if any).
+    pub nearby_action: Option<OfficeAction>,
+    /// Timer for refusal dialogue display.
+    pub refusal_timer: f32,
     /// Saved Kelpie sprite handle for restoration after dream.
     pub original_kelpie_sprite: Option<Handle<Image>>,
+    /// Saved Rex sprite handle for restoration after dream.
+    pub original_rex_sprite: Option<Handle<Image>>,
+    /// Whether Rex has departed the office scene.
+    pub rex_departed: bool,
+    /// Countdown timer for Rex's departure after opening dialogue.
+    pub rex_departure_timer: f32,
 }
 
 impl Default for DreamOfficeState {
@@ -163,7 +208,12 @@ impl Default for DreamOfficeState {
             forced_action: None,
             initialized: false,
             passout_timer: 0.0,
+            nearby_action: None,
+            refusal_timer: 0.0,
             original_kelpie_sprite: None,
+            original_rex_sprite: None,
+            rex_departed: false,
+            rex_departure_timer: 4.0,
         }
     }
 }
@@ -183,14 +233,19 @@ impl Plugin for DreamPlugin {
             (
                 dream_init_system,
                 dream_hide_rts_ui,
-                dream_office_click_system
+                dream_keep_selected.run_if(is_dream_office_active),
+                dream_npc_departure.run_if(is_dream_office_active),
+                dream_proximity_system
                     .after(dream_init_system)
                     .run_if(is_dream_office_active),
+                dream_interact_system
+                    .after(dream_proximity_system)
+                    .run_if(is_dream_office_active),
                 dream_office_fsm
-                    .after(dream_office_click_system)
+                    .after(dream_interact_system)
                     .run_if(is_dream_office_active),
                 dream_day_night_system.run_if(is_dream_office_active),
-                dream_label_system.run_if(is_dream_active),
+                dream_prompt_system.run_if(is_dream_office_active),
                 dream_session_hud_system.run_if(is_dream_office_active),
                 dream_passout_system.run_if(is_dream_office_active),
                 dream_cleanup_system,
@@ -202,16 +257,6 @@ impl Plugin for DreamPlugin {
 // ---------------------------------------------------------------------------
 // Run conditions
 // ---------------------------------------------------------------------------
-
-fn is_dream_active(campaign: Res<CampaignState>) -> bool {
-    if campaign.phase != CampaignPhase::InMission {
-        return false;
-    }
-    campaign
-        .current_mission
-        .as_ref()
-        .is_some_and(|m| m.mutators.iter().any(|mt| matches!(mt, MissionMutator::DreamSequence { .. })))
-}
 
 fn is_dream_office_active(campaign: Res<CampaignState>) -> bool {
     if campaign.phase != CampaignPhase::InMission {
@@ -246,10 +291,14 @@ fn get_dream_scene_type(campaign: &CampaignState) -> Option<DreamSceneType> {
 /// One-time initialization when entering a dream mission.
 fn dream_init_system(
     mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
     mut dream: ResMut<DreamOfficeState>,
     mut hero_sprites: Option<ResMut<HeroSprites>>,
+    mut cmd_queue: ResMut<CommandQueue>,
     campaign: Res<CampaignState>,
     asset_server: Res<AssetServer>,
+    heroes: Query<(Entity, &HeroIdentity, &Owner)>,
 ) {
     if campaign.phase != CampaignPhase::InMission {
         if dream.initialized {
@@ -271,46 +320,110 @@ fn dream_init_system(
 
     // Swap Kelpie's sprite to Kell Fisher during dream
     if let Some(ref mut sprites) = hero_sprites {
-        dream.original_kelpie_sprite = sprites
-            .sprites
-            .get(&cc_core::hero::HeroId::Kelpie)
-            .cloned();
+        dream.original_kelpie_sprite = sprites.sprites.get(&HeroId::Kelpie).cloned();
         let kell_path = "sprites/heroes/kell_fisher_idle.png";
         if crate::renderer::asset_exists_on_disk(kell_path) {
-            sprites
-                .sprites
-                .insert(cc_core::hero::HeroId::Kelpie, asset_server.load(kell_path));
+            sprites.sprites.insert(HeroId::Kelpie, asset_server.load(kell_path));
+        }
+
+        // Swap Rex's sprite to his human form
+        dream.original_rex_sprite = sprites.sprites.get(&HeroId::RexSolstice).cloned();
+        let rex_path = "sprites/heroes/rex_harmon_idle.png";
+        if crate::renderer::asset_exists_on_disk(rex_path) {
+            sprites.sprites.insert(HeroId::RexSolstice, asset_server.load(rex_path));
         }
     }
 
     match scene_type {
         DreamSceneType::Office => {
-            // Spawn location markers + labels
-            for (action, pos, label_text) in office_location_positions() {
-                let screen = world_to_screen(WorldPos::from_grid(pos));
-                let color = if action.is_enabled() {
-                    Color::WHITE
-                } else {
-                    Color::srgba(0.5, 0.5, 0.5, 0.5)
-                };
+            // Auto-select Kell so click-to-move works immediately
+            if let Some(kelpie_entity) = heroes.iter().find_map(|(e, hi, owner)| {
+                (hi.hero_id == cc_core::hero::HeroId::Kelpie && owner.player_id == 0)
+                    .then_some(e)
+            }) {
+                commands.entity(kelpie_entity).insert(Selected);
+                cmd_queue.push(GameCommand::Select {
+                    unit_ids: vec![EntityId::from_entity(kelpie_entity)],
+                });
+            }
 
-                // Floating text label
+            // Spawn location markers with visible prop objects
+            let prop_mesh = meshes.add(Rectangle::new(10.0, 10.0));
+            for (action, pos, _label) in office_location_positions() {
+                let (color, icon) = prop_appearance(action);
+                let screen = world_to_screen(WorldPos::from_grid(pos));
+                let elev_offset = 0.0; // flat map
+
+                // Data-only location marker
                 commands.spawn((
                     DreamEntity,
                     DreamLocation {
                         action,
                         grid_pos: pos,
                     },
-                    DreamLabel { action },
-                    Text2d::new(label_text),
+                ));
+
+                // Visible prop: colored square on the map
+                let prop_mat = materials.add(ColorMaterial::from_color(color));
+                commands.spawn((
+                    DreamEntity,
+                    DreamProp,
+                    Mesh2d(prop_mesh.clone()),
+                    MeshMaterial2d(prop_mat),
+                    Transform::from_xyz(screen.x, -screen.y + elev_offset, -5.0),
+                ));
+
+                // Small label above the prop
+                commands.spawn((
+                    DreamEntity,
+                    DreamProp,
+                    Text2d::new(icon),
                     TextColor(color),
                     TextFont {
-                        font_size: 11.0,
+                        font_size: 9.0,
                         ..default()
                     },
-                    Transform::from_xyz(screen.x, -screen.y + 14.0, 50.0),
+                    Transform::from_xyz(screen.x, -screen.y + elev_offset + 10.0, 50.0),
                 ));
             }
+
+            // "Press F to <action>" prompt (hidden by default)
+            commands.spawn((
+                DreamEntity,
+                DreamPromptNode,
+                Node {
+                    position_type: PositionType::Absolute,
+                    bottom: Val::Px(120.0),
+                    left: Val::Percent(50.0),
+                    ..default()
+                },
+                Text::new(""),
+                TextColor(Color::srgba(1.0, 1.0, 1.0, 0.0)),
+                TextFont {
+                    font_size: 16.0,
+                    ..default()
+                },
+                ZIndex(25),
+            ));
+
+            // Refusal dialogue text (hidden by default)
+            commands.spawn((
+                DreamEntity,
+                DreamRefusalNode,
+                Node {
+                    position_type: PositionType::Absolute,
+                    bottom: Val::Px(80.0),
+                    left: Val::Percent(50.0),
+                    ..default()
+                },
+                Text::new(""),
+                TextColor(Color::srgba(0.8, 0.7, 0.5, 0.0)),
+                TextFont {
+                    font_size: 13.0,
+                    ..default()
+                },
+                ZIndex(25),
+            ));
 
             // Day/night overlay (full-screen UI node)
             commands.spawn((
@@ -388,95 +501,93 @@ fn dream_hide_rts_ui(
     }
 }
 
-/// Handle mouse clicks on dream locations.
-fn dream_office_click_system(
-    mouse: Res<ButtonInput<MouseButton>>,
-    windows: Query<&Window>,
-    camera_q: Query<(&Camera, &GlobalTransform)>,
+/// Check Kelpie's proximity to interactable locations and update nearby_action.
+fn dream_proximity_system(
     mut dream: ResMut<DreamOfficeState>,
-    mut cmd_queue: ResMut<CommandQueue>,
-    heroes: Query<(Entity, &HeroIdentity, &Owner), With<Position>>,
-    locations: Query<(&DreamLocation, &Transform)>,
+    heroes: Query<(&HeroIdentity, &Owner, &Position)>,
+    locations: Query<&DreamLocation>,
 ) {
     if dream.phase != OfficePhase::FreeRoam {
+        dream.nearby_action = None;
         return;
     }
 
-    if !mouse.just_pressed(MouseButton::Left) {
-        return;
-    }
+    // Find Kelpie's grid position
+    let kelpie_pos = heroes.iter().find_map(|(hi, owner, pos)| {
+        if hi.hero_id == cc_core::hero::HeroId::Kelpie && owner.player_id == 0 {
+            Some(pos.world.to_grid())
+        } else {
+            None
+        }
+    });
 
-    // Get cursor position in world space
-    let Ok(window) = windows.single() else {
-        return;
-    };
-    let Some(cursor_pos) = window.cursor_position() else {
-        return;
-    };
-    let Ok((camera, cam_transform)) = camera_q.single() else {
-        return;
-    };
-    let Ok(world_pos) = camera.viewport_to_world_2d(cam_transform, cursor_pos) else {
+    let Some(kelpie_grid) = kelpie_pos else {
+        dream.nearby_action = None;
         return;
     };
 
-    // Find nearest location within click radius.
-    // Labels are positioned at (screen.x, -screen.y + offset, z) which matches
-    // Bevy's world-space convention (camera.viewport_to_world_2d returns same space).
-    let click_radius = 30.0f32;
-    let mut best: Option<(OfficeAction, f32)> = None;
-    for (loc, transform) in locations.iter() {
-        let label_pos = Vec2::new(transform.translation.x, transform.translation.y);
-        let dist = world_pos.distance(label_pos);
-        if dist < click_radius {
+    // Find the closest location within interact radius
+    let mut best: Option<(OfficeAction, i32)> = None;
+    for loc in locations.iter() {
+        let dx = (kelpie_grid.x - loc.grid_pos.x).abs();
+        let dy = (kelpie_grid.y - loc.grid_pos.y).abs();
+        let dist = dx.max(dy); // Chebyshev distance
+        if dist <= INTERACT_RADIUS {
             if best.is_none() || dist < best.unwrap().1 {
                 best = Some((loc.action, dist));
             }
         }
     }
 
-    let Some((action, _)) = best else {
-        return;
-    };
+    dream.nearby_action = best.map(|(action, _)| action);
+}
 
-    if !action.is_enabled() {
-        // Disabled action — could show a thought bubble, for now just ignore
+/// Handle F key press to interact with nearby location.
+fn dream_interact_system(
+    time: Res<Time>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mut dream: ResMut<DreamOfficeState>,
+    mut prompt_q: Query<(&mut Text, &mut TextColor), (With<DreamRefusalNode>, Without<DreamPromptNode>)>,
+) {
+    // Tick down refusal timer
+    if dream.refusal_timer > 0.0 {
+        dream.refusal_timer -= time.delta_secs();
+    }
+
+    if dream.phase != OfficePhase::FreeRoam {
         return;
     }
 
-    // Check if forced action overrides choice
+    if !keys.just_pressed(KeyCode::KeyF) {
+        return;
+    }
+
+    let Some(action) = dream.nearby_action else {
+        return;
+    };
+
+    // Disabled actions: show refusal dialogue
+    if !action.is_enabled() {
+        let refusal = kell_refusal(action);
+        if !refusal.is_empty() {
+            // Set the refusal text
+            for (mut text, mut color) in prompt_q.iter_mut() {
+                text.0 = format!("Kell: \"{refusal}\"");
+                color.0 = Color::srgba(0.85, 0.75, 0.5, 1.0);
+            }
+            dream.refusal_timer = 3.0;
+        }
+        return;
+    }
+
+    // Forced action check: can only do the forced action
     if let Some(forced) = dream.forced_action {
         if action != forced {
-            return; // Can only do the forced action
+            return;
         }
     }
 
-    // Find Kelpie hero entity
-    let kelpie_entity = heroes.iter().find_map(|(entity, hi, owner)| {
-        if hi.hero_id == cc_core::hero::HeroId::Kelpie && owner.player_id == 0 {
-            Some(entity)
-        } else {
-            None
-        }
-    });
-
-    let Some(kelpie) = kelpie_entity else {
-        return;
-    };
-
-    // Find the target grid position for this action
-    let target_pos = office_location_positions()
-        .iter()
-        .find(|(a, _, _)| *a == action)
-        .map(|(_, pos, _)| *pos)
-        .unwrap_or(GridPos::new(10, 7));
-
-    // Issue move command to Kelpie
-    cmd_queue.push(GameCommand::Move {
-        unit_ids: vec![EntityId::from_entity(kelpie)],
-        target: target_pos,
-    });
-
+    // Begin the action
     dream.current_action = Some(action);
     dream.action_timer = ACTION_DURATION;
     dream.phase = OfficePhase::ActionInProgress;
@@ -643,25 +754,67 @@ fn day_night_color(hour: f32) -> (f32, f32, f32, f32) {
     }
 }
 
-/// Update floating label positions and colors.
-fn dream_label_system(
+/// Update the "Press F to <action>" prompt and refusal text visibility.
+fn dream_prompt_system(
     dream: Res<DreamOfficeState>,
-    mut labels: Query<(&DreamLabel, &mut TextColor)>,
+    mut prompt_q: Query<
+        (&mut Text, &mut TextColor),
+        (With<DreamPromptNode>, Without<DreamRefusalNode>),
+    >,
+    mut refusal_q: Query<
+        &mut TextColor,
+        (With<DreamRefusalNode>, Without<DreamPromptNode>),
+    >,
 ) {
-    for (label, mut color) in labels.iter_mut() {
-        let enabled = label.action.is_enabled();
-        let is_forced = dream.forced_action == Some(label.action);
+    // Update prompt
+    for (mut text, mut color) in prompt_q.iter_mut() {
+        if dream.phase != OfficePhase::FreeRoam {
+            color.0 = Color::srgba(1.0, 1.0, 1.0, 0.0);
+            continue;
+        }
 
-        if dream.phase == OfficePhase::ActionInProgress || dream.phase == OfficePhase::Passout {
-            // Dim all labels during action/passout
-            color.0 = Color::srgba(0.4, 0.4, 0.4, 0.3);
-        } else if is_forced {
-            // Highlight forced action in yellow
-            color.0 = Color::srgb(1.0, 0.9, 0.3);
-        } else if enabled {
-            color.0 = Color::WHITE;
-        } else {
-            color.0 = Color::srgba(0.5, 0.5, 0.5, 0.5);
+        match dream.nearby_action {
+            Some(action) => {
+                let label = office_location_positions()
+                    .iter()
+                    .find(|(a, _, _)| *a == action)
+                    .map(|(_, _, l)| *l)
+                    .unwrap_or("Interact");
+
+                // Forced action override
+                if let Some(forced) = dream.forced_action {
+                    if action == forced {
+                        text.0 = format!("Press F to {label}");
+                        color.0 = Color::srgb(1.0, 0.9, 0.3); // Yellow for forced
+                    } else if action.is_enabled() {
+                        text.0 = format!("Press F to {label}");
+                        color.0 = Color::srgba(0.5, 0.5, 0.5, 0.5); // Greyed — forced elsewhere
+                    } else {
+                        text.0 = format!("Press F to {label}");
+                        color.0 = Color::srgba(0.6, 0.5, 0.4, 0.8);
+                    }
+                } else if action.is_enabled() {
+                    text.0 = format!("Press F to {label}");
+                    color.0 = Color::WHITE;
+                } else {
+                    text.0 = format!("Press F to {label}");
+                    color.0 = Color::srgba(0.6, 0.5, 0.4, 0.8); // Muted for disabled
+                }
+            }
+            None => {
+                text.0.clear();
+                color.0 = Color::srgba(1.0, 1.0, 1.0, 0.0);
+            }
+        }
+    }
+
+    // Fade out refusal text
+    for mut color in refusal_q.iter_mut() {
+        if dream.refusal_timer <= 0.0 {
+            color.0 = Color::srgba(0.85, 0.75, 0.5, 0.0);
+        } else if dream.refusal_timer < 1.0 {
+            // Fade out in last second
+            color.0 = Color::srgba(0.85, 0.75, 0.5, dream.refusal_timer);
         }
     }
 }
@@ -711,15 +864,53 @@ fn dream_cleanup_system(
     // Restore original Kelpie sprite
     if let Some(ref mut sprites) = hero_sprites {
         if let Some(original) = &dream.original_kelpie_sprite {
-            sprites
-                .sprites
-                .insert(cc_core::hero::HeroId::Kelpie, original.clone());
+            sprites.sprites.insert(HeroId::Kelpie, original.clone());
+        }
+        if let Some(original) = &dream.original_rex_sprite {
+            sprites.sprites.insert(HeroId::RexSolstice, original.clone());
         }
     }
 
     // Despawn all dream-specific entities
     for entity in dream_entities.iter() {
         commands.entity(entity).despawn();
+    }
+}
+
+/// Keep Kelpie selected during dream — re-insert Selected if removed.
+fn dream_keep_selected(
+    mut commands: Commands,
+    dream: Res<DreamOfficeState>,
+    heroes: Query<(Entity, &HeroIdentity, &Owner), Without<Selected>>,
+) {
+    if !dream.initialized {
+        return;
+    }
+    for (entity, hi, owner) in heroes.iter() {
+        if hi.hero_id == HeroId::Kelpie && owner.player_id == 0 {
+            commands.entity(entity).insert(Selected);
+        }
+    }
+}
+
+/// Despawn Rex after dialogue ends.
+fn dream_npc_departure(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut dream: ResMut<DreamOfficeState>,
+    heroes: Query<(Entity, &HeroIdentity)>,
+) {
+    if dream.rex_departed || dream.phase == OfficePhase::OpeningDialogue {
+        return;
+    }
+    dream.rex_departure_timer -= time.delta_secs();
+    if dream.rex_departure_timer <= 0.0 {
+        for (entity, hi) in heroes.iter() {
+            if hi.hero_id == HeroId::RexSolstice {
+                commands.entity(entity).despawn();
+                dream.rex_departed = true;
+            }
+        }
     }
 }
 

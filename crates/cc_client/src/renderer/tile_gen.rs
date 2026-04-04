@@ -314,15 +314,21 @@ fn terrain_pixel(terrain: TerrainType, px: usize, py: usize, variant: u8) -> (u8
             )
         }
         TerrainType::DryWall => {
-            let base_r = 217u8;
-            let base_g = 212u8;
-            let base_b = 204u8;
-            // Very subtle stucco texture
-            let variation = ((fine as i16) - 128) / 20;
+            // Wall face with baseboard: lighter top (wall), darker bottom (baseboard/shadow)
+            let base_r = 210u8;
+            let base_g = 205u8;
+            let base_b = 198u8;
+            // Vertical panel lines every 12px
+            let panel_line = if px.is_multiple_of(12) { -12i16 } else { 0 };
+            // Baseboard at bottom 6 rows: darker
+            let baseboard = if py > TILE_H - 6 { -30i16 } else { 0 };
+            // Top edge highlight
+            let top_edge = if py < 2 { 15i16 } else { 0 };
+            let variation = ((fine as i16) - 128) / 24;
             (
-                clamp_u8(base_r as i16 + variation),
-                clamp_u8(base_g as i16 + variation),
-                clamp_u8(base_b as i16 + variation),
+                clamp_u8(base_r as i16 + variation + panel_line + baseboard + top_edge),
+                clamp_u8(base_g as i16 + variation + panel_line + baseboard + top_edge),
+                clamp_u8(base_b as i16 + variation + panel_line + baseboard + top_edge),
             )
         }
     }
