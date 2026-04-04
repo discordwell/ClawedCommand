@@ -72,7 +72,7 @@ impl Default for DreamTestDriver {
             screenshot_counter: 0,
             output_dir: PathBuf::from(TEST_OUTPUT_DIR),
             started: false,
-            start_delay: 0.5, // short delay for first render frame
+            start_delay: 2.0, // wait for first render frame + asset loading
         }
     }
 }

@@ -89,7 +89,7 @@
                 hero_id: RexHarmon,
                 position: (x: 12, y: 7),
                 mission_critical: false,
-                player_id: 2,
+                player_id: 0,
             ),
         ],
         units: [],

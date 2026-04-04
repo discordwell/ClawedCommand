@@ -147,7 +147,7 @@ pub fn hero_data(hero: HeroId) -> HeroData {
             faction: Faction::CatGpt,
         },
         HeroId::KellFisher => HeroData {
-            base_kind: UnitKind::Nuisance, // same template as Kelpie
+            base_kind: UnitKind::MechCommander, // commander-sized for visibility
             modifiers: HeroStatModifiers {
                 health_bonus: Fixed::from_bits(40 << 16),
                 speed_multiplier: Fixed::from_bits(78643), // 1.2x
@@ -158,7 +158,7 @@ pub fn hero_data(hero: HeroId) -> HeroData {
             faction: Faction::Neutral,
         },
         HeroId::RexHarmon => HeroData {
-            base_kind: UnitKind::FlyingFox, // same template as Rex Solstice
+            base_kind: UnitKind::MechCommander, // commander-sized for visibility
             modifiers: HeroStatModifiers {
                 health_bonus: Fixed::from_bits(30 << 16),
                 speed_multiplier: Fixed::from_bits(72089), // 1.1x

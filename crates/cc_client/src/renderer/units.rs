@@ -51,14 +51,17 @@ pub fn spawn_unit_visuals(
 
         if let Some(ref sprites) = unit_sprites {
             // Use hero sprite if available, otherwise fall back to unit kind sprite
-            let image = hero_identity
-                .and_then(|hi| hero_sprites.as_ref()?.sprites.get(&hi.hero_id).cloned())
+            let hero_hit = hero_identity
+                .and_then(|hi| hero_sprites.as_ref()?.sprites.get(&hi.hero_id).cloned());
+            let has_hero_sprite = hero_hit.is_some();
+            let image = hero_hit
                 .unwrap_or_else(|| sprites.sprites[kind_index(unit_type.kind)].clone());
             commands.entity(entity).insert((
                 UnitMesh,
                 Sprite {
                     image,
-                    color: tint,
+                    // Don't tint hero sprites — they have their own colors
+                    color: if has_hero_sprite { Color::WHITE } else { tint },
                     ..default()
                 },
                 Transform::from_xyz(screen.x, -screen.y + elev, depth_z(pos.world))
