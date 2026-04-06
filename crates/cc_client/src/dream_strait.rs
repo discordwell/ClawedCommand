@@ -1746,6 +1746,8 @@ fn build_strait_snapshot(
         tankers_destroyed: state.tankers_destroyed,
         tankers_spawned: state.tankers_spawned,
         total_tankers: 0, // config not available here; scripts should not rely on this
+        min_tankers_win: 8,
+        max_tankers_lost: 5,
         drones_alive: state.drones_alive,
         zero_day_slot: state.zero_day_slot,
         mission_tick: state.mission_tick,
