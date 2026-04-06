@@ -1545,9 +1545,11 @@ pub fn execute_script_with_context_tiered(
 
                 // ctx.strait:map_size() -> width, height
                 {
+                    let cell = &ctx_cell;
                     let f = scope.create_function(|_, _self: LuaValue| {
-                        // Strait map is always 300x60
-                        Ok((300u32, 60u32))
+                        let ctx = cell.borrow();
+                        let snap = ctx.strait_snapshot.as_ref().unwrap();
+                        Ok((snap.map_width, snap.map_height))
                     })?;
                     strait_table.set("map_size", f)?;
                 }
@@ -1593,13 +1595,25 @@ pub fn execute_script_with_context_tiered(
                 }
 
                 // ctx.strait:allocate_compute({drone_vision, satellite, zero_day})
+                // Values are clamped to [0,1] and normalized to sum to 1.0.
                 {
                     let cell = &ctx_cell;
                     let f = scope.create_function(
                         |_, (_self, tbl): (LuaValue, mlua::Table)| {
-                            let dv: f32 = tbl.get("drone_vision").unwrap_or(0.33);
-                            let sat: f32 = tbl.get("satellite").unwrap_or(0.33);
-                            let zd: f32 = tbl.get("zero_day").unwrap_or(0.34);
+                            let mut dv: f32 = tbl.get("drone_vision").unwrap_or(0.33);
+                            let mut sat: f32 = tbl.get("satellite").unwrap_or(0.33);
+                            let mut zd: f32 = tbl.get("zero_day").unwrap_or(0.34);
+                            // Clamp to [0, 1]
+                            dv = dv.clamp(0.0, 1.0);
+                            sat = sat.clamp(0.0, 1.0);
+                            zd = zd.clamp(0.0, 1.0);
+                            // Normalize to sum to 1.0
+                            let sum = dv + sat + zd;
+                            if sum > 0.0 {
+                                dv /= sum; sat /= sum; zd /= sum;
+                            } else {
+                                dv = 0.34; sat = 0.33; zd = 0.33;
+                            }
                             let mut ctx = cell.borrow_mut();
                             ctx.strait_commands.push(
                                 crate::strait_bindings::StraitCommand::AllocateCompute(
@@ -1778,7 +1792,7 @@ pub fn execute_script_with_context_tiered(
                     strait_table.set("patriot_status", f)?;
                 }
 
-                // ctx.strait:convoy_status() -> {hold, total_boats, arrived, destroyed, spawned}
+                // ctx.strait:convoy_status() -> {hold, total_boats, arrived, destroyed, spawned, min_win, max_lost}
                 {
                     let cell = &ctx_cell;
                     let f = scope.create_function(|lua, _self: LuaValue| {
@@ -1790,6 +1804,8 @@ pub fn execute_script_with_context_tiered(
                         tbl.set("arrived", snap.tankers_arrived)?;
                         tbl.set("destroyed", snap.tankers_destroyed)?;
                         tbl.set("spawned", snap.tankers_spawned)?;
+                        tbl.set("min_win", snap.min_tankers_win)?;
+                        tbl.set("max_lost", snap.max_tankers_lost)?;
                         Ok(tbl)
                     })?;
                     strait_table.set("convoy_status", f)?;

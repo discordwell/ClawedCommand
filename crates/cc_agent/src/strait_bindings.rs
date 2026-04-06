@@ -12,6 +12,10 @@ use cc_core::strait::{ComputeAllocation, DroneMode, PatriotMode, ZeroDayState, Z
 /// Captures the current state at the time of script execution.
 #[derive(Debug, Clone)]
 pub struct StraitSnapshot {
+    // -- Map --
+    pub map_width: u32,
+    pub map_height: u32,
+
     // -- Compute flow --
     pub allocation: ComputeAllocation,
     pub satellite_focal: Option<(i32, i32)>,
@@ -69,7 +73,7 @@ pub struct DroneInfo {
 pub struct TankerInfo {
     pub index: u32,
     pub x: f32,
-    pub y: i32,
+    pub y: f32,
     pub hp: u32,
     pub arrived: bool,
     pub destroyed: bool,
@@ -203,6 +207,8 @@ mod tests {
     #[test]
     fn strait_snapshot_captures_v2_state() {
         let snapshot = StraitSnapshot {
+            map_width: 300,
+            map_height: 60,
             allocation: ComputeAllocation::default(),
             satellite_focal: None,
             airstrike_charges: 2,

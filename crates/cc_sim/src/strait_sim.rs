@@ -530,15 +530,15 @@ fn strait_drone_bomb(
 /// GuardBase drones station at base specifically for this purpose, but
 /// patrol drones along the shipping lane also intercept ship-targeting shaheeds.
 fn strait_drone_intercept_shaheeds(
+    mut commands: Commands,
     drones: Query<(&StraitDrone, &StraitPos)>,
-    mut shaheeds: Query<(&mut StraitShaheed, &StraitPos), Without<StraitDrone>>,
+    mut shaheeds: Query<(Entity, &mut StraitShaheed, &StraitPos), Without<StraitDrone>>,
     config: Res<StraitConfigRes>,
     state: Res<StraitState>,
 ) {
     if state.mission_complete { return; }
     let range_sq = config.drone_intercept_range * config.drone_intercept_range;
 
-    // Collect all alive drone positions
     let drone_positions: Vec<StraitPos> = drones.iter()
         .filter(|(d, _)| d.alive)
         .map(|(_, pos)| *pos)
@@ -546,12 +546,12 @@ fn strait_drone_intercept_shaheeds(
 
     if drone_positions.is_empty() { return; }
 
-    // For each active shaheed, check if any drone is close enough to intercept
-    for (mut shaheed, spos) in shaheeds.iter_mut() {
+    for (entity, mut shaheed, spos) in shaheeds.iter_mut() {
         if !shaheed.alive || shaheed.launch_delay > 0 { continue; }
         for dpos in &drone_positions {
             if dpos.dist_sq(spos) <= range_sq {
                 shaheed.alive = false;
+                commands.entity(entity).despawn();
                 break;
             }
         }
@@ -1223,7 +1223,7 @@ pub fn register_strait_sim_systems(app: &mut App) {
             strait_move_tankers.after(strait_spawn_tankers),
         ),
     );
-    // Group 2: enemy AI + combat + win/lose
+    // Group 2: enemy AI + combat + win/lose (deterministic ordering)
     app.add_systems(
         Update,
         (
@@ -1233,12 +1233,12 @@ pub fn register_strait_sim_systems(app: &mut App) {
             strait_missile_flight.after(strait_spawn_missiles),
             strait_patriot_system.after(strait_missile_flight),
             strait_missile_impact.after(strait_patriot_system),
-            strait_enemy_aa,
-            strait_soldier_ai,
-            strait_shaheed_ai,
-            strait_drone_rebuild,
-            strait_airstrike,
-            strait_check_win_lose.after(strait_missile_impact),
+            strait_enemy_aa.after(strait_enemy_director),
+            strait_soldier_ai.after(strait_enemy_aa),
+            strait_shaheed_ai.after(strait_soldier_ai),
+            strait_drone_rebuild.after(strait_shaheed_ai),
+            strait_airstrike.after(strait_drone_rebuild),
+            strait_check_win_lose.after(strait_airstrike),
         ),
     );
 }
@@ -1308,12 +1308,12 @@ pub fn build_headless_world(config: StraitConfig) -> (World, Schedule) {
         strait_missile_flight.after(strait_spawn_missiles),
         strait_patriot_system.after(strait_missile_flight),
         strait_missile_impact.after(strait_patriot_system),
-        strait_enemy_aa,
-        strait_soldier_ai,
-        strait_shaheed_ai,
-        strait_drone_rebuild,
-        strait_airstrike,
-        strait_check_win_lose.after(strait_missile_impact),
+        strait_enemy_aa.after(strait_enemy_director),
+        strait_soldier_ai.after(strait_enemy_aa),
+        strait_shaheed_ai.after(strait_soldier_ai),
+        strait_drone_rebuild.after(strait_shaheed_ai),
+        strait_airstrike.after(strait_drone_rebuild),
+        strait_check_win_lose.after(strait_airstrike),
     ));
     // Ensure deferred Commands (spawns/despawns) are applied at end of each run.
     schedule.set_apply_final_deferred(true);

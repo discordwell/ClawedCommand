@@ -78,7 +78,7 @@ impl StraitHeadlessSim {
             let mut q = self.world.query::<(&StraitTanker, &StraitPos)>();
             for (t, pos) in q.iter(&self.world) {
                 out.push(TankerInfo {
-                    index: t.tanker_index, x: pos.x, y: t.lane_y,
+                    index: t.tanker_index, x: pos.x, y: pos.y,
                     hp: t.hp, arrived: t.arrived, destroyed: t.destroyed,
                 });
             }
@@ -142,6 +142,8 @@ impl StraitHeadlessSim {
         };
 
         StraitSnapshot {
+            map_width: self.config.map_width,
+            map_height: self.config.map_height,
             allocation,
             satellite_focal,
             airstrike_charges,
