@@ -283,10 +283,10 @@ pub fn spawn_drone(commands: &mut Commands, state: &mut StraitState, x: f32, y: 
     )).id()
 }
 
-pub fn spawn_tanker(commands: &mut Commands, index: u32, lane_y: i32, target_x: f32) -> Entity {
+pub fn spawn_tanker(commands: &mut Commands, config: &StraitConfig, index: u32, lane_y: i32, target_x: f32) -> Entity {
     commands.spawn((
         StraitTanker {
-            hp: TANKER_HP,
+            hp: config.tanker_hp,
             lane_y,
             target_x,
             arrived: false,
@@ -602,7 +602,7 @@ fn strait_spawn_tankers(
     let idx = state.tankers_spawned;
     state.tankers_spawned += 1;
     let lane_y = 29 + (idx % 3) as i32;
-    spawn_tanker(&mut commands, idx, lane_y, (config.map_width - 1) as f32);
+    spawn_tanker(&mut commands, &config, idx, lane_y, (config.map_width - 1) as f32);
 }
 
 /// Move tankers east along the shipping lane.
@@ -640,7 +640,7 @@ fn strait_enemy_director(
     let map_w = config.map_width as f32;
 
     // === TICK 0: deploy the full Iranian force ===
-    if state.mission_tick == 1 && !state.initialized_enemies {
+    if state.mission_tick >= 1 && !state.initialized_enemies {
         state.initialized_enemies = true;
 
         // Launchers — spread along hostile coast, heavily staggered so they

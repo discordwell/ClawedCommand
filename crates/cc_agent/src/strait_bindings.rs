@@ -33,6 +33,8 @@ pub struct StraitSnapshot {
     pub tankers_destroyed: u32,
     pub tankers_spawned: u32,
     pub total_tankers: u32,
+    pub min_tankers_win: u32,
+    pub max_tankers_lost: u32,
 
     // -- Drones --
     pub drones_alive: u32,
@@ -215,6 +217,8 @@ mod tests {
             tankers_destroyed: 0,
             tankers_spawned: 0,
             total_tankers: 12,
+            min_tankers_win: 8,
+            max_tankers_lost: 5,
             drones_alive: 16,
             drone_positions: vec![DroneInfo {
                 id: 0, x: 10.0, y: 8.0, alive: true,

@@ -156,6 +156,8 @@ impl StraitHeadlessSim {
             tankers_destroyed,
             tankers_spawned,
             total_tankers: self.config.total_tankers,
+            min_tankers_win: self.config.min_tankers_win,
+            max_tankers_lost: self.config.max_tankers_lost,
             drones_alive,
             drone_positions,
             zero_day_slot,

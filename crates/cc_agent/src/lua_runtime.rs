@@ -1519,7 +1519,7 @@ pub fn execute_script_with_context_tiered(
                         match &snap.zero_day_slot {
                             cc_core::strait::ZeroDayState::Building { exploit_type, progress, required } => {
                                 tbl.set("type", format!("{:?}", exploit_type).to_lowercase())?;
-                                tbl.set("progress", *progress / *required)?;
+                                tbl.set("progress", if *required > 0.0 { *progress / *required } else { 1.0 })?;
                             }
                             cc_core::strait::ZeroDayState::Ready(zt) => {
                                 tbl.set("type", format!("{:?}", zt).to_lowercase())?;
@@ -1853,7 +1853,7 @@ pub fn execute_script_with_context_tiered(
                         let ctx = cell.borrow();
                         let snap = ctx.strait_snapshot.as_ref().unwrap();
                         if snap.mission_complete {
-                            if snap.tankers_arrived >= snap.total_tankers / 2 {
+                            if snap.tankers_arrived >= snap.min_tankers_win {
                                 Ok(Some("win".to_string()))
                             } else {
                                 Ok(Some("lose".to_string()))
