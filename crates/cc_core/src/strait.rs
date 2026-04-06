@@ -280,11 +280,19 @@ pub struct StraitConfig {
     // -- Enemy: Missiles --
     pub missile_flight_ticks: u32,
 
-    // -- Enemy budget (total available across all waves) --
-    pub enemy_budget_aa: u32,
-    pub enemy_budget_soldiers: u32,
-    pub enemy_budget_shaheeds: u32,
-    pub enemy_budget_launchers: u32,
+    // -- Pre-deployed Iranian force (spawned at mission start) --
+    pub deployed_launchers: u32,
+    pub deployed_aa: u32,
+    pub deployed_soldiers: u32,
+    pub deployed_shaheeds: u32,
+
+    // -- Reinforcement trickle (slow spawns over time) --
+    /// Ticks between each reinforcement spawn.
+    pub reinforcement_interval: u32,
+    /// What spawns each interval: (launchers, aa, soldiers, shaheeds).
+    pub reinforcement_batch: (u32, u32, u32, u32),
+    /// Max total reinforcements (across all types combined).
+    pub reinforcement_cap: u32,
 
     // -- Zero-day build ticks at 100% slice --
     pub zeroday_ticks_spoof: f32,
@@ -312,7 +320,7 @@ impl Default for StraitConfig {
             tanker_hp: 3,
             tanker_speed: 0.15,
 
-            initial_patrol_drones: 16,
+            initial_patrol_drones: 20,
             drone_vision_radius: 4,
             drone_speed: 8.0,
             drone_flare_cooldown: 60,
@@ -331,7 +339,7 @@ impl Default for StraitConfig {
             airstrike_max_charges: 3,
             airstrike_charge_regen_ticks: 600,
 
-            initial_patriots: 20,
+            initial_patriots: 25,
             patriot_range: 200.0,
 
             base_hp: 10,
@@ -339,7 +347,7 @@ impl Default for StraitConfig {
             base_y: 50,
 
             aa_suppress_range: 8.0,
-            aa_engagement_ticks: 30,
+            aa_engagement_ticks: 50,
             aa_swarm_threshold: 3,
 
             soldier_speed: 0.03,
@@ -351,56 +359,25 @@ impl Default for StraitConfig {
 
             missile_flight_ticks: 80,
 
-            enemy_budget_aa: 8,
-            enemy_budget_soldiers: 20,
-            enemy_budget_shaheeds: 30,
-            enemy_budget_launchers: 6,
+            // Pre-deployed Iranian force: this is what you're clearing
+            deployed_launchers: 3,
+            deployed_aa: 1,
+            deployed_soldiers: 6,
+            deployed_shaheeds: 8,
+
+            // Slow trickle: 1 shaheed + 1 soldier every 600 ticks
+            reinforcement_interval: 600,
+            reinforcement_batch: (0, 0, 1, 1),
+            reinforcement_cap: 10,
 
             zeroday_ticks_spoof: 260.0,
             zeroday_ticks_blind: 200.0,
             zeroday_ticks_hijack: 330.0,
             zeroday_ticks_brick: 400.0,
 
-            convoy_time_limit: 8000,
-
-            waves: vec![
-                // Wave 1 (tick 0): light probing
-                EnemyWaveConfig {
-                    trigger_tick: 0,
-                    launcher_count: 1,
-                    aa_drone_count: 0,
-                    soldier_count: 2,
-                    shaheed_count: 3,
-                    coordinated: false,
-                },
-                // Wave 2 (tick 1500): AA appears
-                EnemyWaveConfig {
-                    trigger_tick: 1500,
-                    launcher_count: 2,
-                    aa_drone_count: 1,
-                    soldier_count: 5,
-                    shaheed_count: 5,
-                    coordinated: false,
-                },
-                // Wave 3 (tick 3000): heavy mixed
-                EnemyWaveConfig {
-                    trigger_tick: 3000,
-                    launcher_count: 2,
-                    aa_drone_count: 2,
-                    soldier_count: 5,
-                    shaheed_count: 8,
-                    coordinated: true,
-                },
-                // Wave 4 (tick 4500): shaheed pressure
-                EnemyWaveConfig {
-                    trigger_tick: 4500,
-                    launcher_count: 1,
-                    aa_drone_count: 3,
-                    soldier_count: 8,
-                    shaheed_count: 14,
-                    coordinated: true,
-                },
-            ],
+            // Waves kept for legacy compatibility but unused by V2 director
+            convoy_time_limit: 0,
+            waves: vec![],
         }
     }
 }
@@ -454,7 +431,7 @@ pub const AIRSTRIKE_DELAY_TICKS: u32 = 40;
 pub const AIRSTRIKE_RADIUS: i32 = 3;
 pub const AIRSTRIKE_MAX_CHARGES: u32 = 3;
 pub const AIRSTRIKE_CHARGE_REGEN_TICKS: u32 = 600;
-pub const CONVOY_TIME_LIMIT: u64 = 8000;
+pub const CONVOY_TIME_LIMIT: u64 = 0; // disabled — soft pressure via Patriot drain
 pub const INITIAL_PATRIOTS: u32 = 20;
 /// Legacy: Patriots replace interceptors but old code still references these.
 pub const INITIAL_INTERCEPTORS: u32 = 20;

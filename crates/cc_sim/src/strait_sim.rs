@@ -100,6 +100,8 @@ pub struct StraitSoldier {
     pub phase: SoldierPhase,
     pub hp: u32,
     pub entity_id: u32,
+    /// Ticks until next attack. 0 = ready.
+    pub attack_cooldown: u32,
 }
 
 /// Enemy suicide drone (shaheed).
@@ -108,6 +110,8 @@ pub struct StraitShaheed {
     pub target: ShaheedTarget,
     pub entity_id: u32,
     pub alive: bool,
+    /// Ticks until this shaheed activates and starts flying. 0 = active.
+    pub launch_delay: u32,
 }
 
 /// Player base marker.
@@ -154,12 +158,9 @@ pub struct StraitState {
     pub zero_day_slot: ZeroDayState,
     pub zero_days_deployed: [bool; 4],
 
-    // Enemy wave tracking
-    pub next_wave_index: usize,
-    pub enemy_budget_aa_used: u32,
-    pub enemy_budget_soldiers_used: u32,
-    pub enemy_budget_shaheeds_used: u32,
-    pub enemy_budget_launchers_used: u32,
+    // Enemy tracking
+    pub initialized_enemies: bool,
+    pub reinforcements_spawned: u32,
     pub next_entity_id: u32,
 
     // Mission phase
@@ -208,11 +209,8 @@ impl StraitState {
             drones_alive: 0,
             zero_day_slot: ZeroDayState::default(),
             zero_days_deployed: [false; 4],
-            next_wave_index: 0,
-            enemy_budget_aa_used: 0,
-            enemy_budget_soldiers_used: 0,
-            enemy_budget_shaheeds_used: 0,
-            enemy_budget_launchers_used: 0,
+            initialized_enemies: false,
+            reinforcements_spawned: 0,
             next_entity_id: 0,
             mission_tick: 0,
             mission_complete: false,
@@ -338,12 +336,13 @@ pub fn spawn_soldier(commands: &mut Commands, state: &mut StraitState, x: f32, y
             phase: SoldierPhase::Advancing,
             hp: config.soldier_hp,
             entity_id: id,
+            attack_cooldown: 0,
         },
         StraitPos::new(x, y),
     )).id()
 }
 
-pub fn spawn_shaheed(commands: &mut Commands, state: &mut StraitState, x: f32, y: f32, target: ShaheedTarget) -> Entity {
+pub fn spawn_shaheed(commands: &mut Commands, state: &mut StraitState, x: f32, y: f32, target: ShaheedTarget, launch_delay: u32) -> Entity {
     let id = state.next_entity_id;
     state.next_entity_id += 1;
     commands.spawn((
@@ -351,6 +350,7 @@ pub fn spawn_shaheed(commands: &mut Commands, state: &mut StraitState, x: f32, y
             target,
             entity_id: id,
             alive: true,
+            launch_delay,
         },
         StraitPos::new(x, y),
     )).id()
@@ -525,9 +525,11 @@ fn strait_drone_bomb(
     }
 }
 
-/// Drones in GuardBase mode auto-intercept nearby shaheeds.
-/// For each alive shaheed, check if any guard drone is in intercept range.
-fn strait_drone_guard(
+/// ALL alive drones passively intercept nearby active shaheeds.
+/// This is a passive ability — any drone near a shaheed shoots it down.
+/// GuardBase drones station at base specifically for this purpose, but
+/// patrol drones along the shipping lane also intercept ship-targeting shaheeds.
+fn strait_drone_intercept_shaheeds(
     drones: Query<(&StraitDrone, &StraitPos)>,
     mut shaheeds: Query<(&mut StraitShaheed, &StraitPos), Without<StraitDrone>>,
     config: Res<StraitConfigRes>,
@@ -536,19 +538,19 @@ fn strait_drone_guard(
     if state.mission_complete { return; }
     let range_sq = config.drone_intercept_range * config.drone_intercept_range;
 
-    // Collect guard drone positions
-    let guards: Vec<StraitPos> = drones.iter()
-        .filter(|(d, _)| d.alive && d.mode == DroneMode::GuardBase)
+    // Collect all alive drone positions
+    let drone_positions: Vec<StraitPos> = drones.iter()
+        .filter(|(d, _)| d.alive)
         .map(|(_, pos)| *pos)
         .collect();
 
-    if guards.is_empty() { return; }
+    if drone_positions.is_empty() { return; }
 
-    // For each shaheed, check if any guard drone is close enough
+    // For each active shaheed, check if any drone is close enough to intercept
     for (mut shaheed, spos) in shaheeds.iter_mut() {
-        if !shaheed.alive { continue; }
-        for gpos in &guards {
-            if gpos.dist_sq(spos) <= range_sq {
+        if !shaheed.alive || shaheed.launch_delay > 0 { continue; }
+        for dpos in &drone_positions {
+            if dpos.dist_sq(spos) <= range_sq {
                 shaheed.alive = false;
                 break;
             }
@@ -622,59 +624,91 @@ fn strait_move_tankers(
     }
 }
 
-/// Enemy wave spawner: spawn waves based on tick schedule + budget.
+/// Enemy director: pre-deployed force at tick 0 + slow reinforcement trickle.
+///
+/// The bulk of the Iranian force is on the map from the start. The player
+/// scouts and clears it before launching the convoy. Reinforcements arrive
+/// slowly — enough to punish pure turtling but not enough to overwhelm
+/// an active clearing strategy.
 fn strait_enemy_director(
     mut commands: Commands,
     mut state: ResMut<StraitState>,
     config: Res<StraitConfigRes>,
 ) {
     if state.mission_complete { return; }
-    if state.next_wave_index >= config.waves.len() { return; }
-
-    let wave = &config.waves[state.next_wave_index];
-    if state.mission_tick < wave.trigger_tick { return; }
 
     let map_w = config.map_width as f32;
 
-    // Spawn launchers (budget-limited)
-    let launchers_to_spawn = wave.launcher_count
-        .min(config.enemy_budget_launchers.saturating_sub(state.enemy_budget_launchers_used));
-    for i in 0..launchers_to_spawn {
-        let spacing = map_w / (launchers_to_spawn + 1) as f32;
-        let x = ((i + 1) as f32 * spacing) as i32;
-        spawn_launcher(&mut commands, GridPos::new(x, 4), GridPos::new(x, 9), 30 + i * 15);
-        state.enemy_budget_launchers_used += 1;
+    // === TICK 0: deploy the full Iranian force ===
+    if state.mission_tick == 1 && !state.initialized_enemies {
+        state.initialized_enemies = true;
+
+        // Launchers — spread along hostile coast, heavily staggered so they
+        // don't all fire in the first 200 ticks
+        for i in 0..config.deployed_launchers {
+            let spacing = map_w / (config.deployed_launchers + 1) as f32;
+            let x = ((i + 1) as f32 * spacing) as i32;
+            spawn_launcher(&mut commands, GridPos::new(x, 4), GridPos::new(x, 9), 100 + i * 200);
+        }
+
+        // AA drones — patrol the upper strait
+        for i in 0..config.deployed_aa {
+            let x = map_w * (i as f32 + 1.0) / (config.deployed_aa as f32 + 1.0);
+            spawn_aa(&mut commands, x, 12.0);
+        }
+
+        // Soldiers — positioned between coast and shipping lane
+        for i in 0..config.deployed_soldiers {
+            let x = map_w * (i as f32 + 1.0) / (config.deployed_soldiers as f32 + 1.0);
+            let y = 8.0 + (i % 3) as f32 * 3.0; // stagger depth
+            spawn_soldier(&mut commands, &mut state, x, y, &config);
+        }
+
+        // Shaheeds — on launch pads, staggered launch delays so they
+        // don't all fly at once. One launches every ~200 ticks.
+        for i in 0..config.deployed_shaheeds {
+            let x = map_w * (i as f32 + 1.0) / (config.deployed_shaheeds as f32 + 1.0);
+            let target = ShaheedTarget::Base;
+            let delay = 100 + i * 200; // first at tick 100, last at tick 1500
+            spawn_shaheed(&mut commands, &mut state, x, 3.0, target, delay);
+        }
+
+        return;
     }
 
-    // Spawn AA drones
-    let aa_to_spawn = wave.aa_drone_count
-        .min(config.enemy_budget_aa.saturating_sub(state.enemy_budget_aa_used));
-    for i in 0..aa_to_spawn {
-        let x = map_w * (i as f32 + 1.0) / (aa_to_spawn as f32 + 1.0);
+    // === REINFORCEMENT TRICKLE ===
+    if config.reinforcement_interval == 0 { return; }
+    if state.reinforcements_spawned >= config.reinforcement_cap { return; }
+    if state.mission_tick % config.reinforcement_interval as u64 != 0 { return; }
+    if state.mission_tick < 2 { return; } // skip tick 0/1
+
+    let (r_launchers, r_aa, r_soldiers, r_shaheeds) = config.reinforcement_batch;
+
+    for i in 0..r_launchers {
+        if state.reinforcements_spawned >= config.reinforcement_cap { break; }
+        let x = (map_w * 0.3 + (i as f32 * 60.0)) as i32 % config.map_width as i32;
+        spawn_launcher(&mut commands, GridPos::new(x, 4), GridPos::new(x, 9), 40);
+        state.reinforcements_spawned += 1;
+    }
+    for i in 0..r_aa {
+        if state.reinforcements_spawned >= config.reinforcement_cap { break; }
+        let x = map_w * 0.5 + i as f32 * 40.0;
         spawn_aa(&mut commands, x, 14.0);
-        state.enemy_budget_aa_used += 1;
+        state.reinforcements_spawned += 1;
     }
-
-    // Spawn soldiers
-    let soldiers_to_spawn = wave.soldier_count
-        .min(config.enemy_budget_soldiers.saturating_sub(state.enemy_budget_soldiers_used));
-    for i in 0..soldiers_to_spawn {
-        let x = map_w * (i as f32 + 1.0) / (soldiers_to_spawn as f32 + 1.0);
+    for i in 0..r_soldiers {
+        if state.reinforcements_spawned >= config.reinforcement_cap { break; }
+        let x = map_w * (0.2 + (state.reinforcements_spawned as f32 * 0.1) % 0.6);
         spawn_soldier(&mut commands, &mut state, x, 6.0, &config);
-        state.enemy_budget_soldiers_used += 1;
+        state.reinforcements_spawned += 1;
     }
-
-    // Spawn shaheeds
-    let shaheeds_to_spawn = wave.shaheed_count
-        .min(config.enemy_budget_shaheeds.saturating_sub(state.enemy_budget_shaheeds_used));
-    for i in 0..shaheeds_to_spawn {
-        let x = map_w * (i as f32 + 1.0) / (shaheeds_to_spawn as f32 + 1.0);
+    for i in 0..r_shaheeds {
+        if state.reinforcements_spawned >= config.reinforcement_cap { break; }
+        let x = map_w * (0.3 + (state.reinforcements_spawned as f32 * 0.1) % 0.5);
         let target = if state.convoy_hold { ShaheedTarget::Base } else { ShaheedTarget::Ship(0) };
-        spawn_shaheed(&mut commands, &mut state, x, 5.0, target);
-        state.enemy_budget_shaheeds_used += 1;
+        spawn_shaheed(&mut commands, &mut state, x, 3.0, target, 0); // reinforcements launch immediately
+        state.reinforcements_spawned += 1;
     }
-
-    state.next_wave_index += 1;
 }
 
 /// Launcher state machine (tick-based).
@@ -976,6 +1010,11 @@ fn strait_soldier_ai(
                 }
             }
             SoldierPhase::Engaged => {
+                // Attack cooldown
+                if soldier.attack_cooldown > 0 {
+                    soldier.attack_cooldown -= 1;
+                    continue;
+                }
                 // Look for tankers in danger range
                 for (mut tanker, tpos) in tankers.iter_mut() {
                     if tanker.arrived || tanker.destroyed { continue; }
@@ -986,7 +1025,8 @@ fn strait_soldier_ai(
                             tanker.destroyed = true;
                             state.tankers_destroyed += 1;
                         }
-                        break; // one attack per tick
+                        soldier.attack_cooldown = 100; // ~10 seconds between attacks
+                        break;
                     }
                 }
             }
@@ -997,7 +1037,7 @@ fn strait_soldier_ai(
 /// Shaheed AI: fly toward target (ship or base).
 fn strait_shaheed_ai(
     mut commands: Commands,
-    mut shaheeds: Query<(Entity, &StraitShaheed, &mut StraitPos)>,
+    mut shaheeds: Query<(Entity, &mut StraitShaheed, &mut StraitPos)>,
     mut tankers: Query<(Entity, &mut StraitTanker, &StraitPos), Without<StraitShaheed>>,
     mut state: ResMut<StraitState>,
     config: Res<StraitConfigRes>,
@@ -1005,9 +1045,14 @@ fn strait_shaheed_ai(
     if state.mission_complete { return; }
     let impact_range_sq: f32 = 1.0;
 
-    for (entity, shaheed, mut pos) in shaheeds.iter_mut() {
+    for (entity, mut shaheed, mut pos) in shaheeds.iter_mut() {
         if !shaheed.alive {
             commands.entity(entity).despawn();
+            continue;
+        }
+        // Still on the launch pad — count down
+        if shaheed.launch_delay > 0 {
+            shaheed.launch_delay -= 1;
             continue;
         }
         let (target_x, target_y) = match shaheed.target {
@@ -1131,14 +1176,9 @@ fn strait_check_win_lose(
         return;
     }
 
-    // Convoy time limit (only counts after convoy launched)
+    // Track convoy ticks (no hard limit — soft pressure from Patriot drain)
     if !state.convoy_hold {
         state.convoy_ticks += 1;
-        if state.convoy_ticks >= config.convoy_time_limit {
-            state.mission_complete = true;
-            info!("Strait LOST: convoy time limit");
-            return;
-        }
     }
 
     // Too many tankers lost
@@ -1177,7 +1217,7 @@ pub fn register_strait_sim_systems(app: &mut App) {
             strait_drone_flare_tick.after(strait_tick),
             strait_move_drones.after(strait_tick),
             strait_drone_bomb.after(strait_move_drones),
-            strait_drone_guard.after(strait_move_drones),
+            strait_drone_intercept_shaheeds.after(strait_move_drones),
             strait_update_vision.after(strait_move_drones),
             strait_spawn_tankers.after(strait_tick),
             strait_move_tankers.after(strait_spawn_tankers),
@@ -1256,7 +1296,7 @@ pub fn build_headless_world(config: StraitConfig) -> (World, Schedule) {
         strait_drone_flare_tick.after(strait_tick),
         strait_move_drones.after(strait_tick),
         strait_drone_bomb.after(strait_move_drones),
-        strait_drone_guard.after(strait_move_drones),
+        strait_drone_intercept_shaheeds.after(strait_move_drones),
         strait_update_vision.after(strait_move_drones),
         strait_spawn_tankers.after(strait_tick),
         strait_move_tankers.after(strait_spawn_tankers),
@@ -1361,31 +1401,23 @@ mod tests {
     }
 
     #[test]
-    fn shaheed_targets_base_when_convoy_held() {
+    fn predeployed_shaheeds_target_base_when_convoy_held() {
         let mut config = StraitConfig::default();
-        // Immediate first wave with shaheeds only
-        config.waves = vec![EnemyWaveConfig {
-            trigger_tick: 1,
-            launcher_count: 0,
-            aa_drone_count: 0,
-            soldier_count: 0,
-            shaheed_count: 3,
-            coordinated: false,
-        }];
-        // Disable patriots so they don't intercept shaheeds before we count them
+        // Only shaheeds, no other enemies, no patriots (so they aren't intercepted)
+        config.deployed_launchers = 0;
+        config.deployed_aa = 0;
+        config.deployed_soldiers = 0;
+        config.deployed_shaheeds = 3;
         config.initial_patriots = 0;
-        let (mut world, mut schedule) = build_headless_world(config.clone());
+        config.reinforcement_interval = 0; // no reinforcements
+        let (mut world, mut schedule) = build_headless_world(config);
 
-        // Advance past wave trigger
+        // Advance so pre-deployed force spawns (tick 1) and entities flush
         for _ in 0..5 {
             schedule.run(&mut world);
         }
 
-        // Director should have triggered and spawned shaheeds
-        let state = world.resource::<StraitState>();
-        assert_eq!(state.enemy_budget_shaheeds_used, 3, "director should have spawned 3");
-
-        // Shaheeds should exist (not despawned since no patriots and no guards)
+        // Shaheeds should exist
         let mut q = world.query::<&StraitShaheed>();
         let shaheed_count = q.iter(&world).count();
         assert_eq!(shaheed_count, 3);

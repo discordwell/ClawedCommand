@@ -247,10 +247,16 @@ pub(crate) fn kell_refusal(action: OfficeAction, state: &DreamOfficeState) -> &'
         OfficeAction::CheckVehicles => "I drive a desk. It gets better mileage.", // human-requested text
         OfficeAction::LookAtHelicopter => "That's transport's problem. My war happens at a keyboard.", // human-requested text
         OfficeAction::EnterScif => "I have the clearance. I don't have the time.", // human-requested text
-        OfficeAction::CheckServers => "The hardware's someone else's job. I write the code that runs on it.", // human-requested text
+        OfficeAction::CheckServers => { // human-requested text: changes on repeat
+            if state.server_room_seen {
+                "Then I realized that I could heapsort my priorities. Never did it, but knowing was enough."
+            } else {
+                "I used to come here when I felt overwhelmed. I'd spend my break just watching the lights blinking."
+            }
+        }
         OfficeAction::UseMicrowave => "If I wanted to eat, I'd eat. The vending machine is faster.", // human-requested text
         OfficeAction::GrabSupplies => "I don't need anything that comes in a box.", // human-requested text
-        OfficeAction::SitAndReflect => "I don't need peace. I need results.", // human-requested text
+        OfficeAction::SitAndReflect => "We've built wonders. There are Gods everywhere. Sometimes I think that it's the most religious who are the real atheists.", // human-requested text
         OfficeAction::PlayPool => "I don't play games that don't have a win condition.", // human-requested text
         OfficeAction::PlayArcade => "Waste of quarters.", // human-requested text
         OfficeAction::DoLaundry => "Same uniform every day. It's fine.", // human-requested text
@@ -417,6 +423,8 @@ pub struct DreamOfficeState {
     pub refusal_timer: f32,
     /// Whether the photo wall has been interacted with before.
     pub photo_wall_seen: bool,
+    /// Whether the server room has been visited before.
+    pub server_room_seen: bool,
     /// Whether Rex has departed the office scene.
     pub rex_departed: bool,
     /// Countdown timer for Rex's departure after opening dialogue.
@@ -440,6 +448,7 @@ impl Default for DreamOfficeState {
             nearby_action: None,
             refusal_timer: 0.0,
             photo_wall_seen: false,
+            server_room_seen: false,
             rex_departed: false,
             rex_departure_timer: 0.0, // despawn immediately when dialogue ends
         }
@@ -890,6 +899,9 @@ fn dream_interact_system(
         }
         if action == OfficeAction::PhotoWall {
             dream.photo_wall_seen = true;
+        }
+        if action == OfficeAction::CheckServers {
+            dream.server_room_seen = true;
         }
         return;
     }
