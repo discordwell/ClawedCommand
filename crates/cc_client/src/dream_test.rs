@@ -86,113 +86,119 @@ impl Default for DreamTestDriver {
 /// Build the test script for the dream office sequence.
 fn build_test_script() -> Vec<TestAction> {
     vec![
-        TestAction::Log("=== Dream Test: starting ==="),
+        TestAction::Log("=== Dream Test v2: 96x64 expanded base ==="),
         TestAction::Screenshot("01_initial_load"),
         TestAction::AdvanceDialogue,
         TestAction::Screenshot("02_post_dialogue"),
-        // === Work at desk (enabled action) ===
+        // === Work at desk (grind station) ===
         TestAction::Log("Walking to desk"),
-        TestAction::MoveToAndWait(GridPos::new(35, 24)),
+        TestAction::MoveToAndWait(GridPos::new(47, 30)),
         TestAction::Screenshot("03_at_desk"),
         TestAction::PressF,
         TestAction::WaitForFreeRoam,
         TestAction::Screenshot("04_after_work"),
-        // === Call Ada — "I miss her, but I can't afford the distraction" ===
-        TestAction::Log("Walking to phone (Call Ada)"),
-        TestAction::MoveToAndWait(GridPos::new(24, 5)),
+        // === SCIF (new) ===
+        TestAction::Log("Walking to SCIF"),
+        TestAction::MoveToAndWait(GridPos::new(72, 5)),
         TestAction::PressF,
         TestAction::WaitSecs(1.0),
-        TestAction::Screenshot("05_call_ada_refusal"),
+        TestAction::Screenshot("05_scif_refusal"),
         TestAction::WaitSecs(2.5),
-        // === Sleep — "Plenty of time when I'm dead." ===
-        TestAction::Log("Walking to barracks (Sleep)"),
-        TestAction::MoveToAndWait(GridPos::new(55, 41)),
+        // === Server Room (new) ===
+        TestAction::Log("Walking to server room"),
+        TestAction::MoveToAndWait(GridPos::new(85, 7)),
         TestAction::PressF,
         TestAction::WaitSecs(1.0),
-        TestAction::Screenshot("06_sleep_refusal"),
+        TestAction::Screenshot("06_server_refusal"),
         TestAction::WaitSecs(2.5),
-        // === Eat — "I'm not hungry" ===
-        TestAction::Log("Walking to mess hall (Eat)"),
-        TestAction::MoveToAndWait(GridPos::new(40, 41)),
+        // === Chapel (new) ===
+        TestAction::Log("Walking to chapel"),
+        TestAction::MoveToAndWait(GridPos::new(87, 35)),
         TestAction::PressF,
         TestAction::WaitSecs(1.0),
-        TestAction::Screenshot("07_eat_refusal"),
+        TestAction::Screenshot("07_chapel_refusal"),
         TestAction::WaitSecs(2.5),
-        // === Talk — "Not interested." ===
-        TestAction::Log("Walking to break room (Talk)"),
-        TestAction::MoveToAndWait(GridPos::new(16, 12)),
+        // === Rec Room — Pool (new) ===
+        TestAction::Log("Walking to rec room (pool)"),
+        TestAction::MoveToAndWait(GridPos::new(23, 47)),
         TestAction::PressF,
         TestAction::WaitSecs(1.0),
-        TestAction::Screenshot("08_talk_refusal"),
+        TestAction::Screenshot("08_pool_refusal"),
         TestAction::WaitSecs(2.5),
-        // === Storage/Armory — "My code is my weapon" ===
-        TestAction::Log("Walking to armory (Storage)"),
-        TestAction::MoveToAndWait(GridPos::new(55, 12)),
+        // === Energy drink (grind station) ===
+        TestAction::Log("Walking to vending nook"),
+        TestAction::MoveToAndWait(GridPos::new(60, 44)),
+        TestAction::PressF,
+        TestAction::WaitForFreeRoam,
+        TestAction::Screenshot("09_energy_drink"),
+        // === Mess Hall — Sit with Others (new) ===
+        TestAction::Log("Walking to mess hall (sit with others)"),
+        TestAction::MoveToAndWait(GridPos::new(65, 52)),
         TestAction::PressF,
         TestAction::WaitSecs(1.0),
-        TestAction::Screenshot("09_armory_refusal"),
+        TestAction::Screenshot("10_sit_others_refusal"),
         TestAction::WaitSecs(2.5),
-        // === Water Fountain — "I'm not thirsty I just need the caffeine" ===
-        TestAction::Log("Walking to water fountain"),
-        TestAction::MoveToAndWait(GridPos::new(30, 9)),
+        // === Gym (grind station) ===
+        TestAction::Log("Walking to gym"),
+        TestAction::MoveToAndWait(GridPos::new(25, 56)),
+        TestAction::PressF,
+        TestAction::WaitForFreeRoam,
+        TestAction::Screenshot("11_after_workout"),
+        // === Courtyard — bench (new) ===
+        TestAction::Log("Walking to courtyard bench"),
+        TestAction::MoveToAndWait(GridPos::new(8, 50)),
         TestAction::PressF,
         TestAction::WaitSecs(1.0),
-        TestAction::Screenshot("10_water_refusal"),
+        TestAction::Screenshot("12_bench_refusal"),
         TestAction::WaitSecs(2.5),
-        // === Medical Bay — "I'm fine" ===
-        TestAction::Log("Walking to medical bay"),
-        TestAction::MoveToAndWait(GridPos::new(28, 12)),
+        // === Motor Pool (new) ===
+        TestAction::Log("Walking to motor pool"),
+        TestAction::MoveToAndWait(GridPos::new(8, 58)),
         TestAction::PressF,
         TestAction::WaitSecs(1.0),
-        TestAction::Screenshot("11_medical_refusal"),
+        TestAction::Screenshot("13_vehicles_refusal"),
         TestAction::WaitSecs(2.5),
-        // === Photo Wall — first visit: "My unit." ===
+        // === Helipad (new) ===
+        TestAction::Log("Walking to helipad"),
+        TestAction::MoveToAndWait(GridPos::new(28, 58)),
+        TestAction::PressF,
+        TestAction::WaitSecs(1.0),
+        TestAction::Screenshot("14_helicopter_refusal"),
+        TestAction::WaitSecs(2.5),
+        // === Back to work ===
+        TestAction::Log("Back to desk for final work session"),
+        TestAction::MoveToAndWait(GridPos::new(47, 30)),
+        TestAction::PressF,
+        TestAction::WaitForFreeRoam,
+        TestAction::Screenshot("15_final"),
+        // === Photo Wall (test state change) ===
         TestAction::Log("Walking to photo wall (first visit)"),
-        TestAction::MoveToAndWait(GridPos::new(20, 9)),
+        TestAction::MoveToAndWait(GridPos::new(24, 11)),
         TestAction::PressF,
         TestAction::WaitSecs(1.0),
         TestAction::Screenshot("12_photo_first"),
         TestAction::WaitSecs(2.5),
-        // === Photo Wall — second visit: "I feel like I should feel something..." ===
+        // === Photo Wall — second visit ===
         TestAction::Log("Photo wall again (second visit)"),
         TestAction::PressF,
         TestAction::WaitSecs(1.0),
-        TestAction::Screenshot("13_photo_second"),
+        TestAction::Screenshot("17_photo_second"),
         TestAction::WaitSecs(2.5),
-        // === Guard Post — time-based (at whatever hour we're at) ===
+        // === Guard Post — time-based ===
         TestAction::Log("Walking to guard post"),
-        TestAction::MoveToAndWait(GridPos::new(15, 4)),
+        TestAction::MoveToAndWait(GridPos::new(21, 4)),
         TestAction::PressF,
         TestAction::WaitSecs(1.0),
-        TestAction::Screenshot("14_guard_refusal"),
+        TestAction::Screenshot("18_guard_refusal"),
         TestAction::WaitSecs(2.5),
-        // === CO's Office — time-based ===
-        TestAction::Log("Walking to CO's office"),
-        TestAction::MoveToAndWait(GridPos::new(55, 5)),
-        TestAction::PressF,
-        TestAction::WaitSecs(1.0),
-        TestAction::Screenshot("15_co_refusal"),
-        TestAction::WaitSecs(2.5),
-        // === Leave Base (unchanged, sanity check) ===
+        // === Leave Base ===
         TestAction::Log("Walking to parking lot (Leave Base)"),
-        TestAction::MoveToAndWait(GridPos::new(5, 24)),
+        TestAction::MoveToAndWait(GridPos::new(8, 30)),
         TestAction::PressF,
         TestAction::WaitSecs(1.0),
-        TestAction::Screenshot("16_leave_refusal"),
+        TestAction::Screenshot("19_leave_refusal"),
         TestAction::WaitSecs(2.5),
-        // === Gym (enabled action, exercise) ===
-        TestAction::Log("Walking to gym (Work Out)"),
-        TestAction::MoveToAndWait(GridPos::new(17, 41)),
-        TestAction::PressF,
-        TestAction::WaitForFreeRoam,
-        TestAction::Screenshot("17_after_workout"),
-        // === Final work session ===
-        TestAction::Log("Back to desk"),
-        TestAction::MoveToAndWait(GridPos::new(35, 24)),
-        TestAction::PressF,
-        TestAction::WaitForFreeRoam,
-        TestAction::Screenshot("18_final"),
-        TestAction::Log("=== Dream Test: complete ==="),
+        TestAction::Log("=== Dream Test v2: complete ==="),
         TestAction::Exit,
     ]
 }

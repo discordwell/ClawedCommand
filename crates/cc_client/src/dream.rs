@@ -43,24 +43,24 @@ const FORCED_ACTION_THRESHOLD: u32 = 6;
 // Ops center desk positions + occupancy curve
 // ---------------------------------------------------------------------------
 
-/// 24 control desk positions in the ops center (rows 16-32, cols 13-59).
-/// Spread across 5 rows, skip Kell's position (35,24).
+/// 24 control desk positions in the ops center (rows 18-38, cols 16-78).
+/// Spread across 4 rows, skip Kell's position (47,30).
 fn ops_desk_positions() -> Vec<GridPos> {
     vec![
-        // Row 17 (back)
-        GridPos::new(15, 17), GridPos::new(21, 17), GridPos::new(27, 17),
-        GridPos::new(35, 17), GridPos::new(41, 17), GridPos::new(47, 17),
-        GridPos::new(53, 17),
-        // Row 21
-        GridPos::new(15, 21), GridPos::new(21, 21), GridPos::new(27, 21),
-        GridPos::new(41, 21), GridPos::new(47, 21),
-        // Row 25 — skip (35,24) area where Kell sits
-        GridPos::new(15, 25), GridPos::new(21, 25), GridPos::new(27, 25),
-        GridPos::new(47, 25), GridPos::new(53, 25),
-        // Row 29
-        GridPos::new(15, 29), GridPos::new(21, 29), GridPos::new(27, 29),
-        GridPos::new(35, 29), GridPos::new(41, 29), GridPos::new(47, 29),
-        GridPos::new(53, 29),
+        // Row 22 (back)
+        GridPos::new(20, 22), GridPos::new(28, 22), GridPos::new(36, 22),
+        GridPos::new(44, 22), GridPos::new(52, 22), GridPos::new(60, 22),
+        GridPos::new(68, 22),
+        // Row 26
+        GridPos::new(20, 26), GridPos::new(28, 26), GridPos::new(36, 26),
+        GridPos::new(52, 26), GridPos::new(60, 26),
+        // Row 30 — skip (47,30) area where Kell sits
+        GridPos::new(20, 30), GridPos::new(28, 30), GridPos::new(36, 30),
+        GridPos::new(56, 30), GridPos::new(68, 30),
+        // Row 34
+        GridPos::new(20, 34), GridPos::new(28, 34), GridPos::new(36, 34),
+        GridPos::new(44, 34), GridPos::new(52, 34), GridPos::new(60, 34),
+        GridPos::new(68, 34),
     ]
 }
 
@@ -102,29 +102,45 @@ const INTERACT_RADIUS: i32 = 3;
 fn office_location_positions() -> Vec<(OfficeAction, GridPos, &'static str)> {
     vec![
         // === Enabled (the grind) ===
-        (OfficeAction::Work, GridPos::new(35, 24), "Work"),
-        (OfficeAction::EnergyDrink, GridPos::new(30, 36), "Get Energy Drink"),
-        (OfficeAction::WorkOut, GridPos::new(17, 41), "Work Out"),
+        (OfficeAction::Work, GridPos::new(47, 30), "Work"),
+        (OfficeAction::EnergyDrink, GridPos::new(60, 44), "Get Energy Drink"),
+        (OfficeAction::WorkOut, GridPos::new(25, 56), "Work Out"),
         // === Disabled — personal needs ===
-        (OfficeAction::CallAda, GridPos::new(24, 5), "Call Ada"),
-        (OfficeAction::Sleep, GridPos::new(55, 41), "Sleep"),
-        (OfficeAction::Eat, GridPos::new(40, 41), "Eat Something"),
-        (OfficeAction::Talk, GridPos::new(16, 12), "Sit Down and Talk"),
+        (OfficeAction::CallAda, GridPos::new(32, 5), "Call Ada"),
+        (OfficeAction::Sleep, GridPos::new(85, 50), "Sleep"),
+        (OfficeAction::Eat, GridPos::new(68, 50), "Eat Something"),
+        (OfficeAction::Talk, GridPos::new(22, 14), "Sit Down and Talk"),
         // === Disabled — base exploration ===
-        (OfficeAction::LeaveBase, GridPos::new(5, 24), "Leave the Base"),
-        (OfficeAction::Storage, GridPos::new(55, 12), "Check the Armory"),
-        (OfficeAction::BulletinBoard, GridPos::new(15, 9), "Read Bulletin Board"),
-        (OfficeAction::WaterFountain, GridPos::new(30, 9), "Get Water"),
-        (OfficeAction::Window, GridPos::new(5, 10), "Look Outside"),
-        (OfficeAction::BriefingRoom, GridPos::new(39, 5), "Review the Briefing"),
-        (OfficeAction::CoOffice, GridPos::new(55, 5), "Visit the CO"),
-        (OfficeAction::MedicalBay, GridPos::new(28, 12), "See the Medic"),
-        (OfficeAction::LockerRoom, GridPos::new(28, 41), "Check Your Locker"),
-        (OfficeAction::Courtyard, GridPos::new(5, 42), "Step Outside"),
-        (OfficeAction::GuardPost, GridPos::new(15, 4), "Talk to the Guard"),
-        (OfficeAction::Tv, GridPos::new(13, 11), "Watch the News"),
-        (OfficeAction::PhotoWall, GridPos::new(20, 9), "Look at the Photos"),
-        (OfficeAction::CoffeeMachine, GridPos::new(45, 36), "Get Coffee"),
+        (OfficeAction::LeaveBase, GridPos::new(8, 30), "Leave the Base"),
+        (OfficeAction::Storage, GridPos::new(85, 17), "Check the Armory"),
+        (OfficeAction::BulletinBoard, GridPos::new(50, 9), "Read Bulletin Board"),
+        (OfficeAction::WaterFountain, GridPos::new(55, 9), "Get Water"),
+        (OfficeAction::Window, GridPos::new(8, 14), "Look Outside"),
+        (OfficeAction::BriefingRoom, GridPos::new(45, 5), "Review the Briefing"),
+        (OfficeAction::CoOffice, GridPos::new(58, 5), "Visit the CO"),
+        (OfficeAction::MedicalBay, GridPos::new(37, 14), "See the Medic"),
+        (OfficeAction::LockerRoom, GridPos::new(40, 56), "Check Your Locker"),
+        (OfficeAction::Courtyard, GridPos::new(8, 48), "Step Outside"),
+        (OfficeAction::GuardPost, GridPos::new(21, 4), "Talk to the Guard"),
+        (OfficeAction::Tv, GridPos::new(18, 14), "Watch the News"),
+        (OfficeAction::PhotoWall, GridPos::new(24, 11), "Look at the Photos"),
+        (OfficeAction::CoffeeMachine, GridPos::new(62, 44), "Get Coffee"),
+        // === Disabled — new expansion areas ===
+        (OfficeAction::SitOnBench, GridPos::new(8, 50), "Sit on the Bench"),
+        (OfficeAction::CheckVehicles, GridPos::new(8, 58), "Check the Vehicles"),
+        (OfficeAction::LookAtHelicopter, GridPos::new(28, 58), "Look at the Helicopter"),
+        (OfficeAction::EnterScif, GridPos::new(72, 5), "Enter the SCIF"),
+        (OfficeAction::CheckServers, GridPos::new(85, 7), "Check the Servers"),
+        (OfficeAction::UseMicrowave, GridPos::new(20, 12), "Use the Microwave"),
+        (OfficeAction::GrabSupplies, GridPos::new(87, 26), "Grab Supplies"),
+        (OfficeAction::SitAndReflect, GridPos::new(87, 35), "Sit and Reflect"),
+        (OfficeAction::PlayPool, GridPos::new(23, 47), "Play Pool"),
+        (OfficeAction::PlayArcade, GridPos::new(17, 44), "Play the Arcade"),
+        (OfficeAction::DoLaundry, GridPos::new(36, 47), "Do Laundry"),
+        (OfficeAction::ReadMenuBoard, GridPos::new(70, 48), "Read the Menu Board"),
+        (OfficeAction::SitWithOthers, GridPos::new(65, 52), "Sit with the Others"),
+        (OfficeAction::ReadLetter, GridPos::new(80, 60), "Read Someone's Letter"),
+        (OfficeAction::GoForRun, GridPos::new(8, 54), "Go for a Run"),
     ]
 }
 
@@ -152,6 +168,21 @@ fn prop_appearance(action: OfficeAction) -> (Color, &'static str) {
         OfficeAction::Tv => (Color::srgb(0.3, 0.4, 0.6), "[TV]"),
         OfficeAction::PhotoWall => (Color::srgb(0.6, 0.5, 0.4), "[PHOTO]"),
         OfficeAction::CoffeeMachine => (Color::srgb(0.4, 0.3, 0.2), "[COFFEE]"),
+        OfficeAction::SitOnBench => (Color::srgb(0.4, 0.5, 0.3), "[BENCH]"),
+        OfficeAction::CheckVehicles => (Color::srgb(0.5, 0.5, 0.4), "[HMVEE]"),
+        OfficeAction::LookAtHelicopter => (Color::srgb(0.4, 0.5, 0.5), "[HELO]"),
+        OfficeAction::EnterScif => (Color::srgb(0.7, 0.3, 0.3), "[SCIF]"),
+        OfficeAction::CheckServers => (Color::srgb(0.3, 0.4, 0.6), "[RACK]"),
+        OfficeAction::UseMicrowave => (Color::srgb(0.5, 0.5, 0.5), "[MICRO]"),
+        OfficeAction::GrabSupplies => (Color::srgb(0.5, 0.4, 0.3), "[SUPPLY]"),
+        OfficeAction::SitAndReflect => (Color::srgb(0.6, 0.5, 0.4), "[CHAPEL]"),
+        OfficeAction::PlayPool => (Color::srgb(0.2, 0.5, 0.3), "[POOL]"),
+        OfficeAction::PlayArcade => (Color::srgb(0.5, 0.2, 0.6), "[ARCADE]"),
+        OfficeAction::DoLaundry => (Color::srgb(0.5, 0.5, 0.6), "[WASH]"),
+        OfficeAction::ReadMenuBoard => (Color::srgb(0.6, 0.5, 0.3), "[MENU]"),
+        OfficeAction::SitWithOthers => (Color::srgb(0.5, 0.5, 0.4), "[TABLE]"),
+        OfficeAction::ReadLetter => (Color::srgb(0.6, 0.6, 0.5), "[LETTER]"),
+        OfficeAction::GoForRun => (Color::srgb(0.4, 0.6, 0.3), "[TRACK]"),
     }
 }
 
@@ -212,6 +243,21 @@ pub(crate) fn kell_refusal(action: OfficeAction, state: &DreamOfficeState) -> &'
             }
         }
         OfficeAction::CoffeeMachine => "That machine's been broken since March. Energy drinks are better anyway.",
+        OfficeAction::SitOnBench => "I don't sit unless there's a screen in front of me.", // human-requested text
+        OfficeAction::CheckVehicles => "I drive a desk. It gets better mileage.", // human-requested text
+        OfficeAction::LookAtHelicopter => "That's transport's problem. My war happens at a keyboard.", // human-requested text
+        OfficeAction::EnterScif => "I have the clearance. I don't have the time.", // human-requested text
+        OfficeAction::CheckServers => "The hardware's someone else's job. I write the code that runs on it.", // human-requested text
+        OfficeAction::UseMicrowave => "If I wanted to eat, I'd eat. The vending machine is faster.", // human-requested text
+        OfficeAction::GrabSupplies => "I don't need anything that comes in a box.", // human-requested text
+        OfficeAction::SitAndReflect => "I don't need peace. I need results.", // human-requested text
+        OfficeAction::PlayPool => "I don't play games that don't have a win condition.", // human-requested text
+        OfficeAction::PlayArcade => "Waste of quarters.", // human-requested text
+        OfficeAction::DoLaundry => "Same uniform every day. It's fine.", // human-requested text
+        OfficeAction::ReadMenuBoard => "Chicken, steak, or mystery. Same answer: not hungry.", // human-requested text
+        OfficeAction::SitWithOthers => "They talk about home. I don't want to think about home.", // human-requested text
+        OfficeAction::ReadLetter => "That's not mine to read. And I don't want to.", // human-requested text
+        OfficeAction::GoForRun => "I get my exercise in the gym. Controlled. Efficient. Done.", // human-requested text
         _ => "",
     }
 }
@@ -309,6 +355,22 @@ pub enum OfficeAction {
     Tv,
     PhotoWall,
     CoffeeMachine,
+    // === Disabled — new expansion areas ===
+    SitOnBench,
+    CheckVehicles,
+    LookAtHelicopter,
+    EnterScif,
+    CheckServers,
+    UseMicrowave,
+    GrabSupplies,
+    SitAndReflect,
+    PlayPool,
+    PlayArcade,
+    DoLaundry,
+    ReadMenuBoard,
+    SitWithOthers,
+    ReadLetter,
+    GoForRun,
 }
 
 impl OfficeAction {
@@ -636,16 +698,26 @@ fn dream_init_system(
 
             // Ambient NPCs — soldiers around the base for atmosphere
             let npc_positions = vec![
-                GridPos::new(15, 4),   // guard at entrance
-                GridPos::new(28, 12),  // medic in medical bay
-                GridPos::new(17, 40),  // soldier in gym
-                GridPos::new(40, 40),  // soldier eating in mess
-                GridPos::new(55, 40),  // soldier sleeping in barracks
-                GridPos::new(13, 11),  // soldier watching TV in break room
-                GridPos::new(25, 9),   // soldier in north corridor
-                GridPos::new(50, 9),   // soldier near CO office
-                GridPos::new(20, 36),  // soldier in south corridor
-                GridPos::new(55, 36),  // soldier near barracks entrance
+                GridPos::new(21, 4),   // guard at entrance
+                GridPos::new(37, 14),  // medic in medical bay
+                GridPos::new(25, 56),  // soldier in gym
+                GridPos::new(68, 50),  // soldier eating in mess
+                GridPos::new(85, 50),  // soldier sleeping in barracks
+                GridPos::new(18, 14),  // soldier watching TV in break room
+                GridPos::new(50, 9),   // soldier in north corridor
+                GridPos::new(58, 5),   // soldier near CO office
+                GridPos::new(30, 42),  // soldier in south corridor
+                GridPos::new(85, 42),  // soldier near east wing
+                GridPos::new(6, 47),   // smoker in courtyard
+                GridPos::new(10, 49),  // smoker in courtyard
+                GridPos::new(8, 58),   // mechanic in motor pool
+                GridPos::new(72, 5),   // analyst near SCIF
+                GridPos::new(85, 7),   // tech in server room
+                GridPos::new(23, 47),  // soldier at pool table
+                GridPos::new(36, 47),  // soldier in laundry
+                GridPos::new(65, 52),  // soldier eating in mess
+                GridPos::new(75, 52),  // soldier eating in mess
+                GridPos::new(80, 60),  // soldier sleeping in barracks
             ];
             let npc_mesh = meshes.add(Circle::new(4.0));
             let npc_mat = materials.add(ColorMaterial::from_color(Color::srgb(0.5, 0.55, 0.4)));

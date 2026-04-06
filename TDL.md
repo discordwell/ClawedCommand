@@ -213,3 +213,9 @@
 - [ ] Generate GLB models for other faction units as needed for video
 - [ ] Generate building GLBs for cinematic shots
 - [ ] Render promotional trailer scenes using Bevy 3D camera
+
+## Dream Office Sprites
+- [ ] Generate prop sprites for 30+ interactables via ChatGPT pipeline (regen_hero_walk.py pattern adapted for static props)
+- [ ] Priority sprites: phone, bed, couch, TV, coffee machine, vending, gym rack (existing 3 need repositioning check)
+- [ ] Secondary: SCIF door, server rack, pool table, arcade, chapel pew, helicopter, humvee
+- [ ] Tertiary: bulletin board, water fountain, medical cabinet, locker, menu board, washing machine, etc.
