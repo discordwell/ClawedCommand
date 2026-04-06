@@ -78,6 +78,7 @@ pub fn process_commands(
                 CommandSource::PlayerInput if !r.mouse_keyboard_enabled => continue,
                 CommandSource::VoiceCommand if !r.voice_enabled => continue,
                 CommandSource::AiAgent if !r.ai_enabled => continue,
+                CommandSource::Script if !r.ai_enabled => continue,
                 _ => {}
             }
             if !r.building_enabled && cmd.is_build() {

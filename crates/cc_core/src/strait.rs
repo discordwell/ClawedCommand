@@ -12,13 +12,81 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum StraitEntityKind {
     PatrolDrone,
-    InterceptorDrone,
     EnemyAaDrone,
     EnemyLauncher,
     EnemyDecoy,
+    EnemySoldier,
+    EnemyShaheed,
     Tanker,
     Missile,
-    SatelliteScan,
+}
+
+// ---------------------------------------------------------------------------
+// Drone modes
+// ---------------------------------------------------------------------------
+
+/// Active mode for a player drone.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum DroneMode {
+    /// Following assigned patrol waypoints.
+    Patrol,
+    /// Direct move to a position.
+    MoveTo { x: f32, y: f32 },
+    /// Moving to bomb a ground target.
+    BombTarget { x: f32, y: f32 },
+    /// Stationed at base, auto-intercepts shaheeds.
+    GuardBase,
+}
+
+impl Default for DroneMode {
+    fn default() -> Self {
+        Self::Patrol
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Patriot targeting mode
+// ---------------------------------------------------------------------------
+
+/// How the base Patriot interceptors select targets.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PatriotMode {
+    /// Shoot down both missiles and shaheeds (default — wasteful).
+    Auto,
+    /// Only engage missiles. Shaheeds must be intercepted by drones.
+    MissilesOnly,
+}
+
+impl Default for PatriotMode {
+    fn default() -> Self {
+        Self::Auto
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Enemy soldier phases
+// ---------------------------------------------------------------------------
+
+/// State machine for a ground soldier.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SoldierPhase {
+    /// Advancing toward the shipping lane.
+    Advancing,
+    /// Within danger range of a tanker — dealing damage.
+    Engaged,
+}
+
+// ---------------------------------------------------------------------------
+// Enemy shaheed (suicide drone)
+// ---------------------------------------------------------------------------
+
+/// What the shaheed is targeting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ShaheedTarget {
+    /// Heading for the player base.
+    Base,
+    /// Heading for a specific tanker (by tanker_index).
+    Ship(u32),
 }
 
 // ---------------------------------------------------------------------------
@@ -128,121 +196,272 @@ pub enum MissileState {
 /// Configuration for one escalation wave of the enemy AI.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnemyWaveConfig {
-    /// How many real launchers are active.
+    /// Tick at which this wave spawns (relative to mission start).
+    pub trigger_tick: u64,
+    /// How many missile launchers to spawn.
     pub launcher_count: u32,
-    /// How many decoy launchers.
-    pub decoy_count: u32,
-    /// How many AA drones hunting player patrol drones.
+    /// How many AA drones.
     pub aa_drone_count: u32,
+    /// How many ground soldiers.
+    pub soldier_count: u32,
+    /// How many suicide drones (shaheeds).
+    pub shaheed_count: u32,
     /// Whether the enemy coordinates diversionary attacks.
-    pub coordinated_diversions: bool,
+    pub coordinated: bool,
+}
+
+// ---------------------------------------------------------------------------
+// Master configuration
+// ---------------------------------------------------------------------------
+
+/// All tunable parameters for the strait mission. Systems read `Res<StraitConfig>`.
+/// The headless harness can pass modified configs for balance iteration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StraitConfig {
+    // -- Map --
+    pub map_width: u32,
+    pub map_height: u32,
+
+    // -- Convoy --
+    pub total_tankers: u32,
+    pub min_tankers_win: u32,
+    pub max_tankers_lost: u32,
+    pub tanker_spawn_interval: u32,
+    pub tanker_hp: u32,
+    pub tanker_speed: f32,
+
+    // -- Player drones --
+    pub initial_patrol_drones: u32,
+    pub drone_vision_radius: i32,
+    pub drone_speed: f32,
+    pub drone_flare_cooldown: u32,
+    pub drone_bomb_reload: u32,
+    pub drone_bomb_range: f32,
+    pub drone_intercept_range: f32,
+
+    // -- Satellite --
+    pub satellite_vision_radius: i32,
+
+    // -- Drone rebuild (logistics) --
+    pub drone_rebuild_ticks: u32,
+    pub drone_rebuild_max_charges: u32,
+    pub drone_rebuild_charge_regen_ticks: u32,
+
+    // -- Airstrikes (logistics) --
+    pub airstrike_delay_ticks: u32,
+    pub airstrike_radius: i32,
+    pub airstrike_max_charges: u32,
+    pub airstrike_charge_regen_ticks: u32,
+
+    // -- Patriots (finite, no regen) --
+    pub initial_patriots: u32,
+    pub patriot_range: f32,
+
+    // -- Base --
+    pub base_hp: u32,
+    /// Base grid position (x, y).
+    pub base_x: i32,
+    pub base_y: i32,
+
+    // -- Enemy: AA drones --
+    pub aa_suppress_range: f32,
+    pub aa_engagement_ticks: u32,
+    pub aa_swarm_threshold: u32,
+
+    // -- Enemy: Soldiers --
+    pub soldier_speed: f32,
+    pub soldier_danger_range: f32,
+    pub soldier_hp: u32,
+
+    // -- Enemy: Shaheeds --
+    pub shaheed_speed: f32,
+    pub shaheed_damage: u32,
+
+    // -- Enemy: Missiles --
+    pub missile_flight_ticks: u32,
+
+    // -- Enemy budget (total available across all waves) --
+    pub enemy_budget_aa: u32,
+    pub enemy_budget_soldiers: u32,
+    pub enemy_budget_shaheeds: u32,
+    pub enemy_budget_launchers: u32,
+
+    // -- Zero-day build ticks at 100% slice --
+    pub zeroday_ticks_spoof: f32,
+    pub zeroday_ticks_blind: f32,
+    pub zeroday_ticks_hijack: f32,
+    pub zeroday_ticks_brick: f32,
+
+    // -- Timing --
+    pub convoy_time_limit: u64,
+
+    // -- Waves --
+    pub waves: Vec<EnemyWaveConfig>,
+}
+
+impl Default for StraitConfig {
+    fn default() -> Self {
+        Self {
+            map_width: 300,
+            map_height: 60,
+
+            total_tankers: 12,
+            min_tankers_win: 8,
+            max_tankers_lost: 5,
+            tanker_spawn_interval: 300,
+            tanker_hp: 3,
+            tanker_speed: 0.15,
+
+            initial_patrol_drones: 16,
+            drone_vision_radius: 4,
+            drone_speed: 8.0,
+            drone_flare_cooldown: 60,
+            drone_bomb_reload: 120,
+            drone_bomb_range: 3.0,
+            drone_intercept_range: 5.0,
+
+            satellite_vision_radius: 8,
+
+            drone_rebuild_ticks: 120,
+            drone_rebuild_max_charges: 2,
+            drone_rebuild_charge_regen_ticks: 400,
+
+            airstrike_delay_ticks: 40,
+            airstrike_radius: 3,
+            airstrike_max_charges: 3,
+            airstrike_charge_regen_ticks: 600,
+
+            initial_patriots: 20,
+            patriot_range: 200.0,
+
+            base_hp: 10,
+            base_x: 50,
+            base_y: 50,
+
+            aa_suppress_range: 8.0,
+            aa_engagement_ticks: 30,
+            aa_swarm_threshold: 3,
+
+            soldier_speed: 0.03,
+            soldier_danger_range: 2.0,
+            soldier_hp: 2,
+
+            shaheed_speed: 0.15,
+            shaheed_damage: 2,
+
+            missile_flight_ticks: 80,
+
+            enemy_budget_aa: 8,
+            enemy_budget_soldiers: 20,
+            enemy_budget_shaheeds: 30,
+            enemy_budget_launchers: 6,
+
+            zeroday_ticks_spoof: 260.0,
+            zeroday_ticks_blind: 200.0,
+            zeroday_ticks_hijack: 330.0,
+            zeroday_ticks_brick: 400.0,
+
+            convoy_time_limit: 8000,
+
+            waves: vec![
+                // Wave 1 (tick 0): light probing
+                EnemyWaveConfig {
+                    trigger_tick: 0,
+                    launcher_count: 1,
+                    aa_drone_count: 0,
+                    soldier_count: 2,
+                    shaheed_count: 3,
+                    coordinated: false,
+                },
+                // Wave 2 (tick 1500): AA appears
+                EnemyWaveConfig {
+                    trigger_tick: 1500,
+                    launcher_count: 2,
+                    aa_drone_count: 1,
+                    soldier_count: 5,
+                    shaheed_count: 5,
+                    coordinated: false,
+                },
+                // Wave 3 (tick 3000): heavy mixed
+                EnemyWaveConfig {
+                    trigger_tick: 3000,
+                    launcher_count: 2,
+                    aa_drone_count: 2,
+                    soldier_count: 5,
+                    shaheed_count: 8,
+                    coordinated: true,
+                },
+                // Wave 4 (tick 4500): shaheed pressure
+                EnemyWaveConfig {
+                    trigger_tick: 4500,
+                    launcher_count: 1,
+                    aa_drone_count: 3,
+                    soldier_count: 8,
+                    shaheed_count: 14,
+                    coordinated: true,
+                },
+            ],
+        }
+    }
 }
 
 impl EnemyWaveConfig {
-    /// Wave 1: tutorial pace.
+    /// Legacy wave constructors used by dream_strait.rs until sim extraction.
     pub fn wave_1() -> Self {
-        Self {
-            launcher_count: 1,
-            decoy_count: 0,
-            aa_drone_count: 0,
-            coordinated_diversions: false,
-        }
+        Self { trigger_tick: 0, launcher_count: 1, aa_drone_count: 0, soldier_count: 2, shaheed_count: 3, coordinated: false }
     }
-
-    /// Wave 2: AA appears.
     pub fn wave_2() -> Self {
-        Self {
-            launcher_count: 2,
-            decoy_count: 1,
-            aa_drone_count: 1,
-            coordinated_diversions: false,
-        }
+        Self { trigger_tick: 1500, launcher_count: 2, aa_drone_count: 1, soldier_count: 5, shaheed_count: 5, coordinated: false }
     }
-
-    /// Wave 3: active hunting.
     pub fn wave_3() -> Self {
-        Self {
-            launcher_count: 3,
-            decoy_count: 2,
-            aa_drone_count: 2,
-            coordinated_diversions: false,
-        }
+        Self { trigger_tick: 3000, launcher_count: 2, aa_drone_count: 2, soldier_count: 5, shaheed_count: 8, coordinated: true }
     }
-
-    /// Wave 4: full coordination.
     pub fn wave_4() -> Self {
-        Self {
-            launcher_count: 4,
-            decoy_count: 2,
-            aa_drone_count: 2,
-            coordinated_diversions: true,
+        Self { trigger_tick: 4500, launcher_count: 1, aa_drone_count: 3, soldier_count: 8, shaheed_count: 14, coordinated: true }
+    }
+}
+
+impl StraitConfig {
+    /// Zero-day build ticks for a given type at 100% allocation slice.
+    pub fn zero_day_build_ticks(&self, zd: ZeroDayType) -> f32 {
+        match zd {
+            ZeroDayType::Spoof => self.zeroday_ticks_spoof,
+            ZeroDayType::Blind => self.zeroday_ticks_blind,
+            ZeroDayType::Hijack => self.zeroday_ticks_hijack,
+            ZeroDayType::Brick => self.zeroday_ticks_brick,
         }
     }
 }
 
 // ---------------------------------------------------------------------------
-// Constants
+// Legacy constants (used by cc_client until sim extraction is complete)
 // ---------------------------------------------------------------------------
 
-/// Total tankers in the convoy.
 pub const TOTAL_TANKERS: u32 = 12;
-/// Minimum tankers that must arrive for victory.
 pub const MIN_TANKERS_WIN: u32 = 8;
-/// Maximum tankers that can be lost before defeat (12 - 5 = 7 < 8 required).
 pub const MAX_TANKERS_LOST: u32 = 5;
-
-/// Starting compute budget.
-pub const INITIAL_COMPUTE: f32 = 100.0;
-/// Compute regeneration per tick.
-pub const COMPUTE_REGEN_PER_TICK: f32 = 0.5;
-
-/// Starting interceptor drone count.
-pub const INITIAL_INTERCEPTORS: u32 = 15;
-/// Max interceptor pool size.
-pub const MAX_INTERCEPTORS: u32 = 20;
-/// Ticks between interceptor replenishment (+1).
-pub const INTERCEPTOR_REGEN_TICKS: u32 = 60;
-
-/// Initial patrol drone count.
 pub const INITIAL_PATROL_DRONES: u32 = 16;
-/// Vision radius (in tiles) for a patrol drone.
 pub const DRONE_VISION_RADIUS: i32 = 4;
-/// Vision radius (in tiles) for a satellite scan.
 pub const SATELLITE_VISION_RADIUS: i32 = 8;
-/// Ticks that a satellite scan persists.
-pub const SATELLITE_SCAN_DURATION: u32 = 30;
-
-/// Ticks between tanker spawns.
 pub const TANKER_SPAWN_INTERVAL: u32 = 300;
-/// Tanker HP.
 pub const TANKER_HP: u32 = 3;
-/// Tanker movement speed (tiles per tick).
 pub const TANKER_SPEED: f32 = 0.06;
-
-/// Missile flight time in ticks.
 pub const MISSILE_FLIGHT_TICKS: u32 = 80;
-
-/// Compute cost to rebuild a destroyed drone from Dubai base.
-pub const DRONE_REBUILD_COST: f32 = 25.0;
-/// Ticks to rebuild a drone once started.
 pub const DRONE_REBUILD_TICKS: u32 = 120;
-
-/// Compute cost to call an airstrike on a visible target.
-pub const AIRSTRIKE_COST: f32 = 30.0;
-/// Ticks for airstrike to arrive after calling it.
+pub const DRONE_REBUILD_MAX_CHARGES: u32 = 2;
+pub const DRONE_REBUILD_CHARGE_REGEN_TICKS: u32 = 400;
 pub const AIRSTRIKE_DELAY_TICKS: u32 = 40;
-/// Airstrike damage radius in tiles.
 pub const AIRSTRIKE_RADIUS: i32 = 3;
-
-/// Maximum ticks after convoy launch before mission auto-fails (time pressure).
+pub const AIRSTRIKE_MAX_CHARGES: u32 = 3;
+pub const AIRSTRIKE_CHARGE_REGEN_TICKS: u32 = 600;
 pub const CONVOY_TIME_LIMIT: u64 = 8000;
+pub const INITIAL_PATRIOTS: u32 = 20;
+/// Legacy: Patriots replace interceptors but old code still references these.
+pub const INITIAL_INTERCEPTORS: u32 = 20;
+pub const MAX_INTERCEPTORS: u32 = 20;
+pub const INTERCEPTOR_REGEN_TICKS: u32 = 9999; // effectively disabled — patriots don't regen
 
-/// Build cost (compute ticks) for each zero-day type.
-pub fn zero_day_build_cost(zd: ZeroDayType) -> f32 {
-    match zd {
-        ZeroDayType::Spoof => 80.0,
-        ZeroDayType::Blind => 60.0,
-        ZeroDayType::Hijack => 100.0,
-        ZeroDayType::Brick => 120.0,
-    }
+/// Legacy function — prefer `StraitConfig::zero_day_build_ticks()`.
+pub fn zero_day_build_ticks(zd: ZeroDayType) -> f32 {
+    StraitConfig::default().zero_day_build_ticks(zd)
 }

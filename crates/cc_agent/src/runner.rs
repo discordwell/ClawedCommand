@@ -278,7 +278,7 @@ pub fn script_runner_system(
             match lua_runtime::execute_script_with_context_tiered(&script.source, &mut ctx, tier) {
                 Ok(commands) => {
                     for cmd in commands {
-                        cmd_queue.push(cmd);
+                        cmd_queue.push_sourced(Some(player_id), cc_core::commands::CommandSource::Script, cmd);
                     }
                 }
                 Err(e) => {

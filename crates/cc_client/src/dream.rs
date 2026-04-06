@@ -7,13 +7,11 @@
 
 use bevy::prelude::*;
 
-use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::{HeroIdentity, Owner, Position, Selected};
 use cc_core::coords::{GridPos, WorldPos, world_to_screen};
 use cc_core::hero::HeroId;
 use cc_core::mutator::{DreamSceneType, MissionMutator};
 use cc_sim::campaign::state::{CampaignPhase, CampaignState};
-use cc_sim::resources::CommandQueue;
 
 use crate::ui::ability_bar::AbilityBarRoot;
 use crate::ui::build_menu::BuildMenuRoot;
@@ -168,27 +166,51 @@ fn prop_sprite_path(action: OfficeAction) -> Option<&'static str> {
 }
 
 /// Dismissive lines Kell says when you try a disabled action.
-fn kell_refusal(action: OfficeAction) -> &'static str {
+pub(crate) fn kell_refusal(action: OfficeAction, state: &DreamOfficeState) -> &'static str {
     match action {
-        // Personal needs — shows he neglects himself
-        OfficeAction::CallAda => "Ada can wait. The intercepts won't read themselves.",
-        OfficeAction::Sleep => "Sleep is for people who aren't winning a war.",
-        OfficeAction::Eat => "I'll eat when the targeting data is processed.",
-        OfficeAction::Talk => "Sit on a couch? What am I, on vacation?",
-        // Base exploration — reveals worldview and obsession
+        // Personal needs
+        OfficeAction::CallAda => "I miss her, but I can't afford the distraction", // human-requested text
+        OfficeAction::Sleep => "Plenty of time when I'm dead.", // human-requested text
+        OfficeAction::Eat => "I'm not hungry", // human-requested text
+        OfficeAction::Talk => "Not interested.", // human-requested text
+        // Base exploration
         OfficeAction::LeaveBase => "The war doesn't pause because I want fresh air.",
-        OfficeAction::Storage => "Sixty thousand rounds in there. I know. I counted them Tuesday.",
+        OfficeAction::Storage => "My code is my weapon", // human-requested text
         OfficeAction::BulletinBoard => "Safety briefing, morale poster, safety briefing. Same as last week.",
-        OfficeAction::WaterFountain => "Water's for quitters. Where's my energy drink?",
+        OfficeAction::WaterFountain => "I'm not thirsty I just need the caffeine", // human-requested text
         OfficeAction::Window => "I know what's out there. That's why I'm in here.",
         OfficeAction::BriefingRoom => "I wrote that briefing. I don't need to read my own work.",
-        OfficeAction::CoOffice => "The Colonel's asleep. Smart man. Wrong priorities, but smart.",
-        OfficeAction::MedicalBay => "Doc says my blood pressure's high. Doc can file a report about it.",
+        OfficeAction::CoOffice => { // human-requested: time-based
+            let h = state.current_hour % 24.0;
+            if h >= 22.0 || h < 6.0 {
+                "The Colonel's asleep. Smart man. Wrong priorities, but smart."
+            } else {
+                "He's busy; no need to interrupt."
+            }
+        }
+        OfficeAction::MedicalBay => "I'm fine", // human-requested text
         OfficeAction::LockerRoom => "Everything I need is at my desk.",
         OfficeAction::Courtyard => "The smokers are out there swapping rumors. I deal in data, not gossip.",
-        OfficeAction::GuardPost => "Henderson's been on gate duty for nine hours. At least he gets to sit.",
+        OfficeAction::GuardPost => { // human-requested: time-based
+            let h = state.current_hour % 24.0;
+            if h >= 8.0 && h < 12.0 {
+                "Henderson just relieved the night shift. He looks worse than they did."
+            } else if h >= 12.0 && h < 18.0 {
+                "Henderson's been on gate duty for six hours. At least he gets to sit."
+            } else if h >= 18.0 && h < 22.0 {
+                "Henderson's been on gate duty for nine hours. At least he gets to sit."
+            } else {
+                "Dobbs is on gate now. He's reading a paperback. That's regulation-adjacent."
+            }
+        }
         OfficeAction::Tv => "CNN's running the same loop they ran six hours ago. Nothing new.",
-        OfficeAction::PhotoWall => "Unit photo from '09. Half those guys are out. The other half wish they were.",
+        OfficeAction::PhotoWall => { // human-requested: changes on repeat
+            if state.photo_wall_seen {
+                "I feel like I should feel something here, but I don't."
+            } else {
+                "My unit."
+            }
+        }
         OfficeAction::CoffeeMachine => "That machine's been broken since March. Energy drinks are better anyway.",
         _ => "",
     }
@@ -331,6 +353,8 @@ pub struct DreamOfficeState {
     pub nearby_action: Option<OfficeAction>,
     /// Timer for refusal dialogue display.
     pub refusal_timer: f32,
+    /// Whether the photo wall has been interacted with before.
+    pub photo_wall_seen: bool,
     /// Whether Rex has departed the office scene.
     pub rex_departed: bool,
     /// Countdown timer for Rex's departure after opening dialogue.
@@ -353,6 +377,7 @@ impl Default for DreamOfficeState {
             passout_timer: 0.0,
             nearby_action: None,
             refusal_timer: 0.0,
+            photo_wall_seen: false,
             rex_departed: false,
             rex_departure_timer: 0.0, // despawn immediately when dialogue ends
         }
@@ -374,7 +399,6 @@ impl Plugin for DreamPlugin {
             (
                 dream_init_system,
                 dream_hide_rts_ui,
-                dream_keep_selected.run_if(is_dream_office_active),
                 dream_npc_departure.run_if(is_dream_office_active),
                 dream_proximity_system
                     .after(dream_init_system)
@@ -439,7 +463,6 @@ fn dream_init_system(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut dream: ResMut<DreamOfficeState>,
-    mut cmd_queue: ResMut<CommandQueue>,
     campaign: Res<CampaignState>,
     asset_server: Res<AssetServer>,
     heroes: Query<(Entity, &HeroIdentity, &Owner)>,
@@ -465,15 +488,13 @@ fn dream_init_system(
 
     match scene_type {
         DreamSceneType::Office => {
-            // Auto-select Kell so click-to-move works immediately
+            // Deselect Kell to hide the selection ring during dream
+            // (mouse handler finds Kell by HeroId, not by Selected)
             if let Some(kelpie_entity) = heroes.iter().find_map(|(e, hi, owner)| {
                 (hi.hero_id == cc_core::hero::HeroId::KellFisher && owner.player_id == 0)
                     .then_some(e)
             }) {
-                commands.entity(kelpie_entity).insert(Selected);
-                cmd_queue.push(GameCommand::Select {
-                    unit_ids: vec![EntityId::from_entity(kelpie_entity)],
-                });
+                commands.entity(kelpie_entity).remove::<Selected>();
             }
 
             // Spawn location markers with visible prop objects
@@ -786,7 +807,7 @@ fn dream_interact_system(
 
     // Disabled actions: show refusal dialogue
     if !action.is_enabled() {
-        let refusal = kell_refusal(action);
+        let refusal = kell_refusal(action, &dream);
         if !refusal.is_empty() {
             // Set the refusal text
             for (mut text, mut color) in prompt_q.iter_mut() {
@@ -794,6 +815,9 @@ fn dream_interact_system(
                 color.0 = Color::srgba(0.85, 0.75, 0.5, 1.0);
             }
             dream.refusal_timer = 3.0;
+        }
+        if action == OfficeAction::PhotoWall {
+            dream.photo_wall_seen = true;
         }
         return;
     }
@@ -1115,22 +1139,6 @@ fn dream_cleanup_system(
     // Despawn all dream-specific entities
     for entity in dream_entities.iter() {
         commands.entity(entity).despawn();
-    }
-}
-
-/// Keep Kell Fisher selected during dream — re-insert Selected if removed.
-fn dream_keep_selected(
-    mut commands: Commands,
-    dream: Res<DreamOfficeState>,
-    heroes: Query<(Entity, &HeroIdentity, &Owner), Without<Selected>>,
-) {
-    if !dream.initialized {
-        return;
-    }
-    for (entity, hi, owner) in heroes.iter() {
-        if hi.hero_id == HeroId::KellFisher && owner.player_id == 0 {
-            commands.entity(entity).insert(Selected);
-        }
     }
 }
 

@@ -48,6 +48,9 @@ pub struct StraitDrone {
     pub current_wp_index: usize,
     pub alive: bool,
     pub drone_id: u32,
+    pub mode: DroneMode,
+    pub flare_cooldown: u32,
+    pub bomb_ready: bool,
 }
 
 /// Marker for a tanker entity in the convoy.
@@ -89,13 +92,6 @@ pub struct StraitAaDrone {
     pub world_x: f32,
     pub world_y: f32,
     pub alive: bool,
-}
-
-/// A temporary satellite scan overlay.
-#[derive(Component)]
-pub struct StraitSatelliteScan {
-    pub center: GridPos,
-    pub remaining_ticks: u32,
 }
 
 /// Rotating radar sweep visual on a drone.
@@ -172,14 +168,29 @@ pub struct StraitStatusHud;
 pub struct StraitState {
     pub initialized: bool,
 
-    // Compute budget
-    pub compute: f32,
-    pub max_compute: f32,
+    // Compute flow (no stored pool — slices drive rates continuously)
     pub allocation: ComputeAllocation,
+    /// Continuous satellite focal point (grid coords) — coverage scales with
+    /// satellite allocation slice. `None` = no focal placed.
+    pub satellite_focal: Option<(i32, i32)>,
 
-    // Interceptors
+    // Logistics charges (compute-independent, time-based)
+    pub airstrike_charges: u32,
+    pub airstrike_charge_timer: u32,
+    pub drone_rebuild_charges: u32,
+    pub drone_rebuild_charge_timer: u32,
+
+    // Interceptors (legacy)
     pub interceptor_count: u32,
     pub interceptor_regen_timer: u32,
+
+    // Patriots + base
+    pub patriot_count: u32,
+    pub patriot_mode: PatriotMode,
+    pub base_hp: u32,
+
+    // Convoy hold
+    pub convoy_hold: bool,
 
     // Tanker tracking
     pub tankers_spawned: u32,
@@ -236,11 +247,18 @@ impl Default for StraitState {
     fn default() -> Self {
         Self {
             initialized: false,
-            compute: INITIAL_COMPUTE,
-            max_compute: INITIAL_COMPUTE,
             allocation: ComputeAllocation::default(),
+            satellite_focal: None,
+            airstrike_charges: AIRSTRIKE_MAX_CHARGES,
+            airstrike_charge_timer: 0,
+            drone_rebuild_charges: DRONE_REBUILD_MAX_CHARGES,
+            drone_rebuild_charge_timer: 0,
             interceptor_count: INITIAL_INTERCEPTORS,
             interceptor_regen_timer: 0,
+            patriot_count: 4,
+            patriot_mode: PatriotMode::default(),
+            base_hp: 100,
+            convoy_hold: true,
             tankers_spawned: 0,
             tankers_arrived: 0,
             tankers_destroyed: 0,
@@ -359,7 +377,7 @@ pub fn register_strait_systems(app: &mut App) {
                 strait_tick_system
                     .after(strait_init_system)
                     .run_if(is_dream_strait_active),
-                strait_compute_regen
+                strait_flow_tick
                     .after(strait_tick_system)
                     .run_if(is_dream_strait_active),
                 strait_interceptor_regen
@@ -410,8 +428,6 @@ pub fn register_strait_systems(app: &mut App) {
                 strait_radar_sweep
                     .run_if(is_dream_strait_active),
                 strait_update_hud
-                    .run_if(is_dream_strait_active),
-                strait_satellite_decay
                     .run_if(is_dream_strait_active),
                 strait_drone_rebuild
                     .run_if(is_dream_strait_active),
@@ -517,6 +533,9 @@ fn strait_init_system(
                 current_wp_index: 0,
                 alive: true,
                 drone_id,
+                mode: DroneMode::Patrol,
+                flare_cooldown: 0,
+                bomb_ready: false,
             },
             Mesh2d(drone_mesh),
             MeshMaterial2d(drone_mat),
@@ -605,10 +624,10 @@ fn spawn_strait_hud(commands: &mut Commands) {
             ZIndex(25),
         ))
         .with_children(|parent| {
-            // Compute budget
+            // Compute allocation (continuous flow — always sums to 100%)
             parent.spawn((
                 StraitComputeHud,
-                Text::new("COMPUTE: 100/100"),
+                Text::new("VIS 60% | SAT 20% | 0DAY 20%"),
                 TextFont {
                     font_size: 14.0,
                     ..default()
@@ -681,7 +700,7 @@ fn spawn_enemy_wave(
     let launcher_mat = materials.add(ColorMaterial::from_color(HOSTILE_RED));
     let decoy_mat = materials.add(ColorMaterial::from_color(Color::srgba(0.9, 0.15, 0.1, 0.5)));
 
-    let total = config.launcher_count + config.decoy_count;
+    let total = config.launcher_count; // decoys removed in V2
     let spacing = map_width as f32 / (total + 1) as f32;
 
     for i in 0..total {
@@ -745,26 +764,44 @@ fn strait_tick_system(mut state: ResMut<StraitState>) {
     state.mission_tick += 1;
 }
 
-fn strait_compute_regen(mut state: ResMut<StraitState>) {
+/// Per-tick flow: zero-day build progress scaled by allocation slice,
+/// and time-based logistics charge regeneration (independent of compute).
+fn strait_flow_tick(mut state: ResMut<StraitState>) {
     if state.mission_complete {
         return;
     }
 
-    // Regen
-    state.compute = (state.compute + COMPUTE_REGEN_PER_TICK).min(state.max_compute);
-
-    // Drain from drone vision (proportional to alive drones)
-    let drone_cost = state.drones_alive as f32 * 0.1 * state.allocation.drone_vision;
-    state.compute = (state.compute - drone_cost).max(0.0);
-
-    // Progress zero-day build if allocated
-    let zd_rate = state.allocation.zero_day * 0.3;
+    // Zero-day progress: accumulates at `slice` ticks per tick
+    // (required is expressed in "ticks at 100% slice").
+    let zd_slice = state.allocation.zero_day;
     if let ZeroDayState::Building { exploit_type, progress, required } = &mut state.zero_day_slot {
-        *progress += zd_rate;
+        *progress += zd_slice;
         if *progress >= *required {
             let zt = *exploit_type;
             state.zero_day_slot = ZeroDayState::Ready(zt);
         }
+    }
+
+    // Airstrike charge regen
+    if state.airstrike_charges < AIRSTRIKE_MAX_CHARGES {
+        state.airstrike_charge_timer += 1;
+        if state.airstrike_charge_timer >= AIRSTRIKE_CHARGE_REGEN_TICKS {
+            state.airstrike_charge_timer = 0;
+            state.airstrike_charges += 1;
+        }
+    } else {
+        state.airstrike_charge_timer = 0;
+    }
+
+    // Drone-rebuild charge regen
+    if state.drone_rebuild_charges < DRONE_REBUILD_MAX_CHARGES {
+        state.drone_rebuild_charge_timer += 1;
+        if state.drone_rebuild_charge_timer >= DRONE_REBUILD_CHARGE_REGEN_TICKS {
+            state.drone_rebuild_charge_timer = 0;
+            state.drone_rebuild_charges += 1;
+        }
+    } else {
+        state.drone_rebuild_charge_timer = 0;
     }
 }
 
@@ -891,27 +928,37 @@ fn strait_move_drones(
 fn strait_update_vision(
     mut vision: ResMut<StraitVision>,
     drones: Query<(&StraitDrone, &Transform)>,
-    satellites: Query<&StraitSatelliteScan>,
+    state: Res<StraitState>,
 ) {
     vision.clear();
 
-    // Reveal around alive drones using actual screen position → approximate grid
-    for (drone, xform) in drones.iter() {
-        if !drone.alive {
-            continue;
+    // Drone vision radius scales with drone_vision allocation slice.
+    // Ceil ensures a 1-tile floor at any positive slice; 0 at slice=0.
+    let drone_slice = state.allocation.drone_vision.clamp(0.0, 1.0);
+    let drone_radius = (DRONE_VISION_RADIUS as f32 * drone_slice).ceil() as i32;
+
+    if drone_radius > 0 {
+        for (drone, xform) in drones.iter() {
+            if !drone.alive {
+                continue;
+            }
+            // Reverse the isometric projection to get approximate grid coords
+            use cc_core::coords::{TILE_HALF_WIDTH, TILE_HALF_HEIGHT};
+            let sx = xform.translation.x;
+            let sy = -xform.translation.y; // un-flip Bevy Y
+            let wx = (sx / TILE_HALF_WIDTH + sy / TILE_HALF_HEIGHT) / 2.0;
+            let wy = (sy / TILE_HALF_HEIGHT - sx / TILE_HALF_WIDTH) / 2.0;
+            vision.reveal(wx as i32, wy as i32, drone_radius);
         }
-        // Reverse the isometric projection to get approximate grid coords
-        use cc_core::coords::{TILE_HALF_WIDTH, TILE_HALF_HEIGHT};
-        let sx = xform.translation.x;
-        let sy = -xform.translation.y; // un-flip Bevy Y
-        let wx = (sx / TILE_HALF_WIDTH + sy / TILE_HALF_HEIGHT) / 2.0;
-        let wy = (sy / TILE_HALF_HEIGHT - sx / TILE_HALF_WIDTH) / 2.0;
-        vision.reveal(wx as i32, wy as i32, DRONE_VISION_RADIUS);
     }
 
-    // Reveal around satellite scans
-    for sat in satellites.iter() {
-        vision.reveal(sat.center.x, sat.center.y, SATELLITE_VISION_RADIUS);
+    // Satellite focal: continuous coverage scaled by satellite allocation slice.
+    if let Some((fx, fy)) = state.satellite_focal {
+        let sat_slice = state.allocation.satellite.clamp(0.0, 1.0);
+        let sat_radius = (SATELLITE_VISION_RADIUS as f32 * sat_slice).ceil() as i32;
+        if sat_radius > 0 {
+            vision.reveal(fx, fy, sat_radius);
+        }
     }
 }
 
@@ -1404,7 +1451,13 @@ fn strait_update_hud(
     mut status_hud: Query<&mut Text, (With<StraitStatusHud>, Without<StraitComputeHud>, Without<StraitInterceptorHud>, Without<StraitTankerHud>, Without<StraitZeroDayHud>)>,
 ) {
     if let Ok(mut text) = compute_hud.single_mut() {
-        **text = format!("COMPUTE: {:.0}/{:.0}", state.compute, state.max_compute);
+        let a = &state.allocation;
+        **text = format!(
+            "VIS {:.0}% | SAT {:.0}% | 0DAY {:.0}%",
+            a.drone_vision * 100.0,
+            a.satellite * 100.0,
+            a.zero_day * 100.0,
+        );
     }
 
     if let Ok(mut text) = interceptor_hud.single_mut() {
@@ -1454,11 +1507,16 @@ fn strait_update_hud(
             let strikes = if state.pending_airstrikes.is_empty() {
                 String::new()
             } else {
-                format!(" | STRIKES: {}", state.pending_airstrikes.len())
+                format!(" | INCOMING: {}", state.pending_airstrikes.len())
             };
             **text = format!(
-                "WAVE {} | DRONES: {} | TIME: {}{}{} | A=airstrike R=rebuild",
-                state.current_wave, state.drones_alive, time_left, rebuild_str, strikes
+                "WAVE {} | DRONES: {} | TIME: {} | A-STRIKE {}/{} | REBUILD {}/{}{}{} | A R",
+                state.current_wave,
+                state.drones_alive,
+                time_left,
+                state.airstrike_charges, AIRSTRIKE_MAX_CHARGES,
+                state.drone_rebuild_charges, DRONE_REBUILD_MAX_CHARGES,
+                rebuild_str, strikes
             );
         }
     }
@@ -1542,6 +1600,9 @@ fn strait_drone_rebuild(
             current_wp_index: 0,
             alive: true,
             drone_id,
+            mode: DroneMode::Patrol,
+            flare_cooldown: 0,
+            bomb_ready: false,
         },
         Mesh2d(drone_mesh),
         MeshMaterial2d(drone_mat),
@@ -1634,6 +1695,9 @@ fn build_strait_snapshot(
                 x: gx as f32,
                 y: gy as f32,
                 alive: drone.alive,
+                mode: cc_agent::strait_bindings::drone_mode_string(&drone.mode).to_string(),
+                flare_cooldown: drone.flare_cooldown,
+                bomb_ready: drone.bomb_ready,
             }
         })
         .collect();
@@ -1668,19 +1732,29 @@ fn build_strait_snapshot(
         .collect();
 
     StraitSnapshot {
-        compute: state.compute,
-        max_compute: state.max_compute,
         allocation: state.allocation,
-        interceptor_count: state.interceptor_count,
+        satellite_focal: state.satellite_focal,
+        airstrike_charges: state.airstrike_charges,
+        airstrike_max_charges: AIRSTRIKE_MAX_CHARGES,
+        drone_rebuild_charges: state.drone_rebuild_charges,
+        drone_rebuild_max_charges: DRONE_REBUILD_MAX_CHARGES,
+        patriot_count: state.patriot_count,
+        patriot_mode: state.patriot_mode,
+        base_hp: state.base_hp,
+        convoy_hold: state.convoy_hold,
         tankers_arrived: state.tankers_arrived,
         tankers_destroyed: state.tankers_destroyed,
         tankers_spawned: state.tankers_spawned,
+        total_tankers: 0, // config not available here; scripts should not rely on this
         drones_alive: state.drones_alive,
         zero_day_slot: state.zero_day_slot,
         mission_tick: state.mission_tick,
+        mission_complete: state.mission_complete,
         drone_positions,
         tanker_positions,
         visible_enemies,
+        incoming_shaheeds: vec![],
+        incoming_missiles: vec![],
     }
 }
 
@@ -1693,7 +1767,6 @@ fn strait_script_runner(
     launchers_q: Query<(&StraitLauncher, &Transform, &Visibility)>,
     vision: Res<StraitVision>,
     mut drone_mut: Query<(Entity, &mut StraitDrone, &Transform), Without<StraitAaDrone>>,
-    mut commands: Commands,
 ) {
     if state.mission_complete || state.active_scripts.is_empty() {
         return;
@@ -1742,7 +1815,7 @@ fn strait_script_runner(
             Ok(_game_commands) => {
                 // Apply strait-specific commands
                 for cmd in std::mem::take(&mut ctx.strait_commands) {
-                    apply_strait_command(cmd, &mut state, &mut drone_mut, &mut commands);
+                    apply_strait_command(cmd, &mut state, &mut drone_mut);
                 }
             }
             Err(e) => {
@@ -1757,7 +1830,6 @@ fn apply_strait_command(
     cmd: cc_agent::strait_bindings::StraitCommand,
     state: &mut StraitState,
     drone_mut: &mut Query<(Entity, &mut StraitDrone, &Transform), Without<StraitAaDrone>>,
-    commands: &mut Commands,
 ) {
     use cc_agent::strait_bindings::StraitCommand;
 
@@ -1774,18 +1846,9 @@ fn apply_strait_command(
                 }
             }
         }
-        StraitCommand::SatelliteScan { x, y } => {
-            let scan_cost = 15.0;
-            if state.compute >= scan_cost {
-                state.compute -= scan_cost;
-                commands.spawn((
-                    DreamEntity,
-                    StraitSatelliteScan {
-                        center: GridPos::new(x, y),
-                        remaining_ticks: SATELLITE_SCAN_DURATION,
-                    },
-                ));
-            }
+        StraitCommand::SetSatelliteFocal { x, y } => {
+            // Continuous focal placement — coverage scales with satellite slice.
+            state.satellite_focal = Some((x, y));
         }
         StraitCommand::AllocateCompute(alloc) => {
             state.allocation = alloc;
@@ -1795,7 +1858,7 @@ fn apply_strait_command(
                 state.zero_day_slot = ZeroDayState::Building {
                     exploit_type: zd_type,
                     progress: 0.0,
-                    required: zero_day_build_cost(zd_type),
+                    required: zero_day_build_ticks(zd_type),
                 };
             }
         }
@@ -1812,6 +1875,53 @@ fn apply_strait_command(
                 info!("Script deployed zero-day {:?}", exploit_type);
             }
         }
+        StraitCommand::DroneBomb { drone_id, target_x, target_y } => {
+            for (_, mut drone, _) in drone_mut.iter_mut() {
+                if drone.drone_id == drone_id && drone.alive {
+                    drone.mode = DroneMode::BombTarget { x: target_x as f32, y: target_y as f32 };
+                    break;
+                }
+            }
+        }
+        StraitCommand::DroneGuardBase { drone_id } => {
+            for (_, mut drone, _) in drone_mut.iter_mut() {
+                if drone.drone_id == drone_id && drone.alive {
+                    drone.mode = DroneMode::GuardBase;
+                    break;
+                }
+            }
+        }
+        StraitCommand::DroneMoveTo { drone_id, x, y } => {
+            for (_, mut drone, _) in drone_mut.iter_mut() {
+                if drone.drone_id == drone_id && drone.alive {
+                    drone.mode = DroneMode::MoveTo { x: x as f32, y: y as f32 };
+                    break;
+                }
+            }
+        }
+        StraitCommand::CallAirstrike { x, y } => {
+            if state.airstrike_charges > 0 {
+                state.airstrike_charges -= 1;
+                state.pending_airstrikes.push((x, y, 0));
+            }
+        }
+        StraitCommand::RebuildDrone => {
+            if state.drone_rebuild_charges > 0 && !state.drone_rebuilding {
+                state.drone_rebuild_charges -= 1;
+                state.drone_rebuilding = true;
+                state.drone_rebuild_timer = 0;
+            }
+        }
+        StraitCommand::LaunchAllBoats => {
+            state.convoy_hold = false;
+        }
+        StraitCommand::SetPatriotMode { missiles_only } => {
+            state.patriot_mode = if missiles_only {
+                PatriotMode::MissilesOnly
+            } else {
+                PatriotMode::Auto
+            };
+        }
     }
 }
 
@@ -1822,6 +1932,28 @@ fn apply_strait_command(
 /// Reset the consumed flag each frame.
 fn strait_reset_consumed(mut consumed: ResMut<StraitMouseConsumed>) {
     consumed.0 = false;
+}
+
+/// Shift allocation toward one channel by `delta` (can be negative).
+/// The other two channels absorb the change proportionally so the sum
+/// stays at 1.0.
+fn shift_allocation(alloc: &mut ComputeAllocation, channel: u8, delta: f32) {
+    let (t, a, b): (&mut f32, &mut f32, &mut f32) = match channel {
+        0 => (&mut alloc.drone_vision, &mut alloc.satellite, &mut alloc.zero_day),
+        1 => (&mut alloc.satellite, &mut alloc.drone_vision, &mut alloc.zero_day),
+        _ => (&mut alloc.zero_day, &mut alloc.drone_vision, &mut alloc.satellite),
+    };
+    let new_t = (*t + delta).clamp(0.0, 1.0);
+    *t = new_t;
+    let remaining = 1.0 - *t;
+    let sum_ab = *a + *b;
+    if sum_ab > 0.0001 {
+        *a = remaining * (*a / sum_ab);
+        *b = remaining * (*b / sum_ab);
+    } else {
+        *a = remaining * 0.5;
+        *b = remaining * 0.5;
+    }
 }
 
 /// Reverse isometric projection: screen pixel → approximate grid coordinates.
@@ -1845,7 +1977,6 @@ fn strait_input_system(
     mut state: ResMut<StraitState>,
     mut consumed: ResMut<StraitMouseConsumed>,
     mut drones: Query<(Entity, &mut StraitDrone, &Transform)>,
-    mut commands: Commands,
 ) {
     if state.mission_complete {
         return;
@@ -1853,19 +1984,46 @@ fn strait_input_system(
 
     // --- Keyboard shortcuts ---
 
-    // Tab: cycle compute allocation preset
+    // Tab: cycle compute allocation preset (4 presets)
     if keyboard.just_pressed(KeyCode::Tab) {
         let alloc = &mut state.allocation;
-        if alloc.drone_vision > 0.5 {
-            // 60/20/20 → 20/60/20 (satellite focus)
+        if alloc.drone_vision > 0.55 {
+            // VIS-heavy → SAT-heavy
             *alloc = ComputeAllocation { drone_vision: 0.2, satellite: 0.6, zero_day: 0.2 };
-        } else if alloc.satellite > 0.5 {
-            // 20/60/20 → 20/20/60 (zero-day focus)
+        } else if alloc.satellite > 0.55 {
+            // SAT-heavy → 0DAY-heavy
             *alloc = ComputeAllocation { drone_vision: 0.2, satellite: 0.2, zero_day: 0.6 };
+        } else if alloc.zero_day > 0.55 {
+            // 0DAY-heavy → balanced
+            *alloc = ComputeAllocation { drone_vision: 0.34, satellite: 0.33, zero_day: 0.33 };
         } else {
-            // 20/20/60 → 60/20/20 (drone focus)
+            // balanced → VIS-heavy
             *alloc = ComputeAllocation { drone_vision: 0.6, satellite: 0.2, zero_day: 0.2 };
         }
+    }
+
+    // Fine-tune allocation in 10% steps — continuous "dial" control.
+    // [ ] -> drone_vision -/+
+    // ; ' -> satellite     -/+
+    // , . -> zero_day      -/+
+    const ALLOC_STEP: f32 = 0.10;
+    if keyboard.just_pressed(KeyCode::BracketLeft) {
+        shift_allocation(&mut state.allocation, 0, -ALLOC_STEP);
+    }
+    if keyboard.just_pressed(KeyCode::BracketRight) {
+        shift_allocation(&mut state.allocation, 0, ALLOC_STEP);
+    }
+    if keyboard.just_pressed(KeyCode::Semicolon) {
+        shift_allocation(&mut state.allocation, 1, -ALLOC_STEP);
+    }
+    if keyboard.just_pressed(KeyCode::Quote) {
+        shift_allocation(&mut state.allocation, 1, ALLOC_STEP);
+    }
+    if keyboard.just_pressed(KeyCode::Comma) {
+        shift_allocation(&mut state.allocation, 2, -ALLOC_STEP);
+    }
+    if keyboard.just_pressed(KeyCode::Period) {
+        shift_allocation(&mut state.allocation, 2, ALLOC_STEP);
     }
 
     // V: toggle satellite scan mode
@@ -1890,7 +2048,7 @@ fn strait_input_system(
                     state.zero_day_slot = ZeroDayState::Building {
                         exploit_type: zd_type,
                         progress: 0.0,
-                        required: zero_day_build_cost(zd_type),
+                        required: zero_day_build_ticks(zd_type),
                     };
                 }
                 ZeroDayState::Ready(ready_type) if *ready_type == zd_type => {
@@ -1931,15 +2089,15 @@ fn strait_input_system(
         };
     }
 
-    // R: start rebuilding a drone at Dubai (if not already rebuilding)
+    // R: start rebuilding a drone at Dubai — consumes one rebuild charge.
     if keyboard.just_pressed(KeyCode::KeyR)
         && !state.drone_rebuilding
-        && state.compute >= DRONE_REBUILD_COST
+        && state.drone_rebuild_charges > 0
     {
-        state.compute -= DRONE_REBUILD_COST;
+        state.drone_rebuild_charges -= 1;
         state.drone_rebuilding = true;
         state.drone_rebuild_timer = DRONE_REBUILD_TICKS;
-        info!("Drone rebuild started ({:.0} compute spent)", DRONE_REBUILD_COST);
+        info!("Drone rebuild started (charge consumed)");
     }
 
     // Escape: clear selection / revert to normal mode
@@ -1966,18 +2124,9 @@ fn strait_input_system(
 
         match input_state.mode {
             StraitInputMode::SatelliteScan => {
-                // Spawn satellite scan at cursor position
-                let scan_cost = 15.0;
-                if state.compute >= scan_cost {
-                    state.compute -= scan_cost;
-                    commands.spawn((
-                        DreamEntity,
-                        StraitSatelliteScan {
-                            center: GridPos::new(grid_x, grid_y),
-                            remaining_ticks: SATELLITE_SCAN_DURATION,
-                        },
-                    ));
-                }
+                // Place the continuous satellite focal — no compute cost,
+                // coverage scales with satellite allocation slice.
+                state.satellite_focal = Some((grid_x, grid_y));
                 input_state.mode = StraitInputMode::Normal;
             }
             StraitInputMode::ZeroDayDeploy(zd_type) => {
@@ -1997,9 +2146,9 @@ fn strait_input_system(
                 input_state.mode = StraitInputMode::Normal;
             }
             StraitInputMode::Airstrike => {
-                // Call airstrike at cursor position
-                if state.compute >= AIRSTRIKE_COST {
-                    state.compute -= AIRSTRIKE_COST;
+                // Call airstrike at cursor position — consumes one charge.
+                if state.airstrike_charges > 0 {
+                    state.airstrike_charges -= 1;
                     state.pending_airstrikes.push((grid_x, grid_y, AIRSTRIKE_DELAY_TICKS));
                     info!("Airstrike called at ({}, {}), ETA {} ticks", grid_x, grid_y, AIRSTRIKE_DELAY_TICKS);
                 }
@@ -2073,20 +2222,6 @@ fn strait_input_system(
     }
 }
 
-/// Decay satellite scans and despawn expired ones.
-fn strait_satellite_decay(
-    mut commands: Commands,
-    mut scans: Query<(Entity, &mut StraitSatelliteScan)>,
-) {
-    for (entity, mut scan) in scans.iter_mut() {
-        if scan.remaining_ticks == 0 {
-            commands.entity(entity).despawn();
-        } else {
-            scan.remaining_ticks -= 1;
-        }
-    }
-}
-
 // ===========================================================================
 // Tests
 // ===========================================================================
@@ -2128,6 +2263,39 @@ mod tests {
     }
 
     #[test]
+    fn shift_allocation_preserves_sum_of_one() {
+        let mut alloc = ComputeAllocation { drone_vision: 0.6, satellite: 0.2, zero_day: 0.2 };
+        shift_allocation(&mut alloc, 0, 0.1);
+        let sum = alloc.drone_vision + alloc.satellite + alloc.zero_day;
+        assert!((sum - 1.0).abs() < 1e-5, "sum={}", sum);
+        assert!((alloc.drone_vision - 0.7).abs() < 1e-5);
+        // The other two scale proportionally from 0.2/0.2 -> 0.15/0.15
+        assert!((alloc.satellite - 0.15).abs() < 1e-5);
+        assert!((alloc.zero_day - 0.15).abs() < 1e-5);
+    }
+
+    #[test]
+    fn shift_allocation_clamps_at_bounds() {
+        let mut alloc = ComputeAllocation { drone_vision: 0.95, satellite: 0.03, zero_day: 0.02 };
+        shift_allocation(&mut alloc, 0, 0.2); // would go over 1.0
+        assert!(alloc.drone_vision <= 1.0 + 1e-5);
+        let sum = alloc.drone_vision + alloc.satellite + alloc.zero_day;
+        assert!((sum - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn shift_allocation_handles_negative_delta() {
+        let mut alloc = ComputeAllocation { drone_vision: 0.6, satellite: 0.2, zero_day: 0.2 };
+        shift_allocation(&mut alloc, 2, -0.1); // pull 10% OUT of zero_day
+        assert!((alloc.zero_day - 0.1).abs() < 1e-5);
+        let sum = alloc.drone_vision + alloc.satellite + alloc.zero_day;
+        assert!((sum - 1.0).abs() < 1e-5);
+        // drone_vision and satellite grew proportionally: 0.6:0.2 ratio preserved
+        assert!((alloc.drone_vision - 0.675).abs() < 1e-5);
+        assert!((alloc.satellite - 0.225).abs() < 1e-5);
+    }
+
+    #[test]
     fn wave_configs_have_increasing_threat() {
         let w1 = EnemyWaveConfig::wave_1();
         let w2 = EnemyWaveConfig::wave_2();
@@ -2136,6 +2304,6 @@ mod tests {
 
         assert!(w2.launcher_count > w1.launcher_count);
         assert!(w3.aa_drone_count > w1.aa_drone_count);
-        assert!(w4.coordinated_diversions);
+        assert!(w4.coordinated);
     }
 }

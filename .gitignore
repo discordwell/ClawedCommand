@@ -33,3 +33,6 @@ site/assets/sprites/heroes/
 site/assets/sprites/projectiles/
 site/assets/sprites/terrain/
 site/assets/sprites/resources/
+
+# Local build planning
+buildplan.md

@@ -23,7 +23,7 @@ use cc_core::coords::GridPos;
 use cc_core::hero::HeroId;
 use cc_sim::resources::{CommandQueue, SimClock};
 
-use crate::dream::{DreamOfficeState, OfficePhase};
+use crate::dream::{DreamOfficeState, OfficeAction, OfficePhase, kell_refusal};
 use crate::ui::dialogue::DialogueState;
 
 /// Output directory for test screenshots.
@@ -90,60 +90,109 @@ fn build_test_script() -> Vec<TestAction> {
         TestAction::Screenshot("01_initial_load"),
         TestAction::AdvanceDialogue,
         TestAction::Screenshot("02_post_dialogue"),
-        // === Work at desk ===
+        // === Work at desk (enabled action) ===
         TestAction::Log("Walking to desk"),
-        TestAction::MoveToAndWait(GridPos::new(20, 20)),
+        TestAction::MoveToAndWait(GridPos::new(35, 24)),
         TestAction::Screenshot("03_at_desk"),
         TestAction::PressF,
         TestAction::WaitForFreeRoam,
         TestAction::Screenshot("04_after_work"),
-        // === Walk to barracks (screenshot en route to show walking) ===
-        TestAction::Log("Walking to barracks"),
-        TestAction::MoveToAndWait(GridPos::new(33, 6)),
-        TestAction::Screenshot("05_barracks"),
+        // === Call Ada — "I miss her, but I can't afford the distraction" ===
+        TestAction::Log("Walking to phone (Call Ada)"),
+        TestAction::MoveToAndWait(GridPos::new(24, 5)),
         TestAction::PressF,
-        TestAction::WaitSecs(2.0),
+        TestAction::WaitSecs(1.0),
+        TestAction::Screenshot("05_call_ada_refusal"),
+        TestAction::WaitSecs(2.5),
+        // === Sleep — "Plenty of time when I'm dead." ===
+        TestAction::Log("Walking to barracks (Sleep)"),
+        TestAction::MoveToAndWait(GridPos::new(55, 41)),
+        TestAction::PressF,
+        TestAction::WaitSecs(1.0),
         TestAction::Screenshot("06_sleep_refusal"),
-        // === Walk across to comms (long walk, take mid-journey screenshot) ===
-        TestAction::Log("Walking to comms room"),
-        TestAction::MoveToAndWait(GridPos::new(11, 6)),
-        TestAction::Screenshot("07_comms"),
+        TestAction::WaitSecs(2.5),
+        // === Eat — "I'm not hungry" ===
+        TestAction::Log("Walking to mess hall (Eat)"),
+        TestAction::MoveToAndWait(GridPos::new(40, 41)),
         TestAction::PressF,
-        TestAction::WaitSecs(2.0),
-        // === Try to leave the base ===
-        TestAction::Log("Walking to parking lot"),
-        TestAction::MoveToAndWait(GridPos::new(4, 18)),
-        TestAction::Screenshot("08_parking"),
+        TestAction::WaitSecs(1.0),
+        TestAction::Screenshot("07_eat_refusal"),
+        TestAction::WaitSecs(2.5),
+        // === Talk — "Not interested." ===
+        TestAction::Log("Walking to break room (Talk)"),
+        TestAction::MoveToAndWait(GridPos::new(16, 12)),
         TestAction::PressF,
-        TestAction::WaitSecs(2.0),
-        TestAction::Screenshot("09_leave_refusal"),
-        // === South wing — gym ===
-        TestAction::Log("Walking to gym"),
-        TestAction::MoveToAndWait(GridPos::new(13, 32)),
-        TestAction::Screenshot("10_gym"),
+        TestAction::WaitSecs(1.0),
+        TestAction::Screenshot("08_talk_refusal"),
+        TestAction::WaitSecs(2.5),
+        // === Storage/Armory — "My code is my weapon" ===
+        TestAction::Log("Walking to armory (Storage)"),
+        TestAction::MoveToAndWait(GridPos::new(55, 12)),
+        TestAction::PressF,
+        TestAction::WaitSecs(1.0),
+        TestAction::Screenshot("09_armory_refusal"),
+        TestAction::WaitSecs(2.5),
+        // === Water Fountain — "I'm not thirsty I just need the caffeine" ===
+        TestAction::Log("Walking to water fountain"),
+        TestAction::MoveToAndWait(GridPos::new(30, 9)),
+        TestAction::PressF,
+        TestAction::WaitSecs(1.0),
+        TestAction::Screenshot("10_water_refusal"),
+        TestAction::WaitSecs(2.5),
+        // === Medical Bay — "I'm fine" ===
+        TestAction::Log("Walking to medical bay"),
+        TestAction::MoveToAndWait(GridPos::new(28, 12)),
+        TestAction::PressF,
+        TestAction::WaitSecs(1.0),
+        TestAction::Screenshot("11_medical_refusal"),
+        TestAction::WaitSecs(2.5),
+        // === Photo Wall — first visit: "My unit." ===
+        TestAction::Log("Walking to photo wall (first visit)"),
+        TestAction::MoveToAndWait(GridPos::new(20, 9)),
+        TestAction::PressF,
+        TestAction::WaitSecs(1.0),
+        TestAction::Screenshot("12_photo_first"),
+        TestAction::WaitSecs(2.5),
+        // === Photo Wall — second visit: "I feel like I should feel something..." ===
+        TestAction::Log("Photo wall again (second visit)"),
+        TestAction::PressF,
+        TestAction::WaitSecs(1.0),
+        TestAction::Screenshot("13_photo_second"),
+        TestAction::WaitSecs(2.5),
+        // === Guard Post — time-based (at whatever hour we're at) ===
+        TestAction::Log("Walking to guard post"),
+        TestAction::MoveToAndWait(GridPos::new(15, 4)),
+        TestAction::PressF,
+        TestAction::WaitSecs(1.0),
+        TestAction::Screenshot("14_guard_refusal"),
+        TestAction::WaitSecs(2.5),
+        // === CO's Office — time-based ===
+        TestAction::Log("Walking to CO's office"),
+        TestAction::MoveToAndWait(GridPos::new(55, 5)),
+        TestAction::PressF,
+        TestAction::WaitSecs(1.0),
+        TestAction::Screenshot("15_co_refusal"),
+        TestAction::WaitSecs(2.5),
+        // === Leave Base (unchanged, sanity check) ===
+        TestAction::Log("Walking to parking lot (Leave Base)"),
+        TestAction::MoveToAndWait(GridPos::new(5, 24)),
+        TestAction::PressF,
+        TestAction::WaitSecs(1.0),
+        TestAction::Screenshot("16_leave_refusal"),
+        TestAction::WaitSecs(2.5),
+        // === Gym (enabled action, exercise) ===
+        TestAction::Log("Walking to gym (Work Out)"),
+        TestAction::MoveToAndWait(GridPos::new(17, 41)),
         TestAction::PressF,
         TestAction::WaitForFreeRoam,
-        TestAction::Screenshot("11_after_workout"),
-        // === Mess hall ===
-        TestAction::Log("Walking to mess hall"),
-        TestAction::MoveToAndWait(GridPos::new(30, 32)),
-        TestAction::Screenshot("12_mess"),
-        TestAction::PressF,
-        TestAction::WaitSecs(2.0),
-        // === Energy drink ===
-        TestAction::Log("Walking to vending machine"),
-        TestAction::MoveToAndWait(GridPos::new(21, 29)),
-        TestAction::Screenshot("13_vending"),
+        TestAction::Screenshot("17_after_workout"),
+        // === Final work session ===
+        TestAction::Log("Back to desk"),
+        TestAction::MoveToAndWait(GridPos::new(35, 24)),
         TestAction::PressF,
         TestAction::WaitForFreeRoam,
-        // === Back to work ===
-        TestAction::Log("Back to desk for more work"),
-        TestAction::MoveToAndWait(GridPos::new(20, 20)),
-        TestAction::PressF,
-        TestAction::WaitForFreeRoam,
-        TestAction::Screenshot("14_work_done"),
+        TestAction::Screenshot("18_final"),
         TestAction::Log("=== Dream Test: complete ==="),
-        TestAction::Screenshot("15_final"),
         TestAction::Exit,
     ]
 }
@@ -157,6 +206,7 @@ pub fn dream_test_driver_system(
     mut dream: ResMut<DreamOfficeState>,
     dialogue: Res<DialogueState>,
     mut cmd_queue: ResMut<CommandQueue>,
+    mut keys: ResMut<ButtonInput<KeyCode>>,
     heroes: Query<(Entity, &HeroIdentity, &Owner, &Position)>,
 ) {
     // Wait for initial render
@@ -282,26 +332,20 @@ pub fn dream_test_driver_system(
         }
 
         TestAction::PressF => {
-            // Simulate F key press by directly triggering the interaction
+            // Log what we expect before injecting the key
             if let Some(nearby) = dream.nearby_action {
                 if nearby.is_enabled() {
-                    // Check forced action
-                    if dream.forced_action.is_none() || dream.forced_action == Some(nearby) {
-                        dream.current_action = Some(nearby);
-                        dream.action_timer = 2.5; // ACTION_DURATION
-                        dream.phase = OfficePhase::ActionInProgress;
-                        eprintln!("[dream-test] PressF → {:?}", nearby);
-                    } else {
-                        eprintln!("[dream-test] PressF blocked by forced action {:?}", dream.forced_action);
-                    }
+                    eprintln!("[dream-test] PressF → {:?} (enabled)", nearby);
                 } else {
-                    // Disabled action — trigger refusal
-                    dream.refusal_timer = 3.0;
-                    eprintln!("[dream-test] PressF → refusal for {:?}", nearby);
+                    let expected = kell_refusal(nearby, &dream);
+                    eprintln!("[dream-test] PressF → {:?} (refusal) hour={:.1}", nearby, dream.current_hour);
+                    eprintln!("[dream-test]   expected: \"{}\"", expected);
                 }
             } else {
                 eprintln!("[dream-test] PressF — nothing nearby");
             }
+            // Inject real key event so dream_interact_system handles it
+            keys.press(KeyCode::KeyF);
             driver.current += 1;
         }
 

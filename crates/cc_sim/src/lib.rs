@@ -8,6 +8,7 @@ pub mod campaign;
 pub mod harness;
 pub mod pathfinding;
 pub mod resources;
+pub mod strait_sim;
 pub mod systems;
 
 use bevy::prelude::*;

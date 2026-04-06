@@ -157,6 +157,23 @@ pub fn setup_game(
         Some(def)
     };
 
+    // Apply mutator restrictions (NoAiControl, VoiceOnlyControl, etc.)
+    if let Some(ref mission) = campaign.current_mission {
+        let mut restrictions = cc_sim::campaign::mutator_state::ControlRestrictions::default();
+        let mut mutator_state = cc_sim::campaign::mutator_state::MutatorState::default();
+        let mut fog_state = cc_sim::campaign::mutator_state::FogState::default();
+        cc_sim::campaign::mutator_systems::mutator_init(
+            &campaign,
+            mission,
+            &mut restrictions,
+            &mut mutator_state,
+            &mut fog_state,
+        );
+        commands.insert_resource(restrictions);
+        commands.insert_resource(mutator_state);
+        commands.insert_resource(fog_state);
+    }
+
     // For mission mode, override player resources
     if let Some(ref mission) = campaign.current_mission {
         let setup = &mission.player_setup;

@@ -224,6 +224,8 @@ pub fn update_briefing(
             With<BriefingActHeader>,
             Without<BriefingRoot>,
             Without<BriefingText>,
+            Without<BriefingMissionName>,
+            Without<BriefingObjectives>,
         ),
     >,
     mut name_q: Query<
@@ -232,6 +234,7 @@ pub fn update_briefing(
             With<BriefingMissionName>,
             Without<BriefingActHeader>,
             Without<BriefingText>,
+            Without<BriefingObjectives>,
         ),
     >,
     mut text_q: Query<
@@ -240,6 +243,7 @@ pub fn update_briefing(
             With<BriefingText>,
             Without<BriefingMissionName>,
             Without<BriefingActHeader>,
+            Without<BriefingObjectives>,
         ),
     >,
     mut obj_q: Query<

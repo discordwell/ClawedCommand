@@ -7,6 +7,10 @@ edition = "2024"
 name = "cc_harness"
 path = "src/main.rs"
 
+[[bin]]
+name = "strait_harness"
+path = "src/bin/strait_harness.rs"
+
 [dependencies]
 cc_core = { path = "../cc_core", features = ["bevy"] }
 cc_sim = { path = "../cc_sim" }

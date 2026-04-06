@@ -6,25 +6,50 @@
 //! These bindings are registered conditionally when the current mission
 //! is a Strait dream sequence.
 
-use cc_core::strait::{ComputeAllocation, ZeroDayState, ZeroDayType};
+use cc_core::strait::{ComputeAllocation, DroneMode, PatriotMode, ZeroDayState, ZeroDayType};
 
 /// Strait-specific state snapshot passed into Lua closures.
 /// Captures the current state at the time of script execution.
 #[derive(Debug, Clone)]
 pub struct StraitSnapshot {
-    pub compute: f32,
-    pub max_compute: f32,
+    // -- Compute flow --
     pub allocation: ComputeAllocation,
-    pub interceptor_count: u32,
+    pub satellite_focal: Option<(i32, i32)>,
+
+    // -- Logistics charges --
+    pub airstrike_charges: u32,
+    pub airstrike_max_charges: u32,
+    pub drone_rebuild_charges: u32,
+    pub drone_rebuild_max_charges: u32,
+
+    // -- Patriots + base --
+    pub patriot_count: u32,
+    pub patriot_mode: PatriotMode,
+    pub base_hp: u32,
+
+    // -- Convoy --
+    pub convoy_hold: bool,
     pub tankers_arrived: u32,
     pub tankers_destroyed: u32,
     pub tankers_spawned: u32,
+    pub total_tankers: u32,
+
+    // -- Drones --
     pub drones_alive: u32,
-    pub zero_day_slot: ZeroDayState,
-    pub mission_tick: u64,
     pub drone_positions: Vec<DroneInfo>,
+
+    // -- Zero-day --
+    pub zero_day_slot: ZeroDayState,
+
+    // -- Mission --
+    pub mission_tick: u64,
+    pub mission_complete: bool,
+
+    // -- Enemies --
     pub tanker_positions: Vec<TankerInfo>,
     pub visible_enemies: Vec<EnemyInfo>,
+    pub incoming_shaheeds: Vec<ShaheedInfo>,
+    pub incoming_missiles: Vec<MissileInfo>,
 }
 
 #[derive(Debug, Clone)]
@@ -33,6 +58,9 @@ pub struct DroneInfo {
     pub x: f32,
     pub y: f32,
     pub alive: bool,
+    pub mode: String,
+    pub flare_cooldown: u32,
+    pub bomb_ready: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -52,51 +80,48 @@ pub struct EnemyInfo {
     pub y: f32,
 }
 
+#[derive(Debug, Clone)]
+pub struct ShaheedInfo {
+    pub entity_id: u32,
+    pub x: f32,
+    pub y: f32,
+    pub target: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct MissileInfo {
+    pub x: f32,
+    pub y: f32,
+    pub target_x: f32,
+    pub target_y: f32,
+    pub progress: f32,
+}
+
 /// Commands produced by strait Lua bindings, to be applied back to ECS.
 #[derive(Debug, Clone)]
 pub enum StraitCommand {
-    /// Set drone patrol waypoints.
-    SetPatrol {
-        drone_id: u32,
-        waypoints: Vec<(i32, i32)>,
-    },
-    /// Request a satellite scan at a position.
-    SatelliteScan {
-        x: i32,
-        y: i32,
-    },
-    /// Change compute allocation.
+    // -- Existing --
+    SetPatrol { drone_id: u32, waypoints: Vec<(i32, i32)> },
+    SetSatelliteFocal { x: i32, y: i32 },
     AllocateCompute(ComputeAllocation),
-    /// Start building a zero-day exploit.
     BuildZeroDay(ZeroDayType),
-    /// Deploy a ready zero-day at a target.
-    DeployZeroDay {
-        exploit_type: ZeroDayType,
-        target_x: i32,
-        target_y: i32,
-    },
-}
+    DeployZeroDay { exploit_type: ZeroDayType, target_x: i32, target_y: i32 },
 
-/// Register strait-specific Lua functions.
-///
-/// In the full integration with `lua_runtime.rs`, this module's
-/// `register_strait_bindings` function is called to add a `ctx.strait`
-/// sub-table with the following methods:
-///
-/// - `ctx.strait:my_drones()` — returns table of `{id, x, y, alive}`
-/// - `ctx.strait:tanker_status()` — returns table of `{index, x, y, hp, arrived, destroyed}`
-/// - `ctx.strait:visible_enemies()` — returns table of `{kind, x, y}`
-/// - `ctx.strait:compute_status()` — returns `{compute, max, allocation: {drone_vision, satellite, zero_day}}`
-/// - `ctx.strait:interceptor_count()` — returns integer
-/// - `ctx.strait:zero_day_status()` — returns `{state, type, progress}` or `{state: "idle"}`
-/// - `ctx.strait:set_patrol(drone_id, waypoints)` — set patrol path (produces StraitCommand)
-/// - `ctx.strait:satellite_scan(x, y)` — request satellite scan (produces StraitCommand)
-/// - `ctx.strait:allocate_compute(table)` — change allocation (produces StraitCommand)
-/// - `ctx.strait:build_zero_day(type_str)` — start building exploit (produces StraitCommand)
-/// - `ctx.strait:deploy_exploit(type_str, x, y)` — deploy ready exploit (produces StraitCommand)
-///
-/// The commands are collected into a `Vec<StraitCommand>` that the caller
-/// applies back into the Bevy ECS after script execution.
+    // -- V2: drone commands --
+    DroneBomb { drone_id: u32, target_x: i32, target_y: i32 },
+    DroneGuardBase { drone_id: u32 },
+    DroneMoveTo { drone_id: u32, x: i32, y: i32 },
+
+    // -- V2: logistics --
+    CallAirstrike { x: i32, y: i32 },
+    RebuildDrone,
+
+    // -- V2: convoy --
+    LaunchAllBoats,
+
+    // -- V2: patriots --
+    SetPatriotMode { missiles_only: bool },
+}
 
 /// Parse a zero-day type from a string.
 pub fn parse_zero_day_type(s: &str) -> Option<ZeroDayType> {
@@ -115,6 +140,24 @@ pub fn zero_day_state_string(state: &ZeroDayState) -> &'static str {
         ZeroDayState::Idle => "idle",
         ZeroDayState::Building { .. } => "building",
         ZeroDayState::Ready(_) => "ready",
+    }
+}
+
+/// Format a drone mode for Lua.
+pub fn drone_mode_string(mode: &DroneMode) -> &'static str {
+    match mode {
+        DroneMode::Patrol => "patrol",
+        DroneMode::MoveTo { .. } => "move_to",
+        DroneMode::BombTarget { .. } => "bomb_target",
+        DroneMode::GuardBase => "guard_base",
+    }
+}
+
+/// Format a patriot mode for Lua.
+pub fn patriot_mode_string(mode: &PatriotMode) -> &'static str {
+    match mode {
+        PatriotMode::Auto => "auto",
+        PatriotMode::MissilesOnly => "missiles_only",
     }
 }
 
@@ -149,36 +192,45 @@ mod tests {
     }
 
     #[test]
-    fn strait_snapshot_captures_state() {
+    fn drone_mode_strings() {
+        assert_eq!(drone_mode_string(&DroneMode::Patrol), "patrol");
+        assert_eq!(drone_mode_string(&DroneMode::GuardBase), "guard_base");
+        assert_eq!(drone_mode_string(&DroneMode::BombTarget { x: 1.0, y: 2.0 }), "bomb_target");
+    }
+
+    #[test]
+    fn strait_snapshot_captures_v2_state() {
         let snapshot = StraitSnapshot {
-            compute: 75.0,
-            max_compute: 100.0,
             allocation: ComputeAllocation::default(),
-            interceptor_count: 10,
-            tankers_arrived: 3,
-            tankers_destroyed: 1,
-            tankers_spawned: 5,
-            drones_alive: 6,
+            satellite_focal: None,
+            airstrike_charges: 2,
+            airstrike_max_charges: 3,
+            drone_rebuild_charges: 1,
+            drone_rebuild_max_charges: 2,
+            patriot_count: 18,
+            patriot_mode: PatriotMode::Auto,
+            base_hp: 10,
+            convoy_hold: true,
+            tankers_arrived: 0,
+            tankers_destroyed: 0,
+            tankers_spawned: 0,
+            total_tankers: 12,
+            drones_alive: 16,
+            drone_positions: vec![DroneInfo {
+                id: 0, x: 10.0, y: 8.0, alive: true,
+                mode: "patrol".into(), flare_cooldown: 0, bomb_ready: true,
+            }],
             zero_day_slot: ZeroDayState::Idle,
             mission_tick: 500,
-            drone_positions: vec![DroneInfo {
-                id: 0,
-                x: 10.0,
-                y: 8.0,
-                alive: true,
-            }],
-            tanker_positions: vec![TankerInfo {
-                index: 0,
-                x: 25.0,
-                y: 10,
-                hp: 3,
-                arrived: false,
-                destroyed: false,
-            }],
+            mission_complete: false,
+            tanker_positions: vec![],
             visible_enemies: vec![],
+            incoming_shaheeds: vec![],
+            incoming_missiles: vec![],
         };
 
         assert_eq!(snapshot.drone_positions.len(), 1);
-        assert_eq!(snapshot.tanker_positions[0].hp, 3);
+        assert_eq!(snapshot.patriot_count, 18);
+        assert!(snapshot.convoy_hold);
     }
 }
