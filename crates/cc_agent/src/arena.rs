@@ -408,14 +408,14 @@ fn make_arena_sim(
     world.insert_resource(FactionToolStates::default());
     world.insert_resource(ArenaStats::default());
 
-    // Schedule: tick → FSM → scripts → process_commands → sim → cleanup
+    // Schedule: tick -> FSM -> process_commands -> sim -> cleanup -> scripts.
+    // Script commands are queued after command processing and run on the next tick.
     // Split into two chained groups to stay within Bevy's 20-tuple limit.
     let mut schedule = Schedule::new(FixedUpdate);
     schedule.add_systems(
         (
             tick_system,
             cc_sim::ai::fsm::multi_ai_decision_system,
-            script_runner_system,
             process_commands,
             ability_cooldown_system,
             ability_effect_system,
@@ -441,6 +441,11 @@ fn make_arena_sim(
             .after(grid_sync_system),
     );
     schedule.add_systems(victory_system.after(headless_despawn_system));
+    schedule.add_systems(
+        script_runner_system
+            .after(victory_system)
+            .run_if(|state: Res<GameState>| *state == GameState::Playing),
+    );
 
     // Spawn starting entities for each player
     for (player_id, spawn_pos) in &spawn_positions {

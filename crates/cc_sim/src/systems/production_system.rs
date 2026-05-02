@@ -1,5 +1,8 @@
 use bevy::prelude::*;
+use std::collections::VecDeque;
 
+use crate::pathfinding;
+use crate::resources::{MapResource, PlayerResources};
 use cc_core::abilities::unit_abilities;
 use cc_core::building_stats::building_stats;
 use cc_core::commands::EntityId;
@@ -8,24 +11,25 @@ use cc_core::components::{
     BloodgreedTracker, BogPatchCounter, Building, BuildingKind, ContagionCloudOnDeath,
     CorrodedApplicator, DreamSiegeTimer, FeignDeathTracker, FrankensteinTracker, FrenzyStacks,
     GatherState, Gathering, GridCell, Health, HeavyUnit, JunkLauncherState, LimbTracker,
-    MoveTarget, MovementSpeed, NineLivesTracker, Owner, PanopticGazeCone, PocketStashInventory,
-    Position, Producer, ProductionQueue, RallyPoint, ResearchQueue, Researcher, ResourceDeposit,
-    SpawnlingCounter, StatModifiers, StaticChargeStacks, StationaryTimer, Stealth,
-    StructuralWeaknessTimer, TrinketWardTracker, UnderConstruction, UniqueBuildingLimit, UnitKind,
-    UnitType, Velocity,
+    MoveTarget, MovementSpeed, NineLivesTracker, Owner, PanopticGazeCone, Path,
+    PocketStashInventory, Position, Producer, ProductionQueue, RallyPoint, ResearchQueue,
+    Researcher, ResourceDeposit, ResourceType, SpawnlingCounter, StatModifiers, StaticChargeStacks,
+    StationaryTimer, Stealth, StructuralWeaknessTimer, TrinketWardTracker, UnderConstruction,
+    UniqueBuildingLimit, UnitKind, UnitType, Velocity,
 };
 use cc_core::coords::WorldPos;
 use cc_core::math::Fixed;
 use cc_core::status_effects::StatusEffects;
+use cc_core::terrain::FactionId;
 use cc_core::tuning;
 use cc_core::unit_stats::base_stats;
 
-use crate::resources::PlayerResources;
 use crate::systems::research_system::apply_upgrades_to_new_unit;
 
 /// Ticks UnderConstruction, ticks ProductionQueue, spawns units on completion.
 pub fn production_system(
     mut commands: Commands,
+    map_res: Res<MapResource>,
     mut buildings: Query<(
         Entity,
         &Building,
@@ -500,23 +504,20 @@ pub fn production_system(
 
                 let new_entity = entity_cmds.id();
 
+                let faction = FactionId::from_u8(owner.player_id).unwrap_or(FactionId::CatGPT);
+
                 // Auto-move to rally point if set
                 if let Some(rally) = rally {
-                    let rally_world = WorldPos::from_grid(rally.target);
-                    commands.entity(new_entity).insert(MoveTarget {
-                        target: rally_world,
-                    });
-                } else if kind == UnitKind::Pawdler
-                    || kind == UnitKind::Ponderer
-                    || kind == UnitKind::MurderScrounger
-                    || kind == UnitKind::Scrounger
-                    || kind == UnitKind::Delver
-                    || kind == UnitKind::Nibblet
-                {
+                    if let Some((path, move_target)) =
+                        pathing_components(&map_res, spawn_grid, rally.target, faction)
+                    {
+                        commands.entity(new_entity).insert((path, move_target));
+                    }
+                } else if kind.is_worker() {
                     // Auto-gather: send newly produced workers to nearest deposit
                     let spawn_pos = spawn_world;
                     let mut best_dist_sq = i64::MAX;
-                    let mut best_deposit: Option<(Entity, WorldPos)> = None;
+                    let mut best_deposit: Option<(Entity, WorldPos, ResourceType)> = None;
 
                     for (dep_entity, dep_pos, dep) in deposits.iter() {
                         if dep.remaining == 0 {
@@ -527,26 +528,219 @@ pub fn production_system(
                         let dist_sq = dx * dx + dy * dy;
                         if dist_sq < best_dist_sq {
                             best_dist_sq = dist_sq;
-                            best_deposit = Some((dep_entity, dep_pos.world));
+                            best_deposit = Some((dep_entity, dep_pos.world, dep.resource_type));
                         }
                     }
 
-                    if let Some((dep_entity, dep_world)) = best_deposit {
-                        let dep_resource = deposits.get(dep_entity).unwrap().2.resource_type;
-                        commands.entity(new_entity).insert((
-                            Gathering {
-                                deposit_entity: EntityId::from_entity(dep_entity),
-                                carried_type: dep_resource,
-                                carried_amount: 0,
-                                state: GatherState::MovingToDeposit,
-                                last_pos: (spawn_pos.x, spawn_pos.y),
-                                stale_ticks: 0,
-                            },
-                            MoveTarget { target: dep_world },
-                        ));
+                    if let Some((dep_entity, dep_world, dep_resource)) = best_deposit {
+                        commands.entity(new_entity).insert(Gathering {
+                            deposit_entity: EntityId::from_entity(dep_entity),
+                            carried_type: dep_resource,
+                            carried_amount: 0,
+                            state: GatherState::MovingToDeposit,
+                            last_pos: (spawn_pos.x, spawn_pos.y),
+                            stale_ticks: 0,
+                        });
+
+                        if let Some((path, move_target)) =
+                            pathing_components(&map_res, spawn_grid, dep_world.to_grid(), faction)
+                        {
+                            commands.entity(new_entity).insert((path, move_target));
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+fn pathing_components(
+    map_res: &MapResource,
+    start: cc_core::coords::GridPos,
+    target: cc_core::coords::GridPos,
+    faction: FactionId,
+) -> Option<(Path, MoveTarget)> {
+    let waypoints = pathfinding::find_path(&map_res.map, start, target, faction)?;
+    let first_waypoint = waypoints[0];
+
+    Some((
+        Path {
+            waypoints: VecDeque::from(waypoints),
+        },
+        MoveTarget {
+            target: WorldPos::from_grid(first_waypoint),
+        },
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use cc_core::components::ResourceType;
+    use cc_core::coords::GridPos;
+    use cc_core::map::GameMap;
+    use cc_core::terrain::TerrainType;
+
+    fn run_production_once(world: &mut World) {
+        let mut schedule = Schedule::default();
+        schedule.add_systems(production_system);
+        schedule.run(world);
+    }
+
+    fn world_with_map(map: GameMap) -> World {
+        let mut world = World::new();
+        world.insert_resource(MapResource { map });
+        world.insert_resource(PlayerResources::default());
+        world
+    }
+
+    fn spawn_producer(
+        world: &mut World,
+        building_kind: BuildingKind,
+        grid: GridPos,
+        player_id: u8,
+        unit_kind: UnitKind,
+        rally: Option<GridPos>,
+    ) -> Entity {
+        let bstats = building_stats(building_kind);
+        let mut queue = ProductionQueue::default();
+        queue.queue.push_back((unit_kind, 1));
+
+        let entity = world
+            .spawn((
+                Building {
+                    kind: building_kind,
+                },
+                Owner { player_id },
+                Position {
+                    world: WorldPos::from_grid(grid),
+                },
+                Health {
+                    current: bstats.health,
+                    max: bstats.health,
+                },
+                Producer,
+                queue,
+            ))
+            .id();
+
+        if let Some(target) = rally {
+            world.entity_mut(entity).insert(RallyPoint { target });
+        }
+
+        entity
+    }
+
+    fn spawn_deposit(world: &mut World, grid: GridPos, resource_type: ResourceType) -> Entity {
+        world
+            .spawn((
+                Position {
+                    world: WorldPos::from_grid(grid),
+                },
+                ResourceDeposit {
+                    resource_type,
+                    remaining: 100,
+                },
+            ))
+            .id()
+    }
+
+    fn produced_unit(world: &mut World, kind: UnitKind) -> Entity {
+        world
+            .query::<(Entity, &UnitType)>()
+            .iter(world)
+            .find_map(|(entity, unit_type)| (unit_type.kind == kind).then_some(entity))
+            .expect("produced unit should exist")
+    }
+
+    #[test]
+    fn rally_spawn_uses_path_first_waypoint() {
+        let mut map = GameMap::new(7, 5);
+        for y in 0..4 {
+            map.get_mut(GridPos::new(2, y)).unwrap().terrain = TerrainType::Rock;
+        }
+
+        let mut world = world_with_map(map);
+        let rally = GridPos::new(4, 1);
+        spawn_producer(
+            &mut world,
+            BuildingKind::CatTree,
+            GridPos::new(1, 1),
+            0,
+            UnitKind::Nuisance,
+            Some(rally),
+        );
+
+        run_production_once(&mut world);
+
+        let unit = produced_unit(&mut world, UnitKind::Nuisance);
+        let path = world
+            .get::<Path>(unit)
+            .expect("rally spawn should pathfind");
+        let move_target = world
+            .get::<MoveTarget>(unit)
+            .expect("rally spawn should move to the first waypoint");
+
+        assert_eq!(path.waypoints.back().copied(), Some(rally));
+        assert_eq!(
+            move_target.target.to_grid(),
+            path.waypoints.front().copied().unwrap()
+        );
+        assert_ne!(move_target.target.to_grid(), rally);
+
+        let map = &world.resource::<MapResource>().map;
+        for waypoint in &path.waypoints {
+            assert!(
+                map.is_passable_for(*waypoint, FactionId::CatGPT),
+                "rally path should avoid impassable terrain, but visited {waypoint:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn auto_gather_spawn_preserves_gathering_and_uses_owner_faction_pathing() {
+        let mut map = GameMap::new(7, 5);
+        for y in 0..5 {
+            map.get_mut(GridPos::new(2, y)).unwrap().terrain = TerrainType::Water;
+        }
+
+        let mut world = world_with_map(map);
+        let deposit = spawn_deposit(&mut world, GridPos::new(4, 1), ResourceType::GpuCores);
+        spawn_producer(
+            &mut world,
+            BuildingKind::TheGrotto,
+            GridPos::new(1, 1),
+            5,
+            UnitKind::Ponderer,
+            None,
+        );
+
+        run_production_once(&mut world);
+
+        let worker = produced_unit(&mut world, UnitKind::Ponderer);
+        let gathering = world
+            .get::<Gathering>(worker)
+            .expect("auto-gather spawn should keep gathering state");
+        assert_eq!(gathering.deposit_entity, EntityId::from_entity(deposit));
+        assert_eq!(gathering.carried_type, ResourceType::GpuCores);
+        assert_eq!(gathering.state, GatherState::MovingToDeposit);
+
+        let path = world
+            .get::<Path>(worker)
+            .expect("Croak worker should path through water to deposit");
+        let move_target = world
+            .get::<MoveTarget>(worker)
+            .expect("auto-gather should move to the first waypoint");
+
+        assert_eq!(path.waypoints.back().copied(), Some(GridPos::new(4, 1)));
+        assert_eq!(
+            move_target.target.to_grid(),
+            path.waypoints.front().copied().unwrap()
+        );
+        assert!(
+            path.waypoints.iter().any(|waypoint| waypoint.x == 2),
+            "Croak-owned worker should use faction-aware water traversal"
+        );
     }
 }

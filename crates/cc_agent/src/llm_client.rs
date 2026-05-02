@@ -402,9 +402,13 @@ impl LlmConfig {
     /// - `CLAWED_LLM_TEMP`: temperature (default: 0.2)
     /// - `CLAWED_LLM_FINETUNED`: "1" or "true" to enable fine-tuned Lua mode
     pub fn from_env() -> Self {
+        Self::from_env_lookup(|key| std::env::var(key).ok())
+    }
+
+    fn from_env_lookup(mut get: impl FnMut(&str) -> Option<String>) -> Self {
         let mut config = Self::default();
 
-        if let Ok(backend) = std::env::var("CLAWED_LLM_BACKEND") {
+        if let Some(backend) = get("CLAWED_LLM_BACKEND") {
             config.backend = match backend.to_lowercase().as_str() {
                 "openai" => LlmBackend::OpenAiCompatible,
                 "anthropic" => LlmBackend::Anthropic,
@@ -413,25 +417,25 @@ impl LlmConfig {
             };
         }
 
-        if let Ok(url) = std::env::var("CLAWED_LLM_URL") {
+        if let Some(url) = get("CLAWED_LLM_URL") {
             config.base_url = url;
         }
 
-        if let Ok(key) = std::env::var("CLAWED_API_KEY") {
+        if let Some(key) = get("CLAWED_API_KEY") {
             config.api_key = key;
         }
 
-        if let Ok(model) = std::env::var("CLAWED_LLM_MODEL") {
+        if let Some(model) = get("CLAWED_LLM_MODEL") {
             config.model = model;
         }
 
-        if let Ok(temp) = std::env::var("CLAWED_LLM_TEMP")
+        if let Some(temp) = get("CLAWED_LLM_TEMP")
             && let Ok(t) = temp.parse::<f32>()
         {
             config.temperature = t;
         }
 
-        if let Ok(ft) = std::env::var("CLAWED_LLM_FINETUNED") {
+        if let Some(ft) = get("CLAWED_LLM_FINETUNED") {
             config.finetuned_lua = matches!(ft.as_str(), "1" | "true" | "yes");
         }
 
@@ -453,20 +457,18 @@ pub enum AgentStatus {
 mod tests {
     use super::*;
 
+    fn config_from(entries: &[(&str, &str)]) -> LlmConfig {
+        LlmConfig::from_env_lookup(|key| {
+            entries
+                .iter()
+                .find(|(entry_key, _)| *entry_key == key)
+                .map(|(_, value)| (*value).to_string())
+        })
+    }
+
     #[test]
     fn from_env_defaults_to_mock() {
-        // SAFETY: Tests run single-threaded with --test-threads=1 or are
-        // isolated by unique env var names that no other test uses.
-        unsafe {
-            std::env::remove_var("CLAWED_LLM_BACKEND");
-            std::env::remove_var("CLAWED_LLM_URL");
-            std::env::remove_var("CLAWED_API_KEY");
-            std::env::remove_var("CLAWED_LLM_MODEL");
-            std::env::remove_var("CLAWED_LLM_TEMP");
-            std::env::remove_var("CLAWED_LLM_FINETUNED");
-        }
-
-        let config = LlmConfig::from_env();
+        let config = config_from(&[]);
         assert_eq!(config.backend, LlmBackend::Mock);
         assert_eq!(config.base_url, "http://localhost:11434");
         assert_eq!(config.model, "qwen3-coder:30b-a3b");
@@ -476,37 +478,20 @@ mod tests {
 
     #[test]
     fn from_env_reads_backend() {
-        // SAFETY: Unique env var name, no concurrent mutation.
-        unsafe {
-            std::env::set_var("CLAWED_LLM_BACKEND", "openai");
-        }
-        let config = LlmConfig::from_env();
+        let config = config_from(&[("CLAWED_LLM_BACKEND", "openai")]);
         assert_eq!(config.backend, LlmBackend::OpenAiCompatible);
-        unsafe {
-            std::env::remove_var("CLAWED_LLM_BACKEND");
-        }
     }
 
     #[test]
     fn from_env_reads_finetuned() {
-        unsafe {
-            std::env::set_var("CLAWED_LLM_FINETUNED", "1");
-        }
-        let config = LlmConfig::from_env();
+        let config = config_from(&[("CLAWED_LLM_FINETUNED", "1")]);
         assert!(config.finetuned_lua);
-        unsafe {
-            std::env::set_var("CLAWED_LLM_FINETUNED", "true");
-        }
-        let config2 = LlmConfig::from_env();
+
+        let config2 = config_from(&[("CLAWED_LLM_FINETUNED", "true")]);
         assert!(config2.finetuned_lua);
-        unsafe {
-            std::env::set_var("CLAWED_LLM_FINETUNED", "0");
-        }
-        let config3 = LlmConfig::from_env();
+
+        let config3 = config_from(&[("CLAWED_LLM_FINETUNED", "0")]);
         assert!(!config3.finetuned_lua);
-        unsafe {
-            std::env::remove_var("CLAWED_LLM_FINETUNED");
-        }
     }
 
     #[test]

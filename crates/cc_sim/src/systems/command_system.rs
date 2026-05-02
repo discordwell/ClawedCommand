@@ -34,6 +34,20 @@ use cc_core::tuning::{
     WRECK_BALL_DAMAGE, WRECK_BALL_RADIUS,
 };
 
+fn owner_matches_issuer(owner: Option<&Owner>, issuer_player_id: Option<u8>) -> bool {
+    match issuer_player_id {
+        Some(player_id) => owner.is_some_and(|owner| owner.player_id == player_id),
+        None => true,
+    }
+}
+
+fn required_owner_matches_issuer(owner: &Owner, issuer_player_id: Option<u8>) -> bool {
+    match issuer_player_id {
+        Some(player_id) => owner.player_id == player_id,
+        None => true,
+    }
+}
+
 /// Process all queued commands for this tick.
 ///
 /// Commands are interleaved by player to avoid systematic first/last-mover
@@ -71,7 +85,11 @@ pub fn process_commands(
 ) {
     let pending = cmd_queue.drain_interleaved(sim_clock.tick);
 
-    for (source, cmd) in pending {
+    for queued in pending {
+        let issuer_player_id = queued.player_id;
+        let source = queued.source;
+        let cmd = queued.command;
+
         // Filter commands based on active control restrictions
         if let Some(ref r) = restrictions {
             match source {
@@ -111,6 +129,9 @@ pub fn process_commands(
                 for (entity, pos, owner, move_target, path) in query.iter_mut() {
                     let eid = EntityId::from_entity(entity);
                     if !unit_ids.contains(&eid) {
+                        continue;
+                    }
+                    if !owner_matches_issuer(owner, issuer_player_id) {
                         continue;
                     }
 
@@ -167,9 +188,12 @@ pub fn process_commands(
                 }
             }
             GameCommand::Stop { unit_ids } => {
-                for (entity, _, _, _, _) in query.iter_mut() {
+                for (entity, _, owner, _, _) in query.iter_mut() {
                     let eid = EntityId::from_entity(entity);
                     if !unit_ids.contains(&eid) {
+                        continue;
+                    }
+                    if !owner_matches_issuer(owner, issuer_player_id) {
                         continue;
                     }
                     commands.entity(entity).remove::<MoveTarget>();
@@ -195,25 +219,30 @@ pub fn process_commands(
                 }
             }
             GameCommand::Select { unit_ids } => {
-                for (entity, _, _, _, _) in query.iter() {
+                for (entity, _, owner, _, _) in query.iter() {
                     let eid = EntityId::from_entity(entity);
-                    if unit_ids.contains(&eid) {
+                    if unit_ids.contains(&eid) && owner_matches_issuer(owner, issuer_player_id) {
                         commands.entity(entity).insert(Selected);
                     }
                 }
             }
             GameCommand::Deselect => {
-                for (entity, _, _, _, _) in query.iter() {
-                    commands.entity(entity).remove::<Selected>();
+                for (entity, _, owner, _, _) in query.iter() {
+                    if owner_matches_issuer(owner, issuer_player_id) {
+                        commands.entity(entity).remove::<Selected>();
+                    }
                 }
             }
             GameCommand::Attack {
                 unit_ids,
                 target: attack_target,
             } => {
-                for (entity, _, _, _, _) in query.iter_mut() {
+                for (entity, _, owner, _, _) in query.iter_mut() {
                     let eid = EntityId::from_entity(entity);
                     if !unit_ids.contains(&eid) {
+                        continue;
+                    }
+                    if !owner_matches_issuer(owner, issuer_player_id) {
                         continue;
                     }
                     // Can't target self
@@ -236,6 +265,9 @@ pub fn process_commands(
                 for (entity, pos, owner, move_target, path) in query.iter_mut() {
                     let eid = EntityId::from_entity(entity);
                     if !unit_ids.contains(&eid) {
+                        continue;
+                    }
+                    if !owner_matches_issuer(owner, issuer_player_id) {
                         continue;
                     }
 
@@ -280,9 +312,12 @@ pub fn process_commands(
                 }
             }
             GameCommand::HoldPosition { unit_ids } => {
-                for (entity, _, _, _, _) in query.iter_mut() {
+                for (entity, _, owner, _, _) in query.iter_mut() {
                     let eid = EntityId::from_entity(entity);
                     if !unit_ids.contains(&eid) {
+                        continue;
+                    }
+                    if !owner_matches_issuer(owner, issuer_player_id) {
                         continue;
                     }
                     commands.entity(entity).insert(HoldPosition);
@@ -302,6 +337,9 @@ pub fn process_commands(
                 for (entity, pos, owner, move_target, path) in query.iter_mut() {
                     let eid = EntityId::from_entity(entity);
                     if !unit_ids.contains(&eid) {
+                        continue;
+                    }
+                    if !owner_matches_issuer(owner, issuer_player_id) {
                         continue;
                     }
 
@@ -373,6 +411,10 @@ pub fn process_commands(
 
                 let builder_entity = Entity::from_bits(builder.0);
                 if let Ok((_, pos, owner, move_target, path)) = query.get_mut(builder_entity) {
+                    if !owner_matches_issuer(owner, issuer_player_id) {
+                        continue;
+                    }
+
                     let player_id = owner.map(|o| o.player_id).unwrap_or(0);
 
                     let bstats = building_stats(building_kind);
@@ -451,6 +493,10 @@ pub fn process_commands(
                 if let Ok((_, bld, owner, producer, under_construction)) =
                     buildings.get(building_entity)
                 {
+                    if !required_owner_matches_issuer(owner, issuer_player_id) {
+                        continue;
+                    }
+
                     // Can't train from unfinished or non-producer buildings
                     if under_construction.is_some() || producer.is_none() {
                         continue;
@@ -527,7 +573,9 @@ pub fn process_commands(
 
             GameCommand::SetRallyPoint { building, target } => {
                 let building_entity = Entity::from_bits(building.0);
-                if buildings.get(building_entity).is_ok() {
+                if let Ok((_, _, owner, _, _)) = buildings.get(building_entity)
+                    && required_owner_matches_issuer(owner, issuer_player_id)
+                {
                     commands
                         .entity(building_entity)
                         .insert(RallyPoint { target });
@@ -536,25 +584,42 @@ pub fn process_commands(
 
             GameCommand::CancelQueue { building } => {
                 let building_entity = Entity::from_bits(building.0);
+                let Ok((_, _, owner, _, _)) = buildings.get(building_entity) else {
+                    continue;
+                };
+                if !required_owner_matches_issuer(owner, issuer_player_id) {
+                    continue;
+                }
+                let player_id = owner.player_id;
+
                 if let Ok(mut queue) = prod_queues.get_mut(building_entity)
                     && let Some((unit_kind, _)) = queue.queue.pop_front()
                 {
                     // Refund resources
-                    if let Ok((_, _, owner, _, _)) = buildings.get(building_entity) {
-                        let player_id = owner.player_id;
-                        let ustats = base_stats(unit_kind);
-                        if let Some(pres) = player_resources.players.get_mut(player_id as usize) {
-                            pres.food += ustats.food_cost;
-                            pres.gpu_cores += ustats.gpu_cost;
-                            pres.supply = pres.supply.saturating_sub(ustats.supply_cost);
-                        }
+                    let ustats = base_stats(unit_kind);
+                    if let Some(pres) = player_resources.players.get_mut(player_id as usize) {
+                        pres.food += ustats.food_cost;
+                        pres.gpu_cores += ustats.gpu_cost;
+                        pres.supply = pres.supply.saturating_sub(ustats.supply_cost);
                     }
                 }
             }
 
             GameCommand::SetControlGroup { group, unit_ids } => {
                 if (group as usize) < control_groups.groups.len() {
-                    control_groups.groups[group as usize] = unit_ids;
+                    control_groups.groups[group as usize] = if issuer_player_id.is_some() {
+                        unit_ids
+                            .into_iter()
+                            .filter(|eid| {
+                                let entity = Entity::from_bits(eid.0);
+                                query.get(entity).ok().is_some_and(|(_, _, owner, _, _)| {
+                                    owner_matches_issuer(owner, issuer_player_id)
+                                })
+                            })
+                            .collect()
+                    } else {
+                        unit_ids
+                    };
                 }
             }
 
@@ -563,12 +628,15 @@ pub fn process_commands(
                     && !group_ids.is_empty()
                 {
                     // Deselect all, then select control group
-                    for (entity, _, _, _, _) in query.iter() {
-                        commands.entity(entity).remove::<Selected>();
+                    for (entity, _, owner, _, _) in query.iter() {
+                        if owner_matches_issuer(owner, issuer_player_id) {
+                            commands.entity(entity).remove::<Selected>();
+                        }
                     }
-                    for (entity, _, _, _, _) in query.iter() {
+                    for (entity, _, owner, _, _) in query.iter() {
                         let eid = EntityId::from_entity(entity);
-                        if group_ids.contains(&eid) {
+                        if group_ids.contains(&eid) && owner_matches_issuer(owner, issuer_player_id)
+                        {
                             commands.entity(entity).insert(Selected);
                         }
                     }
@@ -583,11 +651,24 @@ pub fn process_commands(
                 let entity = Entity::from_bits(unit_id.0);
 
                 // Get owner player_id for deferred commands
-                let owner_player_id = query
+                let owner_player_id = match query
                     .get(entity)
                     .ok()
                     .and_then(|(_, _, o, _, _)| o.map(|o| o.player_id))
-                    .unwrap_or(0);
+                {
+                    Some(player_id) => {
+                        if issuer_player_id.is_some() && issuer_player_id != Some(player_id) {
+                            continue;
+                        }
+                        player_id
+                    }
+                    None => {
+                        if issuer_player_id.is_some() {
+                            continue;
+                        }
+                        0
+                    }
+                };
 
                 if let Ok((mut ability_slots, stat_mods)) = ability_query.get_mut(entity) {
                     let slot_idx = slot as usize;
@@ -1536,6 +1617,10 @@ pub fn process_commands(
                         .ok();
 
                     if let Some(pid) = target_player {
+                        if issuer_player_id.is_some() && issuer_player_id != Some(pid) {
+                            continue;
+                        }
+
                         for (rq_owner, rq_queue) in research_queues.iter() {
                             if rq_owner.player_id == pid
                                 && rq_queue.queue.iter().any(|(u, _)| *u == upgrade)
@@ -1551,6 +1636,10 @@ pub fn process_commands(
                 }
 
                 if let Ok((owner, mut queue)) = research_queues.get_mut(building_entity) {
+                    if !required_owner_matches_issuer(owner, issuer_player_id) {
+                        continue;
+                    }
+
                     let player_id = owner.player_id as usize;
 
                     // Check not already researched
@@ -1579,9 +1668,15 @@ pub fn process_commands(
 
             GameCommand::CancelResearch { building } => {
                 let building_entity = Entity::from_bits(building.0);
-                if let Ok((owner, mut queue)) = research_queues.get_mut(building_entity)
-                    && let Some((upgrade, _)) = queue.queue.pop_front()
-                {
+                if let Ok((owner, mut queue)) = research_queues.get_mut(building_entity) {
+                    if !required_owner_matches_issuer(owner, issuer_player_id) {
+                        continue;
+                    }
+
+                    let Some((upgrade, _)) = queue.queue.pop_front() else {
+                        continue;
+                    };
+
                     let player_id = owner.player_id as usize;
                     let ustats = upgrade_stats(upgrade);
                     if let Some(pres) = player_resources.players.get_mut(player_id) {

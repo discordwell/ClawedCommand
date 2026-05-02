@@ -40,6 +40,17 @@ pub struct ManualScriptTriggers {
     pub triggered: Vec<String>,
 }
 
+fn script_player_ids(registry: &ScriptRegistry) -> Vec<u8> {
+    let mut player_ids: Vec<u8> = registry.scripts.iter().map(|s| s.player_id).collect();
+    player_ids.sort_unstable();
+    player_ids.dedup();
+    player_ids
+}
+
+fn drain_manual_trigger_names(manual_triggers: &mut ManualScriptTriggers) -> Vec<String> {
+    std::mem::take(&mut manual_triggers.triggered)
+}
+
 /// Bevy system: runs registered scripts in response to detected events.
 /// Executes after all simulation systems in FixedUpdate.
 pub fn script_runner_system(
@@ -124,13 +135,8 @@ pub fn script_runner_system(
     let deposit_data: Vec<_> = deposits.iter().collect();
 
     // Determine which players have scripts registered
-    let player_ids: Vec<u8> = registry
-        .scripts
-        .iter()
-        .map(|s| s.player_id)
-        .collect::<std::collections::HashSet<_>>()
-        .into_iter()
-        .collect();
+    let player_ids = script_player_ids(&registry);
+    let manual_names = drain_manual_trigger_names(&mut manual_triggers);
 
     for player_id in player_ids {
         // Build snapshot for this player
@@ -150,9 +156,6 @@ pub fn script_runner_system(
             events::detect_events(&current_snapshot, prev_snapshots.snapshots.get(&player_id));
 
         let faction = FactionId::from_u8(player_id).unwrap_or(FactionId::CatGPT);
-
-        // Drain manual triggers for this player
-        let manual_names: Vec<String> = manual_triggers.triggered.drain(..).collect();
 
         // Run scripts that match fired events
         for script in registry.scripts.iter_mut() {
@@ -278,7 +281,11 @@ pub fn script_runner_system(
             match lua_runtime::execute_script_with_context_tiered(&script.source, &mut ctx, tier) {
                 Ok(commands) => {
                     for cmd in commands {
-                        cmd_queue.push_sourced(Some(player_id), cc_core::commands::CommandSource::Script, cmd);
+                        cmd_queue.push_sourced(
+                            Some(player_id),
+                            cc_core::commands::CommandSource::Script,
+                            cmd,
+                        );
                     }
                 }
                 Err(e) => {
@@ -318,9 +325,11 @@ impl Plugin for ScriptRunnerPlugin {
             .init_resource::<ManualScriptTriggers>()
             .add_systems(
                 FixedUpdate,
-                script_runner_system.run_if(|state: Res<cc_sim::resources::GameState>| {
-                    *state == cc_sim::resources::GameState::Playing
-                }),
+                script_runner_system
+                    .after(cc_sim::systems::victory_system::victory_system)
+                    .run_if(|state: Res<cc_sim::resources::GameState>| {
+                        *state == cc_sim::resources::GameState::Playing
+                    }),
             );
     }
 }
@@ -357,6 +366,29 @@ mod tests {
         registry.unregister("b");
         assert_eq!(registry.scripts.len(), 2);
         assert!(registry.scripts.iter().all(|s| s.name != "b"));
+    }
+
+    #[test]
+    fn script_player_ids_are_sorted_and_deduped() {
+        let mut registry = ScriptRegistry::default();
+        registry.register(ScriptRegistration::new("p2_a".into(), "".into(), vec![], 2));
+        registry.register(ScriptRegistration::new("p0".into(), "".into(), vec![], 0));
+        registry.register(ScriptRegistration::new("p2_b".into(), "".into(), vec![], 2));
+        registry.register(ScriptRegistration::new("p1".into(), "".into(), vec![], 1));
+
+        assert_eq!(script_player_ids(&registry), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn manual_triggers_drain_once_per_tick() {
+        let mut triggers = ManualScriptTriggers {
+            triggered: vec!["alpha".into(), "beta".into()],
+        };
+
+        let drained = drain_manual_trigger_names(&mut triggers);
+
+        assert_eq!(drained, vec!["alpha", "beta"]);
+        assert!(triggers.triggered.is_empty());
     }
 
     #[test]

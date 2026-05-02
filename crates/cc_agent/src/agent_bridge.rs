@@ -8,7 +8,7 @@ use crossbeam_channel::{Receiver, Sender, unbounded};
 #[cfg(target_arch = "wasm32")]
 use async_channel::{Receiver, Sender, unbounded};
 
-use cc_core::commands::GameCommand;
+use cc_core::commands::{CommandSource, GameCommand};
 use cc_sim::resources::CommandQueue;
 
 use crate::construct_mode::{ConstructModeState, LuaScript, ScriptLibrary};
@@ -177,7 +177,11 @@ pub fn poll_agent_responses(
         }
 
         for cmd in &response.commands {
-            cmd_queue.push(cmd.clone());
+            cmd_queue.push_sourced(
+                Some(response.player_id),
+                CommandSource::AiAgent,
+                cmd.clone(),
+            );
         }
 
         match response.source {

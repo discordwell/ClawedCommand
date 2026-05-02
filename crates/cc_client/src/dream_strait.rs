@@ -1707,7 +1707,7 @@ fn build_strait_snapshot(
         .map(|t| TankerInfo {
             index: t.tanker_index,
             x: t.world_x,
-            y: t.lane_y,
+            y: t.lane_y as f32,
             hp: t.hp,
             arrived: t.arrived,
             destroyed: t.destroyed,
@@ -1732,6 +1732,8 @@ fn build_strait_snapshot(
         .collect();
 
     StraitSnapshot {
+        map_width: 300,
+        map_height: 60,
         allocation: state.allocation,
         satellite_focal: state.satellite_focal,
         airstrike_charges: state.airstrike_charges,

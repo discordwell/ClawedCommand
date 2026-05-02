@@ -52,19 +52,18 @@ impl CommandQueue {
 
     /// Drain all commands, interleaving per-player commands for fairness.
     /// On even ticks player 0's commands go first in each pair; on odd ticks player 1 goes first.
-    /// Returns (source, command) pairs for filtering by ControlRestrictions.
-    pub fn drain_interleaved(&mut self, tick: u64) -> Vec<(CommandSource, GameCommand)> {
+    /// Returns queued commands with issuer metadata for source filtering and authorization.
+    pub fn drain_interleaved(&mut self, tick: u64) -> Vec<QueuedCommand> {
         let all = std::mem::take(&mut self.commands);
-        let mut p0: Vec<(CommandSource, GameCommand)> = Vec::new();
-        let mut p1: Vec<(CommandSource, GameCommand)> = Vec::new();
-        let mut other: Vec<(CommandSource, GameCommand)> = Vec::new();
+        let mut p0: Vec<QueuedCommand> = Vec::new();
+        let mut p1: Vec<QueuedCommand> = Vec::new();
+        let mut other: Vec<QueuedCommand> = Vec::new();
 
         for qc in all {
-            let pair = (qc.source, qc.command);
             match qc.player_id {
-                Some(0) => p0.push(pair),
-                Some(1) => p1.push(pair),
-                _ => other.push(pair),
+                Some(0) => p0.push(qc),
+                Some(1) => p1.push(qc),
+                _ => other.push(qc),
             }
         }
 
