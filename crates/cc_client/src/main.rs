@@ -339,6 +339,12 @@ fn setup_dream(app: &mut App, scene: &str) {
         ron::from_str(&ron_str).unwrap_or_else(|e| panic!("Failed to parse {ron_name}.ron: {e}"));
 
     load_demo_mission(app, mission, "Dream");
+
+    // Start in Briefing phase so dream missions get their pre-mission card.
+    // briefing_input_system auto-advances when skip_briefing: true, so Office/Lake
+    // still skip; only Strait (skip_briefing: false) actually pauses on the brief.
+    let mut campaign = app.world_mut().resource_mut::<CampaignState>();
+    campaign.phase = CampaignPhase::Briefing;
 }
 
 /// Set up the voice command demo.

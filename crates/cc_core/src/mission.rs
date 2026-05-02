@@ -1819,5 +1819,20 @@ mod tests {
         }
         assert_eq!(mission.dialogue.len(), 13);
         mission.validate().expect("dream_strait validation failed");
+
+        // Pre-mission scene: the briefing renders Kell clearing the C2 floor and
+        // delivering the Mass Effect 2 reference. This text plays right before
+        // the mission proper begins.
+        assert!(
+            mission.briefing_text.contains("I am assuming direct control."),
+            "briefing_text must include the iconic line, got: {:?}",
+            mission.briefing_text
+        );
+        assert!(
+            mission.briefing_text.to_lowercase().contains("off your console")
+                || mission.briefing_text.to_lowercase().contains("clear the floor"),
+            "briefing_text must include the operator dismissal, got: {:?}",
+            mission.briefing_text
+        );
     }
 }

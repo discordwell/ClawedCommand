@@ -180,7 +180,7 @@
             portrait: "portrait_rex_human",
         ),
     ],
-    briefing_text: "You dream of who you were — and what you did with it.",
+    briefing_text: "You wake at the C2 console, the dream of the code-sword still cooling in your fingers. The floor is full — operators on every shift, headsets, glowing boards, the hum of a hundred screens.\n\nYou don\'t need them.\n\n\"All other stations, off your consoles. Lt. Harmon stays. The rest of you — clear the floor.\"\n\nBoots. Doors. Then quiet.\n\n\"I am assuming direct control.\"",
     debrief_text: "",
     next_mission: Fixed("act4_m14_junkyard_fort"),
     mutators: [
