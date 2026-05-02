@@ -178,7 +178,7 @@
     ],
     briefing_text: "",
     debrief_text: "",
-    next_mission: Fixed("dream_strait"),
+    next_mission: Fixed("dream_strait_prelude"),
     mutators: [
         DreamSequence(
             skip_briefing: true,

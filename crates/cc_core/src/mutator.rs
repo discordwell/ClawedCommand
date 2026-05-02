@@ -125,6 +125,10 @@ pub enum DreamSceneType {
     Lake,
     /// DEFCON-style drone warfare over a narrow strait.
     Strait,
+    /// Failed prologue: Kell controls one lance of 4 while incompetent
+    /// allied operators run the other 16 drones into Iran. Inciting incident
+    /// for Kell taking direct control in the full Strait mission.
+    StraitPrelude,
 }
 
 /// Check if a list of mutators indicates an active dream mission.
@@ -508,7 +512,12 @@ mod tests {
 
     #[test]
     fn ron_round_trip_dream_scene_type() {
-        for scene in [DreamSceneType::Office, DreamSceneType::Lake, DreamSceneType::Strait] {
+        for scene in [
+            DreamSceneType::Office,
+            DreamSceneType::Lake,
+            DreamSceneType::Strait,
+            DreamSceneType::StraitPrelude,
+        ] {
             let s = ron::to_string(&scene).unwrap();
             let parsed: DreamSceneType = ron::from_str(&s).unwrap();
             assert_eq!(parsed, scene);

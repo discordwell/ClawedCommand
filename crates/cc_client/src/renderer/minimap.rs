@@ -56,6 +56,10 @@ fn paint_terrain(data: &mut [u8], map: &cc_core::map::GameMap) {
 }
 
 /// Initialize the minimap image and UI node.
+///
+/// The UI box is sized to match the map's aspect ratio (capped at
+/// MINIMAP_SIZE on its long side) so a wide map like the 300x60 Strait
+/// renders as a wide strip rather than a squashed square.
 pub fn setup_minimap(
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
@@ -90,7 +94,16 @@ pub fn setup_minimap(
     commands.insert_resource(MinimapImage(image_handle.clone()));
     commands.insert_resource(MinimapTimer(Timer::from_seconds(0.3, TimerMode::Repeating)));
 
-    // UI node: bottom-left corner, using shared constants
+    // Aspect-aware UI dimensions — keep the long side at MINIMAP_SIZE.
+    let (ui_w, ui_h) = if w >= h {
+        let scale = MINIMAP_SIZE / w as f32;
+        (MINIMAP_SIZE, (h as f32 * scale).max(20.0))
+    } else {
+        let scale = MINIMAP_SIZE / h as f32;
+        ((w as f32 * scale).max(20.0), MINIMAP_SIZE)
+    };
+
+    // UI node: bottom-left corner, sized to the map aspect.
     commands
         .spawn((
             MinimapNode,
@@ -98,8 +111,8 @@ pub fn setup_minimap(
                 position_type: PositionType::Absolute,
                 left: Val::Px(MINIMAP_LEFT),
                 bottom: Val::Px(MINIMAP_BOTTOM),
-                width: Val::Px(MINIMAP_SIZE),
-                height: Val::Px(MINIMAP_SIZE),
+                width: Val::Px(ui_w),
+                height: Val::Px(ui_h),
                 border: UiRect::all(Val::Px(MINIMAP_BORDER)),
                 ..default()
             },
@@ -266,20 +279,32 @@ pub fn minimap_click(
 
     let win_h = window.height();
 
+    // Aspect-aware UI dimensions — must mirror setup_minimap.
+    let map_w = map_res.map.width as f32;
+    let map_h = map_res.map.height as f32;
+    let (ui_w, ui_h) = if map_w >= map_h {
+        let scale = MINIMAP_SIZE / map_w;
+        (MINIMAP_SIZE, (map_h * scale).max(20.0))
+    } else {
+        let scale = MINIMAP_SIZE / map_h;
+        ((map_w * scale).max(20.0), MINIMAP_SIZE)
+    };
+
     // Minimap content area (inside border)
     let content_left = MINIMAP_LEFT + MINIMAP_BORDER;
     let content_bottom = MINIMAP_BOTTOM + MINIMAP_BORDER;
-    let content_size = MINIMAP_SIZE - MINIMAP_BORDER * 2.0;
+    let content_w = ui_w - MINIMAP_BORDER * 2.0;
+    let content_h = ui_h - MINIMAP_BORDER * 2.0;
 
     // Screen-space: origin top-left, Y increases downward
-    let minimap_top = win_h - content_bottom - content_size;
+    let minimap_top = win_h - content_bottom - content_h;
     let minimap_left = content_left;
 
     // Check if cursor is inside minimap content bounds
     let in_minimap = cursor_pos.x >= minimap_left
-        && cursor_pos.x <= minimap_left + content_size
+        && cursor_pos.x <= minimap_left + content_w
         && cursor_pos.y >= minimap_top
-        && cursor_pos.y <= minimap_top + content_size;
+        && cursor_pos.y <= minimap_top + content_h;
 
     if mouse_button.just_pressed(MouseButton::Left) && in_minimap {
         consumed.0 = true;
@@ -291,12 +316,12 @@ pub fn minimap_click(
 
     // Even if dragged outside, keep panning while consumed
     // But clamp to minimap bounds for coordinate conversion
-    let cx = (cursor_pos.x - minimap_left).clamp(0.0, content_size);
-    let cy = (cursor_pos.y - minimap_top).clamp(0.0, content_size);
+    let cx = (cursor_pos.x - minimap_left).clamp(0.0, content_w);
+    let cy = (cursor_pos.y - minimap_top).clamp(0.0, content_h);
 
     // Normalized [0, 1]
-    let nx = cx / content_size;
-    let ny = cy / content_size;
+    let nx = cx / content_w;
+    let ny = cy / content_h;
 
     // Grid coordinates (float)
     let gx = nx * map_res.map.width as f32;

@@ -812,8 +812,10 @@ fn dream_init_system(
         DreamSceneType::Lake => {
             // Lake scene needs no special spawn — just the fog + map + hero
         }
-        DreamSceneType::Strait => {
-            // Strait scene initialization handled by dream_strait systems
+        DreamSceneType::Strait | DreamSceneType::StraitPrelude => {
+            // Both strait scenes are initialized by dream_strait systems —
+            // strait_init_system branches on scene_type to spawn allied lances
+            // for the prelude.
         }
     }
 }

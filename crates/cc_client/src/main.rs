@@ -326,6 +326,7 @@ fn setup_dream(app: &mut App, scene: &str) {
     let ron_name = match scene {
         "lake" => "dream_lake",
         "strait" => "dream_strait",
+        "prelude" => "dream_strait_prelude",
         _ => "dream_office",
     };
     eprintln!("Dream sequence: {ron_name}");
@@ -343,8 +344,15 @@ fn setup_dream(app: &mut App, scene: &str) {
     // Start in Briefing phase so dream missions get their pre-mission card.
     // briefing_input_system auto-advances when skip_briefing: true, so Office/Lake
     // still skip; only Strait (skip_briefing: false) actually pauses on the brief.
+    // For the Prelude wet-test path (`--demo dream prelude`) we jump straight
+    // into the mission so the engine starts immediately — the briefing card
+    // is verified separately via the Strait demo path.
     let mut campaign = app.world_mut().resource_mut::<CampaignState>();
-    campaign.phase = CampaignPhase::Briefing;
+    campaign.phase = if scene == "prelude" {
+        CampaignPhase::InMission
+    } else {
+        CampaignPhase::Briefing
+    };
 }
 
 /// Set up the voice command demo.

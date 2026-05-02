@@ -53,6 +53,30 @@ pub struct StraitDrone {
     pub bomb_ready: bool,
 }
 
+/// Marker for an NPC-operated allied drone in the StraitPrelude scene.
+/// Allies are not selectable by the player and are driven by a basic AI
+/// that pushes them north into Iranian fire — they don't use flares,
+/// bombs, or shaheed-intercepts ("none of the cool tricks").
+#[derive(Component)]
+pub struct AlliedDrone {
+    /// Lance assignment: 0 = Bravo, 1 = Charlie, 2 = Delta.
+    pub lance: u8,
+    /// Tick at which this drone next re-issues its march-north waypoint.
+    pub next_command_tick: u64,
+}
+
+/// Mode of the strait engine — full mission vs failure prologue.
+/// Branches drone spawning, allowed inputs, win/lose, and which UI is shown.
+#[derive(Default, PartialEq, Debug, Clone, Copy)]
+pub enum StraitMode {
+    /// Full Strait mission: convoy, compute economy, code powers, all features.
+    #[default]
+    Active,
+    /// Prelude: 4 player drones + 16 allied drones run by dumb AI.
+    /// No convoy. No compute UI. Failure when alive_drones <= 5.
+    Prelude,
+}
+
 /// Marker for a tanker entity in the convoy.
 #[derive(Component)]
 pub struct StraitTanker {
@@ -168,6 +192,10 @@ pub struct StraitStatusHud;
 pub struct StraitState {
     pub initialized: bool,
 
+    /// Active vs Prelude — set during init from the mission's DreamSequence
+    /// scene_type. Most systems branch on this.
+    pub mode: StraitMode,
+
     // Compute flow (no stored pool — slices drive rates continuously)
     pub allocation: ComputeAllocation,
     /// Continuous satellite focal point (grid coords) — coverage scales with
@@ -247,6 +275,7 @@ impl Default for StraitState {
     fn default() -> Self {
         Self {
             initialized: false,
+            mode: StraitMode::Active,
             allocation: ComputeAllocation::default(),
             satellite_focal: None,
             airstrike_charges: AIRSTRIKE_MAX_CHARGES,
@@ -341,7 +370,26 @@ pub fn is_dream_strait_active(campaign: Res<CampaignState>) -> bool {
             matches!(
                 mt,
                 MissionMutator::DreamSequence {
-                    scene_type: DreamSceneType::Strait,
+                    scene_type: DreamSceneType::Strait | DreamSceneType::StraitPrelude,
+                    ..
+                }
+            )
+        })
+    })
+}
+
+/// True only for the failure prologue (StraitPrelude). Use this on systems
+/// that should ONLY run in the prelude — e.g., the allied-AI driver.
+pub fn is_dream_strait_prelude_active(campaign: Res<CampaignState>) -> bool {
+    if campaign.phase != CampaignPhase::InMission {
+        return false;
+    }
+    campaign.current_mission.as_ref().is_some_and(|m| {
+        m.mutators.iter().any(|mt| {
+            matches!(
+                mt,
+                MissionMutator::DreamSequence {
+                    scene_type: DreamSceneType::StraitPrelude,
                     ..
                 }
             )
@@ -355,21 +403,43 @@ pub fn is_dream_strait_active(campaign: Res<CampaignState>) -> bool {
 
 /// Register all strait systems. Called from `DreamPlugin::build()`.
 pub fn register_strait_systems(app: &mut App) {
+    register_strait_resources(app);
+    register_strait_input_systems(app);
+    register_strait_simulation_systems(app);
+    register_strait_visual_systems(app);
+}
+
+/// Resources that every variant of the strait engine needs (sim and game).
+/// Idempotent — safe to call multiple times.
+pub fn register_strait_resources(app: &mut App) {
     app.init_resource::<StraitState>()
         .init_resource::<StraitInputState>()
         .init_resource::<StraitMouseConsumed>()
         .insert_resource(StraitVision::new(300, 60))
         .init_resource::<StraitContourCache>()
-        .add_systems(
-            PreUpdate,
-            (
-                strait_reset_consumed.run_if(is_dream_strait_active),
-                strait_input_system
-                    .after(strait_reset_consumed)
-                    .run_if(is_dream_strait_active),
-            ),
-        )
-        // Simulation systems (group 1: init, core loop, drones, tankers)
+        .init_resource::<PreludeFlags>();
+}
+
+/// Mouse and keyboard input. Pulls `Single<&Window>` so it requires a real
+/// window — the headless prelude harness skips this group.
+pub fn register_strait_input_systems(app: &mut App) {
+    app.add_systems(
+        PreUpdate,
+        (
+            strait_reset_consumed.run_if(is_dream_strait_active),
+            strait_input_system
+                .after(strait_reset_consumed)
+                .run_if(is_dream_strait_active),
+        ),
+    );
+}
+
+/// Pure-logic simulation systems — drone movement, combat, win/lose, allied
+/// AI, dialog event triggers. No assumptions about windows, cameras, or
+/// gizmos. The headless harness drives ONLY this group.
+pub fn register_strait_simulation_systems(app: &mut App) {
+    app
+        // Group 1: init, core loop, drones, tankers
         .add_systems(
             Update,
             (
@@ -403,12 +473,11 @@ pub fn register_strait_systems(app: &mut App) {
                     .run_if(is_dream_strait_active),
             ),
         )
-        // Simulation systems (group 2: combat, rendering, win/lose)
+        // Group 2: combat, drone logistics, win/lose, prelude AI
         .add_systems(
             Update,
             (
-                strait_launcher_fsm
-                    .run_if(is_dream_strait_active),
+                strait_launcher_fsm.run_if(is_dream_strait_active),
                 strait_spawn_missiles
                     .after(strait_launcher_fsm)
                     .run_if(is_dream_strait_active),
@@ -421,24 +490,41 @@ pub fn register_strait_systems(app: &mut App) {
                 strait_missile_impact
                     .after(strait_missile_interception)
                     .run_if(is_dream_strait_active),
-                strait_enemy_aa
-                    .run_if(is_dream_strait_active),
-                strait_render_defcon
-                    .run_if(is_dream_strait_active),
-                strait_radar_sweep
-                    .run_if(is_dream_strait_active),
-                strait_update_hud
-                    .run_if(is_dream_strait_active),
-                strait_drone_rebuild
-                    .run_if(is_dream_strait_active),
-                strait_airstrike_system
-                    .run_if(is_dream_strait_active),
-                strait_check_win_lose
-                    .run_if(is_dream_strait_active),
+                strait_enemy_aa.run_if(is_dream_strait_active),
+                strait_drone_rebuild.run_if(is_dream_strait_active),
+                // Note: strait_airstrike_system lives in the visual group
+                // because it uses `Gizmos`, which isn't available without
+                // the GizmoPlugin (DefaultPlugins). The headless harness
+                // skips it; the full game still runs it.
+                strait_check_win_lose.run_if(is_dream_strait_active),
+                // StraitPrelude only: drives allied lances north into Iranian fire.
+                strait_allied_ai_system.run_if(is_dream_strait_prelude_active),
+                // StraitPrelude only: pushes dialog beats based on actual events
+                // (allies pushing, first loss, cascade, convoy scrub).
+                strait_prelude_dialog_system
+                    .after(strait_allied_ai_system)
+                    .run_if(is_dream_strait_prelude_active),
             ),
         );
+}
 
-    // Script runner on FixedUpdate (native only — mlua not available on WASM)
+/// DEFCON rendering, radar sweeps, HUD updates. Need a Camera2d + UI tree
+/// so they only make sense in the real game. The headless harness skips
+/// these.
+pub fn register_strait_visual_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        (
+            strait_render_defcon.run_if(is_dream_strait_active),
+            strait_radar_sweep.run_if(is_dream_strait_active),
+            strait_update_hud.run_if(is_dream_strait_active),
+            strait_airstrike_system.run_if(is_dream_strait_active),
+        ),
+    );
+
+    // Script runner on FixedUpdate (native only — mlua not available on WASM).
+    // Only the full game registers this; the headless harness drives no
+    // Lua scripts (and the Lua bindings aren't relevant to the prelude).
     #[cfg(not(target_arch = "wasm32"))]
     app.add_systems(
         FixedUpdate,
@@ -498,35 +584,49 @@ fn strait_init_system(
     // -- Spawn HUD --
     spawn_strait_hud(&mut commands);
 
+    // -- Detect mode from the mission's DreamSequence scene_type --
+    let is_prelude = _campaign.current_mission.as_ref().is_some_and(|m| {
+        m.mutators.iter().any(|mt| matches!(
+            mt,
+            MissionMutator::DreamSequence {
+                scene_type: DreamSceneType::StraitPrelude,
+                ..
+            }
+        ))
+    });
+    state.mode = if is_prelude { StraitMode::Prelude } else { StraitMode::Active };
+
     // -- Spawn patrol drones at Dubai base (SE corner) --
-    // All drones start at the Dubai station. Player deploys them manually
-    // or via the coverage script before launching the convoy.
+    // Active: 16 drones, all player-controlled.
+    // Prelude: 20 drones — 4 Kell's (Lance Alpha) + 16 allied (Bravo/Charlie/Delta x4 each).
     let map_width = 300;
-    let dubai_x = 50; // Dubai base position
+    let dubai_x = 50;
     let dubai_y = 50;
-    let drone_count = INITIAL_PATROL_DRONES;
+    let drone_count = if is_prelude { 20 } else { INITIAL_PATROL_DRONES };
 
     for i in 0..drone_count {
-        // Slight spread around the base so they don't stack
         let offset_x = (i % 4) as i32 * 2 - 3;
         let offset_y = (i / 4) as i32 * 2 - 3;
         let start_x = dubai_x + offset_x;
         let start_y = dubai_y + offset_y;
 
-        // Initial waypoint: just hover at base
-        let waypoints = vec![
-            GridPos::new(start_x, start_y),
-        ];
+        let waypoints = vec![GridPos::new(start_x, start_y)];
 
         let pos = strait_screen_from_world(start_x as f32, start_y as f32);
         let drone_mesh = meshes.add(Circle::new(4.0));
-        let drone_mat = materials.add(ColorMaterial::from_color(TERM_GREEN));
+
+        // Prelude: first 4 are Kell's (bright green, his to control), next 16 are
+        // ally lances (amber — visually distinct so the player can tell at a glance
+        // which are theirs vs which the dumbass operators are flying).
+        let is_ally = is_prelude && i >= 4;
+        let drone_color = if is_ally { WARNING_AMBER } else { TERM_GREEN };
+        let drone_mat = materials.add(ColorMaterial::from_color(drone_color));
 
         let drone_id = state.next_drone_id;
         state.next_drone_id += 1;
         state.drones_alive += 1;
 
-        commands.spawn((
+        let mut entity = commands.spawn((
             DreamEntity,
             StraitDrone {
                 patrol_waypoints: waypoints,
@@ -542,11 +642,57 @@ fn strait_init_system(
             Transform::from_translation(pos),
             StraitRadarSweep { angle: 0.0 },
         ));
+
+        if is_ally {
+            // Allies are split into 3 lances of ~5 (drones 4-8 = Bravo, 9-13 = Charlie, 14-19 = Delta).
+            // Each lance pushes north on a slight stagger. The lance index drives the AI's
+            // initial command tick so they don't all march in lockstep.
+            let lance_idx = ((i - 4) / 6) as u8;
+            let stagger_ticks = (lance_idx as u64) * 30;
+            entity.insert(AlliedDrone {
+                lance: lance_idx.min(2),
+                next_command_tick: stagger_ticks,
+            });
+        }
     }
 
     // -- Spawn initial enemy launchers for wave 1 --
     spawn_enemy_wave(&mut commands, &mut meshes, &mut materials, &state.wave_config, map_width);
     state.enemy_launchers_spawned = true;
+
+    // -- Prelude: spawn an extra AA screen so allies actually face combat. --
+    // Wave 1 alone has 0 AA drones (it's tuned for the convoy mission, where
+    // launchers + soldiers + shaheeds threaten tankers, not patrol drones).
+    // The prelude needs sustained visible AA engagement against the allied
+    // lances, so we lay down 9 drones spread across the upper strait in two
+    // ranks — one forward (y=14) to catch the initial push, one deeper (y=8)
+    // to mop up survivors that reach the coast.
+    if is_prelude {
+        let aa_mesh = meshes.add(RegularPolygon::new(5.0, 4));
+        let aa_mat = materials.add(ColorMaterial::from_color(HOSTILE_RED));
+        for &(x, y) in &[
+            // Forward rank — first contact
+            (70i32, 14i32), (90, 14),
+            (150, 14), (170, 14),
+            (230, 14), (250, 14),
+            // Deep rank — picks off whatever reaches the coast
+            (80, 8), (160, 8), (240, 8),
+        ] {
+            let pos = strait_screen_from_world(x as f32, y as f32);
+            commands.spawn((
+                DreamEntity,
+                StraitAaDrone {
+                    target_drone: None,
+                    world_x: x as f32,
+                    world_y: y as f32,
+                    alive: true,
+                },
+                Mesh2d(aa_mesh.clone()),
+                MeshMaterial2d(aa_mat.clone()),
+                Transform::from_translation(pos),
+            ));
+        }
+    }
 
     // -- Build coastline contour cache --
     // Scan the map for Water↔Rock and Shallows↔Rock transitions to draw DEFCON-style vector coastlines.
@@ -599,8 +745,10 @@ fn strait_init_system(
     info!("DEFCON contour cache: {} coastline segments", contour.coastline_segments.len());
     commands.insert_resource(contour);
 
-    info!("Strait dream sequence initialized: {} patrol drones, {} interceptors",
-        drone_count, state.interceptor_count);
+    info!(
+        "Strait dream sequence initialized ({:?}): {} drones, {} interceptors",
+        state.mode, drone_count, state.interceptor_count
+    );
 }
 
 fn spawn_strait_hud(commands: &mut Commands) {
@@ -1534,6 +1682,30 @@ fn strait_check_win_lose(
         return;
     }
 
+    // Prelude: failure when alive_drones drops to 5 or fewer.
+    // Even if Kell saves all 4 of his, the dumb allied lances will lose
+    // 11+ of 16, which trips this. Auto-advance to dream_strait so the
+    // wake-up briefing plays right after.
+    if state.mode == StraitMode::Prelude {
+        // Heartbeat log every 5s so we can confirm allies are dying at the
+        // expected rate during wet-tests. Cheap to leave on.
+        if state.mission_tick > 0 && state.mission_tick % 300 == 0 {
+            info!(
+                "Prelude tick {}: drones_alive = {}",
+                state.mission_tick, state.drones_alive
+            );
+        }
+        if state.drones_alive <= 5 {
+            state.mission_complete = true;
+            info!(
+                "Strait PRELUDE failed: only {} drones alive — convoy refuses to transit",
+                state.drones_alive
+            );
+            campaign.complete_objective("scout_strait");
+        }
+        return;
+    }
+
     // Convoy time limit
     if state.convoy_launched {
         state.convoy_ticks += 1;
@@ -1980,7 +2152,10 @@ fn strait_input_system(
     mut input_state: ResMut<StraitInputState>,
     mut state: ResMut<StraitState>,
     mut consumed: ResMut<StraitMouseConsumed>,
-    mut drones: Query<(Entity, &mut StraitDrone, &Transform)>,
+    // Exclude allied drones — in StraitPrelude they are NPC-driven and the
+    // player cannot select or command them. In Active mode there are no
+    // AlliedDrone components, so this filter is a no-op.
+    mut drones: Query<(Entity, &mut StraitDrone, &Transform), Without<AlliedDrone>>,
 ) {
     if state.mission_complete {
         return;
@@ -2222,6 +2397,163 @@ fn strait_input_system(
                 ];
                 drone.current_wp_index = 0;
             }
+        }
+    }
+}
+
+// ===========================================================================
+// Allied AI + dialog (StraitPrelude only)
+// ===========================================================================
+
+/// Tick at which the allied lances stop "patrolling" the median and push
+/// north into Iranian airspace. Roughly 15 seconds at 60 Hz — gives the
+/// player time to position their own four drones before the disaster.
+const PRELUDE_PUSH_TICK: u64 = 900;
+
+/// Per-prelude bookkeeping for event-driven dialog: which beats have
+/// already been pushed to the dialogue queue (so we don't fire them
+/// twice when conditions remain true).
+#[derive(Resource, Default)]
+pub struct PreludeFlags {
+    pub opening_done: bool,
+    pub push_dialog_done: bool,
+    pub first_loss_dialog_done: bool,
+    pub cascade_dialog_done: bool,
+    pub convoy_scrub_dialog_done: bool,
+    /// Set true the first frame allies transition from holding the median
+    /// to pushing north. Drives the "allies push" dialog.
+    pub allies_started_pushing: bool,
+}
+
+/// Drives the NPC-operated lances in StraitPrelude.
+///
+/// Two phases:
+/// 1. **Hold** (tick < PRELUDE_PUSH_TICK): allies slow-march to the
+///    median and patrol there, giving the player time to deploy.
+/// 2. **Push** (tick >= PRELUDE_PUSH_TICK): allies bull straight at the
+///    Iranian shoreline in singles, no overlap. They engage what shoots
+///    them and use their passive flares, but don't kite, don't focus
+///    fire, don't drop bombs. ("None of the cool tricks.")
+fn strait_allied_ai_system(
+    state: Res<StraitState>,
+    mut flags: ResMut<PreludeFlags>,
+    mut allies: Query<(&mut StraitDrone, &mut AlliedDrone)>,
+) {
+    if state.mode != StraitMode::Prelude || state.mission_complete {
+        return;
+    }
+
+    let tick = state.mission_tick;
+    let pushing = tick >= PRELUDE_PUSH_TICK;
+    if pushing && !flags.allies_started_pushing {
+        flags.allies_started_pushing = true;
+    }
+
+    for (mut drone, mut ally) in allies.iter_mut() {
+        if !drone.alive {
+            continue;
+        }
+        if tick < ally.next_command_tick {
+            continue;
+        }
+
+        // X target spread along the strait by lance.
+        let target_x = match ally.lance {
+            0 => 80,   // Bravo: west of Qeshm
+            1 => 160,  // Charlie: through the Qeshm shadow (worst odds)
+            _ => 240,  // Delta: east end
+        };
+        // Phase 1: "patrol" the median (y=35, just inside friendly water).
+        // Phase 2: bull at the Iranian shoreline (y=10).
+        let target_y: i32 = if pushing { 10 } else { 35 };
+
+        drone.patrol_waypoints = vec![GridPos::new(target_x, target_y)];
+        drone.current_wp_index = 0;
+
+        // Reissue rarely — once committed, they're committed.
+        ally.next_command_tick = tick + 300;
+    }
+}
+
+/// Pushes prelude dialogue to the dialogue queue based on what's actually
+/// happening in the engine — not on tick timers. Beats:
+///
+/// - **Opening** [0,1,2]: Park calls in cocky, Kell tries to anchor him,
+///   Ortiz pushes anyway. Fires shortly after init.
+/// - **Allies push** [3,4]: Rex flags the formation problem, Kell shouts
+///   for them to fall back. Fires when allies transition to push phase.
+/// - **First losses** [5,6]: Vance panics, Park concedes Bravo. Fires on
+///   the first allied drone destroyed.
+/// - **Cascade** [7,8]: Rex on the count, Kell stoic. Fires once 6+
+///   allies are down.
+/// - **Convoy scrubbed** [9,10]: tankers turning around, Kell decides.
+///   Fires once 11+ allies are down — the failure trigger fires shortly
+///   after at alive ≤ 5.
+fn strait_prelude_dialog_system(
+    state: Res<StraitState>,
+    mut flags: ResMut<PreludeFlags>,
+    allies: Query<&StraitDrone, With<AlliedDrone>>,
+    campaign: Res<CampaignState>,
+    mut dialogue_writer: bevy::prelude::MessageWriter<cc_sim::campaign::triggers::DialogueEvent>,
+) {
+    if state.mode != StraitMode::Prelude || state.mission_complete {
+        return;
+    }
+
+    let Some(mission) = campaign.current_mission.as_ref() else {
+        return;
+    };
+
+    let collect = |indices: &[usize]| -> Vec<cc_core::mission::DialogueLine> {
+        indices
+            .iter()
+            .filter_map(|&i| mission.dialogue.get(i).cloned())
+            .collect()
+    };
+
+    // Opening — wait a short beat after init so the briefing dismiss settles.
+    if !flags.opening_done && state.mission_tick >= 30 {
+        flags.opening_done = true;
+        let lines = collect(&[0, 1, 2]);
+        if !lines.is_empty() {
+            dialogue_writer.write(cc_sim::campaign::triggers::DialogueEvent { lines });
+        }
+    }
+
+    // Allies push — fired by the AI when phase 2 begins.
+    if flags.allies_started_pushing && !flags.push_dialog_done {
+        flags.push_dialog_done = true;
+        let lines = collect(&[3, 4]);
+        if !lines.is_empty() {
+            dialogue_writer.write(cc_sim::campaign::triggers::DialogueEvent { lines });
+        }
+    }
+
+    // Count of dead allies (16 spawned at start).
+    let allies_alive = allies.iter().filter(|d| d.alive).count();
+    let allies_dead = 16usize.saturating_sub(allies_alive);
+
+    if allies_dead >= 1 && !flags.first_loss_dialog_done {
+        flags.first_loss_dialog_done = true;
+        let lines = collect(&[5, 6]);
+        if !lines.is_empty() {
+            dialogue_writer.write(cc_sim::campaign::triggers::DialogueEvent { lines });
+        }
+    }
+
+    if allies_dead >= 6 && !flags.cascade_dialog_done {
+        flags.cascade_dialog_done = true;
+        let lines = collect(&[7, 8]);
+        if !lines.is_empty() {
+            dialogue_writer.write(cc_sim::campaign::triggers::DialogueEvent { lines });
+        }
+    }
+
+    if allies_dead >= 11 && !flags.convoy_scrub_dialog_done {
+        flags.convoy_scrub_dialog_done = true;
+        let lines = collect(&[9, 10]);
+        if !lines.is_empty() {
+            dialogue_writer.write(cc_sim::campaign::triggers::DialogueEvent { lines });
         }
     }
 }

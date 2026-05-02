@@ -21,6 +21,15 @@ serde = { workspace = true }
 name = "poc_3d"
 required-features = []
 
+# Headless validator for the Strait Prelude — runs the actual `dream_strait`
+# simulation systems against `dream_strait_prelude.ron` without a window or
+# input, dumps drone counts at intervals, and asserts the mission failure
+# trigger fires within a tick budget. See `src/bin/prelude_harness.rs`.
+[[bin]]
+name = "prelude_harness"
+path = "src/bin/prelude_harness.rs"
+required-features = ["native"]
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 bevy = { workspace = true, features = ["webgl2"] }
 getrandom = { version = "0.2", features = ["js"] }

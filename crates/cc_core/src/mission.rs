@@ -1764,7 +1764,7 @@ mod tests {
         assert_eq!(mission.act, 3);
         assert!(matches!(
             mission.next_mission,
-            NextMission::Fixed(ref id) if id == "dream_strait"
+            NextMission::Fixed(ref id) if id == "dream_strait_prelude"
         ));
         // Must have DreamSequence mutator with Lake scene type
         assert!(mission.mutators.iter().any(|m| matches!(
@@ -1834,5 +1834,35 @@ mod tests {
             "briefing_text must include the operator dismissal, got: {:?}",
             mission.briefing_text
         );
+    }
+
+    #[test]
+    fn dream_strait_prelude_ron_parses() {
+        let ron_str = include_str!("../../../assets/campaign/dream_strait_prelude.ron");
+        let mission: MissionDefinition = ron::from_str(ron_str)
+            .expect("Failed to parse dream_strait_prelude.ron");
+        assert_eq!(mission.id, "dream_strait_prelude");
+        assert_eq!(mission.act, 3);
+        assert!(matches!(
+            mission.next_mission,
+            NextMission::Fixed(ref id) if id == "dream_strait"
+        ));
+        // Same map dimensions as the full strait.
+        if let MissionMap::Inline { width, height, .. } = &mission.map {
+            assert_eq!(*width, 300);
+            assert_eq!(*height, 60);
+        } else {
+            panic!("Expected inline map");
+        }
+        // Must have the StraitPrelude scene type — this is what the engine
+        // branches on to spawn ally lances and disable code powers.
+        assert!(mission.mutators.iter().any(|m| matches!(
+            m,
+            crate::mutator::MissionMutator::DreamSequence {
+                scene_type: crate::mutator::DreamSceneType::StraitPrelude,
+                ..
+            }
+        )));
+        mission.validate().expect("dream_strait_prelude validation failed");
     }
 }
