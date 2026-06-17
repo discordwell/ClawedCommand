@@ -955,6 +955,89 @@ fn attack_move_engages_enemy() {
 }
 
 #[test]
+fn chasing_unit_gives_up_when_target_dies() {
+    // A melee attacker ordered onto a distant enemy starts chasing it. If that enemy
+    // dies mid-pursuit and nothing else is in range, the chaser must give up cleanly:
+    // a stale ChasingTarget would mark it as perpetually "moving" in the AI snapshot
+    // (is_moving = chasing.is_some()), so idle-unit queries would never see it again,
+    // and a stale MoveTarget would march it to the corpse's last position.
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let attacker = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    let target = spawn_combat_unit(&mut world, GridPos::new(20, 5), 1, UnitKind::Nuisance);
+
+    issue_attack(&mut world, &[attacker], target);
+    run_ticks(&mut world, &mut schedule, 3);
+
+    // Sanity: the attacker is chasing the distant target (out of melee range).
+    assert!(
+        world.get::<ChasingTarget>(attacker).is_some(),
+        "Attacker should be chasing the distant target"
+    );
+
+    // The target dies (e.g. killed by something else) while the chaser is en route.
+    world.entity_mut(target).insert(Dead);
+    if let Some(mut hp) = world.get_mut::<Health>(target) {
+        hp.current = Fixed::ZERO;
+    }
+    run_ticks(&mut world, &mut schedule, 2);
+
+    assert!(
+        world.get::<AttackTarget>(attacker).is_none(),
+        "AttackTarget should be cleared when the target dies"
+    );
+    assert!(
+        world.get::<ChasingTarget>(attacker).is_none(),
+        "ChasingTarget must be cleared when the target dies, else the unit is reported \
+         as perpetually moving and never counted as idle"
+    );
+    assert!(
+        world.get::<MoveTarget>(attacker).is_none(),
+        "MoveTarget toward the dead target's ghost position should be cleared"
+    );
+}
+
+#[test]
+fn chasing_unit_reacquires_when_target_dies_but_another_in_range() {
+    // Giving up the chase on death must not blind the unit: if a fresh enemy is already
+    // within weapon range when the chased target dies, the same-tick re-scan re-acquires
+    // it. Guards the give-up fix against over-clearing.
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let attacker = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    let far = spawn_combat_unit(&mut world, GridPos::new(20, 5), 1, UnitKind::Nuisance);
+    // A second enemy adjacent to the attacker (melee range = 1).
+    let near = spawn_combat_unit(&mut world, GridPos::new(6, 5), 1, UnitKind::Nuisance);
+
+    // Explicit Attack on the far enemy overrides auto-acquire, so the attacker chases far.
+    issue_attack(&mut world, &[attacker], far);
+    run_ticks(&mut world, &mut schedule, 2);
+    assert!(
+        world.get::<ChasingTarget>(attacker).is_some(),
+        "Attacker should be chasing the far target"
+    );
+
+    // Far enemy dies; the near enemy is still alive and in range.
+    world.entity_mut(far).insert(Dead);
+    if let Some(mut hp) = world.get_mut::<Health>(far) {
+        hp.current = Fixed::ZERO;
+    }
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let acquired = world
+        .get::<AttackTarget>(attacker)
+        .map(|at| Entity::from_bits(at.target.0));
+    assert_eq!(
+        acquired,
+        Some(near),
+        "Attacker should re-acquire the in-range enemy after its chase target dies"
+    );
+    // It is now attacking an in-range enemy, not chasing, so no stale chase remains.
+    assert!(
+        world.get::<ChasingTarget>(attacker).is_none(),
+        "Re-acquiring an in-range target should leave no ChasingTarget"
+    );
+}
+
+#[test]
 fn combat_with_elevation_bonus() {
     use cc_core::terrain::TerrainType;
 

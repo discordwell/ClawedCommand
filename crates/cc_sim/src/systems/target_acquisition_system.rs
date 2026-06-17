@@ -48,8 +48,21 @@ pub fn target_acquisition_system(
         if let Some(target) = current_target {
             let target_entity = Entity::from_bits(target.target.0);
             if potential_targets.get(target_entity).is_err() {
-                // Target is dead or despawned — clear it
-                commands.entity(entity).remove::<AttackTarget>();
+                // Target is dead or despawned — give up the chase entirely.
+                //
+                // Clearing only AttackTarget would leave ChasingTarget/MoveTarget/Path
+                // pointing at the dead unit's last position, so the chaser would (a) keep
+                // marching to a corpse and (b) be reported as perpetually "moving" by the
+                // AI snapshot (where `is_moving = chasing.is_some()`), so idle-unit queries
+                // would never see it again. Reset it to idle instead. The local `chasing`
+                // binding stays `Some` for the rest of this tick, so the re-scan below can
+                // still immediately re-acquire a new in-range enemy (and re-establish the
+                // chase via combat_system / the attack-move branch if needed).
+                let mut ec = commands.entity(entity);
+                ec.remove::<AttackTarget>();
+                ec.remove::<ChasingTarget>();
+                ec.remove::<MoveTarget>();
+                ec.remove::<Path>();
             } else {
                 // Already have a valid target
                 continue;

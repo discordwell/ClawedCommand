@@ -68,6 +68,11 @@
 - [x] Consolidate scattered tuning constants (HARVEST_TICKS, CARRY_AMOUNT, ATTACK_MOVE_SIGHT_RANGE, etc.) into `cc_core::tuning` module when count grows further
 - [x] ReturningToBase deposits resources when MoveTarget removed even if worker is not near a drop-off (pre-existing, proximity check needed)
 
+## From Target-Acquisition Correctness Fix
+
+- [x] Chaser whose target dies mid-pursuit kept a stale `ChasingTarget`/`MoveTarget`/`Path`, so it marched to the corpse and was reported as perpetually "moving" by the AI snapshot (`is_moving = chasing.is_some()`) — never counted as idle again. `target_acquisition_system` now resets the unit to idle on target death; same-tick re-scan still re-acquires an in-range enemy. (2 regression tests in integration.rs)
+- [ ] `combat_system` invulnerable-target branch (clears `AttackTarget` only) is the same stale-chase pattern via a rarer trigger: a unit chasing a target that pops invulnerability keeps `ChasingTarget`/`MoveTarget` until invuln expires. Lower impact (self-limiting, not permanent) and entangled with the fact that `target_acquisition_system` does not filter invulnerable targets (so it re-acquires/re-clears the same target each tick). Left as-is to keep the death-case fix focused; revisit if invuln-during-chase becomes observable.
+
 ## From Rendering Performance Review
 
 - [ ] Replace 4,096 fog overlay entities with a single full-screen quad + 64x64 fog texture (write pixel alpha directly, use shader for isometric diamond mask). Eliminates all entity queries and material swaps for fog. Priority increases at 128x128+ map sizes.
