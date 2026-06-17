@@ -2,6 +2,7 @@ use bevy::image::Image;
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat, TextureUsages};
 
+use crate::LOCAL_PLAYER;
 use crate::setup::UnitMesh;
 use cc_core::components::{Owner, Position};
 use cc_core::coords;
@@ -178,7 +179,7 @@ pub fn update_minimap(
         if grid.x >= 0 && grid.y >= 0 && (grid.x as u32) < map.width && (grid.y as u32) < map.height
         {
             let idx = grid.y as usize * w + grid.x as usize;
-            let (r, g, b) = if owner.player_id == 0 {
+            let (r, g, b) = if owner.player_id == LOCAL_PLAYER {
                 (50, 100, 230) // Blue
             } else {
                 (230, 50, 50) // Red

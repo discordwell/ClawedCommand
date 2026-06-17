@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use cc_core::commands::EntityId;
 use cc_core::components::Dead;
 use cc_core::status_effects::{StatusEffectId, StatusEffects, StatusInstance};
-use cc_core::tuning::CC_IMMUNITY_TICKS;
+use cc_core::tuning::{CC_IMMUNITY_TICKS, CORRODED_DECAY_INTERVAL_TICKS};
 
 /// Tick down status effect durations, remove expired, handle CC immunity.
 /// Also converts 5 Annoyed stacks into Tilted CC (T1 fix).
@@ -17,8 +17,13 @@ pub fn status_effect_system(mut query: Query<&mut StatusEffects, Without<Dead>>)
                 instance.remaining_ticks -= 1;
             }
 
-            // Decay Corroded stacks: lose 1 stack per 80 ticks
-            if instance.effect == StatusEffectId::Corroded && instance.remaining_ticks % 80 == 0 {
+            // Decay Corroded stacks: lose 1 stack per decay interval. Only
+            // while active — on the expiry tick (remaining_ticks == 0) the
+            // whole instance is removed below, so no extra decay fires.
+            if instance.effect == StatusEffectId::Corroded
+                && instance.remaining_ticks > 0
+                && instance.remaining_ticks % CORRODED_DECAY_INTERVAL_TICKS == 0
+            {
                 instance.stacks = instance.stacks.saturating_sub(1);
             }
         }

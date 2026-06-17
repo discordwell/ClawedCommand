@@ -6,8 +6,7 @@ use cc_core::terrain::ELEVATION_PIXEL_OFFSET;
 use cc_sim::campaign::mutator_state::FogState;
 use cc_sim::resources::MapResource;
 
-/// Local player ID for fog-of-war calculations.
-const LOCAL_PLAYER: u8 = 0;
+use crate::LOCAL_PLAYER;
 
 /// Per-tile rendering state for dirty tracking.
 #[derive(Clone, Copy, PartialEq, Eq)]

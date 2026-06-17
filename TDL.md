@@ -110,8 +110,9 @@
 - [ ] EcholocationPulse client-side fog reveal rendering
 - [ ] ShapedCharge explosion VFX
 - [ ] GravitationalChonk: don't pull through buildings (needs pathfinding query for line-of-sight)
-- [ ] GravitationalPullCommand: add map bounds clamping (unlike RevulsionAoeCommand, currently can pull units off-map)
-- [ ] Corroded stack decay guard: add `remaining_ticks > 0` check before `% 80 == 0` (fires spuriously on expiry tick)
+- [x] GravitationalPullCommand: add map bounds clamping (unlike RevulsionAoeCommand, currently can pull units off-map)
+- [x] Corroded stack decay guard: add `remaining_ticks > 0` check before `% 80 == 0` (fires spuriously on expiry tick)
+- [ ] Corroded decay never fires observably in practice: applications use duration 80 == decay interval, so the only `% 80 == 0` crossing is the expiry tick, where the whole instance is removed anyway. If gradual stack falloff is wanted (6 stacks peeling off one at a time), decay needs to re-arm `remaining_ticks` per stack instead — balance decision
 - [ ] Supply cap should be granted on construction completion, not on build start (LitterBox +10 cap immediately on placement)
 - [ ] ScratchingPost research queue not shown in building_info panel (only shows generic text)
 
@@ -146,8 +147,10 @@
 
 ## From Unit Training Flow Code Review
 
-- [ ] **HIGH**: Q/W training hotkeys conflict with WASD camera pan — pressing W to train slot 1 also pans camera upward. Need to suppress camera pan when a producer building is selected and Q/W/E/R are pressed, or use different training hotkeys
-- [ ] Consolidate `LOCAL_PLAYER` constant (duplicated 10x across cc_client with inconsistent types: u8 vs usize)
+- [x] **HIGH**: Q/W training hotkeys conflict with WASD camera pan — fixed: camera_system suppresses W-pan while a local producer building is selected, and S-pan while the build menu is open (S = ServerRack sub-key); arrow keys always pan
+- [x] Consolidate `LOCAL_PLAYER` constant (duplicated 10x across cc_client with inconsistent types: u8 vs usize) — now a single `cc_client::LOCAL_PLAYER: u8`
+- [ ] Construct mode (Tab) does not block game hotkeys: pressing E (toggle script) also trains slot 2 from a selected producer, and 1-9 (select script) also recall control groups. Needs a decision on which keys construct mode swallows, since the game intentionally keeps running while it is open
+- [ ] Q/W/E/R training also fires in Move/AttackMove/BuildPlacement modes (no InputMode guard in handle_keyboard, unlike BuildMenu's early return) — decide whether training should be allowed in targeting modes (RTS muscle memory says yes) or gated to Normal mode
 - [ ] Supply cap is granted at building spawn (builder arrival), not construction completion — consider deferring to `construction_system` completion
 - [ ] No server-side guard against `GameCommand::Build { building_kind: TheBox }` — only protected by client hotkey menu omission
 - [ ] Add visual indicator for BuildMenu mode (show available sub-keys on screen)

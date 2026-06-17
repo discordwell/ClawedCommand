@@ -7,8 +7,9 @@ use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::*;
 use cc_core::coords::{GridPos, WorldPos};
 use cc_core::map::GameMap;
-use cc_core::math::Fixed;
+use cc_core::math::{FIXED_ZERO, Fixed};
 use cc_core::status_effects::{StatusEffectId, StatusEffects};
+use cc_core::tuning::{CORRODED_DECAY_INTERVAL_TICKS, GRAV_PULL_PER_TICK};
 use cc_core::unit_stats::base_stats;
 use cc_sim::resources::{
     CommandQueue, ControlGroups, GameState, MapResource, PlayerResources, SimClock, SimRng,
@@ -255,6 +256,49 @@ fn test_dream_siege_resets_on_catnapper_taking_damage() {
     // Target changes are handled by combat_system when attacking a different entity.
 }
 
+/// TDL fix: Corroded stacks decay one at a time while the effect is active,
+/// and the whole instance expires at 0 remaining ticks without an extra
+/// decay firing on the expiry tick.
+#[test]
+fn test_corroded_stacks_decay_while_active_and_expire_at_zero() {
+    let (mut world, mut schedule) = make_sim();
+    let target = spawn_unit(&mut world, GridPos::new(10, 10), 1, UnitKind::Nuisance);
+
+    // Inject Corroded with 3 stacks, one tick above a decay boundary
+    {
+        let mut effects = world.get_mut::<StatusEffects>(target).unwrap();
+        effects
+            .effects
+            .push(cc_core::status_effects::StatusInstance {
+                effect: StatusEffectId::Corroded,
+                remaining_ticks: CORRODED_DECAY_INTERVAL_TICKS + 1,
+                stacks: 3,
+                source: EntityId(0),
+            });
+    }
+
+    // One tick: remaining_ticks crosses the decay boundary → one stack decays
+    run_ticks(&mut world, &mut schedule, 1);
+    let effects = world.get::<StatusEffects>(target).unwrap();
+    assert_eq!(
+        effects.stacks_of(StatusEffectId::Corroded),
+        2,
+        "exactly one Corroded stack should decay at the interval boundary"
+    );
+
+    // Run out the rest of the duration: the instance expires wholesale at 0
+    run_ticks(
+        &mut world,
+        &mut schedule,
+        CORRODED_DECAY_INTERVAL_TICKS as usize,
+    );
+    let effects = world.get::<StatusEffects>(target).unwrap();
+    assert!(
+        !effects.has(StatusEffectId::Corroded),
+        "Corroded should be fully removed once remaining_ticks reaches 0"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Ability Tests
 // ---------------------------------------------------------------------------
@@ -277,6 +321,36 @@ fn test_gravitational_chonk_pulls_enemies() {
         "Enemy should be pulled toward Chonk (x decreased): initial={}, final={}",
         initial_x,
         final_x,
+    );
+}
+
+/// TDL fix: GravitationalPullCommand clamps the pulled unit to map bounds —
+/// a pull source on the map edge must not drag units off-map.
+#[test]
+fn test_gravitational_pull_clamps_to_map_bounds() {
+    let (mut world, _schedule) = make_sim();
+    let enemy = spawn_unit(&mut world, GridPos::new(1, 10), 1, UnitKind::Nuisance);
+
+    // Park the enemy a hair inside the west edge, closer than one pull step
+    world.get_mut::<Position>(enemy).unwrap().world = WorldPos {
+        x: Fixed::from_bits(100), // ~0.0015 tiles; GRAV_PULL_PER_TICK is larger
+        y: Fixed::from_num(10),
+    };
+
+    cc_sim::systems::damage::GravitationalPullCommand {
+        source_pos: WorldPos {
+            x: FIXED_ZERO,
+            y: Fixed::from_num(10),
+        },
+        target: enemy,
+        pull_per_tick: GRAV_PULL_PER_TICK,
+    }
+    .apply(&mut world);
+
+    let x = world.get::<Position>(enemy).unwrap().world.x;
+    assert!(
+        x >= FIXED_ZERO,
+        "pull must not drag units off the map: x = {x}"
     );
 }
 

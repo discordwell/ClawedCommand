@@ -2,6 +2,9 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
 
+/// Local player ID (TODO: make configurable for multiplayer).
+pub const LOCAL_PLAYER: u8 = 0;
+
 pub mod cutscene;
 pub mod dream;
 pub mod dream_strait;

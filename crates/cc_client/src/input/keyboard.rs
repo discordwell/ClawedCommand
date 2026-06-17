@@ -5,10 +5,9 @@ use cc_core::commands::{EntityId, GameCommand};
 use cc_core::components::{Building, BuildingKind, Owner, Producer, Selected, UnitType};
 use cc_sim::resources::CommandQueue;
 
-use super::{DoubleClickState, InputMode};
+use crate::LOCAL_PLAYER;
 
-/// Local player ID (TODO: make configurable for multiplayer)
-const LOCAL_PLAYER: u8 = 0;
+use super::{DoubleClickState, InputMode};
 
 pub fn handle_keyboard(
     keyboard: Res<ButtonInput<KeyCode>>,

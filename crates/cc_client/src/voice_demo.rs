@@ -8,6 +8,7 @@ use cc_core::status_effects::{StatusEffectId, StatusEffects, StatusInstance};
 use cc_core::terrain::TerrainType;
 use cc_sim::resources::{CommandQueue, MapResource, SimClock};
 
+use crate::LOCAL_PLAYER;
 use crate::cutscene::CutsceneCamera;
 use crate::renderer::voice_ping::spawn_voice_ping;
 use crate::setup::UnitMesh;
@@ -357,7 +358,9 @@ pub fn voice_demo_system(
                 // Hissers (P0) fall back behind Chonks
                 let hisser_entities: Vec<Entity> = units
                     .iter()
-                    .filter(|(_, ut, owner)| ut.kind == UnitKind::Hisser && owner.player_id == 0)
+                    .filter(|(_, ut, owner)| {
+                        ut.kind == UnitKind::Hisser && owner.player_id == LOCAL_PLAYER
+                    })
                     .map(|(e, _, _)| e)
                     .collect();
 
@@ -439,7 +442,7 @@ pub fn voice_demo_system(
                 // All cats (P0) attack-move toward mice
                 let cat_entities: Vec<Entity> = units
                     .iter()
-                    .filter(|(_, _, owner)| owner.player_id == 0)
+                    .filter(|(_, _, owner)| owner.player_id == LOCAL_PLAYER)
                     .map(|(e, _, _)| e)
                     .collect();
 
@@ -478,7 +481,7 @@ pub fn voice_demo_system(
                 // All cats (P0) hold position
                 let cat_entities: Vec<Entity> = units
                     .iter()
-                    .filter(|(_, _, owner)| owner.player_id == 0)
+                    .filter(|(_, _, owner)| owner.player_id == LOCAL_PLAYER)
                     .map(|(e, _, _)| e)
                     .collect();
 
@@ -515,7 +518,7 @@ pub fn voice_demo_system(
                 // All cats (P0) retreat to starting area
                 let cat_entities: Vec<Entity> = units
                     .iter()
-                    .filter(|(_, _, owner)| owner.player_id == 0)
+                    .filter(|(_, _, owner)| owner.player_id == LOCAL_PLAYER)
                     .map(|(e, _, _)| e)
                     .collect();
 

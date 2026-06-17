@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use cc_sim::campaign::state::{CampaignPhase, CampaignState};
 use cc_sim::resources::GameState;
 
-const LOCAL_PLAYER: u8 = 0;
+use crate::LOCAL_PLAYER;
 
 /// Marker for the game over overlay root.
 #[derive(Component)]

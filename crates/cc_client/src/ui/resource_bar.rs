@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use cc_sim::resources::{PlayerResourceState, PlayerResources, SimClock};
 
-const LOCAL_PLAYER: usize = 0;
+use crate::LOCAL_PLAYER;
 
 /// Marker for the resource bar root node.
 #[derive(Component)]
@@ -46,7 +46,7 @@ pub fn update_resource_bar(
     clock: Option<Res<SimClock>>,
     mut text_q: Query<&mut Text, With<ResourceBarText>>,
 ) {
-    let Some(pres) = player_resources.players.get(LOCAL_PLAYER) else {
+    let Some(pres) = player_resources.players.get(LOCAL_PLAYER as usize) else {
         return;
     };
 

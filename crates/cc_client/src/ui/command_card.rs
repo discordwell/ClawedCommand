@@ -10,9 +10,8 @@ use cc_core::unit_stats::base_stats;
 use cc_core::upgrade_stats::upgrade_stats;
 use cc_sim::resources::{CommandQueue, PlayerResources};
 
+use crate::LOCAL_PLAYER;
 use crate::input::InputMode;
-
-const LOCAL_PLAYER: u8 = 0;
 
 /// Marker for the command card root node.
 #[derive(Component)]

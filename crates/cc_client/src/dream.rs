@@ -594,7 +594,7 @@ fn dream_init_system(
             // Deselect Kell to hide the selection ring during dream
             // (mouse handler finds Kell by HeroId, not by Selected)
             if let Some(kelpie_entity) = heroes.iter().find_map(|(e, hi, owner)| {
-                (hi.hero_id == cc_core::hero::HeroId::KellFisher && owner.player_id == 0)
+                (hi.hero_id == cc_core::hero::HeroId::KellFisher && owner.player_id == crate::LOCAL_PLAYER)
                     .then_some(e)
             }) {
                 commands.entity(kelpie_entity).remove::<Selected>();
@@ -868,7 +868,7 @@ fn dream_proximity_system(
 
     // Find Kelpie's grid position
     let kelpie_pos = heroes.iter().find_map(|(hi, owner, pos)| {
-        if hi.hero_id == cc_core::hero::HeroId::KellFisher && owner.player_id == 0 {
+        if hi.hero_id == cc_core::hero::HeroId::KellFisher && owner.player_id == crate::LOCAL_PLAYER {
             Some(pos.world.to_grid())
         } else {
             None

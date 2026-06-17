@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::LOCAL_PLAYER;
 use crate::renderer::animation::{AnimIndices, AnimState, AnimTimer, PrevAnimState};
 use crate::renderer::hero_sprites::HeroSprites;
 use crate::renderer::tweens::TweenState;
@@ -78,7 +79,7 @@ pub fn spawn_unit_visuals(
         } else if let Some(ref team_mats) = team_mats {
             // Fallback: colored circle mesh
             let body_mesh = meshes.add(Circle::new(12.0));
-            let body_mat = if owner.player_id == 0 {
+            let body_mat = if owner.player_id == LOCAL_PLAYER {
                 team_mats.player.clone()
             } else {
                 team_mats.enemy.clone()

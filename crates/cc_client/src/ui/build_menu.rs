@@ -5,8 +5,7 @@ use cc_core::building_stats::building_stats;
 use cc_core::components::BuildingKind;
 use cc_sim::resources::PlayerResources;
 
-/// Local player ID (TODO: make configurable for multiplayer)
-const LOCAL_PLAYER: usize = 0;
+use crate::LOCAL_PLAYER;
 
 /// Marker for the build menu root node.
 #[derive(Component)]
@@ -162,7 +161,7 @@ pub fn update_build_menu(
 
     // Update entry colors based on affordability
     if show_menu {
-        let pres = player_resources.players.get(LOCAL_PLAYER);
+        let pres = player_resources.players.get(LOCAL_PLAYER as usize);
         for (entry, mut color) in entries.iter_mut() {
             let stats = building_stats(entry.kind);
             let affordable = if let Some(p) = pres {

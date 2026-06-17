@@ -5,7 +5,7 @@ use cc_core::commands::{AbilityTarget, EntityId, GameCommand};
 use cc_core::components::{AbilitySlots, Owner, Selected, UnitType};
 use cc_sim::resources::CommandQueue;
 
-const LOCAL_PLAYER: u8 = 0;
+use crate::LOCAL_PLAYER;
 
 /// Marker for the ability bar root node.
 #[derive(Component)]

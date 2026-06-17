@@ -50,6 +50,16 @@ pub const ATTACK_MOVE_SIGHT_RANGE: i32 = 8;
 /// CC immunity duration granted after a crowd-control effect expires (ticks).
 pub const CC_IMMUNITY_TICKS: u32 = 10;
 
+/// Corroded: one stack decays each time `remaining_ticks` crosses a multiple
+/// of this interval while the effect is active.
+pub const CORRODED_DECAY_INTERVAL_TICKS: u32 = 80;
+
+/// Annoyed (Nuisance passive): debuff duration per application (ticks).
+pub const ANNOYED_DURATION_TICKS: u32 = 80;
+
+/// Corroded (Hisser passive): debuff duration per application (ticks).
+pub const CORRODED_DURATION_TICKS: u32 = 80;
+
 // ---------------------------------------------------------------------------
 // Abilities (Phase 4C)
 // ---------------------------------------------------------------------------

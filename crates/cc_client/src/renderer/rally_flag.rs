@@ -3,8 +3,7 @@ use bevy::prelude::*;
 use cc_core::components::{Building, Owner, Producer, RallyPoint, Selected};
 use cc_core::coords::{TILE_HALF_HEIGHT, WorldPos, depth_z, world_to_screen};
 
-/// Local player ID for rally flag rendering.
-const LOCAL_PLAYER: u8 = 0;
+use crate::LOCAL_PLAYER;
 
 /// Marker for the rally flag visual entity.
 #[derive(Component)]

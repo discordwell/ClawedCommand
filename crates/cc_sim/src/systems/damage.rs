@@ -123,6 +123,16 @@ impl Command for AoeCcCommand {
     }
 }
 
+/// Largest in-bounds world coordinates (map width-1, height-1), for clamping
+/// positions written outside movement_system (knockbacks, pulls).
+fn map_position_bounds(world: &World) -> (Fixed, Fixed) {
+    let map_res = world.resource::<crate::resources::MapResource>();
+    (
+        Fixed::from_num(map_res.map.width as i32 - 1),
+        Fixed::from_num(map_res.map.height as i32 - 1),
+    )
+}
+
 /// Deferred command to push enemies away from a source position (Revulsion).
 pub struct RevulsionAoeCommand {
     pub source_entity: Entity,
@@ -142,11 +152,7 @@ impl Command for RevulsionAoeCommand {
             .map(|p| p.world)
             .unwrap_or(self.source_pos);
 
-        // Get map bounds
-        let (map_w, map_h) = {
-            let map_res = world.resource::<crate::resources::MapResource>();
-            (map_res.map.width as i32, map_res.map.height as i32)
-        };
+        let (map_max_x, map_max_y) = map_position_bounds(world);
 
         // Collect targets
         let targets: Vec<(Entity, WorldPos)> = world
@@ -163,9 +169,6 @@ impl Command for RevulsionAoeCommand {
             })
             .map(|(e, pos, _)| (e, pos.world))
             .collect();
-
-        let map_max_x = Fixed::from_num(map_w - 1);
-        let map_max_y = Fixed::from_num(map_h - 1);
 
         for (target, target_pos) in targets {
             let dx = target_pos.x - source_pos.x;
@@ -221,6 +224,9 @@ pub struct GravitationalPullCommand {
 
 impl Command for GravitationalPullCommand {
     fn apply(self, world: &mut World) {
+        // Map bounds, fetched before the mutable Position borrow
+        let (map_max_x, map_max_y) = map_position_bounds(world);
+
         let Some(mut pos) = world.get_mut::<cc_core::components::Position>(self.target) else {
             return;
         };
@@ -239,8 +245,12 @@ impl Command for GravitationalPullCommand {
         let norm_dx = dx / max_component;
         let norm_dy = dy / max_component;
 
-        pos.world.x += norm_dx * self.pull_per_tick;
-        pos.world.y += norm_dy * self.pull_per_tick;
+        pos.world.x = (pos.world.x + norm_dx * self.pull_per_tick)
+            .max(FIXED_ZERO)
+            .min(map_max_x);
+        pos.world.y = (pos.world.y + norm_dy * self.pull_per_tick)
+            .max(FIXED_ZERO)
+            .min(map_max_y);
     }
 }
 

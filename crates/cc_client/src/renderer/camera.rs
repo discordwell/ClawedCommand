@@ -1,5 +1,8 @@
 use bevy::prelude::*;
 
+use cc_core::components::{Building, Owner, Producer, Selected};
+
+use crate::LOCAL_PLAYER;
 use crate::input::InputMode;
 
 const PAN_SPEED: f32 = 300.0;
@@ -17,6 +20,7 @@ pub fn camera_system(
     window: Single<&Window>,
     mut camera: Single<(&mut Transform, &mut Projection), With<Camera2d>>,
     input_mode: Res<InputMode>,
+    selected_producers: Query<&Owner, (With<Building>, With<Producer>, With<Selected>)>,
 ) {
     // Block camera pan/zoom during prompt overlay
     if *input_mode == InputMode::Prompt {
@@ -30,21 +34,15 @@ pub fn camera_system(
         return;
     };
     let dt = time.delta_secs();
-    let mut pan = Vec2::ZERO;
 
-    // Keyboard panning (WASD + arrows)
-    if keyboard.pressed(KeyCode::KeyW) || keyboard.pressed(KeyCode::ArrowUp) {
-        pan.y += 1.0;
-    }
-    if keyboard.pressed(KeyCode::KeyS) || keyboard.pressed(KeyCode::ArrowDown) {
-        pan.y -= 1.0;
-    }
-    if keyboard.pressed(KeyCode::KeyA) || keyboard.pressed(KeyCode::ArrowLeft) {
-        pan.x -= 1.0;
-    }
-    if keyboard.pressed(KeyCode::KeyD) || keyboard.pressed(KeyCode::ArrowRight) {
-        pan.x += 1.0;
-    }
+    // W doubles as the train-slot-1 hotkey while a local producer building is
+    // selected (input/keyboard.rs), and S doubles as the ServerRack sub-key
+    // while the build menu is open — don't also pan the camera on those keys.
+    let suppress_w = selected_producers
+        .iter()
+        .any(|owner| owner.player_id == LOCAL_PLAYER);
+    let suppress_s = *input_mode == InputMode::BuildMenu;
+    let mut pan = keyboard_pan_vector(&keyboard, suppress_w, suppress_s);
 
     if pan != Vec2::ZERO {
         pan = pan.normalize() * PAN_SPEED * dt;
@@ -109,5 +107,87 @@ pub fn camera_system(
             transform.translation.x += delta.x;
             transform.translation.y += delta.y;
         }
+    }
+}
+
+/// Unnormalized WASD/arrow pan direction. `suppress_w`/`suppress_s` drop the
+/// W/S letter keys when another binding claims them (W trains slot 1 while a
+/// producer is selected; S picks ServerRack in the build menu); the arrow
+/// keys always pan.
+fn keyboard_pan_vector(
+    keyboard: &ButtonInput<KeyCode>,
+    suppress_w: bool,
+    suppress_s: bool,
+) -> Vec2 {
+    let mut pan = Vec2::ZERO;
+
+    if (keyboard.pressed(KeyCode::KeyW) && !suppress_w) || keyboard.pressed(KeyCode::ArrowUp) {
+        pan.y += 1.0;
+    }
+    if (keyboard.pressed(KeyCode::KeyS) && !suppress_s) || keyboard.pressed(KeyCode::ArrowDown) {
+        pan.y -= 1.0;
+    }
+    if keyboard.pressed(KeyCode::KeyA) || keyboard.pressed(KeyCode::ArrowLeft) {
+        pan.x -= 1.0;
+    }
+    if keyboard.pressed(KeyCode::KeyD) || keyboard.pressed(KeyCode::ArrowRight) {
+        pan.x += 1.0;
+    }
+
+    pan
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn keyboard_with(keys: &[KeyCode]) -> ButtonInput<KeyCode> {
+        let mut kb = ButtonInput::default();
+        for &key in keys {
+            kb.press(key);
+        }
+        kb
+    }
+
+    #[test]
+    fn wasd_pans_when_nothing_suppressed() {
+        let kb = keyboard_with(&[KeyCode::KeyW, KeyCode::KeyD]);
+        assert_eq!(
+            keyboard_pan_vector(&kb, false, false),
+            Vec2::new(1.0, 1.0)
+        );
+    }
+
+    #[test]
+    fn w_pan_suppressed_while_producer_selected() {
+        // TDL HIGH fix: pressing W to train slot 1 must not also pan the camera
+        let kb = keyboard_with(&[KeyCode::KeyW]);
+        assert_eq!(keyboard_pan_vector(&kb, true, false), Vec2::ZERO);
+    }
+
+    #[test]
+    fn arrow_up_still_pans_while_w_suppressed() {
+        let kb = keyboard_with(&[KeyCode::ArrowUp]);
+        assert_eq!(
+            keyboard_pan_vector(&kb, true, false),
+            Vec2::new(0.0, 1.0)
+        );
+    }
+
+    #[test]
+    fn s_pan_suppressed_in_build_menu() {
+        // Pressing S to pick ServerRack in the build menu must not pan down
+        let kb = keyboard_with(&[KeyCode::KeyS]);
+        assert_eq!(keyboard_pan_vector(&kb, false, true), Vec2::ZERO);
+    }
+
+    #[test]
+    fn other_pan_keys_unaffected_by_suppression() {
+        let kb = keyboard_with(&[KeyCode::KeyA, KeyCode::KeyS, KeyCode::KeyD]);
+        // Only W suppressed: A/S/D still pan
+        assert_eq!(
+            keyboard_pan_vector(&kb, true, false),
+            Vec2::new(0.0, -1.0)
+        );
     }
 }

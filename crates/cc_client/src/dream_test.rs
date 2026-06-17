@@ -297,7 +297,7 @@ pub fn dream_test_driver_system(
             if driver.move_target.is_none() {
                 // Issue the move command
                 if let Some((entity, _, _, _)) = heroes.iter().find(|(_, hi, owner, _)| {
-                    hi.hero_id == HeroId::KellFisher && owner.player_id == 0
+                    hi.hero_id == HeroId::KellFisher && owner.player_id == crate::LOCAL_PLAYER
                 }) {
                     cmd_queue.push(GameCommand::Move {
                         unit_ids: vec![EntityId::from_entity(entity)],
@@ -311,7 +311,7 @@ pub fn dream_test_driver_system(
                 // Poll: check if Kell is near the target
                 driver.move_timeout -= time.delta_secs();
                 if let Some((_, _, _, pos)) = heroes.iter().find(|(_, hi, owner, _)| {
-                    hi.hero_id == HeroId::KellFisher && owner.player_id == 0
+                    hi.hero_id == HeroId::KellFisher && owner.player_id == crate::LOCAL_PLAYER
                 }) {
                     let grid = pos.world.to_grid();
                     let dx = (grid.x - target.x).abs();

@@ -1,10 +1,8 @@
 use bevy::prelude::*;
 
+use crate::LOCAL_PLAYER;
 use crate::setup::{BuildingMesh, UnitMesh};
 use cc_core::components::{Building, BuildingKind, Dead, Health, Owner, UnitKind, UnitType};
-
-/// Local player ID for showing enemy health bars.
-const LOCAL_PLAYER: u8 = 0;
 
 /// Marker added to parent unit once health bars have been spawned.
 #[derive(Component)]

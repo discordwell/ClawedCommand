@@ -10,12 +10,10 @@ use cc_core::coords::{ScreenPos, screen_to_world};
 use cc_sim::campaign::state::{CampaignPhase, CampaignState};
 use cc_sim::resources::{CommandQueue, MapResource};
 
+use crate::LOCAL_PLAYER;
 use crate::renderer::minimap::MinimapClickConsumed;
 
 use super::{DoubleClickState, DragSelectState, InputMode, PlacementPreview};
-
-/// Local player ID (TODO: make configurable for multiplayer)
-const LOCAL_PLAYER: u8 = 0;
 
 /// Minimum drag distance (pixels) before box select activates.
 const DRAG_THRESHOLD: f32 = 5.0;

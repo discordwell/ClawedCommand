@@ -15,7 +15,7 @@ use cc_core::coords::WorldPos;
 use cc_core::math::{FIXED_ONE, Fixed};
 use cc_core::status_effects::StatusEffectId;
 use cc_core::terrain::FactionId;
-use cc_core::tuning::PROJECTILE_SPEED;
+use cc_core::tuning::{ANNOYED_DURATION_TICKS, CORRODED_DURATION_TICKS, PROJECTILE_SPEED};
 
 use crate::campaign::mutator_state::MutatorState;
 
@@ -215,7 +215,7 @@ pub fn combat_system(
                     commands.queue(ApplyStatusCommand {
                         target: target_entity,
                         effect: StatusEffectId::Annoyed,
-                        duration: 80, // 8s
+                        duration: ANNOYED_DURATION_TICKS,
                         stacks: 1,
                         max_stacks: 5,
                         source: EntityId::from_entity(entity),
@@ -227,7 +227,7 @@ pub fn combat_system(
                     commands.queue(ApplyStatusCommand {
                         target: target_entity,
                         effect: StatusEffectId::Corroded,
-                        duration: 80, // 8s
+                        duration: CORRODED_DURATION_TICKS,
                         stacks: 1,
                         max_stacks: 6,
                         source: EntityId::from_entity(entity),
