@@ -119,10 +119,10 @@
 ## Code Quality (from code review)
 
 - [x] Extract `ensure_effect`/`refresh_or_add` into `StatusEffects::refresh_or_insert()` method (3 duplicate copies) — already implemented in `cc_core::status_effects` with tests
-- [ ] Add `UnderConstruction::progress_f32()` method (construction progress computed 4× in different files)
-- [ ] Add `BuildingKind::display_name()` method in cc_core (duplicated in build_menu.rs and building_info.rs)
-- [ ] Move LaserPointer combat stats to tuning.rs constants (hardcoded in production_system.rs)
-- [ ] Extract `BUILDING_SPRITE_SIZE: f32 = 28.0` constant (repeated in 4 renderer locations)
+- [x] Add `UnderConstruction::progress_f32()` method (construction progress computed 4× in different files) — implemented in `cc_core::components`; all 10 call sites use it (no inline formula remains)
+- [x] Add `BuildingKind::display_name()` method in cc_core (duplicated in build_menu.rs and building_info.rs) — implemented in `cc_core::components`; both UI files call it (build_menu's `match` is a separate role-tag hint, not a name)
+- [x] Move LaserPointer combat stats to tuning.rs constants (hardcoded in production_system.rs) — uses `tuning::TOWER_{DAMAGE,RANGE,ATTACK_SPEED}_LASER_POINTER`
+- [x] Extract `BUILDING_SPRITE_SIZE: f32 = 28.0` constant (repeated in 4 renderer locations) — `renderer::BUILDING_SPRITE_SIZE` exists and is used in buildings.rs (the `28.0` in health_bars.rs is a per-building health-bar width, a distinct concept)
 
 ## Campaign Missions (Remaining RON Files)
 
