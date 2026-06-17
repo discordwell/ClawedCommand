@@ -248,7 +248,7 @@ fn spawn_wave_entities(
                     .insert(AttackMoveTarget { target: *target });
 
                 // Pathfind toward the attack-move destination
-                let faction = FactionId::from_u8(unit_spawn.player_id).unwrap_or(FactionId::CatGPT);
+                let faction = FactionId::for_player(unit_spawn.player_id);
                 let start = unit_spawn.position;
                 if let Some(waypoints) = pathfinding::find_path(map, start, *target, faction) {
                     let first_waypoint = waypoints[0];
@@ -274,7 +274,7 @@ fn spawn_wave_entities(
                     });
                     // Pathfind to first waypoint
                     let faction =
-                        FactionId::from_u8(unit_spawn.player_id).unwrap_or(FactionId::CatGPT);
+                        FactionId::for_player(unit_spawn.player_id);
                     let start = unit_spawn.position;
                     if let Some(path_wps) =
                         pathfinding::find_path(map, start, waypoints[0], faction)

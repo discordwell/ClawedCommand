@@ -84,7 +84,7 @@
 
 - [ ] `ToolRegistry::build_default()` called on every `execute_tool()` invocation — should use `OnceLock` or pass registry as parameter
 - [ ] Hardcoded `ToolTier::Advanced` in `cc_client/src/ui/agent_chat.rs` — should read from `FactionToolStates` resource
-- [ ] `FactionId::from_u8(player_id).unwrap_or(CatGPT)` duplicated 19× in `cc_harness/src/server.rs` — extract to `FactionId::for_player(id)` method
+- [x] `FactionId::from_u8(player_id).unwrap_or(CatGPT)` duplicated 19× in `cc_harness/src/server.rs` — extracted to `FactionId::for_player(id)`. Pattern was actually repo-wide (47 sites): consolidated server.rs (30), headless.rs (4), wave_spawner/resource/production/patrol systems, runner.rs, mcp_tools.rs. Left the `.and_then(|o| from_u8(o.player_id)).unwrap_or(CatGPT)` Option-chaining sites as-is (different shape)
 - [ ] Lua behavior binding registration boilerplate (~18 blocks) in `lua_runtime.rs` — consider a macro
 - [x] `test_dream_siege_resets_on_target_change` was flaky — fixed by zeroing target damage in test (T2 damage-reset was interfering)
 - [ ] Update training data scripts (`validate_data.py`, `generate_synthetic.py`, `evaluate.py`) to match current tool list after `execute_strategy` removal
@@ -118,7 +118,7 @@
 
 ## Code Quality (from code review)
 
-- [ ] Extract `ensure_effect`/`refresh_or_add` into `StatusEffects::refresh_or_insert()` method (3 duplicate copies)
+- [x] Extract `ensure_effect`/`refresh_or_add` into `StatusEffects::refresh_or_insert()` method (3 duplicate copies) — already implemented in `cc_core::status_effects` with tests
 - [ ] Add `UnderConstruction::progress_f32()` method (construction progress computed 4× in different files)
 - [ ] Add `BuildingKind::display_name()` method in cc_core (duplicated in build_menu.rs and building_info.rs)
 - [ ] Move LaserPointer combat stats to tuning.rs constants (hardcoded in production_system.rs)

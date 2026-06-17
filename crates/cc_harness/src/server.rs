@@ -451,8 +451,7 @@ impl HarnessServer {
             &snap,
             map,
             params.player_id,
-            cc_core::terrain::FactionId::from_u8(params.player_id)
-                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            cc_core::terrain::FactionId::for_player(params.player_id),
         );
         let enemies = ctx.enemies_in_range(
             GridPos::new(params.x, params.y),
@@ -476,8 +475,7 @@ impl HarnessServer {
             &snap,
             map,
             params.player_id,
-            cc_core::terrain::FactionId::from_u8(params.player_id)
-                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            cc_core::terrain::FactionId::for_player(params.player_id),
         );
         let result = match ctx.nearest_enemy(GridPos::new(params.x, params.y)) {
             Some(u) => {
@@ -502,8 +500,7 @@ impl HarnessServer {
             &snap,
             map,
             params.player_id,
-            cc_core::terrain::FactionId::from_u8(params.player_id)
-                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            cc_core::terrain::FactionId::for_player(params.player_id),
         );
         let mut all_threats = Vec::new();
         for unit in &snap.my_units {
@@ -528,8 +525,7 @@ impl HarnessServer {
             &snap,
             map,
             params.player_id,
-            cc_core::terrain::FactionId::from_u8(params.player_id)
-                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            cc_core::terrain::FactionId::for_player(params.player_id),
         );
         let mut all_targets = Vec::new();
         for unit in &snap.my_units {
@@ -572,8 +568,7 @@ impl HarnessServer {
             &snap,
             map,
             params.player_id,
-            cc_core::terrain::FactionId::from_u8(params.player_id)
-                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            cc_core::terrain::FactionId::for_player(params.player_id),
         );
         let pos = GridPos::new(params.x, params.y);
         let json = serde_json::json!({
@@ -645,8 +640,7 @@ impl HarnessServer {
             &snap,
             map,
             params.player_id,
-            cc_core::terrain::FactionId::from_u8(params.player_id)
-                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            cc_core::terrain::FactionId::for_player(params.player_id),
         );
         let deposits = ctx.resource_deposits();
         let json = serde_json::to_string_pretty(
@@ -687,8 +681,7 @@ impl HarnessServer {
             &snap,
             map,
             params.player_id,
-            cc_core::terrain::FactionId::from_u8(params.player_id)
-                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            cc_core::terrain::FactionId::for_player(params.player_id),
         );
         let result = match ctx.nearest_deposit(GridPos::new(params.x, params.y), Some(kind)) {
             Some(d) => serde_json::json!({
@@ -817,8 +810,7 @@ impl HarnessServer {
             &snap,
             map,
             params.player_id,
-            cc_core::terrain::FactionId::from_u8(params.player_id)
-                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            cc_core::terrain::FactionId::for_player(params.player_id),
         );
         let unit = snap
             .my_units
@@ -853,8 +845,7 @@ impl HarnessServer {
             &snap,
             map,
             params.player_id,
-            cc_core::terrain::FactionId::from_u8(params.player_id)
-                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            cc_core::terrain::FactionId::for_player(params.player_id),
         );
         let unit = snap
             .my_units
@@ -894,8 +885,7 @@ impl HarnessServer {
             &snap,
             map,
             params.player_id,
-            cc_core::terrain::FactionId::from_u8(params.player_id)
-                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            cc_core::terrain::FactionId::for_player(params.player_id),
         );
         let reachable = ctx.can_reach(
             GridPos::new(params.from_x, params.from_y),
@@ -920,8 +910,7 @@ impl HarnessServer {
             &snap,
             map,
             params.player_id,
-            cc_core::terrain::FactionId::from_u8(params.player_id)
-                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            cc_core::terrain::FactionId::for_player(params.player_id),
         );
         let length = ctx.path_length(
             GridPos::new(params.from_x, params.from_y),
@@ -1164,8 +1153,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let ids: Vec<EntityId> = params.attacker_ids.into_iter().map(EntityId).collect();
             let result = behaviors::focus_fire(&mut ctx, &ids, EntityId(params.target_id));
@@ -1193,8 +1181,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
             let result = behaviors::kite_squad(&mut ctx, &ids);
@@ -1222,8 +1209,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let result = behaviors::retreat_wounded(&mut ctx, params.threshold);
             (result, ctx.take_commands())
@@ -1250,8 +1236,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
             let result = behaviors::defend_area(
@@ -1286,8 +1271,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let ids: Vec<EntityId> = params.raider_ids.into_iter().map(EntityId).collect();
             let result = behaviors::harass_economy(&mut ctx, &ids);
@@ -1317,8 +1301,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
             let result = behaviors::focus_weakest(&mut ctx, &ids, Fixed::from_num(params.range));
@@ -1350,8 +1333,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let result = behaviors::assign_idle_workers(&mut ctx);
             (result, ctx.take_commands())
@@ -1378,8 +1360,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
             let result =
@@ -1432,8 +1413,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let result =
                 behaviors::use_ability(&mut ctx, EntityId(params.unit_id), params.slot, target);
@@ -1461,8 +1441,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
             let (melee, ranged, support, result) = behaviors::split_squads(&mut ctx, &ids);
@@ -1491,8 +1470,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let ids: Vec<EntityId> = params.escort_ids.into_iter().map(EntityId).collect();
             let radius = Fixed::from_num(params.guard_radius.unwrap_or(5.0));
@@ -1521,8 +1499,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
             let radius = Fixed::from_num(params.ring_radius.unwrap_or(3.0));
@@ -1555,8 +1532,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let result = behaviors::auto_produce(&mut ctx, EntityId(params.building_id), kind);
             (result, ctx.take_commands())
@@ -1585,8 +1561,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let result = behaviors::balanced_production(&mut ctx, EntityId(params.building_id));
             (result, ctx.take_commands())
@@ -1615,8 +1590,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let result = behaviors::expand_economy(&mut ctx, EntityId(params.builder_id));
             (result, ctx.take_commands())
@@ -1645,8 +1619,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
             let result = behaviors::coordinate_assault(
@@ -1678,8 +1651,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let result = behaviors::research_priority(&mut ctx, EntityId(params.building_id));
             (result, ctx.take_commands())
@@ -1708,8 +1680,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let ids: Vec<EntityId> = params.unit_ids.into_iter().map(EntityId).collect();
             let result = behaviors::adaptive_defense(
@@ -1742,8 +1713,7 @@ impl HarnessServer {
                 &snap,
                 map,
                 params.player_id,
-                cc_core::terrain::FactionId::from_u8(params.player_id)
-                    .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+                cc_core::terrain::FactionId::for_player(params.player_id),
             );
             let waypoints: Vec<GridPos> = params
                 .waypoints

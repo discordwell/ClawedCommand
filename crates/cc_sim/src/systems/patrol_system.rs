@@ -29,7 +29,7 @@ pub fn patrol_system(
         patrol.current_index = (patrol.current_index + 1) % patrol.waypoints.len();
         let next_wp = patrol.waypoints[patrol.current_index];
 
-        let faction = FactionId::from_u8(owner.player_id).unwrap_or(FactionId::CatGPT);
+        let faction = FactionId::for_player(owner.player_id);
         let start = pos.world.to_grid();
 
         if let Some(path) = pathfinding::find_path(&map_res.map, start, next_wp, faction) {

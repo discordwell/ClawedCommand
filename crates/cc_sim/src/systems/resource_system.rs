@@ -126,7 +126,7 @@ pub fn gathering_system(
 
                     if let Some(dropoff_pos) = nearest_dropoff {
                         let faction =
-                            FactionId::from_u8(owner.player_id).unwrap_or(FactionId::CatGPT);
+                            FactionId::for_player(owner.player_id);
                         let start = pos.world.to_grid();
                         let target = dropoff_pos.to_grid();
 
@@ -187,7 +187,7 @@ pub fn gathering_system(
                         let deposit_entity = Entity::from_bits(gathering.deposit_entity.0);
                         if let Ok((_, deposit_pos, _)) = deposits.get(deposit_entity) {
                             let faction =
-                                FactionId::from_u8(owner.player_id).unwrap_or(FactionId::CatGPT);
+                                FactionId::for_player(owner.player_id);
                             let start = pos.world.to_grid();
                             let target = deposit_pos.world.to_grid();
 

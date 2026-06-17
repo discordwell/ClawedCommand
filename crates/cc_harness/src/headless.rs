@@ -447,8 +447,7 @@ impl HeadlessSim {
             &snap,
             map,
             player_id,
-            cc_core::terrain::FactionId::from_u8(player_id)
-                .unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            cc_core::terrain::FactionId::for_player(player_id),
         );
 
         lua_runtime::execute_script_with_context(lua_source, &mut ctx).map_err(|e| e.to_string())
@@ -659,7 +658,7 @@ mod tests {
             &snap,
             map,
             0,
-            cc_core::terrain::FactionId::from_u8(0).unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            cc_core::terrain::FactionId::for_player(0),
         );
         let deposits = ctx.resource_deposits();
         assert_eq!(deposits.len(), 3);
@@ -685,7 +684,7 @@ mod tests {
             &snap,
             map,
             0,
-            cc_core::terrain::FactionId::from_u8(0).unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            cc_core::terrain::FactionId::for_player(0),
         );
 
         // Nearest Food deposit to (0,0) should be the one at (3,3)
@@ -708,7 +707,7 @@ mod tests {
             &snap,
             map,
             0,
-            cc_core::terrain::FactionId::from_u8(0).unwrap_or(cc_core::terrain::FactionId::CatGPT),
+            cc_core::terrain::FactionId::for_player(0),
         );
 
         // No GpuCores deposits exist

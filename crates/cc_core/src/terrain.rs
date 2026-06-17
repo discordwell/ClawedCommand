@@ -249,6 +249,13 @@ impl FactionId {
             _ => None,
         }
     }
+
+    /// Faction controlling the given player slot, defaulting to `CatGPT` for
+    /// out-of-range ids. Consolidates the `from_u8(id).unwrap_or(CatGPT)`
+    /// pattern used wherever a `player_id` must resolve to a faction.
+    pub fn for_player(player_id: u8) -> Self {
+        Self::from_u8(player_id).unwrap_or(Self::CatGPT)
+    }
 }
 
 /// Check if a terrain type is passable for a given faction.
@@ -451,6 +458,17 @@ mod tests {
             assert_eq!(TerrainType::from_u8(v), Some(terrain));
         }
         assert_eq!(TerrainType::from_u8(255), None);
+    }
+
+    #[test]
+    fn faction_for_player_maps_valid_and_defaults_invalid() {
+        // Valid slots resolve to their faction
+        assert_eq!(FactionId::for_player(0), FactionId::CatGPT);
+        assert_eq!(FactionId::for_player(1), FactionId::TheClawed);
+        assert_eq!(FactionId::for_player(5), FactionId::Croak);
+        // Out-of-range slots default to CatGPT (matches the old unwrap_or)
+        assert_eq!(FactionId::for_player(6), FactionId::CatGPT);
+        assert_eq!(FactionId::for_player(255), FactionId::CatGPT);
     }
 
     #[test]

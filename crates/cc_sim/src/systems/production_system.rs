@@ -504,7 +504,7 @@ pub fn production_system(
 
                 let new_entity = entity_cmds.id();
 
-                let faction = FactionId::from_u8(owner.player_id).unwrap_or(FactionId::CatGPT);
+                let faction = FactionId::for_player(owner.player_id);
 
                 // Auto-move to rally point if set
                 if let Some(rally) = rally {
