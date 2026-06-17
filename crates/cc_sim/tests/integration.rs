@@ -2911,6 +2911,78 @@ fn construction_health_scales_during_build() {
     );
 }
 
+#[test]
+fn construction_preserves_combat_damage() {
+    // Combat damage taken while a building is still under construction must not
+    // be healed back to the construction HP curve on the next tick. Two buildings
+    // start identically; we damage one and confirm the gap persists as it keeps
+    // building (rather than collapsing to zero, which the old max-snap caused).
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let bstats = cc_core::building_stats::building_stats(BuildingKind::CatTree);
+    let max_hp = bstats.health;
+    let starting_hp = max_hp * Fixed::from_num(0.1f32);
+
+    let spawn_constructing = |world: &mut World, x: i32| -> Entity {
+        world
+            .spawn((
+                Position {
+                    world: WorldPos::from_grid(GridPos::new(x, 5)),
+                },
+                Velocity::zero(),
+                GridCell {
+                    pos: GridPos::new(x, 5),
+                },
+                Owner { player_id: 0 },
+                Building {
+                    kind: BuildingKind::CatTree,
+                },
+                Health {
+                    current: starting_hp,
+                    max: max_hp,
+                },
+                UnderConstruction {
+                    remaining_ticks: 150, // CatTree build time
+                    total_ticks: 150,
+                },
+            ))
+            .id()
+    };
+
+    let healthy = spawn_constructing(&mut world, 5);
+    let damaged = spawn_constructing(&mut world, 10);
+
+    // Grow both along the construction curve.
+    run_ticks(&mut world, &mut schedule, 60);
+
+    // Deal a chunk of combat damage to one of them (kept small enough to stay
+    // above zero so cleanup_system does not despawn it).
+    let dmg = max_hp * Fixed::from_num(0.3f32);
+    {
+        let mut h = world.get_mut::<Health>(damaged).unwrap();
+        h.current -= dmg;
+    }
+
+    // Keep building.
+    run_ticks(&mut world, &mut schedule, 20);
+
+    let healthy_hp = world.get::<Health>(healthy).unwrap().current;
+    let damaged_hp = world.get::<Health>(damaged).unwrap().current;
+
+    assert!(
+        damaged_hp < healthy_hp,
+        "combat damage during construction must not be healed away \
+         (damaged={damaged_hp:?}, healthy={healthy_hp:?})"
+    );
+    // Both buildings accrue the same per-tick growth, so the only difference is
+    // the damage we dealt — the gap must remain ~dmg, not collapse toward zero.
+    let gap = healthy_hp - damaged_hp;
+    let err = (gap - dmg).abs();
+    assert!(
+        err < Fixed::from_num(0.01f32) * max_hp,
+        "construction should preserve the damage magnitude (gap={gap:?}, dmg={dmg:?})"
+    );
+}
+
 /// Demo canyon combat: two armies attack-move toward each other across a river with a bridge.
 /// Verifies units pathfind through the crossing and deal damage.
 #[test]

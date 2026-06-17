@@ -48,6 +48,33 @@ fn required_owner_matches_issuer(owner: &Owner, issuer_player_id: Option<u8>) ->
     }
 }
 
+/// Cancel a unit's pending `BuildOrder` (if any) when it is re-tasked.
+///
+/// Refunds the queued building's cost to its owner and removes the `BuildOrder`
+/// component. Without this, overriding a builder's order (move/stop/attack/
+/// attack-move/gather/hold) would leak the resources spent at `Build` time and
+/// leave the order live — `builder_system` acts on any entity carrying a
+/// `BuildOrder` near the site, so the re-tasked unit could later spawn a phantom
+/// building it was told to abandon.
+fn cancel_build_order(
+    entity: Entity,
+    build_orders: &Query<(&BuildOrder, &Owner)>,
+    player_resources: &mut PlayerResources,
+    commands: &mut Commands,
+) {
+    // Refund the queued cost to the owner (matches owned builders only).
+    if let Ok((build_order, owner)) = build_orders.get(entity) {
+        let bstats = building_stats(build_order.building_kind);
+        if let Some(pres) = player_resources.players.get_mut(owner.player_id as usize) {
+            pres.food += bstats.food_cost;
+            pres.gpu_cores += bstats.gpu_cost;
+        }
+    }
+    // Always clear the order so a re-tasked builder never later spawns the
+    // abandoned building (removing an absent component is a harmless no-op).
+    commands.entity(entity).remove::<BuildOrder>();
+}
+
 /// Process all queued commands for this tick.
 ///
 /// Commands are interleaved by player to avoid systematic first/last-mover
@@ -141,18 +168,8 @@ pub fn process_commands(
                     commands.entity(entity).remove::<AttackMoveTarget>();
                     commands.entity(entity).remove::<HoldPosition>();
                     commands.entity(entity).remove::<Gathering>();
-                    // Refund building cost if cancelling a build order
-                    if let Ok((bo, bo_owner)) = build_orders.get(entity) {
-                        let bstats = building_stats(bo.building_kind);
-                        if let Some(pres) = player_resources
-                            .players
-                            .get_mut(bo_owner.player_id as usize)
-                        {
-                            pres.food += bstats.food_cost;
-                            pres.gpu_cores += bstats.gpu_cost;
-                        }
-                    }
-                    commands.entity(entity).remove::<BuildOrder>();
+                    // Refund + clear any pending build order (re-tasking cancels it)
+                    cancel_build_order(entity, &build_orders, &mut player_resources, &mut commands);
 
                     // Determine faction from owner (default to CatGPT for unowned units)
                     let faction = owner
@@ -204,17 +221,8 @@ pub fn process_commands(
                     commands.entity(entity).remove::<AttackMoveTarget>();
                     commands.entity(entity).remove::<HoldPosition>();
                     commands.entity(entity).remove::<Gathering>();
-                    // Refund building cost if cancelling a build order
-                    if let Ok((build_order, owner)) = build_orders.get(entity) {
-                        let bstats = building_stats(build_order.building_kind);
-                        if let Some(pres) =
-                            player_resources.players.get_mut(owner.player_id as usize)
-                        {
-                            pres.food += bstats.food_cost;
-                            pres.gpu_cores += bstats.gpu_cost;
-                        }
-                    }
-                    commands.entity(entity).remove::<BuildOrder>();
+                    // Refund + clear any pending build order (stop cancels it)
+                    cancel_build_order(entity, &build_orders, &mut player_resources, &mut commands);
                     // Velocity will be zeroed by movement_system when no MoveTarget
                 }
             }
@@ -259,6 +267,8 @@ pub fn process_commands(
                     commands.entity(entity).remove::<AttackMoveTarget>();
                     commands.entity(entity).remove::<HoldPosition>();
                     commands.entity(entity).remove::<Gathering>();
+                    // Refund + clear any pending build order (attack cancels it)
+                    cancel_build_order(entity, &build_orders, &mut player_resources, &mut commands);
                 }
             }
             GameCommand::AttackMove { unit_ids, target } => {
@@ -276,6 +286,8 @@ pub fn process_commands(
                     commands.entity(entity).remove::<ChasingTarget>();
                     commands.entity(entity).remove::<HoldPosition>();
                     commands.entity(entity).remove::<Gathering>();
+                    // Refund + clear any pending build order (attack-move cancels it)
+                    cancel_build_order(entity, &build_orders, &mut player_resources, &mut commands);
 
                     // Set attack-move marker
                     commands.entity(entity).insert(AttackMoveTarget { target });
@@ -325,6 +337,11 @@ pub fn process_commands(
                     commands.entity(entity).remove::<Path>();
                     commands.entity(entity).remove::<ChasingTarget>();
                     commands.entity(entity).remove::<AttackMoveTarget>();
+                    // Hold means "stay put" — stop any gather loop, which would
+                    // otherwise keep re-pathing the worker back to its deposit.
+                    commands.entity(entity).remove::<Gathering>();
+                    // Refund + clear any pending build order (hold cancels it)
+                    cancel_build_order(entity, &build_orders, &mut player_resources, &mut commands);
                 }
             }
 
@@ -348,6 +365,8 @@ pub fn process_commands(
                     commands.entity(entity).remove::<ChasingTarget>();
                     commands.entity(entity).remove::<AttackMoveTarget>();
                     commands.entity(entity).remove::<HoldPosition>();
+                    // Refund + clear any pending build order (gather cancels it)
+                    cancel_build_order(entity, &build_orders, &mut player_resources, &mut commands);
 
                     // Set gathering component
                     commands.entity(entity).insert(Gathering {

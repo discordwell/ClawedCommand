@@ -52,15 +52,16 @@ pub fn production_system(
                 uc.remaining_ticks -= 1;
             }
 
-            // Scale HP proportionally to construction progress (10% to 100%)
-            // Use min() so combat damage is preserved — never heal above the formula value
+            // Grow HP along the construction curve (10% -> 100% of max) by adding
+            // ONLY this tick's increment, clamped to max. Adding the slice rather
+            // than snapping `current` up to the curve preserves any combat damage
+            // the building took mid-construction instead of healing it back every
+            // tick. A pristine building starts at 10% and accrues the remaining 90%
+            // evenly, so it still lands exactly on the curve.
             if uc.remaining_ticks > 0 && uc.total_ticks > 0 {
-                let progress = Fixed::from_num(uc.progress_f32());
-                let formula_hp =
-                    health.max * (Fixed::from_num(0.1f32) + Fixed::from_num(0.9f32) * progress);
-                if health.current < formula_hp {
-                    health.current = formula_hp;
-                }
+                let growth_per_tick =
+                    health.max * Fixed::from_num(0.9f32) / Fixed::from_num(uc.total_ticks);
+                health.current = (health.current + growth_per_tick).min(health.max);
             }
 
             if uc.remaining_ticks == 0 {

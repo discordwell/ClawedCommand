@@ -2396,12 +2396,14 @@ pub fn evaluate_condition(
 ) -> Result<bool, LuaScriptError> {
     let lua = Lua::new();
 
-    // Tight instruction limit — conditions should be simple
+    // Tight instruction limit — conditions should be simple. Use a fresh per-call
+    // counter (not a process-global `static`): a shared counter accumulates across
+    // every condition evaluation and, once it crosses the limit, spuriously fails
+    // unrelated later conditions — even trivial ones like `true`.
+    let count = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0));
     lua.set_interrupt(move |_| {
-        static COUNT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
-        let c = COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let c = count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         if c > 1000 {
-            COUNT.store(0, std::sync::atomic::Ordering::Relaxed);
             Err(mlua::Error::runtime(
                 "@when condition exceeded instruction limit",
             ))
@@ -2605,6 +2607,29 @@ mod tests {
                 remaining: 200,
             }],
             my_resources: PlayerResourceState::default(),
+        }
+    }
+
+    #[test]
+    fn evaluate_condition_uses_per_call_instruction_budget() {
+        // Each call must get its OWN instruction budget. A regression to a shared
+        // process-global counter accumulates across calls and, once the cumulative
+        // count crosses the limit, spuriously fails an otherwise-trivial condition.
+        let snap = make_test_snapshot();
+        let map = GameMap::new(64, 64);
+
+        // A small loop wrapped in an immediately-invoked function (so it is a
+        // valid expression). ~30 iterations is far below the per-call limit, but
+        // 100 calls would overflow a shared counter many times over.
+        let expr = "(function() local s = 0 for i = 1, 30 do s = s + i end return s > 0 end)()";
+
+        for call in 0..100 {
+            let result = evaluate_condition(expr, &snap, 0, &map);
+            assert!(
+                matches!(result, Ok(true)),
+                "condition should evaluate true on every call \
+                 (failed on call {call}: {result:?})"
+            );
         }
     }
 
