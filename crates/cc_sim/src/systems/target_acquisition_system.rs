@@ -27,7 +27,7 @@ pub fn target_acquisition_system(
         (With<UnitType>, Without<Dead>),
     >,
     potential_targets: Query<
-        (Entity, &Position, &Owner),
+        (Entity, &Position, &Owner, Option<&StatModifiers>),
         (Or<(With<UnitType>, With<Building>)>, Without<Dead>),
     >,
 ) {
@@ -44,20 +44,28 @@ pub fn target_acquisition_system(
         stat_mods,
     ) in units.iter()
     {
-        // Check if current target is still alive
+        // Check if the current target is still alive and engageable.
         if let Some(target) = current_target {
             let target_entity = Entity::from_bits(target.target.0);
-            if potential_targets.get(target_entity).is_err() {
-                // Target is dead or despawned — give up the chase entirely.
+            // Engageable = exists, not dead/despawned, and not invulnerable. An
+            // invulnerable target (e.g. it popped Zoomies) cannot be damaged, so treat it
+            // exactly like a dead one and give up the chase.
+            let engageable = potential_targets
+                .get(target_entity)
+                .is_ok_and(|(_, _, _, mods)| !mods.is_some_and(|m| m.invulnerable));
+            if !engageable {
+                // Target is dead, despawned, or now invulnerable — give up the chase
+                // entirely.
                 //
                 // Clearing only AttackTarget would leave ChasingTarget/MoveTarget/Path
-                // pointing at the dead unit's last position, so the chaser would (a) keep
-                // marching to a corpse and (b) be reported as perpetually "moving" by the
-                // AI snapshot (where `is_moving = chasing.is_some()`), so idle-unit queries
-                // would never see it again. Reset it to idle instead. The local `chasing`
-                // binding stays `Some` for the rest of this tick, so the re-scan below can
-                // still immediately re-acquire a new in-range enemy (and re-establish the
-                // chase via combat_system / the attack-move branch if needed).
+                // pointing at the target's last position, so the chaser would (a) keep
+                // marching to a corpse (or a fled, invulnerable unit) and (b) be reported
+                // as perpetually "moving" by the AI snapshot (where
+                // `is_moving = chasing.is_some()`), so idle-unit queries would never see it
+                // again. Reset it to idle instead. The local `chasing` binding stays `Some`
+                // for the rest of this tick, so the re-scan below can still immediately
+                // re-acquire a new in-range enemy (and re-establish the chase via
+                // combat_system / the attack-move branch if needed).
                 let mut ec = commands.entity(entity);
                 ec.remove::<AttackTarget>();
                 ec.remove::<ChasingTarget>();
@@ -93,13 +101,21 @@ pub fn target_acquisition_system(
         let mut best_dist_sq = scan_range_sq;
         let mut best_target = None;
 
-        for (candidate, candidate_pos, candidate_owner) in potential_targets.iter() {
+        for (candidate, candidate_pos, candidate_owner, candidate_mods) in potential_targets.iter()
+        {
             // Skip friendlies
             if candidate_owner.player_id == owner.player_id {
                 continue;
             }
             // Skip self
             if candidate == entity {
+                continue;
+            }
+            // Skip invulnerable candidates (Zoomies, PlayingDead, NineLivesReviving) — they
+            // can't be damaged, so acquiring one wastes attacks and, for a chase, leaves
+            // stale pursuit state. They become acquirable again automatically once the
+            // invulnerability expires.
+            if candidate_mods.is_some_and(|m| m.invulnerable) {
                 continue;
             }
 
@@ -117,7 +133,7 @@ pub fn target_acquisition_system(
             // For AttackMove units, also chase the target (clear stale path first)
             if atk_move.is_some()
                 && hold.is_none()
-                && let Ok((_, target_pos, _)) = potential_targets.get(target_entity)
+                && let Ok((_, target_pos, _, _)) = potential_targets.get(target_entity)
             {
                 commands.entity(entity).remove::<Path>();
                 commands.entity(entity).insert(ChasingTarget {

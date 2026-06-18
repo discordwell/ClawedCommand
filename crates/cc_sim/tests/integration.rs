@@ -1038,6 +1038,120 @@ fn chasing_unit_reacquires_when_target_dies_but_another_in_range() {
 }
 
 #[test]
+fn chasing_unit_gives_up_when_target_becomes_invulnerable() {
+    // A melee attacker ordered onto a distant enemy starts chasing it. If that enemy
+    // becomes invulnerable mid-pursuit (e.g. it pops Zoomies) and nothing else is in
+    // range, the chaser must give up cleanly — exactly like the target-died case. An
+    // invulnerable target cannot be damaged, and (with Zoomies' +100% speed) it usually
+    // flees, so a lingering ChasingTarget/MoveTarget would march the attacker to a stale
+    // position and mark it as perpetually "moving" in the AI snapshot
+    // (is_moving = chasing.is_some()), so idle-unit queries would never see it again.
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let attacker = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    let target = spawn_combat_unit(&mut world, GridPos::new(20, 5), 1, UnitKind::Nuisance);
+
+    issue_attack(&mut world, &[attacker], target);
+    run_ticks(&mut world, &mut schedule, 3);
+    assert!(
+        world.get::<ChasingTarget>(attacker).is_some(),
+        "Attacker should be chasing the distant target"
+    );
+
+    // The target becomes invulnerable while the chaser is en route. A bare StatModifiers
+    // (no StatusEffects) persists because stat_modifier_system only recomputes units that
+    // have both components.
+    world.entity_mut(target).insert(StatModifiers {
+        invulnerable: true,
+        ..Default::default()
+    });
+    run_ticks(&mut world, &mut schedule, 2);
+
+    assert!(
+        world.get::<AttackTarget>(attacker).is_none(),
+        "AttackTarget should be cleared when the target becomes invulnerable"
+    );
+    assert!(
+        world.get::<ChasingTarget>(attacker).is_none(),
+        "ChasingTarget must be cleared when the target becomes invulnerable, else the unit \
+         is reported as perpetually moving and never counted as idle"
+    );
+    assert!(
+        world.get::<MoveTarget>(attacker).is_none(),
+        "MoveTarget toward the invulnerable target's ghost position should be cleared"
+    );
+}
+
+#[test]
+fn chasing_unit_reacquires_when_target_becomes_invulnerable_but_another_in_range() {
+    // Giving up the chase on invulnerability must not blind the unit: if a fresh,
+    // damageable enemy is already within weapon range when the chased target becomes
+    // invulnerable, the same-tick re-scan re-acquires it (skipping the invulnerable one).
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    let attacker = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Nuisance);
+    let far = spawn_combat_unit(&mut world, GridPos::new(20, 5), 1, UnitKind::Nuisance);
+    // A second enemy adjacent to the attacker (melee range = 1).
+    let near = spawn_combat_unit(&mut world, GridPos::new(6, 5), 1, UnitKind::Nuisance);
+
+    // Explicit Attack on the far enemy overrides auto-acquire, so the attacker chases far.
+    issue_attack(&mut world, &[attacker], far);
+    run_ticks(&mut world, &mut schedule, 2);
+    assert!(
+        world.get::<ChasingTarget>(attacker).is_some(),
+        "Attacker should be chasing the far target"
+    );
+
+    // Far enemy pops invulnerability; the near enemy is still damageable and in range.
+    world.entity_mut(far).insert(StatModifiers {
+        invulnerable: true,
+        ..Default::default()
+    });
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let acquired = world
+        .get::<AttackTarget>(attacker)
+        .map(|at| Entity::from_bits(at.target.0));
+    assert_eq!(
+        acquired,
+        Some(near),
+        "Attacker should re-acquire the in-range damageable enemy after its chase target \
+         becomes invulnerable"
+    );
+    assert!(
+        world.get::<ChasingTarget>(attacker).is_none(),
+        "Re-acquiring an in-range target should leave no ChasingTarget"
+    );
+}
+
+#[test]
+fn target_acquisition_skips_invulnerable_enemy_for_a_damageable_one() {
+    // A closer invulnerable enemy must not shadow a farther but damageable one: the scan
+    // skips invulnerable candidates entirely. Pre-fix the closest (invulnerable) enemy was
+    // acquired and then immediately cleared by combat_system, so the damageable enemy was
+    // never engaged at all.
+    let (mut world, mut schedule) = make_sim(GameMap::new(32, 32));
+    // Hisser is ranged (range 5), so both enemies sit inside its scan radius.
+    let attacker = spawn_combat_unit(&mut world, GridPos::new(5, 5), 0, UnitKind::Hisser);
+    let invuln = spawn_combat_unit(&mut world, GridPos::new(6, 5), 1, UnitKind::Nuisance); // dist 1
+    let damageable = spawn_combat_unit(&mut world, GridPos::new(8, 5), 1, UnitKind::Nuisance); // dist 3
+
+    world.entity_mut(invuln).insert(StatModifiers {
+        invulnerable: true,
+        ..Default::default()
+    });
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let acquired = world
+        .get::<AttackTarget>(attacker)
+        .map(|at| Entity::from_bits(at.target.0));
+    assert_eq!(
+        acquired,
+        Some(damageable),
+        "Idle unit should acquire the farther damageable enemy, not the closer \
+         invulnerable one"
+    );
+}
+
+#[test]
 fn combat_with_elevation_bonus() {
     use cc_core::terrain::TerrainType;
 

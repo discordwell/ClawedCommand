@@ -83,9 +83,20 @@ pub fn combat_system(
             continue;
         };
 
-        // Skip if target is invulnerable — clear target so acquisition finds a new one
+        // Target is invulnerable (Zoomies, PlayingDead, NineLivesReviving) — it cannot be
+        // damaged, so give up the chase entirely instead of clearing only AttackTarget.
+        // A lingering ChasingTarget/MoveTarget/Path would march the attacker toward the
+        // target's (often fled — Zoomies grants +100% speed) position and mark it as
+        // perpetually "moving" in the AI snapshot, the same stale-chase pattern fixed for
+        // dead targets in target_acquisition_system. That system also skips invulnerable
+        // candidates, so it normally clears this a tick earlier; this is the in-combat
+        // backstop (and the guard that actually prevents damage — see damage.rs).
         if target_mods.is_some_and(|m| m.invulnerable) {
-            commands.entity(entity).remove::<AttackTarget>();
+            let mut ec = commands.entity(entity);
+            ec.remove::<AttackTarget>();
+            ec.remove::<ChasingTarget>();
+            ec.remove::<MoveTarget>();
+            ec.remove::<Path>();
             continue;
         }
 
