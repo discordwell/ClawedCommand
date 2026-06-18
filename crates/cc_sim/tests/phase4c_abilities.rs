@@ -222,6 +222,68 @@ fn test_tilted_cc_triggers_at_five_annoyed_stacks() {
     );
 }
 
+/// T1 regression: the 5-Annoyed→Tilted conversion must not create a *second*
+/// Tilted instance when the unit already carries Tilted from another source
+/// (e.g. a Jaycaller's MurderRallyCry, which applies Tilted via refresh_or_insert).
+/// stat_modifier_system applies Tilted's debuff once per instance, so a duplicate
+/// would compound ×0.70 speed into ×0.49. Pre-fix code used a raw `push` and
+/// produced two instances; this test fails on that code and passes after the fix.
+#[test]
+fn test_annoyed_to_tilted_does_not_duplicate_existing_tilted() {
+    let (mut world, mut schedule) = make_sim();
+    let target = spawn_unit(&mut world, GridPos::new(10, 10), 1, UnitKind::Hisser);
+    // Massive HP so nothing can remove the unit during the tick.
+    world.get_mut::<Health>(target).unwrap().current = Fixed::from_num(5000);
+    world.get_mut::<Health>(target).unwrap().max = Fixed::from_num(5000);
+
+    // Pre-existing Tilted (as MurderRallyCry would leave behind) plus 5 Annoyed
+    // stacks that convert to Tilted on the next tick.
+    {
+        let mut effects = world.get_mut::<StatusEffects>(target).unwrap();
+        effects
+            .effects
+            .push(cc_core::status_effects::StatusInstance {
+                effect: StatusEffectId::Tilted,
+                remaining_ticks: 30,
+                stacks: 1,
+                source: EntityId(0),
+            });
+        effects
+            .effects
+            .push(cc_core::status_effects::StatusInstance {
+                effect: StatusEffectId::Annoyed,
+                remaining_ticks: 100,
+                stacks: 5,
+                source: EntityId(0),
+            });
+    }
+
+    // status_effect_system runs before stat_modifier_system in the chain, so one
+    // tick both converts the stacks and recomputes the modifiers.
+    run_ticks(&mut world, &mut schedule, 1);
+
+    let effects = world.get::<StatusEffects>(target).unwrap();
+    let tilted_count = effects
+        .effects
+        .iter()
+        .filter(|e| e.effect == StatusEffectId::Tilted && e.remaining_ticks > 0)
+        .count();
+    assert_eq!(
+        tilted_count, 1,
+        "conversion must merge with the existing Tilted, not add a duplicate (found {tilted_count})"
+    );
+
+    // Behavioral consequence: a single Tilted yields ×0.70 speed; a duplicate
+    // compounds to ×0.49.
+    let expected_speed = Fixed::from_bits((1 << 16) - (1 << 16) * 30 / 100); // 0.70
+    let mods = world.get::<StatModifiers>(target).unwrap();
+    assert_eq!(
+        mods.speed_multiplier, expected_speed,
+        "single Tilted should give ×0.70 speed (got {:?}); a duplicate would compound to ×0.49",
+        mods.speed_multiplier
+    );
+}
+
 /// T2: DreamSiege timer resets when Catnapper takes damage
 #[test]
 fn test_dream_siege_resets_on_catnapper_taking_damage() {

@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use cc_core::commands::EntityId;
 use cc_core::components::Dead;
-use cc_core::status_effects::{StatusEffectId, StatusEffects, StatusInstance};
+use cc_core::status_effects::{StatusEffectId, StatusEffects};
 use cc_core::tuning::{CC_IMMUNITY_TICKS, CORRODED_DECAY_INTERVAL_TICKS};
 
 /// Tick down status effect durations, remove expired, handle CC immunity.
@@ -40,12 +40,13 @@ pub fn status_effect_system(mut query: Query<&mut StatusEffects, Without<Dead>>)
                 .effects
                 .retain(|e| e.effect != StatusEffectId::Annoyed);
             if !effects.is_cc_immune() {
-                effects.effects.push(StatusInstance {
-                    effect: StatusEffectId::Tilted,
-                    remaining_ticks: 40,
-                    stacks: 1,
-                    source: EntityId(0),
-                });
+                // Use refresh_or_insert (not a raw push) so a unit that already
+                // carries Tilted from another source — e.g. a Jaycaller's
+                // MurderRallyCry, which applies Tilted via AoeCcCommand —
+                // doesn't end up with two Tilted instances. stat_modifier_system
+                // applies Tilted's ×0.70 speed / ×0.80 damage debuff once *per
+                // instance*, so a duplicate would compound it to ×0.49 / ×0.64.
+                effects.refresh_or_insert(StatusEffectId::Tilted, 40, EntityId(0));
             }
         }
 

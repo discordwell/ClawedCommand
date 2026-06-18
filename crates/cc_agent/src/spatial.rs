@@ -40,19 +40,31 @@ impl SpatialIndex {
         self.cells.get(&pos).map(|v| v.as_slice()).unwrap_or(&[])
     }
 
-    /// Find the index of the nearest unit to center within max_radius.
-    /// Uses expanding ring search for efficiency.
+    /// Find the index of the unit with the smallest *Euclidean* distance to
+    /// center within a Chebyshev `max_radius`. Uses an expanding ring search.
+    ///
+    /// Rings are Chebyshev (square) shells, but we rank by Euclidean distance,
+    /// so we must NOT return on the first non-empty ring: a corner unit on ring
+    /// `r` (Euclidean `r·√2`) can be farther than an axis unit on ring `r+1`
+    /// (Euclidean `r+1`). Instead we keep the global best and stop expanding
+    /// only once no farther ring could contain a closer unit — a unit on ring
+    /// `r` has Euclidean distance ≥ `r`, so once `r² > best_dist_sq` we are done.
     pub fn nearest(
         &self,
         center: GridPos,
         max_radius: i32,
         units: &[UnitSnapshot],
     ) -> Option<usize> {
-        for r in 0..=max_radius {
-            let mut best_idx = None;
-            let mut best_dist_sq = i64::MAX;
+        let mut best_idx = None;
+        let mut best_dist_sq = i64::MAX;
 
-            // Only check the ring at distance r (not the interior, already checked)
+        for r in 0..=max_radius {
+            // No unit on ring r or beyond can beat the current best.
+            if (r as i64) * (r as i64) > best_dist_sq {
+                break;
+            }
+
+            // Only check the ring at distance r (the interior is already searched).
             for dy in -r..=r {
                 for dx in -r..=r {
                     // Skip interior cells (already searched)
@@ -74,12 +86,8 @@ impl SpatialIndex {
                     }
                 }
             }
-
-            if best_idx.is_some() {
-                return best_idx;
-            }
         }
-        None
+        best_idx
     }
 
     /// Check if any unit exists within the given radius.
@@ -162,6 +170,20 @@ mod tests {
 
         let nearest = index.nearest(GridPos::new(4, 4), 20, &units);
         assert_eq!(nearest, Some(2)); // (3,3) is closest to (4,4)
+    }
+
+    #[test]
+    fn nearest_prefers_closer_axis_unit_over_farther_ring_corner() {
+        // From center (0,0): the corner unit (3,3) is on Chebyshev ring 3 but
+        // its Euclidean dist² is 18; the axis unit (0,4) is on ring 4 yet is
+        // Euclidean-closer (dist² = 16). A ring search that returns on the first
+        // non-empty ring would wrongly pick the corner — nearest must return the
+        // genuinely closest unit.
+        let units = vec![make_unit(1, 3, 3), make_unit(2, 0, 4)];
+        let index = SpatialIndex::build(&units);
+
+        let nearest = index.nearest(GridPos::new(0, 0), 10, &units);
+        assert_eq!(nearest, Some(1)); // (0,4) — index 1 — is Euclidean-closest
     }
 
     #[test]
