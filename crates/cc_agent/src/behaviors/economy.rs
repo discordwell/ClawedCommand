@@ -7,18 +7,20 @@ use cc_core::coords::GridPos;
 use super::BehaviorResult;
 use crate::script_context::ScriptContext;
 
-/// Send idle Pawdlers to the nearest resource deposit.
-/// Scans all own idle Pawdlers and assigns each to the closest deposit.
+/// Send idle workers to the nearest resource deposit.
+/// Scans all own idle workers (any faction's worker unit) and assigns each to
+/// the closest deposit.
 pub fn assign_idle_workers(ctx: &mut ScriptContext) -> BehaviorResult {
-    let idle_pawdlers: Vec<(EntityId, GridPos)> = ctx
-        .idle_units(Some(UnitKind::Pawdler))
+    let idle_workers: Vec<(EntityId, GridPos)> = ctx
+        .idle_units(None)
         .into_iter()
+        .filter(|u| u.kind.is_worker())
         .map(|u| (u.id, u.pos))
         .collect();
 
     let mut commands_issued = 0;
 
-    for (uid, pos) in &idle_pawdlers {
+    for (uid, pos) in &idle_workers {
         if let Some(deposit_id) = ctx.nearest_deposit(*pos, None).map(|d| d.id) {
             ctx.cmd_gather(vec![*uid], deposit_id);
             commands_issued += 1;
@@ -139,12 +141,11 @@ mod tests {
     use super::*;
     use cc_core::components::ResourceType;
     use cc_core::map::GameMap;
-    use cc_core::math::fixed_from_i32;
     use cc_core::terrain::FactionId;
     use cc_sim::resources::PlayerResourceState;
 
     use crate::snapshot::{GameStateSnapshot, ResourceSnapshot};
-    use crate::test_fixtures::{make_snapshot, make_unit};
+    use crate::test_fixtures::make_unit;
 
     #[test]
     fn assign_idle_workers_sends_pawdlers_to_deposits() {
@@ -209,6 +210,50 @@ mod tests {
 
         let result = assign_idle_workers(&mut ctx);
         assert_eq!(result.commands_issued, 0);
+    }
+
+    #[test]
+    fn assign_idle_workers_handles_non_catgpt_workers() {
+        // Regression: worker detection must be faction-agnostic via is_worker(),
+        // not hardcoded to the catGPT Pawdler. A Clawed Nibblet (worker) should
+        // be assigned; a Hisser (combat unit) must not.
+        let mut nibblet = make_unit(1, UnitKind::Nibblet, 5, 5, 0);
+        nibblet.is_idle = true;
+        let mut hisser = make_unit(2, UnitKind::Hisser, 6, 5, 0);
+        hisser.is_idle = true;
+
+        let snap = GameStateSnapshot {
+            tick: 0,
+            map_width: 64,
+            map_height: 64,
+            player_id: 0,
+            my_units: vec![nibblet, hisser],
+            enemy_units: vec![],
+            my_buildings: vec![],
+            enemy_buildings: vec![],
+            resource_deposits: vec![ResourceSnapshot {
+                id: EntityId(100),
+                resource_type: ResourceType::Food,
+                pos: GridPos::new(8, 8),
+                remaining: 500,
+            }],
+            my_resources: PlayerResourceState::default(),
+        };
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::TheClawed);
+
+        let result = assign_idle_workers(&mut ctx);
+        // Only the Nibblet worker is assigned (not the Hisser combat unit).
+        assert_eq!(result.commands_issued, 1);
+
+        let cmds = ctx.take_commands();
+        assert_eq!(cmds.len(), 1);
+        match &cmds[0] {
+            cc_core::commands::GameCommand::GatherResource { unit_ids, .. } => {
+                assert_eq!(unit_ids, &vec![EntityId(1)]);
+            }
+            other => panic!("expected GatherResource for the Nibblet, got {other:?}"),
+        }
     }
 
     #[test]

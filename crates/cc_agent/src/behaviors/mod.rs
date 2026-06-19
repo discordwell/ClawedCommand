@@ -152,15 +152,15 @@ pub fn defend_area(
     }
 }
 
-/// Find enemy Pawdlers and attack them; if no workers visible, attack-move toward enemy buildings.
+/// Find enemy workers and attack them; if no workers visible, attack-move toward enemy buildings.
 pub fn harass_economy(ctx: &mut ScriptContext, raider_ids: &[EntityId]) -> BehaviorResult {
     let mut commands_issued = 0;
 
-    // Find enemy workers (Pawdlers)
+    // Find enemy workers (any faction's worker unit, not just catGPT Pawdlers)
     let enemy_workers: Vec<EntityId> = ctx
         .enemy_units()
         .iter()
-        .filter(|u| u.kind == UnitKind::Pawdler)
+        .filter(|u| u.kind.is_worker())
         .map(|u| u.id)
         .collect();
 
@@ -341,6 +341,53 @@ mod tests {
 
         let cmds = ctx.take_commands();
         assert!(cmds.len() >= 1);
+    }
+
+    #[test]
+    fn harass_economy_targets_non_catgpt_workers() {
+        // Regression: harass must recognize any faction's worker via is_worker(),
+        // not only the catGPT Pawdler. With a Clawed Nibblet (worker) AND an enemy
+        // building visible, the raider must Attack the worker — not AttackMove the
+        // building (which is what the old `== Pawdler` filter produced).
+        use crate::snapshot::BuildingSnapshot;
+        let snap = GameStateSnapshot {
+            tick: 0,
+            map_width: 64,
+            map_height: 64,
+            player_id: 0,
+            my_units: vec![make_unit(1, UnitKind::Hisser, 5, 5, 0)],
+            enemy_units: vec![make_unit(10, UnitKind::Nibblet, 8, 5, 1)],
+            my_buildings: vec![],
+            enemy_buildings: vec![BuildingSnapshot {
+                id: EntityId(20),
+                kind: cc_core::components::BuildingKind::TheBurrow,
+                pos: GridPos::new(20, 20),
+                owner: 1,
+                health_current: fixed_from_i32(500),
+                health_max: fixed_from_i32(500),
+                under_construction: false,
+                construction_progress: 1.0,
+                production_queue: vec![],
+                research_queue: vec![],
+            }],
+            resource_deposits: vec![],
+            my_resources: PlayerResourceState::default(),
+        };
+        let map = GameMap::new(64, 64);
+        let mut ctx = ScriptContext::new(&snap, &map, 0, FactionId::CatGPT);
+
+        let result = harass_economy(&mut ctx, &[EntityId(1)]);
+        assert_eq!(result.commands_issued, 1);
+
+        let cmds = ctx.take_commands();
+        assert_eq!(cmds.len(), 1);
+        match &cmds[0] {
+            cc_core::commands::GameCommand::Attack { unit_ids, target } => {
+                assert_eq!(unit_ids, &vec![EntityId(1)]);
+                assert_eq!(*target, EntityId(10));
+            }
+            other => panic!("expected Attack on the Nibblet worker, got {other:?}"),
+        }
     }
 
     #[test]

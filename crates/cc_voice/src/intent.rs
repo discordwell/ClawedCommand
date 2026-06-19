@@ -744,6 +744,24 @@ pub fn apply_voice_buff_to_entities(
 ///
 /// Parses full transcription text in one tick — no cross-tick accumulation.
 /// Default target: all of the player's on-screen units (not just selected).
+/// Resolve the Workers / Army voice selectors against the player's own living units.
+///
+/// `want_worker == true` selects worker units; `false` selects the rest ("army").
+/// Worker detection is faction-agnostic via [`UnitKind::is_worker`], so these
+/// selectors work for every faction — not only the catGPT Pawdler.
+fn select_by_worker_role(
+    all_units: &Query<(Entity, &cc_core::components::UnitType, &Position, &Owner), Without<Dead>>,
+    player_id: u8,
+    want_worker: bool,
+) -> (Vec<Entity>, Vec<EntityId>) {
+    all_units
+        .iter()
+        .filter(|(_, _, _, owner)| owner.player_id == player_id)
+        .filter(|(_, ut, _, _)| ut.kind.is_worker() == want_worker)
+        .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
+        .unzip()
+}
+
 pub fn voice_intent_system(
     mut commands: Commands,
     mut voice_events: MessageReader<VoiceCommandEvent>,
@@ -809,14 +827,8 @@ pub fn voice_intent_system(
                 .iter()
                 .map(|e| (e, EntityId(e.to_bits())))
                 .unzip(),
-            Some(SelectorKind::Workers) => own_units()
-                .filter(|(_, ut, _, _)| ut.kind == UnitKind::Pawdler)
-                .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
-                .unzip(),
-            Some(SelectorKind::Army) => own_units()
-                .filter(|(_, ut, _, _)| ut.kind != UnitKind::Pawdler)
-                .map(|(e, _, _, _)| (e, EntityId(e.to_bits())))
-                .unzip(),
+            Some(SelectorKind::Workers) => select_by_worker_role(&all_units, 0, true),
+            Some(SelectorKind::Army) => select_by_worker_role(&all_units, 0, false),
             Some(SelectorKind::Nearby) => {
                 // Filter to own units within 10 tiles (Chebyshev) of cursor
                 if let Some(cursor) = cursor_grid.pos {
@@ -1682,6 +1694,65 @@ mod tests {
                 "Label '{label}' hit the fallback branch — add it to classify_keyword"
             );
         }
+    }
+
+    #[test]
+    fn workers_army_selectors_are_faction_agnostic() {
+        // Regression: the Workers/Army voice selectors must use UnitKind::is_worker()
+        // so they resolve correctly for every faction — not only the catGPT Pawdler.
+        use bevy::ecs::system::RunSystemOnce;
+        use cc_core::components::UnitType;
+        use cc_core::coords::WorldPos;
+
+        let mut world = World::new();
+        // Player 0: a Clawed Nibblet (worker) and a Hisser (combat unit).
+        let worker = world
+            .spawn((
+                UnitType {
+                    kind: UnitKind::Nibblet,
+                },
+                Position {
+                    world: WorldPos::from_grid(GridPos::new(5, 5)),
+                },
+                Owner { player_id: 0 },
+            ))
+            .id();
+        let soldier = world
+            .spawn((
+                UnitType {
+                    kind: UnitKind::Hisser,
+                },
+                Position {
+                    world: WorldPos::from_grid(GridPos::new(6, 5)),
+                },
+                Owner { player_id: 0 },
+            ))
+            .id();
+        // An enemy worker (player 1) must never be selected for player 0.
+        world.spawn((
+            UnitType {
+                kind: UnitKind::Nibblet,
+            },
+            Position {
+                world: WorldPos::from_grid(GridPos::new(9, 9)),
+            },
+            Owner { player_id: 1 },
+        ));
+
+        let (workers, army) = world
+            .run_system_once(
+                move |q: Query<(Entity, &UnitType, &Position, &Owner), Without<Dead>>| {
+                    let (w, _) = select_by_worker_role(&q, 0, true);
+                    let (a, _) = select_by_worker_role(&q, 0, false);
+                    (w, a)
+                },
+            )
+            .unwrap();
+
+        // Workers selector: only the non-catGPT worker; excludes combat unit and enemy.
+        assert_eq!(workers, vec![worker]);
+        // Army selector: only the combat unit.
+        assert_eq!(army, vec![soldier]);
     }
 
     #[test]
